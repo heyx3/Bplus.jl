@@ -22,7 +22,7 @@
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{C8AC2B05-88B0-4AC6-A3EE-126CDEE7C10C}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>Tile3DEditor</RootNamespace>
+    <RootNamespace>B+</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -73,26 +73,26 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)Build\$(ProjectName)\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)Build\$(ProjectName)\temp\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>$(ProjectDir)dependencies\include;C:\Git Repos\D Drive\wfcpp\Tile3DEditor\dependencies\Full Source\nativefiledialog\include;$(ProjectDir)dependencies\Full Source;$(IncludePath)</IncludePath>
+    <IntDir>$(ProjectDir)Build\$(ProjectName)\temp\$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>$(ProjectDir)dependencies\include;$(ProjectDir)dependencies\Full Source\nativefiledialog\include;$(ProjectDir)dependencies\Full Source;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(SolutionDir)Build\$(ProjectName)\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)Build\$(ProjectName)\temp\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>$(ProjectDir)dependencies\include;C:\Git Repos\D Drive\wfcpp\Tile3DEditor\dependencies\Full Source\nativefiledialog\include;$(ProjectDir)dependencies\Full Source;$(IncludePath)</IncludePath>
+    <OutDir>$(ProjectDir)Build\$(ProjectName)\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)Build\$(ProjectName)\temp\$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>$(ProjectDir)dependencies\include;$(ProjectDir)dependencies\Full Source\nativefiledialog\include;$(ProjectDir)dependencies\Full Source;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)Build\$(ProjectName)\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)Build\$(ProjectName)\temp\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>$(ProjectDir)dependencies\include;C:\Git Repos\D Drive\wfcpp\Tile3DEditor\dependencies\Full Source\nativefiledialog\include;$(ProjectDir)dependencies\Full Source;$(IncludePath)</IncludePath>
+    <OutDir>$(ProjectDir)Build\$(ProjectName)\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)Build\$(ProjectName)\temp\$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>$(ProjectDir)dependencies\include;$(ProjectDir)dependencies\Full Source\nativefiledialog\include;$(ProjectDir)dependencies\Full Source;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)Build\$(ProjectName)\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)Build\$(ProjectName)\temp\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>$(ProjectDir)dependencies\include;C:\Git Repos\D Drive\wfcpp\Tile3DEditor\dependencies\Full Source\nativefiledialog\include;$(ProjectDir)dependencies\Full Source;$(IncludePath)</IncludePath>
+    <OutDir>$(ProjectDir)Build\$(ProjectName)\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)Build\$(ProjectName)\temp\$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>$(ProjectDir)dependencies\include;$(ProjectDir)dependencies\Full Source\nativefiledialog\include;$(ProjectDir)dependencies\Full Source;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -110,23 +110,15 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;WFC++.lib;DevIL.lib;ILU.lib;ILUT.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)Build\WFC++\$(Platform)\$(Configuration);$(ProjectDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)Build\WFC++\$(Platform)\$(Configuration);$(ProjectDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(ProjectDir)dependencies\bin" "$(TargetDir)" /E /Y
-xcopy "$(SolutionDir)Build\WFC++\$(Platform)\$(Configuration)\WFC++.*" "$(TargetDir)" /Y
 xcopy "$(ProjectDir)content\*" "$(TargetDir)content\" /E /Y</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy dependencies to build</Message>
     </PostBuildEvent>
-    <PreBuildEvent>
-      <Command>xcopy "$(SolutionDir)WFC++\*.h" "$(ProjectDir)dependencies\include\WFC++\" /sy
-xcopy "$(SolutionDir)WFC++\*.hpp" "$(ProjectDir)dependencies\include\WFC++\" /sy</Command>
-    </PreBuildEvent>
-    <PreBuildEvent>
-      <Message>Copy WFC++ headers</Message>
-    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -144,23 +136,15 @@ xcopy "$(SolutionDir)WFC++\*.hpp" "$(ProjectDir)dependencies\include\WFC++\" /sy
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;WFC++.lib;DevIL.lib;ILU.lib;ILUT.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)Build\WFC++\$(Platform)\$(Configuration);$(ProjectDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(ProjectDir)dependencies\bin" "$(TargetDir)" /E /Y
-xcopy "$(SolutionDir)Build\WFC++\$(Platform)\$(Configuration)\WFC++.*" "$(TargetDir)" /Y
 xcopy "$(ProjectDir)content\*" "$(TargetDir)content\" /E /Y</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy dependencies to build</Message>
     </PostBuildEvent>
-    <PreBuildEvent>
-      <Command>xcopy "$(SolutionDir)WFC++\*.h" "$(ProjectDir)dependencies\include\WFC++\" /sy
-xcopy "$(SolutionDir)WFC++\*.hpp" "$(ProjectDir)dependencies\include\WFC++\" /sy</Command>
-    </PreBuildEvent>
-    <PreBuildEvent>
-      <Message>Copy WFC++ headers</Message>
-    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -182,23 +166,15 @@ xcopy "$(SolutionDir)WFC++\*.hpp" "$(ProjectDir)dependencies\include\WFC++\" /sy
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;WFC++.lib;DevIL.lib;ILU.lib;ILUT.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)Build\WFC++\$(Platform)\$(Configuration);$(ProjectDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(ProjectDir)dependencies\bin" "$(TargetDir)" /E /Y
-xcopy "$(SolutionDir)Build\WFC++\$(Platform)\$(Configuration)\WFC++.*" "$(TargetDir)" /Y
 xcopy "$(ProjectDir)content\*" "$(TargetDir)content\" /E /Y</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy dependencies to build</Message>
     </PostBuildEvent>
-    <PreBuildEvent>
-      <Command>xcopy "$(SolutionDir)WFC++\*.h" "$(ProjectDir)dependencies\include\WFC++\" /sy
-xcopy "$(SolutionDir)WFC++\*.hpp" "$(ProjectDir)dependencies\include\WFC++\" /sy</Command>
-    </PreBuildEvent>
-    <PreBuildEvent>
-      <Message>Copy WFC++ headers</Message>
-    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -220,23 +196,15 @@ xcopy "$(SolutionDir)WFC++\*.hpp" "$(ProjectDir)dependencies\include\WFC++\" /sy
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;WFC++.lib;DevIL.lib;ILU.lib;ILUT.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(SolutionDir)Build\WFC++\$(Platform)\$(Configuration);$(ProjectDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(ProjectDir)dependencies\bin" "$(TargetDir)" /E /Y
-xcopy "$(SolutionDir)Build\WFC++\$(Platform)\$(Configuration)\WFC++.*" "$(TargetDir)" /Y
 xcopy "$(ProjectDir)content\*" "$(TargetDir)content\" /E /Y</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy dependencies to build</Message>
     </PostBuildEvent>
-    <PreBuildEvent>
-      <Command>xcopy "$(SolutionDir)WFC++\*.h" "$(ProjectDir)dependencies\include\WFC++\" /sy
-xcopy "$(SolutionDir)WFC++\*.hpp" "$(ProjectDir)dependencies\include\WFC++\" /sy</Command>
-    </PreBuildEvent>
-    <PreBuildEvent>
-      <Message>Copy WFC++ headers</Message>
-    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Apps\Base.cpp" />
