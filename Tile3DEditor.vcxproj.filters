@@ -1,0 +1,106 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClInclude Include="Config.h" />
+    <ClInclude Include="IO.h" />
+    <ClInclude Include="dependencies\Full Source\nativefiledialog\common.h">
+      <Filter>Native File Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="dependencies\Full Source\nativefiledialog\nfd_common.h">
+      <Filter>Native File Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderLibs.h" />
+    <ClInclude Include="dependencies\Full Source\Dear ImGui\imconfig.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="dependencies\Full Source\Dear ImGui\imgui.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="dependencies\Full Source\Dear ImGui\imgui_internal.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="dependencies\Full Source\Dear ImGui\imgui_stdlib.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="dependencies\Full Source\Dear ImGui\imstb_rectpack.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="dependencies\Full Source\Dear ImGui\imstb_textedit.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="dependencies\Full Source\Dear ImGui\imstb_truetype.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="dependencies\Full Source\Dear ImGui\imgui_impl_opengl3.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="dependencies\Full Source\Dear ImGui\imgui_impl_sdl.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="dependencies\Full Source\nativefiledialog\nfd.h">
+      <Filter>Native File Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Helpers.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Apps\Base.h">
+      <Filter>Apps</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Files\Mesh.h">
+      <Filter>Renderer\Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Files\Mesh.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Config.cpp" />
+    <ClCompile Include="dependencies\Full Source\nativefiledialog\nfd_common.c">
+      <Filter>Native File Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\Full Source\nativefiledialog\nfd_win.cpp">
+      <Filter>Native File Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="IO.cpp" />
+    <ClCompile Include="dependencies\Full Source\Dear ImGui\imgui.cpp">
+      <Filter>Dear ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\Full Source\Dear ImGui\imgui_draw.cpp">
+      <Filter>Dear ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\Full Source\Dear ImGui\imgui_stdlib.cpp">
+      <Filter>Dear ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\Full Source\Dear ImGui\imgui_widgets.cpp">
+      <Filter>Dear ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\Full Source\Dear ImGui\imgui_impl_opengl3.cpp">
+      <Filter>Dear ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="dependencies\Full Source\Dear ImGui\imgui_impl_sdl.cpp">
+      <Filter>Dear ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Helpers.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Apps\Base.cpp">
+      <Filter>Apps</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Native File Dialog">
+      <UniqueIdentifier>{4ce03b81-0ba1-4555-b8a1-43f82b2ecc40}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Dear ImGui">
+      <UniqueIdentifier>{607face5-05a3-473f-b301-e4e6b0c85089}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer">
+      <UniqueIdentifier>{40c8695a-51c8-4ce1-a153-54ac8002ad24}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Apps">
+      <UniqueIdentifier>{b2fc426b-34f6-4c7c-a187-1049af86873f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer\Files">
+      <UniqueIdentifier>{4a024b15-3ff1-4fef-a7d8-515e8cea88d3}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
