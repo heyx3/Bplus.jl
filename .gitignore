@@ -99,3 +99,5 @@ Build
 
 # Auto-copied headers
 dependencies/include/WFC++
+#IMGUI local configuration
+imgui.ini
