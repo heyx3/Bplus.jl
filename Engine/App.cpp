@@ -15,6 +15,13 @@ ConfigFile::ConfigFile(const fs::path& tomlFile,
 
 void ConfigFile::LoadFromFile()
 {
+    //If the file doesn't exist, fall back to default values.
+    if (!fs::exists(FilePath))
+    {
+        ResetToDefaults();
+        return;
+    }
+
     auto tryParse = toml::parseFile(FilePath.string());
     if (!tryParse.valid())
     {
@@ -60,11 +67,11 @@ void ConfigFile::FromToml(const toml::Value& document)
 {
     IsWindowMaximized = IO::TomlTryGet(document, "IsWindowMaximized", false);
 
-    const auto* found = document.find("LastWindowSize");
+    const auto* found = document.find("WindowSize");
     if (found != nullptr)
     {
-        LastWindowSize.x = (glm::u32)found->get<int64_t>(0);
-        LastWindowSize.y = (glm::u32)found->get<int64_t>(1);
+        WindowSize.x = (glm::u32)found->get<int64_t>(0);
+        WindowSize.y = (glm::u32)found->get<int64_t>(1);
     }
 
     this->_FromToml(document);
@@ -75,21 +82,27 @@ void ConfigFile::ToToml(toml::Value& document) const
     document["IsWindowMaximized"] = IsWindowMaximized;
     
     auto windowSize = toml::Array();
-    windowSize.push_back((int64_t)LastWindowSize.x);
-    windowSize.push_back((int64_t)LastWindowSize.y);
-    document["LastWindowSize"] = std::move(windowSize);
+    windowSize.push_back((int64_t)WindowSize.x);
+    windowSize.push_back((int64_t)WindowSize.y);
+    document["WindowSize"] = std::move(windowSize);
+}
+
+void ConfigFile::ResetToDefaults()
+{
+    IsWindowMaximized = false;
+    WindowSize = { 300, 300 };
 }
 
 
 
-App::App(std::unique_ptr<ConfigFile>&& config, ErrorCallback onError)
+App::App(ConfigFile& config, ErrorCallback onError)
     : MainWindow(nullptr), OpenGLContext(nullptr), ImGuiContext(nullptr),
-      WorkingPath(config->FilePath.parent_path()),
+      WorkingPath(config.FilePath.parent_path()),
       ContentPath(WorkingPath / "content"),
-      Config(std::move(config)), OnError(onError)
+      Config(config), OnError(onError)
 {
     isRunning = false;
-    Config->OnError = OnError;
+    Config.OnError = OnError;
 }
 App::~App()
 {
@@ -107,7 +120,7 @@ void App::Run()
     lastFrameStartTime = SDL_GetPerformanceCounter();
     isRunning = true;
 
-    Config->LoadFromFile();
+    Config.LoadFromFile();
 
     #pragma region Initialization
 
@@ -121,8 +134,8 @@ void App::Run()
     ConfigureMainWindow(windowFlags, windowTitle);
     MainWindow = SDL_CreateWindow(windowTitle.c_str(),
                                   SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-                                  (int)Config->LastWindowSize.x,
-                                  (int)Config->LastWindowSize.y,
+                                  (int)Config.WindowSize.x,
+                                  (int)Config.WindowSize.y,
                                   windowFlags);
     if (!TrySDL(MainWindow, "Error creating main window"))
         return;
@@ -218,19 +231,23 @@ void App::Run()
             }
 
             //Update the config.
-            Config->IsWindowMaximized = (SDL_GetWindowFlags(MainWindow) &
-                                             SDL_WINDOW_MAXIMIZED) != 0;
-            if (!Config->IsWindowMaximized)
+            Config.IsWindowMaximized = (SDL_GetWindowFlags(MainWindow) &
+                                            SDL_WINDOW_MAXIMIZED) != 0;
+            if (!Config.IsWindowMaximized)
             {
                 int wndW, wndH;
                 SDL_GetWindowSize(MainWindow, &wndW, &wndH);
-                Config->LastWindowSize.x = (glm::u32)wndW;
-                Config->LastWindowSize.y = (glm::u32)wndH;
+                Config.WindowSize.x = (glm::u32)wndW;
+                Config.WindowSize.y = (glm::u32)wndH;
             }
 
             //Update the child class.
             OnEvent(sdlEvent);
         }
+
+        //Exit early if the app is quitting.
+        if (!isRunning)
+            continue;
 
         //Now run an update frame of the App.
         uint64_t newFrameTime = SDL_GetPerformanceCounter();
@@ -290,8 +307,8 @@ void App::OnQuit(bool force)
     if ((SDL_WasInit(SDL_INIT_EVERYTHING) & SDL_INIT_EVENTS) != 0)
         SDL_Quit();
 
-    Config->WriteToFile();
-    isRunning = true;
+    Config.WriteToFile();
+    isRunning = false;
 }
 
 bool App::TrySDL(int returnCode, const std::string& msgPrefix)

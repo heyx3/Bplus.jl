@@ -18,7 +18,7 @@ namespace Bplus
         ErrorCallback OnError;
 
         bool IsWindowMaximized;
-        glm::uvec2 LastWindowSize;
+        glm::uvec2 WindowSize;
 
         const fs::path FilePath;
         const bool DisableWrite; //Useful when running in the IDE.
@@ -28,11 +28,14 @@ namespace Bplus
                    ErrorCallback onError, bool disableWrite);
         virtual ~ConfigFile() { }
 
+
         void FromToml(const toml::Value& document);
         void LoadFromFile();
 
         void ToToml(toml::Value& document) const;
         void WriteToFile() const;
+
+        virtual void ResetToDefaults();
 
 
     protected:
@@ -40,7 +43,7 @@ namespace Bplus
         virtual void _ToToml(toml::Value& document) const { }
 
         //Called after this config file is loaded from a TOML file.
-        //Use this to post-proceses any config data (e.x. to find errors).
+        //Use this to post-proceses any config data (e.x. to fix paths, or find errors).
         virtual void OnDeserialized() { }
     };
 
@@ -51,7 +54,7 @@ namespace Bplus
     {
     public:
 
-        static const char* GLSLVersion() { return "400"; }
+        static const char* GLSLVersion() { return "#version 400"; }
         static uint8_t GLVersion_Major() { return 4; }
         static uint8_t GLVersion_Minor() { return 0; }
 
@@ -60,7 +63,7 @@ namespace Bplus
         SDL_GLContext OpenGLContext;
         ImGuiIO* ImGuiContext;
 
-        std::unique_ptr<ConfigFile> Config;
+        ConfigFile& Config;
         ErrorCallback OnError;
 
         const fs::path WorkingPath, ContentPath;
@@ -88,7 +91,7 @@ namespace Bplus
         float MinDeltaT = -1;
 
 
-        App(std::unique_ptr<ConfigFile>&& config, ErrorCallback onError);
+        App(ConfigFile& configFile, ErrorCallback onError);
         virtual ~App();
 
         //Disable move/copy constructors.
@@ -117,7 +120,7 @@ namespace Bplus
         virtual void ConfigureMainWindow(int& flags, std::string& title)
         {
             flags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE |
-                        (Config->IsWindowMaximized ? SDL_WINDOW_MAXIMIZED : 0);
+                        (Config.IsWindowMaximized ? SDL_WINDOW_MAXIMIZED : 0);
             title = "B+ App";
         }
         //Called as the app starts running.

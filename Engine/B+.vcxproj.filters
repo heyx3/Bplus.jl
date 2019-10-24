@@ -11,44 +11,44 @@
     </ClInclude>
     <ClInclude Include="Platform.h" />
     <ClInclude Include="App.h" />
-    <ClInclude Include="..\dependencies\Full Source\nativefiledialog\nfd.h">
-      <Filter>Native File Dialog</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dependencies\Full Source\nativefiledialog\nfd_common.h">
-      <Filter>Native File Dialog</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dependencies\Full Source\nativefiledialog\common.h">
-      <Filter>Native File Dialog</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imgui_impl_sdl.h">
-      <Filter>Dear ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imgui_internal.h">
-      <Filter>Dear ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imgui_stdlib.h">
-      <Filter>Dear ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imstb_rectpack.h">
-      <Filter>Dear ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imstb_textedit.h">
-      <Filter>Dear ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imstb_truetype.h">
-      <Filter>Dear ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imconfig.h">
-      <Filter>Dear ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imgui.h">
-      <Filter>Dear ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imgui_impl_opengl3.h">
-      <Filter>Dear ImGui</Filter>
-    </ClInclude>
     <ClInclude Include="Renderer\Files\Mesh.cpp">
       <Filter>Renderer\Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Dear ImGui\imgui_impl_opengl3.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Dear ImGui\imgui_impl_sdl.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Dear ImGui\imgui_internal.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Dear ImGui\imgui_stdlib.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Dear ImGui\imstb_rectpack.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Dear ImGui\imstb_textedit.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Dear ImGui\imstb_truetype.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Dear ImGui\imconfig.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Dear ImGui\imgui.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="NativeFileDialog\nfd_common.h">
+      <Filter>Native File Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="NativeFileDialog\common.h">
+      <Filter>Native File Dialog</Filter>
+    </ClInclude>
+    <ClInclude Include="NativeFileDialog\nfd.h">
+      <Filter>Native File Dialog</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -57,29 +57,29 @@
       <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="App.cpp" />
-    <ClCompile Include="..\dependencies\Full Source\nativefiledialog\nfd_common.c">
+    <ClCompile Include="Dear ImGui\imgui_draw.cpp">
+      <Filter>Dear ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Dear ImGui\imgui_impl_opengl3.cpp">
+      <Filter>Dear ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Dear ImGui\imgui_impl_sdl.cpp">
+      <Filter>Dear ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Dear ImGui\imgui_stdlib.cpp">
+      <Filter>Dear ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Dear ImGui\imgui_widgets.cpp">
+      <Filter>Dear ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Dear ImGui\imgui.cpp">
+      <Filter>Dear ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeFileDialog\nfd_common.c">
       <Filter>Native File Dialog</Filter>
     </ClCompile>
-    <ClCompile Include="..\dependencies\Full Source\nativefiledialog\nfd_win.cpp">
+    <ClCompile Include="NativeFileDialog\nfd_win.cpp">
       <Filter>Native File Dialog</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dependencies\Full Source\Dear ImGui\imgui_stdlib.cpp">
-      <Filter>Dear ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dependencies\Full Source\Dear ImGui\imgui_widgets.cpp">
-      <Filter>Dear ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dependencies\Full Source\Dear ImGui\imgui.cpp">
-      <Filter>Dear ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dependencies\Full Source\Dear ImGui\imgui_draw.cpp">
-      <Filter>Dear ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dependencies\Full Source\Dear ImGui\imgui_impl_opengl3.cpp">
-      <Filter>Dear ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\dependencies\Full Source\Dear ImGui\imgui_impl_sdl.cpp">
-      <Filter>Dear ImGui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -13,6 +13,9 @@
 
 #pragma once
 
+#include "../Platform.h"
+#define IMGUI_API BP_API
+
 //---- Define assertion handler. Defaults to calling assert().
 //#define IM_ASSERT(_EXPR)  MyAssert(_EXPR)
 //#define IM_ASSERT(_EXPR)  ((void)(_EXPR))     // Disable asserts

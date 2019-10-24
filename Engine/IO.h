@@ -10,7 +10,7 @@
 namespace fs = std::filesystem;
 
 //Imported libraries:
-#include <nativefiledialog\nfd.h>
+#include "NativeFileDialog\nfd.h"
 #include <toml.h>
 
 #include "Platform.h"
