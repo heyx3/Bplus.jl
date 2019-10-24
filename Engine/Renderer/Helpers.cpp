@@ -2,6 +2,8 @@
 
 #include "../RenderLibs.h"
 
+using namespace Bplus;
+
 
 void GL::Clear(float r, float g, float b, float a)
 {

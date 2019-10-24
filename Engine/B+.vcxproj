@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectGuid>{C8AC2B05-88B0-4AC6-A3EE-126CDEE7C10C}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>B+</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)Build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Build\temp\$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>$(SolutionDir)dependencies\include;$(SolutionDir)dependencies\Full Source\;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)Build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Build\temp\$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>$(SolutionDir)dependencies\include;$(SolutionDir)dependencies\Full Source\;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)Build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Build\temp\$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>$(SolutionDir)dependencies\include;$(SolutionDir)dependencies\Full Source\;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)Build\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Build\temp\$(Platform)\$(Configuration)\</IntDir>
+    <IncludePath>$(SolutionDir)dependencies\include;$(SolutionDir)dependencies\Full Source\;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>BP_EXPORT_DLL;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;DevIL.lib;ILU.lib;ILUT.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+    <PostBuildEvent>
+      <Command>REM Organize the build directory a bit.
+if not exist "$(TargetDir)run-time"             md "$(TargetDir)run-time"
+if not exist "$(TargetDir)compile-time\include" md "$(TargetDir)compile-time\include"
+if not exist "$(TargetDir)compile-time\lib"     md "$(TargetDir)compile-time\lib"
+
+REM Note: Annoyingly, Robocopy return values are very non-standard; anything below 8 should be considered a success.
+REM   Visual Studio considers anything other than 0 an error. So we have to manually fix this.
+set VERIFY_RBCPY=if %ERRORLEVEL% GEQ 8 exit %ERRORLEVEL%
+
+REM Copy over the dependencies. Remove unexpected destination files with "/purge".
+robocopy "$(SolutionDir)dependencies\lib" "$(TargetDir)compile-time\lib" *.lib /E /purge
+%VERIFY_RBCPY%
+robocopy "$(SolutionDir)dependencies\include" "$(TargetDir)compile-time\include" *.h /E /purge
+%VERIFY_RBCPY%
+robocopy "$(SolutionDir)dependencies\Full Source" "$(TargetDir)compile-time\include" *.h /E
+%VERIFY_RBCPY%
+REM For the copy of dll's into "run-time/", make sure to NOT purge the "content/" sub-folder!
+robocopy "$(SolutionDir)dependencies\bin" "$(TargetDir)run-time" *.dll /E /purge /xd "$(SolutionDir)dependencies\bin\content"
+%VERIFY_RBCPY%
+
+REM Copy the current build products into their associated sub-folders.
+REM Don't use "/purge", because we already purge-moved the dependencies in.
+REM Also make sure to ignore the sub-folders that we are copying into.
+set RBCPY_EXCLUDE_SUBFOLDERS=/xd "$(TargetDir)compile-time" /xd "$(TargetDir)run-time"
+robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)run-time" *.dll *.pdb *.exe /E /move %RBCPY_EXCLUDE_SUBFOLDERS%
+%VERIFY_RBCPY%
+robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)compile-time\lib" *.lib /E /move %RBCPY_EXCLUDE_SUBFOLDERS%
+%VERIFY_RBCPY%
+robocopy "$(ProjectDir.TrimEnd('\'))" "$(TargetDir)compile-time\include\B+" *.h /E
+%VERIFY_RBCPY%
+
+REM Finally, copy over the content folder.
+robocopy "$(SolutionDir)content" "$(TargetDir)run-time\content" /E /purge
+%VERIFY_RBCPY%
+
+REM robocopies succeeded; exit successfully
+exit 0</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copy important things to the build folder</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>BP_EXPORT_DLL;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;DevIL.lib;ILU.lib;ILUT.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+    <PostBuildEvent>
+      <Command>REM Organize the build directory a bit.
+if not exist "$(TargetDir)run-time"             md "$(TargetDir)run-time"
+if not exist "$(TargetDir)compile-time\include" md "$(TargetDir)compile-time\include"
+if not exist "$(TargetDir)compile-time\lib"     md "$(TargetDir)compile-time\lib"
+
+REM Note: Annoyingly, Robocopy return values are very non-standard; anything below 8 should be considered a success.
+REM   Visual Studio considers anything other than 0 an error. So we have to manually fix this.
+set VERIFY_RBCPY=if %ERRORLEVEL% GEQ 8 exit %ERRORLEVEL%
+
+REM Copy over the dependencies. Remove unexpected destination files with "/purge".
+robocopy "$(SolutionDir)dependencies\lib" "$(TargetDir)compile-time\lib" *.lib /E /purge
+%VERIFY_RBCPY%
+robocopy "$(SolutionDir)dependencies\include" "$(TargetDir)compile-time\include" *.h /E /purge
+%VERIFY_RBCPY%
+robocopy "$(SolutionDir)dependencies\Full Source" "$(TargetDir)compile-time\include" *.h /E
+%VERIFY_RBCPY%
+REM For the copy of dll's into "run-time/", make sure to NOT purge the "content/" sub-folder!
+robocopy "$(SolutionDir)dependencies\bin" "$(TargetDir)run-time" *.dll /E /purge /xd "$(SolutionDir)dependencies\bin\content"
+%VERIFY_RBCPY%
+
+REM Copy the current build products into their associated sub-folders.
+REM Don't use "/purge", because we already purge-moved the dependencies in.
+REM Also make sure to ignore the sub-folders that we are copying into.
+set RBCPY_EXCLUDE_SUBFOLDERS=/xd "$(TargetDir)compile-time" /xd "$(TargetDir)run-time"
+robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)run-time" *.dll *.pdb *.exe /E /move %RBCPY_EXCLUDE_SUBFOLDERS%
+%VERIFY_RBCPY%
+robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)compile-time\lib" *.lib /E /move %RBCPY_EXCLUDE_SUBFOLDERS%
+%VERIFY_RBCPY%
+robocopy "$(ProjectDir.TrimEnd('\'))" "$(TargetDir)compile-time\include\B+" *.h /E
+%VERIFY_RBCPY%
+
+REM Finally, copy over the content folder.
+robocopy "$(SolutionDir)content" "$(TargetDir)run-time\content" /E /purge
+%VERIFY_RBCPY%
+
+REM robocopies succeeded; exit successfully
+exit 0</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copy important things to the build folder</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>BP_EXPORT_DLL;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;DevIL.lib;ILU.lib;ILUT.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+    <PostBuildEvent>
+      <Command>REM Organize the build directory a bit.
+if not exist "$(TargetDir)run-time"             md "$(TargetDir)run-time"
+if not exist "$(TargetDir)compile-time\include" md "$(TargetDir)compile-time\include"
+if not exist "$(TargetDir)compile-time\lib"     md "$(TargetDir)compile-time\lib"
+
+REM Note: Annoyingly, Robocopy return values are very non-standard; anything below 8 should be considered a success.
+REM   Visual Studio considers anything other than 0 an error. So we have to manually fix this.
+set VERIFY_RBCPY=if %ERRORLEVEL% GEQ 8 exit %ERRORLEVEL%
+
+REM Copy over the dependencies. Remove unexpected destination files with "/purge".
+robocopy "$(SolutionDir)dependencies\lib" "$(TargetDir)compile-time\lib" *.lib /E /purge
+%VERIFY_RBCPY%
+robocopy "$(SolutionDir)dependencies\include" "$(TargetDir)compile-time\include" *.h /E /purge
+%VERIFY_RBCPY%
+robocopy "$(SolutionDir)dependencies\Full Source" "$(TargetDir)compile-time\include" *.h /E
+%VERIFY_RBCPY%
+REM For the copy of dll's into "run-time/", make sure to NOT purge the "content/" sub-folder!
+robocopy "$(SolutionDir)dependencies\bin" "$(TargetDir)run-time" *.dll /E /purge /xd "$(SolutionDir)dependencies\bin\content"
+%VERIFY_RBCPY%
+
+REM Copy the current build products into their associated sub-folders.
+REM Don't use "/purge", because we already purge-moved the dependencies in.
+REM Also make sure to ignore the sub-folders that we are copying into.
+set RBCPY_EXCLUDE_SUBFOLDERS=/xd "$(TargetDir)compile-time" /xd "$(TargetDir)run-time"
+robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)run-time" *.dll *.pdb *.exe /E /move %RBCPY_EXCLUDE_SUBFOLDERS%
+%VERIFY_RBCPY%
+robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)compile-time\lib" *.lib /E /move %RBCPY_EXCLUDE_SUBFOLDERS%
+%VERIFY_RBCPY%
+robocopy "$(ProjectDir.TrimEnd('\'))" "$(TargetDir)compile-time\include\B+" *.h /E
+%VERIFY_RBCPY%
+
+REM Finally, copy over the content folder.
+robocopy "$(SolutionDir)content" "$(TargetDir)run-time\content" /E /purge
+%VERIFY_RBCPY%
+
+REM robocopies succeeded; exit successfully
+exit 0</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copy important things to the build folder</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>BP_EXPORT_DLL;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;DevIL.lib;ILU.lib;ILUT.lib;assimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+    <PostBuildEvent>
+      <Command>REM Organize the build directory a bit.
+if not exist "$(TargetDir)run-time"             md "$(TargetDir)run-time"
+if not exist "$(TargetDir)compile-time\include" md "$(TargetDir)compile-time\include"
+if not exist "$(TargetDir)compile-time\lib"     md "$(TargetDir)compile-time\lib"
+
+REM Note: Annoyingly, Robocopy return values are very non-standard; anything below 8 should be considered a success.
+REM   Visual Studio considers anything other than 0 an error. So we have to manually fix this.
+set VERIFY_RBCPY=if %ERRORLEVEL% GEQ 8 exit %ERRORLEVEL%
+
+REM Copy over the dependencies. Remove unexpected destination files with "/purge".
+robocopy "$(SolutionDir)dependencies\lib" "$(TargetDir)compile-time\lib" *.lib /E /purge
+%VERIFY_RBCPY%
+robocopy "$(SolutionDir)dependencies\include" "$(TargetDir)compile-time\include" *.h /E /purge
+%VERIFY_RBCPY%
+robocopy "$(SolutionDir)dependencies\Full Source" "$(TargetDir)compile-time\include" *.h /E
+%VERIFY_RBCPY%
+REM For the copy of dll's into "run-time/", make sure to NOT purge the "content/" sub-folder!
+robocopy "$(SolutionDir)dependencies\bin" "$(TargetDir)run-time" *.dll /E /purge /xd "$(SolutionDir)dependencies\bin\content"
+%VERIFY_RBCPY%
+
+REM Copy the current build products into their associated sub-folders.
+REM Don't use "/purge", because we already purge-moved the dependencies in.
+REM Also make sure to ignore the sub-folders that we are copying into.
+set RBCPY_EXCLUDE_SUBFOLDERS=/xd "$(TargetDir)compile-time" /xd "$(TargetDir)run-time"
+robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)run-time" *.dll *.pdb *.exe /E /move %RBCPY_EXCLUDE_SUBFOLDERS%
+%VERIFY_RBCPY%
+robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)compile-time\lib" *.lib /E /move %RBCPY_EXCLUDE_SUBFOLDERS%
+%VERIFY_RBCPY%
+robocopy "$(ProjectDir.TrimEnd('\'))" "$(TargetDir)compile-time\include\B+" *.h /E
+%VERIFY_RBCPY%
+
+REM Finally, copy over the content folder.
+robocopy "$(SolutionDir)content" "$(TargetDir)run-time\content" /E /purge
+%VERIFY_RBCPY%
+
+REM robocopies succeeded; exit successfully
+exit 0</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copy important things to the build folder</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\dependencies\Full Source\Dear ImGui\imgui.cpp" />
+    <ClCompile Include="..\dependencies\Full Source\Dear ImGui\imgui_draw.cpp" />
+    <ClCompile Include="..\dependencies\Full Source\Dear ImGui\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="..\dependencies\Full Source\Dear ImGui\imgui_impl_sdl.cpp" />
+    <ClCompile Include="..\dependencies\Full Source\Dear ImGui\imgui_stdlib.cpp" />
+    <ClCompile Include="..\dependencies\Full Source\Dear ImGui\imgui_widgets.cpp" />
+    <ClCompile Include="..\dependencies\Full Source\nativefiledialog\nfd_common.c" />
+    <ClCompile Include="..\dependencies\Full Source\nativefiledialog\nfd_win.cpp" />
+    <ClCompile Include="App.cpp" />
+    <ClCompile Include="IO.cpp" />
+    <ClCompile Include="Renderer\Helpers.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imconfig.h" />
+    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imgui.h" />
+    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imgui_impl_opengl3.h" />
+    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imgui_impl_sdl.h" />
+    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imgui_internal.h" />
+    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imgui_stdlib.h" />
+    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imstb_rectpack.h" />
+    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imstb_textedit.h" />
+    <ClInclude Include="..\dependencies\Full Source\Dear ImGui\imstb_truetype.h" />
+    <ClInclude Include="..\dependencies\Full Source\nativefiledialog\common.h" />
+    <ClInclude Include="..\dependencies\Full Source\nativefiledialog\nfd.h" />
+    <ClInclude Include="..\dependencies\Full Source\nativefiledialog\nfd_common.h" />
+    <ClInclude Include="App.h" />
+    <ClInclude Include="Platform.h" />
+    <ClInclude Include="Renderer\Files\Mesh.h" />
+    <ClInclude Include="Renderer\Helpers.h" />
+    <ClInclude Include="Renderer\Files\Mesh.cpp" />
+    <ClInclude Include="RenderLibs.h" />
+    <ClInclude Include="IO.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

@@ -1,5 +1,7 @@
 #include "IO.h"
 
+using namespace Bplus;
+
 
 std::string IO::ReadEntireFile(const fs::path& path, const std::string& defaultIfMissing)
 {
