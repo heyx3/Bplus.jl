@@ -9,6 +9,8 @@
 #TODO: Stencil settings.
 #TODO: Alpha-test settings.
 #TODO: Depth-test settings.
+#TODO: MRT settings.
+#TODO: Fog settings.
 
 type = "Phong" # A simple Phong-lit model.
 
@@ -44,7 +46,7 @@ float ProcessData(MyData d) { return 0.5; }
     dest = "Zero"
     op = "Add"
 
-# Exists for only 3D materials:
+# Exists for only 3D materials and post-process effects:
 [queue] # Determines when this material is drawn in the render pipeline.
         # Uses ascending order -- larger numbers are rendered later.
     major = 1 # 0 is when Opaque objects are normally ordered;
@@ -52,14 +54,14 @@ float ProcessData(MyData d) { return 0.5; }
               # Negative values are allowed; these will be drawn before standard opaque objects.
     minor = 0 # Orders draw calls within the "major" queue value. Defaults to 0.
 
-# Exists for only 3D materials:
+# Exists for only 3D materials and in a slightly different form for post-process materials:
 [screenGrab]
     mode = "Depth" # Defaults to "None". Other options are "Color" and "ColorDepth".
                    # If not "None", this material will have access to the color and/or depth
                    #    render target containing almost everything that was rendered before it.
                    # It can even contain the other render passes that use "screenGrab", if this material
                    #    has a higher "offset".
-    minQuality = 1 # Shader quality level below this value will disable the screen grab,
+    minQuality = 1 # Shader quality level (goes from 1 - 5) below this value will disable the screen grab,
                    #     replacing the color texture with a single black pixel
                    #     and the depth texture with a single 90%-grey pixel.
                    # The shader param "s_HasScreenGrab" will tell you whether it's enabled.
@@ -90,6 +92,7 @@ float ProcessData(MyData d) { return 0.5; }
         filter = "linear" # Options: "Point", "Linear". Default: Linear
         wrapping = "repeat" # Options: "Repeat", "Clamp", "MirrorRepeat", "MirrorClamp"
                             # Default: Clamp
+        #TODO: Keyframes
 
     #TODO: Cube-map example.
 

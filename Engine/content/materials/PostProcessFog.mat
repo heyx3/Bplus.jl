@@ -1,0 +1,44 @@
+# This is an example of a material for the engine's material system.
+# It is a standard TOML file.
+# It uses a hypothetical "Image" material type, and does the following:
+#  * Samples from a "Depth" image's red channel, and uses some camera data
+#        to reconstruct world-space distance.
+#  * Applies fog based on that distance, and on some settings.
+
+type = "Image"
+
+definitions = '''
+vec3 Desaturate(vec3 c)
+{
+    return dot(c, vec3(0.2126f, 0.7152f, 0.0722f));
+}
+'''
+
+# Only exists for post-process materials:
+minQuality = 1 # Minimum shader quality (which is between 1 - 5) for this material to be used.
+
+#TODO: MRT?
+
+# Exists only for post-process and 3D materials:
+[queue] # Refer to 3D material example for more data
+    major = 0 # This is the default
+    minor = 0 # This is the default
+
+# ColorGrab and DepthGrab have the same settings, and apply to
+#    the screen color texture and depth textures respectively.
+# Both have an "in" bool for whether they sample from it,
+#    an "out" bool for whether they write new values to it,
+#    and a "minQuality" for what shader quality level is required to use the effect.
+[colorGrab]
+    in = true # Default
+    out = true # Default
+    minQuality = 1 # Default
+[depthGrab]
+    in = true # Not default (default is "false")
+    out = false # Default
+    minQuality = 1 # Default
+
+[params]
+    [params.vec3.u_FogColor]
+        colorMode = "On" # Defaults to "Off". Another option is "Hdr". Hints to the UI how this value should be edited.
+        default = [ 0.5, 0.5, 0.5 ]

@@ -1,6 +1,6 @@
 //This is an AUTO-GENERATED temporary GLSL file for editing
 //    as part of the _____ editor.
-//DO NOT modify outside of the marked areas far below;
+//DO NOT modify outside of the specially-marked areas;
 //    it won't accomplish anything.
 
 //=========================================
@@ -16,25 +16,16 @@ uniform uint s_Quality;
 #define c_MaxPointLights 6
 
 //Features toggled by the material/app settings:
-uniform bool s_UseNormalMap = true;
-uniform bool s_HasScreenGrab = false;
-
+uniform bool s_HasColorGrab = true,
+             s_HasDepthGrab = true;
 
 //Vertex inputs:
-layout (location = 0) in vec3 vIn_Pos;
-layout (location = 1) in vec2 vIn_UV;
-layout (location = 2) in vec3 vIn_Normal;
-layout (location = 3) in vec3 vIn_Tangent;
-layout (location = 4) in vec3 vIn_Bitangent;
+layout (location = 0) in vec2 vIn_UV;
 
 //...user configuration goes here...
 
 //Vertex outputs:
 out vec2 vOut_UV;
-out vec3 vOut_WorldPos;
-out vec3 vOut_WorldNormal;
-out vec3 vOut_WorldTangent;
-out vec3 vOut_WorldBitangent;
 
 
 //Built-in structures:
@@ -64,15 +55,13 @@ struct S_Light_Point {
 
 //Built-in uniforms:
 uniform mat4                u_M_View, u_M_Projection, u_M_VP,
-                            u_M_World, u_M_WVP,
                             u_M_iView, u_M_iProjection, u_M_iVP;
 uniform S_Camera            u_Camera;
 uniform S_Light_Directional u_Lights_Directional[c_MaxDirectionalLights];
 uniform S_Light_Point       u_Lights_Point[c_MaxPointLights];
 uniform uint                u_Lights_NDirectional, u_Lights_NPoint;
 
-uniform sampler2D u_DiffuseMap, u_NormalMap,
-                  u_ScreenColor, u_ScreenDepth;
+uniform sampler2D u_ScreenColor, u_ScreenDepth;
 
 //Point transformations:
 vec4 H_TransformPoint_Full(mat4 transf, vec3 p) { return transf          * vec4(p, 1.0f); }
@@ -133,21 +122,9 @@ void main()
     vOut_UV = vIn_UV;
     //--------
 
-    //Module: WorldPos.
-    vOut_WorldPos = H_TransformPoint_Fast(u_M_World, vIn_Pos);
-    //--------
-
-    //Module: WorldNormal
-    vOut_WorldNormal = H_TransformVector_Fast(u_M_World, vIn_Normal);
-    //--------
-
-    //Module: WorldTangents
-    vOut_WorldTangent = H_TransformVector_Fast((u_M_World, vIn_Tangent));
-    vOut_WorldBitangent = H_TransformVector_Fast((u_M_World, vIn_Bitangent));
-    //--------
-
     //Module: GLPos
-    gl_Position = H_TransformPoint_Full(u_M_VP, vOut_WorldPos);
+    gl_Position = vec4(-1.0f + (2.0f * vIn_UV.xy),
+                       0.0f, 1.0f);
     //--------
 
     //Module: OtherOutputs
@@ -166,73 +143,54 @@ void main()
 //...user configuration goes here...
 
 in vec2 vOut_UV;
-in vec3 vOut_WorldPos;
-in vec3 vOut_WorldNormal;
-in vec3 vOut_WorldTangent;
-in vec3 vOut_WorldBitangent;
 
 out vec4 fOut;
 
 //...same defines/uniforms as in the vertex shader...
-vec2 GetScreenUV(vec2 pixelPos) { return pixelPos / vec2(u_Camera.ScreenSize); }
+
 vec2 GetScreenUV() { return GetScreenUV(gl_fragCoord.xy); }
+
+uniform vec3 u_FogColor;
 
 
 void main()
 {
     //Define local versions of the vertex inputs in case they'll be modified.
     vec2 fIn_UV = vOut_UV;
-    vec3 fIn_WorldPos = vOut_WorldPos;
-    vec3 fIn_WorldNormal = vOut_WorldNormal;
-    vec3 fIn_WorldTangent = vOut_WorldTangent;
-    vec3 fIn_WorldBitangent = vOut_WorldBitangent;
-    vec2 fIn_ScreenUV = GetScreenUV();
+    vec2 fIn_ScreenPos = -1.0f + (2.0f * fIn_UV);
 
     //Module: Setup
     //--------
 
-    vec3 fIn_TrueWorldNormal = fIn_WorldNormal;
-    if (s_UseNormalMap)
+    vec3 v_color = vec3(1.0f, 0.0f, 1.0f);
+    float v_depth = 0.0f;
+    //Module: Sample Screen
+    //Module: SampleColor
+    if (s_HasColorGrab)
+        v_color = texture(u_ScreenColor, fIn_UV).rgb;
+    //--------
+    //Module: SampleDepth
+    if (s_HasDepthGrab)
+        v_depth = texture(u_ScreenDepth, fIn_UV).r;
+    //--------
+    //--------
+
+    //Module: DepthConversions
+    float v_viewDepth; //The view-space depth (not including the space behind the near plane)
     {
-        //Module: NormalMapping
-        fIn_WorldNormal = H_TransformVector(H_GetNormalMapTransform(),
-                                            H_UnpackNormalMapN(texture(u_NormalMap, fIn_UV)));
-        //--------
+        //Based on: https://stackoverflow.com/questions/1153114/converting-a-depth-texture-sample-to-a-distance
+        vec4 screenPos4 = vec4(fIn_ScreenPos, (-1.0f + (2.0f * v_depth)), 1.0f);
+        vec4 mRow3 = vec4(u_M_iProjection[0][3], u_M_iProjection[1][3], u_M_iProjection[2][3], u_M_iProjection[3][3]),
+             mRow4 = vec4(u_M_iProjection[0][4], u_M_iProjection[1][4], u_M_iProjection[2][4], u_M_iProjection[3][4]);
+        vec2 viewPositionZW = vec2(dot(mRow3, screenPos4),
+                                   dot(mRow4, screenPos4));
+        v_viewDepth = -(viewPositionZW.x / viewPositionZW.y);
     }
-
-    //Module: SetupPostNormalMap
-    //--------
-    
-    //Module: LightGather
-    vec3 v_fragToCamDir = normalize(u_Camera.Pos - fIn_WorldPos);
-    vec3 v_totalLight = 0.0f;
-    //Module: DirectionalLightGather
-    for (int i = 0; i < u_Lights_NDirectional; ++i)
-        v_totalLight += H_GetLightColor(u_Lights_Directional[i],
-                                        fIn_WorldPos, fIn_WorldNormal, v_fragToCamDir);
-    //--------
-    //Module: PointLightGather
-    for (int i = 0; i < u_Lights_NPoint; ++i)
-        v_totalLight += H_GetLightColor(u_Lights_Point[i],
-                                        fIn_WorldPos, fIn_WorldNormal, v_fragToCamDir);
-    //--------
-    //--------
-    
-    vec3 v_diffuseColor = 1.0f;
-    float v_alpha = 1.0f;
-    
-    //Module: GetDiffuse
-    vec4 v_diffuse4 = texture(u_DiffuseMap, fIn_UV);
-    v_diffuseColor *= v_diffuse4.rgb;
-    v_alpha = v_diffuse4.a;
     //--------
 
-    vec3 v_surfaceColor = vec3(1.0f, 0.0f, 1.0f);
-    //Module: ApplyLight
-    v_surfaceColor = v_totalLight * v_diffuseColor;
-    //--------
-
-    fOut = vec4(v_surfaceColor, v_alpha);
-    //Module: Finalize
+    fOut.rgb = v_color;
+    fOut.a = 1.0f;
+    //Module: SetOutputs
+    fOut.rgb = lerp(v_color, u_FogColor, v_viewDepth);
     //--------
 }
