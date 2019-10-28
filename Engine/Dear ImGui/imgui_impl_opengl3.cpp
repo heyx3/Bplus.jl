@@ -77,6 +77,9 @@
 #include "TargetConditionals.h"
 #endif
 
+#include "../Renderer/Context.h"
+using GLContext = Bplus::GL::Context;
+
 // Auto-detect GL version
 #if !defined(IMGUI_IMPL_OPENGL_ES2) && !defined(IMGUI_IMPL_OPENGL_ES3)
 #if (defined(__APPLE__) && (TARGET_OS_IOS || TARGET_OS_TV)) || (defined(__ANDROID__))
@@ -134,9 +137,14 @@ static int          g_AttribLocationTex = 0, g_AttribLocationProjMtx = 0;       
 static int          g_AttribLocationVtxPos = 0, g_AttribLocationVtxUV = 0, g_AttribLocationVtxColor = 0; // Vertex attributes location
 static unsigned int g_VboHandle = 0, g_ElementsHandle = 0;
 
+//TODO: Replace all OpenGL calls with Bplus::GL::Context() calls.
+static_assert(false);
+
 // Functions
-bool    ImGui_ImplOpenGL3_Init(const char* glsl_version)
+bool    ImGui_ImplOpenGL3_Init(Bplus::GL::Context* context)
 {
+    const char* glsl_version = Bplus::GL::Context::GLSLVersion();
+
     // Setup back-end capabilities flags
     ImGuiIO& io = ImGui::GetIO();
     io.BackendRendererName = "imgui_impl_opengl3";
@@ -145,16 +153,6 @@ bool    ImGui_ImplOpenGL3_Init(const char* glsl_version)
 #endif
 
     // Store GLSL version string so we can refer to it later in case we recreate shaders. Note: GLSL version is NOT the same as GL version. Leave this to NULL if unsure.
-#if defined(IMGUI_IMPL_OPENGL_ES2)
-    if (glsl_version == NULL)
-        glsl_version = "#version 100";
-#elif defined(IMGUI_IMPL_OPENGL_ES3)
-    if (glsl_version == NULL)
-        glsl_version = "#version 300 es";
-#else
-    if (glsl_version == NULL)
-        glsl_version = "#version 130";
-#endif
     IM_ASSERT((int)strlen(glsl_version) + 2 < IM_ARRAYSIZE(g_GlslVersionString));
     strcpy(g_GlslVersionString, glsl_version);
     strcat(g_GlslVersionString, "\n");

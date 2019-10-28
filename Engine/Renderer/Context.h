@@ -62,6 +62,7 @@ namespace Bplus::GL
 
         //TODO: Stencil.
         //TODO: Blending.
+        //TODO: Write Mask.
         //TODO: Anything else?
 
 

@@ -178,9 +178,8 @@ static bool ImGui_ImplSDL2_Init(SDL_Window* window)
     return true;
 }
 
-bool ImGui_ImplSDL2_InitForOpenGL(SDL_Window* window, void* sdl_gl_context)
+bool ImGui_ImplSDL2_InitForOpenGL(SDL_Window* window)
 {
-    (void)sdl_gl_context; // Viewport branch will need this.
     return ImGui_ImplSDL2_Init(window);
 }
 

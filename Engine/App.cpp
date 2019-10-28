@@ -171,8 +171,8 @@ void App::Run()
     ImGuiContext = &ImGui::GetIO();
     ImGuiContext->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     ImGui::StyleColorsDark(); //Default to dark theme, for sanity
-    ImGui_ImplSDL2_InitForOpenGL(MainWindow, GL::Context::GLSLVersion()); //TODO: ???
-    ImGui_ImplOpenGL3_Init(GL::Context::GLSLVersion());
+    ImGui_ImplSDL2_InitForOpenGL(MainWindow);
+    ImGui_ImplOpenGL3_Init(glContext.get());
 
     //Allow child class initialization.
     OnBegin();
