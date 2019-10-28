@@ -39,3 +39,9 @@ bool IO::WriteEntireFile(const fs::path& path, const std::string& contents, bool
         return false;
     }
 }
+
+void IO::ToLowercase(std::string& str)
+{
+    for (auto& c : str)
+        c = std::tolower(c);
+}

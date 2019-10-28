@@ -6,14 +6,8 @@
     <ClInclude Include="Renderer\Helpers.h">
       <Filter>Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\Files\Mesh.h">
-      <Filter>Renderer\Files</Filter>
-    </ClInclude>
     <ClInclude Include="Platform.h" />
     <ClInclude Include="App.h" />
-    <ClInclude Include="Renderer\Files\Mesh.cpp">
-      <Filter>Renderer\Files</Filter>
-    </ClInclude>
     <ClInclude Include="Dear ImGui\imgui_impl_opengl3.h">
       <Filter>Dear ImGui</Filter>
     </ClInclude>
@@ -50,6 +44,12 @@
     <ClInclude Include="NativeFileDialog\nfd.h">
       <Filter>Native File Dialog</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\Files\MaterialData.h">
+      <Filter>Renderer\Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Context.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
@@ -80,6 +80,9 @@
     </ClCompile>
     <ClCompile Include="NativeFileDialog\nfd_win.cpp">
       <Filter>Native File Dialog</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Context.cpp">
+      <Filter>Renderer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

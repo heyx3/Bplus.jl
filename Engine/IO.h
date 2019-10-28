@@ -49,5 +49,7 @@ namespace Bplus
             else
                 return found->as<T>();
         }
+
+        void ToLowercase(std::string& str);
     }
 }

@@ -27,6 +27,3 @@
 
 //AssImp, the model file saving/loading library.
 #include <assimp/scene.h>
-
-//B+ rendering helper functions.
-#include "Renderer/Helpers.h"

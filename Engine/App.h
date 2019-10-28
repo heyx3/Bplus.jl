@@ -1,7 +1,7 @@
 #pragma once
 
 #include "IO.h"
-#include "RenderLibs.h"
+#include "Renderer/Context.h"
 
 
 namespace Bplus
@@ -48,19 +48,14 @@ namespace Bplus
     };
 
 
+
     //An abstract base class for an SDL app using this renderer.
     //Handles all the setup/shutdown for SDL, the "main" window, and ImGUI.
     class BP_API App
     {
     public:
 
-        static const char* GLSLVersion() { return "#version 400"; }
-        static uint8_t GLVersion_Major() { return 4; }
-        static uint8_t GLVersion_Minor() { return 0; }
-
-
         SDL_Window* MainWindow;
-        SDL_GLContext OpenGLContext;
         ImGuiIO* ImGuiContext;
 
         ConfigFile& Config;
@@ -97,6 +92,10 @@ namespace Bplus
         //Disable move/copy constructors.
         App(const App& cpy) = delete;
         App& operator=(const App& cpy) = delete;
+
+
+        GL::Context* GetContextP() const { return glContext.get(); }
+        GL::Context& GetContext() const { return *glContext.get(); }
 
         //Runs this app from beginning to end, blocking the calling thread
         //    until it's completed.
@@ -157,7 +156,7 @@ namespace Bplus
         //Does normal (i.e. non-physics) updates.
         virtual void OnUpdate(float deltaT) { }
         //Does all the rendering. Called immediately after "DoUpdate()".
-        virtual void OnRendering(float deltaT) { GL::Clear(1, 0, 1, 1, 1); }
+        virtual void OnRendering(float deltaT) { glContext->Clear(1, 0, 1, 1, 1); }
 
 
         //Given an SDL return code, responds accordingly if it represents an error.
@@ -171,5 +170,7 @@ namespace Bplus
         double timeSinceLastPhysicsUpdate;
         uint64_t lastFrameStartTime;
         bool isRunning;
+
+        std::unique_ptr<GL::Context> glContext;
     };
 }

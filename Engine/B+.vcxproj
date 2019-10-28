@@ -361,6 +361,7 @@ exit 0</Command>
     <ClCompile Include="IO.cpp" />
     <ClCompile Include="NativeFileDialog\nfd_common.c" />
     <ClCompile Include="NativeFileDialog\nfd_win.cpp" />
+    <ClCompile Include="Renderer\Context.cpp" />
     <ClCompile Include="Renderer\Helpers.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -378,9 +379,9 @@ exit 0</Command>
     <ClInclude Include="NativeFileDialog\nfd.h" />
     <ClInclude Include="NativeFileDialog\nfd_common.h" />
     <ClInclude Include="Platform.h" />
-    <ClInclude Include="Renderer\Files\Mesh.h" />
+    <ClInclude Include="Renderer\Context.h" />
+    <ClInclude Include="Renderer\Files\MaterialData.h" />
     <ClInclude Include="Renderer\Helpers.h" />
-    <ClInclude Include="Renderer\Files\Mesh.cpp" />
     <ClInclude Include="RenderLibs.h" />
     <ClInclude Include="IO.h" />
   </ItemGroup>

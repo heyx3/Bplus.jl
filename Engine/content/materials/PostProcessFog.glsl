@@ -1,5 +1,5 @@
 //This is an AUTO-GENERATED temporary GLSL file for editing
-//    as part of the _____ editor.
+//    as part of the B+ material editor.
 //DO NOT modify outside of the specially-marked areas;
 //    it won't accomplish anything.
 
@@ -111,6 +111,21 @@ vec3 H_GetLightColor(S_Light_Point light,
                            fragToCamDir);
 }
 
+float H_GetViewSpaceDepth_Fast(float depthTextureSample)
+{
+    //Based on: https://stackoverflow.com/questions/1153114/converting-a-depth-texture-sample-to-a-distance
+    vec4 screenPos4 = vec4(fIn_ScreenPos, (-1.0f + (2.0f * v_depth)), 1.0f);
+    vec4 mRow3 = vec4(u_M_iProjection[0][3], u_M_iProjection[1][3], u_M_iProjection[2][3], u_M_iProjection[3][3]),
+         mRow4 = vec4(u_M_iProjection[0][4], u_M_iProjection[1][4], u_M_iProjection[2][4], u_M_iProjection[3][4]);
+    vec2 viewPositionZW = vec2(dot(mRow3, screenPos4),
+                               dot(mRow4, screenPos4));
+    v_viewDepth = -(viewPositionZW.x / viewPositionZW.y);
+}
+float H_GetViewSpaceDepth(float depthTextureSample)
+{
+    return H_GetViewSpaceDepth(depthTextureSample) + u_Camera.NearClip;
+}
+
 //....custom user definitions go here....
 
 void main()
@@ -140,9 +155,9 @@ void main()
 
 //...same defines as above...
 
-//...user configuration goes here...
+in (layout = 0) vec2 vOut_UV;
 
-in vec2 vOut_UV;
+//...user configuration goes here...
 
 out vec4 fOut;
 
@@ -176,16 +191,7 @@ void main()
     //--------
 
     //Module: DepthConversions
-    float v_viewDepth; //The view-space depth (not including the space behind the near plane)
-    {
-        //Based on: https://stackoverflow.com/questions/1153114/converting-a-depth-texture-sample-to-a-distance
-        vec4 screenPos4 = vec4(fIn_ScreenPos, (-1.0f + (2.0f * v_depth)), 1.0f);
-        vec4 mRow3 = vec4(u_M_iProjection[0][3], u_M_iProjection[1][3], u_M_iProjection[2][3], u_M_iProjection[3][3]),
-             mRow4 = vec4(u_M_iProjection[0][4], u_M_iProjection[1][4], u_M_iProjection[2][4], u_M_iProjection[3][4]);
-        vec2 viewPositionZW = vec2(dot(mRow3, screenPos4),
-                                   dot(mRow4, screenPos4));
-        v_viewDepth = -(viewPositionZW.x / viewPositionZW.y);
-    }
+    float v_viewDepth = H_GetViewSpaceDepth(v_depth);
     //--------
 
     fOut.rgb = v_color;

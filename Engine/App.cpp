@@ -96,7 +96,7 @@ void ConfigFile::ResetToDefaults()
 
 
 App::App(ConfigFile& config, ErrorCallback onError)
-    : MainWindow(nullptr), OpenGLContext(nullptr), ImGuiContext(nullptr),
+    : MainWindow(nullptr), glContext(nullptr), ImGuiContext(nullptr),
       WorkingPath(config.FilePath.parent_path()),
       ContentPath(WorkingPath / "content"),
       Config(config), OnError(onError)
@@ -140,39 +140,30 @@ void App::Run()
     if (!TrySDL(MainWindow, "Error creating main window"))
         return;
 
-    //Initialize OpenGL.
+    //Configure SDL/OpenGL.
     bool doubleBuffer;
     int depthBits, stencilBits;
     GL::VsyncModes vSyncMode;
     ConfigureOpenGL(doubleBuffer, depthBits, stencilBits, vSyncMode);
-    if (!TrySDL(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, GLVersion_Major()), "Error setting GL major version") ||
-        !TrySDL(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, GLVersion_Minor()), "Error setting GL minor version") ||
-        !TrySDL(SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE), "Error setting context profile") ||
-        !TrySDL(SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, doubleBuffer ? 1 : 0), "Error setting double-buffering") ||
+    if (!TrySDL(SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, doubleBuffer ? 1 : 0), "Error setting double-buffering") ||
         !TrySDL(SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, depthBits), "Error setting back buffer's depth bits") ||
-        !TrySDL(SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, stencilBits), "Error setting back buffer's stencil bits") ||
-        !TrySDL(OpenGLContext = SDL_GL_CreateContext(MainWindow), "Error initializing OpenGL context")
-      )
+        !TrySDL(SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, stencilBits), "Error setting back buffer's stencil bits"))
     {
+        return;
+    }
+
+    //Initialize OpenGL.
+    std::string errMsg;
+    glContext = std::make_unique<GL::Context>(MainWindow, errMsg);
+    if (errMsg.size() > 0)
+    {
+        OnError(errMsg);
         return;
     }
 
     //Set up V-Sync.
-    int vSyncResult = SDL_GL_SetSwapInterval((int)vSyncMode);
-    if (vSyncResult != 0 && vSyncMode == GL::VsyncModes::Adaptive)
-        vSyncResult = SDL_GL_SetSwapInterval((int)GL::VsyncModes::On);
-    if (!TrySDL(vSyncResult, "Error setting vsync setting"))
-        return;
-
-    //Initialize GLEW.
-    glewExperimental = GL_TRUE;
-    auto glewError = glewInit();
-    if (glewError != GLEW_OK)
-    {
-        OnError(std::string("Error setting up GLEW: ") +
-                    (const char*)glewGetErrorString(glewError));
-        return;
-    }
+    if (!glContext->SetVsyncMode(vSyncMode))
+        TrySDL(-1, "Couldn't set up vsync properly");
 
     //Initialize Dear ImGUI.
     IMGUI_CHECKVERSION();
@@ -180,8 +171,8 @@ void App::Run()
     ImGuiContext = &ImGui::GetIO();
     ImGuiContext->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     ImGui::StyleColorsDark(); //Default to dark theme, for sanity
-    ImGui_ImplSDL2_InitForOpenGL(MainWindow, OpenGLContext);
-    ImGui_ImplOpenGL3_Init(GLSLVersion());
+    ImGui_ImplSDL2_InitForOpenGL(MainWindow, GL::Context::GLSLVersion()); //TODO: ???
+    ImGui_ImplOpenGL3_Init(GL::Context::GLSLVersion());
 
     //Allow child class initialization.
     OnBegin();
@@ -281,8 +272,8 @@ void App::Run()
         OnUpdate((float)deltaT);
 
         //Do rendering.
-        GL::SetViewport((int)ImGuiContext->DisplaySize.x,
-                        (int)ImGuiContext->DisplaySize.y);
+        glContext->SetViewport((int)ImGuiContext->DisplaySize.x,
+                               (int)ImGuiContext->DisplaySize.y);
         OnRendering((float)deltaT);
 
         //Finally, do GUI rendering.
@@ -293,10 +284,7 @@ void App::Run()
 }
 void App::OnQuit(bool force)
 {
-    //Clean up OpenGL.
-    if (OpenGLContext != nullptr)
-        SDL_GL_DeleteContext(OpenGLContext);
-    OpenGLContext = nullptr;
+    glContext.reset();
 
     //Clean up the SDL window.
     if (MainWindow != nullptr)
