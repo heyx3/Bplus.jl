@@ -60,9 +60,9 @@ namespace Bplus::GL
 
 
     //Converters from enums to string.
-    const char* BP_API ToString(VsyncModes mode);
-    const char* BP_API ToString(FaceCullModes culling);
-    const char* BP_API ToString(DepthTests mode);
+    BP_API const char* ToString(VsyncModes mode);
+    BP_API const char* ToString(FaceCullModes culling);
+    BP_API const char* ToString(DepthTests mode);
 
     //Converters from strings to enum (case-insensitive).
     VsyncModes BP_API FromString_VsyncModes(const char* modeStr);
