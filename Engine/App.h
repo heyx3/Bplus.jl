@@ -57,6 +57,8 @@ namespace Bplus
 
         SDL_Window* MainWindow;
         ImGuiIO* ImGuiContext;
+        std::unique_ptr<ImGuiSDLInterface> ImGuiSDL;
+        std::unique_ptr<ImGuiOpenGLInterface> ImGuiOpenGL;
 
         ConfigFile& Config;
         ErrorCallback OnError;
@@ -139,6 +141,21 @@ namespace Bplus
             stencilBits = 8;
             vSyncMode = GL::VsyncModes::Adaptive;
         }
+        //Called as the app starts running.
+        //Override this to change the SDL backend for Dear ImGUI.
+        //Default behavior: use ImGuiSDLInterface_Default.
+        virtual void ConfigureImGUISDL()
+        {
+            ImGuiSDL.reset(new ImGuiSDLInterface_Default(MainWindow, glContext->GetSDLContext()));
+        }
+        //Called as the app starts running.
+        //Override this to change the OpenGL backend for Dear ImGUI.
+        //Default behavior: use ImGuiOpenGLInterface_Default.
+        virtual void ConfigureImGUIOpenGL()
+        {
+            ImGuiOpenGL.reset(new ImGuiOpenGLInterface_Default());
+        }
+
 
         //Called after the app has just started running.
         virtual void OnBegin() { }

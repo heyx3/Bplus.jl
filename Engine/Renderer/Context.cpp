@@ -23,6 +23,7 @@ bool GL::TrySDL(void* shouldntBeNull, std::string& errOut, const char* prefix)
         return true;
 }
 
+
 Context* Context::GetCurrentContext() { return contextInstance; }
 
 Context::Context(SDL_Window* _owner, std::string& errMsg)
@@ -30,20 +31,24 @@ Context::Context(SDL_Window* _owner, std::string& errMsg)
 {
     if (contextInstance != nullptr)
     {
-        errMsg = "A context already exists on this thread \
+        if (contextInstance == this)
+            errMsg = "This context has already been constructed!";
+        else
+            errMsg = "A context already exists on this thread \
 that hasn't been cleaned up.";
+
         return;
     }
 
     //Configure/create the OpenGL context.
     if (!TrySDL(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION,
-                                    GLVersion_Major()),
-                errMsg, "Error setting OpenGL context major") ||
+        GLVersion_Major()),
+        errMsg, "Error setting OpenGL context major") ||
         !TrySDL(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION,
-                                    GLVersion_Minor()),
-                errMsg, "Error setting OpenGL context minor") ||
+            GLVersion_Minor()),
+            errMsg, "Error setting OpenGL context minor") ||
         !TrySDL(sdlContext = SDL_GL_CreateContext(owner),
-                errMsg, "Error initializing OpenGL context"))
+            errMsg, "Error initializing OpenGL context"))
     {
         return;
     }
@@ -58,7 +63,7 @@ that hasn't been cleaned up.";
     if (glewError != GLEW_OK)
     {
         errMsg = std::string("Error setting up GLEW: ") +
-                 (const char*)glewGetErrorString(glewError);
+            (const char*)glewGetErrorString(glewError);
         return;
     }
 
@@ -68,8 +73,22 @@ that hasn't been cleaned up.";
     //    we already expose a separate mechanism for disabling those.
     glEnable(GL_DEPTH_TEST);
 
-    //Finally, get the current state.
+    RefreshDriverState();
+}
+Context::~Context()
+{
+    if (isInitialized)
+    {
+        SDL_GL_DeleteContext(sdlContext);
 
+        assert(contextInstance == this);
+        contextInstance = nullptr;
+    }
+}
+
+
+void Context::RefreshDriverState()
+{
     isScissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
     isDepthWriteEnabled = glIsEnabled(GL_DEPTH_WRITEMASK);
     currentVsync = (VsyncModes)SDL_GL_GetSwapInterval();
@@ -88,16 +107,6 @@ that hasn't been cleaned up.";
 
     glGetIntegerv(GL_DEPTH_FUNC, &tempI);
     currentDepthTest = (DepthTests)tempI;
-}
-Context::~Context()
-{
-    if (isInitialized)
-    {
-        SDL_GL_DeleteContext(sdlContext);
-
-        assert(contextInstance == this);
-        contextInstance = nullptr;
-    }
 }
 
 

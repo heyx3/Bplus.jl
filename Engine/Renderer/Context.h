@@ -17,6 +17,7 @@ namespace Bplus::GL
         static uint8_t GLVersion_Minor() { return 5; }
 
         //May be null if no context exists right now.
+        //Note that each thread has its own singleton instance.
         static Context* GetCurrentContext();
 
 
@@ -29,6 +30,11 @@ namespace Bplus::GL
         bool WasInitialized() const { return isInitialized; }
         //Gets the SDL window this context was created for.
         SDL_Window* GetOwner() const { return owner; }
+        SDL_GLContext GetSDLContext() const { return sdlContext; }
+
+        //Queries OpenGL for the current context state.
+        //Call this after any OpenGL work is done not through this class.
+        void RefreshDriverState();
 
 
         //Clears the current framebuffer's color and depth.
