@@ -21,7 +21,7 @@ faceCull = "off" # Options are On, Off, and Backwards
 occlusionCull = true # Defaults to true. If false, meshes with this material
                      #     will always be drawn even if their bounds are outside
                      #     the camera's view frustum.
-                     # This if for meshes with wacky vertex shaders,
+                     # This is for meshes with wacky vertex shaders,
                      #    where the bounds are hard to estimate.
 
 # Exists for only 3D materials:
