@@ -11,6 +11,9 @@
     #define NOMINMAX                // Stop conflicts with "min" and "max" macro names
     #include <windows.h>
 
+#elif defined(__APPLE__)
+    #define OS_APPLE
+    #pragma warning Include Apple OS files here.
 #elif defined(__unix__)
     #define OS_UNIX
     #pragma warning Include Unix OS files here.

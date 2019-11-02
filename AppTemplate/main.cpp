@@ -81,7 +81,8 @@ protected:
 
     virtual void OnRendering(float deltaT)
     {
-        Bplus::GL::Clear(1, 1, 1, 1, 1);
+        GetContext().Clear(1, 1, 1, 1,
+                           1);
 
         ImGui::Text("%u", glm::abs(glm::iround(1.0 / deltaT)));
     }

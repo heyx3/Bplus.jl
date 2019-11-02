@@ -9,21 +9,6 @@ namespace
     thread_local Context* contextInstance = nullptr;
 }
 
-bool GL::TrySDL(int returnCode, std::string& errOut, const char* prefix)
-{
-    if (returnCode != 0)
-        errOut == std::string(prefix) + ": " + SDL_GetError();
-    return returnCode == 0;
-}
-bool GL::TrySDL(void* shouldntBeNull, std::string& errOut, const char* prefix)
-{
-    if (shouldntBeNull == nullptr)
-        return TrySDL(-1, errOut, prefix);
-    else
-        return true;
-}
-
-
 Context* Context::GetCurrentContext() { return contextInstance; }
 
 Context::Context(SDL_Window* _owner, std::string& errMsg)
@@ -161,7 +146,7 @@ bool Context::SetVsyncMode(GL::VsyncModes mode)
     if (err != 0 && mode == GL::VsyncModes::Adaptive)
         err = SDL_GL_SetSwapInterval((int)GL::VsyncModes::On);
 
-    return err != 0;
+    return err == 0;
 }
 
 void Context::SetFaceCulling(GL::FaceCullModes mode)

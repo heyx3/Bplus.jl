@@ -137,8 +137,6 @@ static int          g_AttribLocationTex = 0, g_AttribLocationProjMtx = 0;       
 static int          g_AttribLocationVtxPos = 0, g_AttribLocationVtxUV = 0, g_AttribLocationVtxColor = 0; // Vertex attributes location
 static unsigned int g_VboHandle = 0, g_ElementsHandle = 0;
 
-//TODO: Replace all OpenGL calls with Bplus::GL::Context() calls.
-static_assert(false);
 
 // Functions
 bool    ImGui_ImplOpenGL3_Init(Bplus::GL::Context* context)

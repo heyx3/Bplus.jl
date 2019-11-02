@@ -153,7 +153,10 @@ namespace Bplus
         //Default behavior: use ImGuiOpenGLInterface_Default.
         virtual void ConfigureImGUIOpenGL()
         {
-            ImGuiOpenGL.reset(new ImGuiOpenGLInterface_Default());
+            std::string errMsg;
+            ImGuiOpenGL.reset(new ImGuiOpenGLInterface_Default(errMsg));
+            if (errMsg.size() > 0)
+                OnError(std::string("ImGUI OpenGL init error: ") + errMsg);
         }
 
 

@@ -268,8 +268,8 @@ void SDLImpl::BeginFrame(float deltaTime)
     glm::ivec2 windowSize;
     glm::fvec2 windowDisplayScale;
     GetWindowDisplayScale(windowSize, windowDisplayScale);
-    io.DisplaySize = { windowSize.x, windowSize.y };
-    io.DisplayFramebufferScale = { windowDisplayScale.x, windowDisplayScale.y };
+    io.DisplaySize = ImVec2(windowSize.x, windowSize.y);
+    io.DisplayFramebufferScale = ImVec2(windowDisplayScale.x, windowDisplayScale.y);
 
 
     //Handle mouse events.
@@ -335,12 +335,11 @@ void SDLImpl::BeginFrame(float deltaTime)
 
 #pragma endregion
 
-
 #pragma region Default OpenGL Interface
 
 OGLImpl::ImGuiOpenGLInterface_Default(std::string& outErrorMsg,
-                                      const char* glslVersion)
-    : ImGuiOpenGLInterface(glslVersion)
+    const char* glslVersion)
+    : ImGuiOpenGLInterface((glslVersion == nullptr) ? GL::Context::GLSLVersion() : glslVersion)
 {
     //Set back-end capabilities flags.
     ImGuiIO& io = ImGui::GetIO();
@@ -350,11 +349,11 @@ OGLImpl::ImGuiOpenGLInterface_Default(std::string& outErrorMsg,
 
     //Backup GL state before creating any objects.
     //Restore it when we're done.
-    GLint last_texture, last_array_buffer;
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
-    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &last_array_buffer);
-    GLint last_vertex_array;
-    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &last_vertex_array);
+    GLint lastTexture, lastArrayBuffer;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &lastTexture);
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &lastArrayBuffer);
+    GLint lastVertexArray;
+    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &lastVertexArray);
 
     //Write and compile the shaders.
     auto CheckShader = [&](GLuint handle, const char* description) -> bool
@@ -366,59 +365,59 @@ OGLImpl::ImGuiOpenGLInterface_Default(std::string& outErrorMsg,
         //Get information about it.
         GLint logLength = 0;
         std::string infoLog;
-        infoLog.resize(logLength + 1, '\0');
         glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &logLength);
-        if (logLength > 1)
+        infoLog.resize(logLength + 1, '\0');
+        if (logLength >= 1)
             glGetShaderInfoLog(handle, logLength, nullptr, (GLchar*)infoLog.data());
 
         if ((GLboolean)status == GL_FALSE)
         {
             outErrorMsg = std::string("Failed to compile ") + description +
-                          ":\n\t" + infoLog;
+                ":\n\t" + infoLog;
             return false;
         }
         else
         {
-            fprintf(stderr, "ImGUI %s compiled successfully:\n%s\n",
+            fprintf(stderr, "ImGUI %s compiled successfully. %s\n",
                     description, infoLog.c_str());
             return true;
         }
     };
     //Vertex:
-    const GLchar* vertex_shader_glsl =
-        "layout (location = 0) in vec2 Position;\n"
-        "layout (location = 1) in vec2 UV;\n"
-        "layout (location = 2) in vec4 Color;\n"
-        "uniform mat4 ProjMtx;\n"
-        "out vec2 Frag_UV;\n"
-        "out vec4 Frag_Color;\n"
-        "void main()\n"
-        "{\n"
-        "    Frag_UV = UV;\n"
-        "    Frag_Color = Color;\n"
-        "    gl_Position = ProjMtx * vec4(Position.xy,0,1);\n"
-        "}\n";
-    const GLchar* vertex_shader_with_version[2] = { GetGlslVersion().c_str(),
-                                                    vertex_shader_glsl };
+    const GLchar* vertexShaderStr = "\n\
+layout (location = 0) in vec2 Position;    \n\
+layout (location = 1) in vec2 UV;       \n\
+layout (location = 2) in vec4 Color;        \n\
+uniform mat4 ProjMtx;               \n\
+out vec2 Frag_UV;                   \n\
+out vec4 Frag_Color;                \n\
+void main()                 \n\
+{                           \n\
+    Frag_UV = UV;           \n\
+    Frag_Color = Color;     \n\
+    gl_Position = ProjMtx * vec4(Position.xy, 0, 1);   \n\
+}\n";
+    const GLchar* vertexShaderFull[2] = { GetGlslVersion().c_str(),
+                                          vertexShaderStr };
     handle_vertShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(handle_vertShader, 2, vertex_shader_with_version, NULL);
+    glShaderSource(handle_vertShader, 2, vertexShaderFull, nullptr);
     glCompileShader(handle_vertShader);
     if (!CheckShader(handle_vertShader, "vertex shader"))
         return;
     //Fragment:
-    const GLchar* fragment_shader_glsl =
-        "in vec2 Frag_UV;\n"
-        "in vec4 Frag_Color;\n"
-        "uniform sampler2D Texture;\n"
-        "layout (location = 0) out vec4 Out_Color;\n"
-        "void main()\n"
-        "{\n"
-        "    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
-        "}\n";
-    const GLchar* fragment_shader_with_version[2] = { GetGlslVersion().c_str(),
-                                                      fragment_shader_glsl };
+    const GLchar* fragmentShaderStr = "\n\
+in vec2 Frag_UV;      \n\
+in vec4 Frag_Color;   \n\
+uniform sampler2D Texture;  \n\
+layout (location = 0) out vec4 Out_Color;  \n\
+void main()     \n\
+{    \n\
+    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);    \n\
+}\n";
+    const GLchar* fragmentShaderFull[2] = { GetGlslVersion().c_str(),
+                                            fragmentShaderStr };
     handle_fragShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(handle_fragShader, 2, fragment_shader_with_version, NULL);
+    glShaderSource(handle_fragShader, 2, fragmentShaderFull, nullptr);
     glCompileShader(handle_fragShader);
     if (!CheckShader(handle_fragShader, "fragment shader"))
         return;
@@ -433,9 +432,9 @@ OGLImpl::ImGuiOpenGLInterface_Default(std::string& outErrorMsg,
     glGetProgramiv(handle_shaderProgram, GL_LINK_STATUS, &programStatus);
     GLint programLogLength = 0;
     std::string infoLog;
-    infoLog.resize(programLogLength + 1, '\0');
     glGetShaderiv(handle_shaderProgram, GL_INFO_LOG_LENGTH, &programLogLength);
-    if (programLogLength > 1)
+    infoLog.resize(programLogLength + 1, '\0');
+    if (programLogLength >= 1)
         glGetShaderInfoLog(handle_shaderProgram, programLogLength, nullptr, (GLchar*)infoLog.data());
     if ((GLboolean)programStatus == GL_FALSE)
     {
@@ -443,8 +442,15 @@ OGLImpl::ImGuiOpenGLInterface_Default(std::string& outErrorMsg,
         outErrorMsg += infoLog;
         return;
     }
+    else
+    {
+        fprintf(stderr, "ImGUI shaders linked successfully. %s\n",
+                infoLog);
+    }
 
     //Get attribute/uniform locations.
+    glUseProgram(handle_shaderProgram);
+    glUseProgram(0);
     attrib_pos = glGetUniformLocation(handle_shaderProgram, "Position");
     attrib_uv = glGetUniformLocation(handle_shaderProgram, "UV");
     attrib_color = glGetUniformLocation(handle_shaderProgram, "Color");
@@ -473,9 +479,9 @@ OGLImpl::ImGuiOpenGLInterface_Default(std::string& outErrorMsg,
     }
 
     //Restore the OpenGL state that we modified.
-    glBindTexture(GL_TEXTURE_2D, last_texture);
-    glBindBuffer(GL_ARRAY_BUFFER, last_array_buffer);
-    glBindVertexArray(last_vertex_array);
+    glBindTexture(GL_TEXTURE_2D, lastTexture);
+    glBindBuffer(GL_ARRAY_BUFFER, lastArrayBuffer);
+    glBindVertexArray(lastVertexArray);
 }
 OGLImpl::~ImGuiOpenGLInterface_Default()
 {
@@ -508,11 +514,209 @@ OGLImpl::~ImGuiOpenGLInterface_Default()
     }
 }
 
+void OGLImpl::ResetRenderState(ImDrawData& drawData, glm::ivec2 framebufferSize,
+                               GLuint vao)
+{
+    //Setup render state: alpha-blending enabled, no face culling, no depth testing,
+    //    scissor enabled, polygon fill
+    glEnable(GL_BLEND);
+    glBlendEquation(GL_FUNC_ADD);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_SCISSOR_TEST);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    //Setup the viewport and orthographic projection matrix.
+    //Our visible ImGUI space lies from draw_data->DisplayPos (top left)
+    //    to draw_data->DisplayPos+data_data->DisplaySize (bottom right).
+    //DisplayPos is (0,0) for single viewport apps.
+    glViewport(0, 0, (GLsizei)framebufferSize.x, (GLsizei)framebufferSize.y);
+    float L = drawData.DisplayPos.x;
+    float R = drawData.DisplayPos.x + drawData.DisplaySize.x;
+    float T = drawData.DisplayPos.y;
+    float B = drawData.DisplayPos.y + drawData.DisplaySize.y;
+    const float ortho_projection[4][4] =
+    {
+        { 2.0f/(R-L),   0.0f,         0.0f,   0.0f },
+        { 0.0f,         2.0f/(T-B),   0.0f,   0.0f },
+        { 0.0f,         0.0f,        -1.0f,   0.0f },
+        { (R+L)/(L-R),  (T+B)/(B-T),  0.0f,   1.0f },
+    };
+
+    glUseProgram(handle_shaderProgram);
+    glUniformMatrix4fv(uniform_projectionMatrix, 1, GL_FALSE, &ortho_projection[0][0]);
+
+    //Set the texture.
+    glUniform1i(uniform_tex, 0);
+    //We use combined texture/sampler state.
+    //Otherwise, applications using GL 3.3 may mess with it.
+    glBindSampler(0, 0);
+
+    //Set up the vertex data.
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, handle_vbo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, handle_elements);
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(0,   2, GL_FLOAT,          GL_FALSE, sizeof(ImDrawVert), (GLvoid*)IM_OFFSETOF(ImDrawVert, pos));
+    glVertexAttribPointer(1,   2, GL_FLOAT,          GL_FALSE, sizeof(ImDrawVert), (GLvoid*)IM_OFFSETOF(ImDrawVert, uv));
+    glVertexAttribPointer(2,   4, GL_UNSIGNED_BYTE,  GL_TRUE,  sizeof(ImDrawVert), (GLvoid*)IM_OFFSETOF(ImDrawVert, col));
+}
+void OGLImpl::RenderCommandList(ImDrawData& drawData, const ImDrawList& cmdList,
+                                glm::ivec2 framebufferSize,
+                                glm::fvec2 clipOffset, glm::fvec2 clipScale,
+                                bool clipOriginIsLowerLeft,
+                                GLuint vao)
+{
+    //Upload vertex/index buffers.
+    glBufferData(GL_ARRAY_BUFFER,
+                 (GLsizeiptr)cmdList.VtxBuffer.Size * sizeof(ImDrawVert),
+                 (const GLvoid*)cmdList.VtxBuffer.Data, GL_STREAM_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                 (GLsizeiptr)cmdList.IdxBuffer.Size * sizeof(ImDrawIdx),
+                 (const GLvoid*)cmdList.IdxBuffer.Data, GL_STREAM_DRAW);
+
+    for (int bufferI = 0; bufferI < cmdList.CmdBuffer.Size; ++bufferI)
+    {
+        const auto& drawCmd = cmdList.CmdBuffer[bufferI];
+
+        //If this command is actually a custom user callback, run that instead.
+        if (drawCmd.UserCallback == ImDrawCallback_ResetRenderState)
+            ResetRenderState(drawData, framebufferSize, vao);
+        else if (drawCmd.UserCallback != nullptr)
+            drawCmd.UserCallback(&cmdList, &drawCmd);
+        //Otherwise, it's a regular draw command.
+        else
+        {
+            //Project scissor/clipping rectangles into framebuffer space.
+            glm::vec4 clipRect;
+            clipRect.x = (drawCmd.ClipRect.x - clipOffset.x) * clipScale.x;
+            clipRect.y = (drawCmd.ClipRect.y - clipOffset.y) * clipScale.y;
+            clipRect.z = (drawCmd.ClipRect.z - clipOffset.x) * clipScale.x;
+            clipRect.w = (drawCmd.ClipRect.w - clipOffset.y) * clipScale.y;
+
+            //Only bother drawing if it's inside the frame-buffer.
+            if (clipRect.x < framebufferSize.x && clipRect.y < framebufferSize.y &&
+                clipRect.z >= 0.0f && clipRect.w >= 0.0f)
+            {
+                //Apply scissor/clipping rectangle.
+                if (clipOriginIsLowerLeft)
+                {
+                    glScissor((int)clipRect.x,
+                                (int)(framebufferSize.y - clipRect.w),
+                                (int)(clipRect.z - clipRect.x),
+                                (int)(clipRect.w - clipRect.y));
+                }
+                else
+                {
+                    glScissor((int)clipRect.x, (int)clipRect.y,
+                                (int)clipRect.z, (int)clipRect.w);
+                }
+
+                //Bind texture and draw.
+                glBindTexture(GL_TEXTURE_2D, (GLuint)(intptr_t)drawCmd.TextureId);
+                glDrawElementsBaseVertex(GL_TRIANGLES, (GLsizei)drawCmd.ElemCount,
+                                            (sizeof(ImDrawIdx) == 2) ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT,
+                                            (void*)(intptr_t)(drawCmd.IdxOffset * sizeof(ImDrawIdx)),
+                                            (GLint)drawCmd.VtxOffset);
+            }
+        }
+    }
+}
+
 void OGLImpl::RenderFrame()
 {
     auto* drawData = ImGui::GetDrawData();
 
-    //TODO: Implement.
+    //Scale coordinates for retina displays.
+    auto framebufferSize = (glm::ivec2)
+                              (glm::fvec2{ drawData->DisplaySize.x, drawData->DisplaySize.y } *
+                               glm::fvec2{ drawData->FramebufferScale.x, drawData->FramebufferScale.y });
+
+    //Avoid rendering when minimized.
+    if (framebufferSize.x <= 0 || framebufferSize.y <= 0)
+        return;
+
+    //Backup GL state, and then restore it at the end.
+    //That way nobody outside ImGui has to worry about what OpenGL state is changing.
+    GLenum lastActiveTexture; glGetIntegerv(GL_ACTIVE_TEXTURE, (GLint*)&lastActiveTexture);
+    glActiveTexture(GL_TEXTURE0);
+    GLint lastProgram; glGetIntegerv(GL_CURRENT_PROGRAM, &lastProgram);
+    GLint lastTexture; glGetIntegerv(GL_TEXTURE_BINDING_2D, &lastTexture);
+    GLint lastSampler; glGetIntegerv(GL_SAMPLER_BINDING, &lastSampler);
+    GLint lastArrayBuffer; glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &lastArrayBuffer);
+    GLint lastVAO; glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &lastVAO);
+    GLint lastPolygonMode[2]; glGetIntegerv(GL_POLYGON_MODE, lastPolygonMode);
+    GLint lastViewport[4]; glGetIntegerv(GL_VIEWPORT, lastViewport);
+    GLint lastScissorBox[4]; glGetIntegerv(GL_SCISSOR_BOX, lastScissorBox);
+    GLenum lastBlendSrcRGB; glGetIntegerv(GL_BLEND_SRC_RGB, (GLint*)&lastBlendSrcRGB);
+    GLenum lastBlendDestRGB; glGetIntegerv(GL_BLEND_DST_RGB, (GLint*)&lastBlendDestRGB);
+    GLenum lastBlendSrcAlpha; glGetIntegerv(GL_BLEND_SRC_ALPHA, (GLint*)&lastBlendSrcAlpha);
+    GLenum lastBlendDestAlpha; glGetIntegerv(GL_BLEND_DST_ALPHA, (GLint*)&lastBlendDestAlpha);
+    GLenum lastBlendEquationRGB; glGetIntegerv(GL_BLEND_EQUATION_RGB, (GLint*)&lastBlendEquationRGB);
+    GLenum lastBlendEquationAlpha; glGetIntegerv(GL_BLEND_EQUATION_ALPHA, (GLint*)&lastBlendEquationAlpha);
+    GLboolean lastBlendEnabled = glIsEnabled(GL_BLEND);
+    GLboolean lastCullFaceEnabled = glIsEnabled(GL_CULL_FACE);
+    GLboolean lastDepthTestEnabled = glIsEnabled(GL_DEPTH_TEST);
+    GLboolean lastScissorTestEnabled = glIsEnabled(GL_SCISSOR_TEST);
+    bool clipOriginIsLowerLeft = true;
+#if !defined(OS_APPLE)
+    GLenum lastClipOrigin = 0; glGetIntegerv(GL_CLIP_ORIGIN, (GLint*)&lastClipOrigin); // Support for GL 4.5's glClipControl(GL_UPPER_LEFT)
+    if (lastClipOrigin == GL_UPPER_LEFT)
+        clipOriginIsLowerLeft = false;
+#endif
+
+    //Recreate the VAO every frame to more easily allow multiple GL contexts to be rendered to
+    //    (VAO are not shared among GL contexts).
+    //The renderer would actually work without any VAO bound, but then our VertexAttrib calls
+    //    would overwrite the default one currently bound.
+    GLuint handle_vao = 0;
+    glGenVertexArrays(1, &handle_vao);
+
+    ResetRenderState(*drawData, framebufferSize, handle_vao);
+    
+    //Project scissor/clipping rectangles into framebuffer space.
+    auto clipOffset = drawData->DisplayPos;         // (0, 0) unless using multi-viewports)
+    auto clipScale = drawData->FramebufferScale; // (1, 1) unless using retina displays
+
+    //Render ImGUI's command lists.
+    for (int i = 0; i < drawData->CmdListsCount; ++i)
+    {
+        const auto& cmdList = *(drawData->CmdLists[i]);
+        RenderCommandList(*drawData, *(drawData->CmdLists[i]),
+                          framebufferSize,
+                          glm::fvec2{clipOffset.x, clipOffset.y},
+                          glm::fvec2{clipScale.x, clipScale.y},
+                          clipOriginIsLowerLeft, handle_vao);
+    }
+
+    //Clean up the temp VAO.
+    glDeleteVertexArrays(1, &handle_vao);;
+
+    //Restore the external GL state.
+    glUseProgram(lastProgram);
+    glBindTexture(GL_TEXTURE_2D, lastTexture);
+#ifdef GL_SAMPLER_BINDING
+    glBindSampler(0, lastSampler);
+#endif
+    glActiveTexture(lastActiveTexture);
+#ifndef IMGUI_IMPL_OPENGL_ES2
+    glBindVertexArray(lastVAO);
+#endif
+    glBindBuffer(GL_ARRAY_BUFFER, lastArrayBuffer);
+    glBlendEquationSeparate(lastBlendEquationRGB, lastBlendEquationAlpha);
+    glBlendFuncSeparate(lastBlendSrcRGB, lastBlendDestRGB, lastBlendSrcAlpha, lastBlendDestAlpha);
+    if (lastBlendEnabled) glEnable(GL_BLEND); else glDisable(GL_BLEND);
+    if (lastCullFaceEnabled) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
+    if (lastDepthTestEnabled) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+    if (lastScissorTestEnabled) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+#ifdef GL_POLYGON_MODE
+    glPolygonMode(GL_FRONT_AND_BACK, (GLenum)lastPolygonMode[0]);
+#endif
+    glViewport(lastViewport[0], lastViewport[1], (GLsizei)lastViewport[2], (GLsizei)lastViewport[3]);
+    glScissor(lastScissorBox[0], lastScissorBox[1], (GLsizei)lastScissorBox[2], (GLsizei)lastScissorBox[3]);
 }
 
 #pragma endregion

@@ -3,6 +3,7 @@
 #include "../Platform.h"
 
 #include <glm/vec2.hpp>
+#include <glm/fwd.hpp>
 #include "imgui.h"
 
 #include <string>
@@ -10,9 +11,10 @@
 
 
 struct SDL_Window;
-typedef union SDL_Event SDL_Event;
+union SDL_Event;
+struct SDL_Cursor;
 typedef void* SDL_GLContext;
-typedef struct SDL_Cursor;
+typedef unsigned int GLuint;
 
 //TODO: Bring in RAII helpers: https://github.com/ocornut/imgui/blob/0a25a49e946c1557b05456c02366773b34996a1d/misc/cpp/imgui_scoped.h
 
@@ -100,7 +102,7 @@ namespace Bplus
 
         const std::string& GetGlslVersion() const { return glslVersion; }
 
-        virtual void BeginFrame() = 0;
+        virtual void BeginFrame() { };
         virtual void RenderFrame() = 0;
 
     private:
@@ -120,6 +122,17 @@ namespace Bplus
         virtual ~ImGuiOpenGLInterface_Default() override;
         
         virtual void RenderFrame() override;
+          
+    protected:
+        //Used inside "RenderFrame()".
+        virtual void ResetRenderState(ImDrawData& drawData, glm::ivec2 framebufferSize,
+                                      GLuint vao);
+        //Used inside "RenderFrame()".
+        virtual void RenderCommandList(ImDrawData& drawData, const ImDrawList& commandList,
+                                       glm::ivec2 framebufferSize,
+                                       glm::fvec2 clipOffset, glm::fvec2 clipScale,
+                                       bool clipOriginIsLowerLeft,
+                                       GLuint vao);
 
     private:
 

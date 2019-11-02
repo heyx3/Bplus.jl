@@ -257,7 +257,7 @@ void App::Run()
 
         //Initialize the GUI frame.
         ImGuiOpenGL->BeginFrame();
-        ImGuiSDL->BeginFrame(deltaT);
+        ImGuiSDL->BeginFrame((float)deltaT);
         ImGui::NewFrame();
 
         //Update physics.
