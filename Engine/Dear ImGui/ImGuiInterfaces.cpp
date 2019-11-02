@@ -1,6 +1,9 @@
 #include "ImGuiInterfaces.h"
 #include "../Renderer/Context.h"
 
+#include <vector>
+
+
 //This file is a custom rewrite of Dear ImGUI's built-in example SDL and OpenGL3 integrations.
 
 #define SDL_HAS_CAPTURE_AND_GLOBAL_MOUSE    SDL_VERSION_ATLEAST(2,0,4)
@@ -335,6 +338,181 @@ void SDLImpl::BeginFrame(float deltaTime)
 
 #pragma region Default OpenGL Interface
 
-//TODO: Implement. auto* draw_data = ImGui::GetDrawData().
+OGLImpl::ImGuiOpenGLInterface_Default(std::string& outErrorMsg,
+                                      const char* glslVersion)
+    : ImGuiOpenGLInterface(glslVersion)
+{
+    //Set back-end capabilities flags.
+    ImGuiIO& io = ImGui::GetIO();
+    io.BackendRendererName = "bplus_opengl";
+    //We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+
+    //Backup GL state before creating any objects.
+    //Restore it when we're done.
+    GLint last_texture, last_array_buffer;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
+    glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &last_array_buffer);
+    GLint last_vertex_array;
+    glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &last_vertex_array);
+
+    //Write and compile the shaders.
+    auto CheckShader = [&](GLuint handle, const char* description) -> bool
+    {
+        //Check whether it compiled.
+        GLint status = 0;
+        glGetShaderiv(handle, GL_COMPILE_STATUS, &status);
+
+        //Get information about it.
+        GLint logLength = 0;
+        std::string infoLog;
+        infoLog.resize(logLength + 1, '\0');
+        glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &logLength);
+        if (logLength > 1)
+            glGetShaderInfoLog(handle, logLength, nullptr, (GLchar*)infoLog.data());
+
+        if ((GLboolean)status == GL_FALSE)
+        {
+            outErrorMsg = std::string("Failed to compile ") + description +
+                          ":\n\t" + infoLog;
+            return false;
+        }
+        else
+        {
+            fprintf(stderr, "ImGUI %s compiled successfully:\n%s\n",
+                    description, infoLog.c_str());
+            return true;
+        }
+    };
+    //Vertex:
+    const GLchar* vertex_shader_glsl =
+        "layout (location = 0) in vec2 Position;\n"
+        "layout (location = 1) in vec2 UV;\n"
+        "layout (location = 2) in vec4 Color;\n"
+        "uniform mat4 ProjMtx;\n"
+        "out vec2 Frag_UV;\n"
+        "out vec4 Frag_Color;\n"
+        "void main()\n"
+        "{\n"
+        "    Frag_UV = UV;\n"
+        "    Frag_Color = Color;\n"
+        "    gl_Position = ProjMtx * vec4(Position.xy,0,1);\n"
+        "}\n";
+    const GLchar* vertex_shader_with_version[2] = { GetGlslVersion().c_str(),
+                                                    vertex_shader_glsl };
+    handle_vertShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(handle_vertShader, 2, vertex_shader_with_version, NULL);
+    glCompileShader(handle_vertShader);
+    if (!CheckShader(handle_vertShader, "vertex shader"))
+        return;
+    //Fragment:
+    const GLchar* fragment_shader_glsl =
+        "in vec2 Frag_UV;\n"
+        "in vec4 Frag_Color;\n"
+        "uniform sampler2D Texture;\n"
+        "layout (location = 0) out vec4 Out_Color;\n"
+        "void main()\n"
+        "{\n"
+        "    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);\n"
+        "}\n";
+    const GLchar* fragment_shader_with_version[2] = { GetGlslVersion().c_str(),
+                                                      fragment_shader_glsl };
+    handle_fragShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(handle_fragShader, 2, fragment_shader_with_version, NULL);
+    glCompileShader(handle_fragShader);
+    if (!CheckShader(handle_fragShader, "fragment shader"))
+        return;
+
+    //Link the shaders together:
+    handle_shaderProgram = glCreateProgram();
+    glAttachShader(handle_shaderProgram, handle_vertShader);
+    glAttachShader(handle_shaderProgram, handle_fragShader);
+    glLinkProgram(handle_shaderProgram);
+    //Check whether it worked.
+    GLint programStatus;
+    glGetProgramiv(handle_shaderProgram, GL_LINK_STATUS, &programStatus);
+    GLint programLogLength = 0;
+    std::string infoLog;
+    infoLog.resize(programLogLength + 1, '\0');
+    glGetShaderiv(handle_shaderProgram, GL_INFO_LOG_LENGTH, &programLogLength);
+    if (programLogLength > 1)
+        glGetShaderInfoLog(handle_shaderProgram, programLogLength, nullptr, (GLchar*)infoLog.data());
+    if ((GLboolean)programStatus == GL_FALSE)
+    {
+        outErrorMsg = "Unable to link vertex and fragment shader:\n\t";
+        outErrorMsg += infoLog;
+        return;
+    }
+
+    //Get attribute/uniform locations.
+    attrib_pos = glGetUniformLocation(handle_shaderProgram, "Position");
+    attrib_uv = glGetUniformLocation(handle_shaderProgram, "UV");
+    attrib_color = glGetUniformLocation(handle_shaderProgram, "Color");
+    uniform_tex = glGetUniformLocation(handle_shaderProgram, "Texture");
+    uniform_projectionMatrix = glGetUniformLocation(handle_shaderProgram, "ProjMtx");
+
+    //Create mesh buffers.
+    glGenBuffers(1, &handle_vbo);
+    glGenBuffers(1, &handle_elements);
+
+    //Create the fonts texture.
+    {
+        unsigned char* pixels;
+        int width, height;
+        io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+
+        glGenTextures(1, &handle_fontTexture);
+        glBindTexture(GL_TEXTURE_2D, handle_fontTexture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height,
+                     0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+
+        io.Fonts->TexID = (ImTextureID)(intptr_t)handle_fontTexture;
+    }
+
+    //Restore the OpenGL state that we modified.
+    glBindTexture(GL_TEXTURE_2D, last_texture);
+    glBindBuffer(GL_ARRAY_BUFFER, last_array_buffer);
+    glBindVertexArray(last_vertex_array);
+}
+OGLImpl::~ImGuiOpenGLInterface_Default()
+{
+    if (handle_vbo)
+        glDeleteBuffers(1, &handle_vbo);
+    if (handle_elements)
+        glDeleteBuffers(1, &handle_elements);
+
+    if (handle_shaderProgram)
+    {
+        if (handle_vertShader)
+            glDetachShader(handle_shaderProgram, handle_vertShader);
+        if (handle_fragShader)
+            glDetachShader(handle_shaderProgram, handle_fragShader);
+    }
+
+    if (handle_vertShader)
+        glDeleteShader(handle_vertShader);
+    if (handle_fragShader)
+        glDeleteShader(handle_fragShader);
+
+    if (handle_shaderProgram)
+        glDeleteProgram(handle_shaderProgram);
+
+    if (handle_fontTexture)
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        glDeleteTextures(1, &handle_fontTexture);
+        io.Fonts->TexID = 0;
+    }
+}
+
+void OGLImpl::RenderFrame()
+{
+    auto* drawData = ImGui::GetDrawData();
+
+    //TODO: Implement.
+}
 
 #pragma endregion

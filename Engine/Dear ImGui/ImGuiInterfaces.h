@@ -114,11 +114,28 @@ namespace Bplus
     {
     public:
         //GLSL Version defaults to Bplus::GL::Context::GLSLVersion(), which is usually what you want.
-        ImGuiOpenGLInterface_Default(const char* glslVersion = nullptr);
+        //Leaves "outErrorMsg" alone if nothing bad happened.
+        ImGuiOpenGLInterface_Default(std::string& outErrorMsg,
+                                     const char* glslVersion = nullptr);
         virtual ~ImGuiOpenGLInterface_Default() override;
-
-        virtual void BeginFrame() override;
+        
         virtual void RenderFrame() override;
+
+    private:
+
+        //All handles are default-initialized to 0 so we can tell whether the constructor actually got to them.
+
+        GLuint handle_fontTexture = 0,
+               handle_shaderProgram = 0,
+               handle_vertShader = 0,
+               handle_fragShader = 0,
+               handle_vbo = 0,
+               handle_elements = 0;
+        int uniform_tex = 0,
+            uniform_projectionMatrix = 0,
+            attrib_pos = 0,
+            attrib_uv = 0,
+            attrib_color = 0;
     };
     #pragma endregion
 }
