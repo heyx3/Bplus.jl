@@ -353,6 +353,7 @@ exit 0</Command>
   <ItemGroup>
     <ClCompile Include="App.cpp" />
     <ClCompile Include="Dear ImGui\imgui.cpp" />
+    <ClCompile Include="Dear ImGui\ImGuiInterfaces.cpp" />
     <ClCompile Include="Dear ImGui\imgui_draw.cpp" />
     <ClCompile Include="Dear ImGui\imgui_impl_opengl3.cpp" />
     <ClCompile Include="Dear ImGui\imgui_impl_sdl.cpp" />
@@ -368,6 +369,7 @@ exit 0</Command>
     <ClInclude Include="App.h" />
     <ClInclude Include="Dear ImGui\imconfig.h" />
     <ClInclude Include="Dear ImGui\imgui.h" />
+    <ClInclude Include="Dear ImGui\ImGuiInterfaces.h" />
     <ClInclude Include="Dear ImGui\imgui_impl_opengl3.h" />
     <ClInclude Include="Dear ImGui\imgui_impl_sdl.h" />
     <ClInclude Include="Dear ImGui\imgui_internal.h" />

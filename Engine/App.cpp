@@ -171,9 +171,9 @@ void App::Run()
     ImGuiContext = &ImGui::GetIO();
     ImGuiContext->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     ImGui::StyleColorsDark(); //Default to dark theme, for sanity
-    ImGui_ImplSDL2_InitForOpenGL(MainWindow);
-    ImGui_ImplOpenGL3_Init(glContext.get());
-
+    ConfigureImGUISDL();
+    ConfigureImGUIOpenGL();
+    
     //Allow child class initialization.
     OnBegin();
 
@@ -187,7 +187,7 @@ void App::Run()
         while (SDL_PollEvent(&sdlEvent) != 0)
         {
             //Update ImGui.
-            ImGui_ImplSDL2_ProcessEvent(&sdlEvent);
+            ImGuiSDL->ProcessEvent(sdlEvent);
             
             //Update this app's base functionality.
             switch (sdlEvent.type)
@@ -256,8 +256,8 @@ void App::Run()
         lastFrameStartTime = newFrameTime;
 
         //Initialize the GUI frame.
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplSDL2_NewFrame(MainWindow);
+        ImGuiOpenGL->BeginFrame();
+        ImGuiSDL->BeginFrame(deltaT);
         ImGui::NewFrame();
 
         //Update physics.
@@ -278,15 +278,20 @@ void App::Run()
 
         //Finally, do GUI rendering.
         ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        ImGuiOpenGL->RenderFrame();
         SDL_GL_SwapWindow(MainWindow);
     }
 }
 void App::OnQuit(bool force)
 {
+    //Clean up ImGUI.
+    ImGuiOpenGL.reset();
+    ImGuiSDL.reset();
+
+    //Clean up the window's OpenGL context.
     glContext.reset();
 
-    //Clean up the SDL window.
+    //Clean up the window.
     if (MainWindow != nullptr)
         SDL_DestroyWindow(MainWindow);
     MainWindow = nullptr;
@@ -295,6 +300,7 @@ void App::OnQuit(bool force)
     if ((SDL_WasInit(SDL_INIT_EVERYTHING) & SDL_INIT_EVENTS) != 0)
         SDL_Quit();
 
+    //Write out the new config file.
     Config.WriteToFile();
     isRunning = false;
 }
