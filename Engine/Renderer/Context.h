@@ -66,8 +66,15 @@ namespace Bplus::GL
         void SetDepthWrites(bool canWriteToDepth);
         bool GetDepthWrites() const { return isDepthWriteEnabled; }
 
+        BlendStateRGBA GetBlending() const;
+        BlendStateRGB GetColorBlending() const { return currentColorBlending; }
+        BlendStateAlpha GetAlphaBlending() const { return currentAlphaBlending; }
+
+        void SetBlending(const BlendStateRGBA& state);
+        void SetColorBlending(const BlendStateRGB& state);
+        void SetAlphaBlending(const BlendStateAlpha& state);
+
         //TODO: Stencil.
-        //TODO: Blending.
         //TODO: Write Mask.
         //TODO: Anything else?
 
@@ -80,6 +87,8 @@ namespace Bplus::GL
         VsyncModes currentVsync;
         FaceCullModes currentCullMode;
         DepthTests currentDepthTest;
+        BlendStateRGB currentColorBlending;
+        BlendStateAlpha currentAlphaBlending;
         
         SDL_GLContext sdlContext;
         SDL_Window* owner;

@@ -27,13 +27,13 @@ that hasn't been cleaned up.";
 
     //Configure/create the OpenGL context.
     if (!TrySDL(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION,
-        GLVersion_Major()),
-        errMsg, "Error setting OpenGL context major") ||
+                                    GLVersion_Major()),
+                errMsg, "Error setting OpenGL context major") ||
         !TrySDL(SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION,
-            GLVersion_Minor()),
-            errMsg, "Error setting OpenGL context minor") ||
+                                    GLVersion_Minor()),
+                errMsg, "Error setting OpenGL context minor") ||
         !TrySDL(sdlContext = SDL_GL_CreateContext(owner),
-            errMsg, "Error initializing OpenGL context"))
+                errMsg, "Error initializing OpenGL context"))
     {
         return;
     }
@@ -52,12 +52,6 @@ that hasn't been cleaned up.";
         return;
     }
 
-    //Keep depth-testing on permanently.
-    //You can still disable it via DepthTests::Off,
-    //    and glDisable()-ing it would have the side effect of disabling depth writes;
-    //    we already expose a separate mechanism for disabling those.
-    glEnable(GL_DEPTH_TEST);
-
     RefreshDriverState();
 }
 Context::~Context()
@@ -74,11 +68,23 @@ Context::~Context()
 
 void Context::RefreshDriverState()
 {
+    //Keep depth-testing on permanently.
+    //You can still disable it via DepthTests::Off,
+    //    and using glDisable() on this would have the side effect of disabling depth writes.
+    //We already expose a separate mechanism for disabling those.
+    glEnable(GL_DEPTH_TEST);
+
+    //To keep things similarly simple for blending, keep blending on permanently
+    //    and just use an Opaque blend state to effectively turn it off.
+    glEnable(GL_BLEND);
+
     isScissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
     isDepthWriteEnabled = glIsEnabled(GL_DEPTH_WRITEMASK);
     currentVsync = (VsyncModes)SDL_GL_GetSwapInterval();
 
+    //Containers for various OpenGL settings.
     int tempI;
+    glm::fvec4 tempV4;
 
     if (glIsEnabled(GL_CULL_FACE))
     {
@@ -92,6 +98,27 @@ void Context::RefreshDriverState()
 
     glGetIntegerv(GL_DEPTH_FUNC, &tempI);
     currentDepthTest = (DepthTests)tempI;
+
+    //Get color blending settings.
+    glGetIntegerv(GL_BLEND_SRC_RGB, &tempI);
+    currentColorBlending.Src = (BlendFactors)tempI;
+    glGetIntegerv(GL_BLEND_DST_RGB, &tempI);
+    currentColorBlending.Dest = (BlendFactors)tempI;
+    glGetIntegerv(GL_BLEND_EQUATION_RGB, &tempI);
+    currentColorBlending.Op = (BlendOps)tempI;
+
+    //Get alpha blending settings.
+    glGetIntegerv(GL_BLEND_SRC_ALPHA, &tempI);
+    currentAlphaBlending.Src = (BlendFactors)tempI;
+    glGetIntegerv(GL_BLEND_DST_ALPHA, &tempI);
+    currentAlphaBlending.Dest = (BlendFactors)tempI;
+    glGetIntegerv(GL_BLEND_EQUATION_ALPHA, &tempI);
+    currentAlphaBlending.Op = (BlendOps)tempI;
+
+    //Get the blend constant.
+    glGetFloatv(GL_BLEND_COLOR, &tempV4[0]);
+    currentColorBlending.Constant = { tempV4.r, tempV4.g, tempV4.b };
+    currentAlphaBlending.Constant = tempV4.a;
 }
 
 
@@ -197,4 +224,54 @@ void Context::SetDepthWrites(bool canWriteDepth)
         else
             glDisable(GL_DEPTH_WRITEMASK);
     }
+}
+
+void Context::SetBlending(const BlendStateRGBA& state)
+{
+    //Don't waste time in the GPU driver if we're already in this blend state.
+    BlendStateRGB newColorBlending{ state.Src, state.Dest, state.Op,
+                                    { state.Constant.r, state.Constant.g, state.Constant.b } };
+    BlendStateAlpha newAlphaBlending{ state.Src, state.Dest, state.Op, state.Constant.a };
+    if ((newColorBlending == currentColorBlending) &
+        (newAlphaBlending == currentAlphaBlending))
+    {
+        return;
+    }
+
+    currentColorBlending = newColorBlending;
+    currentAlphaBlending = newAlphaBlending;
+
+    glBlendFunc((GLenum)state.Src, (GLenum)state.Dest);
+    glBlendEquation((GLenum)state.Op);
+    glBlendColor(state.Constant.r, state.Constant.g, state.Constant.b, state.Constant.a);
+}
+void Context::SetColorBlending(const BlendStateRGB& state)
+{
+    if (state == currentColorBlending)
+        return;
+
+    currentColorBlending = state;
+    glBlendFuncSeparate((GLenum)currentColorBlending.Src, (GLenum)currentColorBlending.Dest,
+                        (GLenum)currentAlphaBlending.Src, (GLenum)currentAlphaBlending.Dest);
+    glBlendEquationSeparate((GLenum)currentColorBlending.Op,
+                            (GLenum)currentAlphaBlending.Op);
+    glBlendColor(currentColorBlending.Constant.r,
+                 currentColorBlending.Constant.g,
+                 currentColorBlending.Constant.b,
+                 currentAlphaBlending.Constant);
+}
+void Context::SetAlphaBlending(const BlendStateAlpha& state)
+{
+    if (state == currentAlphaBlending)
+        return;
+
+    currentAlphaBlending = state;
+    glBlendFuncSeparate((GLenum)currentColorBlending.Src, (GLenum)currentColorBlending.Dest,
+                        (GLenum)currentAlphaBlending.Src, (GLenum)currentAlphaBlending.Dest);
+    glBlendEquationSeparate((GLenum)currentColorBlending.Op,
+                            (GLenum)currentAlphaBlending.Op);
+    glBlendColor(currentColorBlending.Constant.r,
+                 currentColorBlending.Constant.g,
+                 currentColorBlending.Constant.b,
+                 currentAlphaBlending.Constant);
 }
