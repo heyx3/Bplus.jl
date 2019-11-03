@@ -79,6 +79,7 @@ void Context::RefreshDriverState()
     isScissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
     isDepthWriteEnabled = glIsEnabled(GL_DEPTH_WRITEMASK);
     currentVsync = (VsyncModes)SDL_GL_GetSwapInterval();
+    glGetBooleanv(GL_COLOR_WRITEMASK, (GLboolean*)(&colorWriteMask[0]));
 
     //Containers for various OpenGL settings.
     int tempI;
@@ -256,6 +257,15 @@ void Context::SetDepthWrites(bool canWriteDepth)
         else
             glDisable(GL_DEPTH_WRITEMASK);
     }
+}
+
+void Context::SetColorWriteMask(glm::bvec4 canWrite)
+{
+    if (canWrite == colorWriteMask)
+        return;
+
+    colorWriteMask = canWrite;
+    glColorMask(canWrite.r, canWrite.g, canWrite.b, canWrite.a);
 }
 
 

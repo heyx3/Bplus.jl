@@ -66,6 +66,9 @@ namespace Bplus::GL
         void SetDepthWrites(bool canWriteToDepth);
         bool GetDepthWrites() const { return isDepthWriteEnabled; }
 
+        void SetColorWriteMask(glm::bvec4 canWrite);
+        glm::bvec4 GetColorWriteMask() const { return colorWriteMask; }
+
         #pragma region Blending
 
         //Gets the current global blend operation, assuming
@@ -124,9 +127,6 @@ namespace Bplus::GL
         #pragma endregion
 
 
-        //TODO: Write Mask.
-        //TODO: Anything else?
-
 
     private:
 
@@ -135,6 +135,7 @@ namespace Bplus::GL
         SDL_Window* owner;
 
         bool isScissorEnabled, isDepthWriteEnabled;
+        glm::bvec4 colorWriteMask;
         VsyncModes currentVsync;
         FaceCullModes currentCullMode;
         ValueTests currentDepthTest;
@@ -143,5 +144,8 @@ namespace Bplus::GL
         StencilTest stencilTestFront, stencilTestBack;
         StencilResult stencilResultFront, stencilResultBack;
         GLuint stencilMaskFront, stencilMaskBack;
+        //TODO: Anything else to track?
+
+        //TODO: Support MRT (many settings are per-RT).
     };
 }
