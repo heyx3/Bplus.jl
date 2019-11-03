@@ -6,6 +6,10 @@
 
 namespace Bplus::Files
 {
+    //TODO: Scrap this file. Make a non-abstract Matrial class,
+    //    then make each "Factory" a wrapper class inheriting from "MaterialFactory".
+
+
     //Abstract class for any kind of material.
     class BP_API Material
     {   

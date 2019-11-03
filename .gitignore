@@ -97,7 +97,7 @@ Build
 # Other/test files
 **/*.pgm
 
-# Auto-copied headers
-dependencies/include/WFC++
 #IMGUI local configuration
 imgui.ini
+# B+ app configuration
+**/Config.toml

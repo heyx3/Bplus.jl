@@ -1,9 +1,9 @@
-#include <B+\App.h>
+#include "../Engine/App.h"
 
 //A template command-line + window app based on B+ and SDL.
 //Command-line arguments:
 //    -noWriteConfig to not update the config file on exit
-//          (used automatically when running from the IDE).
+//          (used automatically when running from the IDE in Release mode).
 
 namespace
 {
@@ -84,7 +84,28 @@ protected:
         GetContext().Clear(1, 1, 1, 1,
                            1);
 
-        ImGui::Text("%u", glm::abs(glm::iround(1.0 / deltaT)));
+        auto doMask = [](GLuint originalMask)
+        {
+            glStencilMask(originalMask);
+            GLint newMaskI;
+            glGetIntegerv(GL_STENCIL_WRITEMASK, &newMaskI);
+            GLuint newMask_Reinterpret = *((GLuint*)(&newMaskI)),
+                   newMask_Cast = (GLuint)newMaskI;
+
+            std::string data = "From ";
+            data += std::to_string(originalMask);
+            data += " to [reinterpret:";
+            data += std::to_string(newMask_Reinterpret);
+            data += "] [cast:";
+            data += std::to_string(newMask_Cast);
+            data += "]";
+            ImGui::Text(data.c_str());
+        };
+        doMask(25);
+        doMask(~(0U));
+        doMask(~(0U) - 32 - 8 - 256);
+        doMask(~(0U) - 1 - 32 - 8 - 256);
+        doMask(-1);
     }
 };
 
