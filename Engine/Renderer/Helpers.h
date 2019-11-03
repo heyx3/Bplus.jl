@@ -128,6 +128,7 @@ namespace Bplus::GL
 
 
     #pragma region BlendState<> struct template
+
     template<typename Constant_t>
     struct BlendState
     {
@@ -146,10 +147,12 @@ namespace Bplus::GL
         static BlendState Additive() { return BlendState{ BlendFactors::One,
                                                           BlendFactors::Zero }; }
     };
+
     //Note that equality comparisons don't check whether the two states are
     //    *effectively* equal;
     //    only that their fields are identical.
     //There are sometimes multiple ways to represent the same blend effect.
+
     template<typename Constant_t>
     bool operator==(const BlendState<Constant_t>& a, const BlendState<Constant_t>& b)
     {
@@ -158,11 +161,13 @@ namespace Bplus::GL
                (a.Op == b.Op) &
                (!a.UsesConstant() | (a.Constant == b.Constant));
     }
+
     template<typename Constant_t>
     bool operator!=(const BlendState<Constant_t>& a, const BlendState<Constant_t>& b)
     {
         return !(a == b);
     }
+
     #pragma endregion
     using BlendStateRGB = BlendState<glm::vec3>;
     using BlendStateAlpha = BlendState<float>;
@@ -176,7 +181,7 @@ namespace Bplus::GL
         GLuint Mask = ~0;
     };
     bool BP_API operator==(const StencilTest& a, const StencilTest& b);
-    bool BP_API operator!=(const StencilTest& a, const StencilTest& b) { return !(a == b); }
+    inline bool BP_API operator!=(const StencilTest& a, const StencilTest& b) { return !(a == b); }
 
 
     struct BP_API StencilResult
@@ -195,7 +200,7 @@ namespace Bplus::GL
             : StencilResult(StencilOps::Nothing, StencilOps::Nothing, onPassStencilDepth) { }
     };
     bool BP_API operator==(const StencilResult& a, const StencilResult& b);
-    bool BP_API operator!=(const StencilResult& a, const StencilResult& b) { return !(a == b); }
+    inline bool BP_API operator!=(const StencilResult& a, const StencilResult& b) { return !(a == b); }
 
 
     //Converters from enums to string.

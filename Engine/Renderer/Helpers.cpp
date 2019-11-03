@@ -34,13 +34,13 @@ bool GL::UsesConstant(BlendFactors b)
     }
 }
 
-bool GL::operator==(const StencilTest& a, const StencilTest& b)
+bool GL::operator==(const GL::StencilTest& a, const GL::StencilTest& b)
 {
     return (a.Test == b.Test) &
            (a.RefValue == b.RefValue) &
            (a.Mask == b.Mask);
 }
-bool GL::operator==(const StencilResult& a, const StencilResult& b)
+bool GL::operator==(const GL::StencilResult& a, const GL::StencilResult& b)
 {
     return (a.OnFailStencil == b.OnFailStencil) &
            (a.OnPassStencilFailDepth == b.OnPassStencilFailDepth) &

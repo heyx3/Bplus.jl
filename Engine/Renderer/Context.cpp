@@ -272,7 +272,7 @@ GL::BlendStateRGBA Context::GetBlending() const
                            { currentColorBlending.Constant, currentAlphaBlending.Constant } };
 }
 
-void Context::SetBlending(const BlendStateRGBA& state)
+void Context::SetBlending(const GL::BlendStateRGBA& state)
 {
     //Don't waste time in the GPU driver if we're already in this blend state.
     BlendStateRGB newColorBlending{ state.Src, state.Dest, state.Op,
@@ -291,7 +291,7 @@ void Context::SetBlending(const BlendStateRGBA& state)
     glBlendEquation((GLenum)state.Op);
     glBlendColor(state.Constant.r, state.Constant.g, state.Constant.b, state.Constant.a);
 }
-void Context::SetColorBlending(const BlendStateRGB& state)
+void Context::SetColorBlending(const GL::BlendStateRGB& state)
 {
     if (state == currentColorBlending)
         return;
@@ -306,7 +306,7 @@ void Context::SetColorBlending(const BlendStateRGB& state)
                  currentColorBlending.Constant.b,
                  currentAlphaBlending.Constant);
 }
-void Context::SetAlphaBlending(const BlendStateAlpha& state)
+void Context::SetAlphaBlending(const GL::BlendStateAlpha& state)
 {
     if (state == currentAlphaBlending)
         return;
@@ -330,7 +330,7 @@ const GL::StencilTest& Context::GetStencilTest() const
     return stencilTestFront;
 }
 
-void Context::SetStencilTest(const StencilTest& test)
+void Context::SetStencilTest(const GL::StencilTest& test)
 {
     if ((stencilTestFront == test) & (stencilTestBack == test))
         return;
@@ -340,7 +340,7 @@ void Context::SetStencilTest(const StencilTest& test)
 
     glStencilFunc((GLenum)test.Test, test.RefValue, test.Mask);
 }
-void Context::SetStencilTestFrontFaces(const StencilTest& test)
+void Context::SetStencilTestFrontFaces(const GL::StencilTest& test)
 {
     if (test == stencilTestFront)
         return;
@@ -348,7 +348,7 @@ void Context::SetStencilTestFrontFaces(const StencilTest& test)
     stencilTestFront = test;
     glStencilFuncSeparate(GL_FRONT, (GLenum)test.Test, test.RefValue, test.Mask);
 }
-void Context::SetStencilTestBackFaces(const StencilTest& test)
+void Context::SetStencilTestBackFaces(const GL::StencilTest& test)
 {
     if (test == stencilTestBack)
         return;
@@ -365,7 +365,7 @@ const GL::StencilResult& Context::GetStencilResult() const
     return stencilResultFront;
 }
 
-void Context::SetStencilResult(const StencilResult& result)
+void Context::SetStencilResult(const GL::StencilResult& result)
 {
     if ((stencilResultFront == result) & (stencilResultBack == result))
         return;
@@ -376,7 +376,7 @@ void Context::SetStencilResult(const StencilResult& result)
                 (GLenum)result.OnPassStencilFailDepth,
                 (GLenum)result.OnPassStencilDepth);
 }
-void Context::SetStencilResultFrontFaces(const StencilResult& result)
+void Context::SetStencilResultFrontFaces(const GL::StencilResult& result)
 {
     if (result == stencilResultFront)
         return;
@@ -387,7 +387,7 @@ void Context::SetStencilResultFrontFaces(const StencilResult& result)
                         (GLenum)result.OnPassStencilFailDepth,
                         (GLenum)result.OnPassStencilDepth);
 }
-void Context::SetStencilResultBackFaces(const StencilResult& result)
+void Context::SetStencilResultBackFaces(const GL::StencilResult& result)
 {
     if (result == stencilResultBack)
         return;
