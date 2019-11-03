@@ -123,6 +123,7 @@ void Context::RefreshDriverState()
     {
         StencilTest& testData = (faceI == 0) ? stencilTestFront : stencilTestBack;
         StencilResult& resultData = (faceI == 0) ? stencilResultFront : stencilResultBack;
+        GLuint& writeMask = (faceI == 0) ? stencilMaskFront : stencilMaskBack;
 
         GLenum side = (faceI == 0) ? GL_FRONT : GL_BACK,
                key_test = (faceI == 0) ? GL_STENCIL_FUNC : GL_STENCIL_BACK_FUNC,
@@ -137,7 +138,8 @@ void Context::RefreshDriverState()
         testData.Test = (ValueTests)tempI;
         glGetIntegerv(key_ref, &tempI);
         testData.RefValue = tempI;
-        static_assert(false, "How to get stencil test mask fron int -> uint?");
+        glGetIntegerv(key_valueMask, &tempI);
+        testData.Mask = (GLuint)tempI;
 
         glGetIntegerv(key_onFail, &tempI);
         resultData.OnFailStencil = (StencilOps)tempI;
@@ -146,7 +148,8 @@ void Context::RefreshDriverState()
         glGetIntegerv(key_onPass, &tempI);
         resultData.OnPassStencilDepth = (StencilOps)tempI;
 
-        static_assert(false, "How to get stencil write mask fron int -> uint?");
+        glGetIntegerv(key_writeMask, &tempI);
+        writeMask = (GLuint)tempI;
     }
 }
 
