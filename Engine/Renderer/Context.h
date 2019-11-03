@@ -60,21 +60,70 @@ namespace Bplus::GL
         void SetFaceCulling(FaceCullModes mode);
         FaceCullModes GetFaceCulling() const { return currentCullMode; }
 
-        void SetDepthTest(DepthTests mode);
-        DepthTests GetDepthTest() const { return currentDepthTest; }
+        void SetDepthTest(ValueTests mode);
+        ValueTests GetDepthTest() const { return currentDepthTest; }
 
         void SetDepthWrites(bool canWriteToDepth);
         bool GetDepthWrites() const { return isDepthWriteEnabled; }
 
-        BlendStateRGBA GetBlending() const;
-        BlendStateRGB GetColorBlending() const { return currentColorBlending; }
-        BlendStateAlpha GetAlphaBlending() const { return currentAlphaBlending; }
+        #pragma region Blending
 
+        //Gets the current global blend operation, assuming
+        //    both color and alpha have the same setting.
+        BlendStateRGBA GetBlending() const;
+        //Sets both color and alpha blending to the given state.
         void SetBlending(const BlendStateRGBA& state);
+
+        BlendStateRGB GetColorBlending() const { return currentColorBlending; }
         void SetColorBlending(const BlendStateRGB& state);
+
+        BlendStateAlpha GetAlphaBlending() const { return currentAlphaBlending; }
         void SetAlphaBlending(const BlendStateAlpha& state);
 
-        //TODO: Stencil.
+        #pragma endregion
+
+        #pragma region Stencil
+
+        //Gets the current global stencil test, assuming
+        //    both front- and back-faces have the same stencil test setting.
+        const StencilTest& GetStencilTest() const;
+        //Sets both front- and back-faces to use the given stencil test.
+        void SetStencilTest(const StencilTest& test);
+
+        const StencilTest& GetStencilTestFrontFaces() const { return stencilTestFront; }
+        void SetStencilTestFrontFaces(const StencilTest& test);
+
+        const StencilTest& GetStencilTestBackFaces() const { return stencilTestBack; }
+        void SetStencilTestBackFaces(const StencilTest& test);
+
+
+        //Gets the current global stencil write operations, assuming
+        //    both front- and back-faces have the same stencil write settings.
+        const StencilResult& GetStencilResult() const;
+        //Sets both front- and back-faces to use the given stencil write operations.
+        void SetStencilResult(const StencilResult& writeResults);
+
+        const StencilResult& GetStencilResultFrontFaces() const { return stencilResultFront; }
+        void SetStencilResultFrontFaces(const StencilResult& writeResult);
+
+        const StencilResult& GetStencilResultBackFaces() const { return stencilResultBack; }
+        void SetStencilResultBackFaces(const StencilResult& writeResult);
+
+
+        //Gets the current global stencil mask, determining which bits
+        //    can actually be written to by the "StencilResult" settings.
+        GLuint GetStencilMask() const;
+        void SetStencilMask(GLuint newMask);
+
+        GLuint GetStencilMaskFrontFaces() const { return stencilMaskFront; }
+        void SetStencilMaskFrontFaces(GLuint newMask);
+
+        GLuint GetStencilMaskBackFaces() const { return stencilMaskBack; }
+        void SetStencilMaskBackFaces(GLuint newMask);
+
+        #pragma endregion
+
+
         //TODO: Write Mask.
         //TODO: Anything else?
 
@@ -82,15 +131,17 @@ namespace Bplus::GL
     private:
 
         bool isInitialized = false;
+        SDL_GLContext sdlContext;
+        SDL_Window* owner;
 
         bool isScissorEnabled, isDepthWriteEnabled;
         VsyncModes currentVsync;
         FaceCullModes currentCullMode;
-        DepthTests currentDepthTest;
+        ValueTests currentDepthTest;
         BlendStateRGB currentColorBlending;
         BlendStateAlpha currentAlphaBlending;
-        
-        SDL_GLContext sdlContext;
-        SDL_Window* owner;
+        StencilTest stencilTestFront, stencilTestBack;
+        StencilResult stencilResultFront, stencilResultBack;
+        GLuint stencilMaskFront, stencilMaskBack;
     };
 }

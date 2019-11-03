@@ -355,8 +355,6 @@ exit 0</Command>
     <ClCompile Include="Dear ImGui\imgui.cpp" />
     <ClCompile Include="Dear ImGui\ImGuiInterfaces.cpp" />
     <ClCompile Include="Dear ImGui\imgui_draw.cpp" />
-    <ClCompile Include="Dear ImGui\imgui_impl_opengl3.cpp" />
-    <ClCompile Include="Dear ImGui\imgui_impl_sdl.cpp" />
     <ClCompile Include="Dear ImGui\imgui_stdlib.cpp" />
     <ClCompile Include="Dear ImGui\imgui_widgets.cpp" />
     <ClCompile Include="IO.cpp" />
@@ -370,8 +368,6 @@ exit 0</Command>
     <ClInclude Include="Dear ImGui\imconfig.h" />
     <ClInclude Include="Dear ImGui\imgui.h" />
     <ClInclude Include="Dear ImGui\ImGuiInterfaces.h" />
-    <ClInclude Include="Dear ImGui\imgui_impl_opengl3.h" />
-    <ClInclude Include="Dear ImGui\imgui_impl_sdl.h" />
     <ClInclude Include="Dear ImGui\imgui_internal.h" />
     <ClInclude Include="Dear ImGui\imgui_stdlib.h" />
     <ClInclude Include="Dear ImGui\imstb_rectpack.h" />

@@ -34,5 +34,18 @@ bool GL::UsesConstant(BlendFactors b)
     }
 }
 
+bool GL::operator==(const StencilTest& a, const StencilTest& b)
+{
+    return (a.Test == b.Test) &
+           (a.RefValue == b.RefValue) &
+           (a.Mask == b.Mask);
+}
+bool GL::operator==(const StencilResult& a, const StencilResult& b)
+{
+    return (a.OnFailStencil == b.OnFailStencil) &
+           (a.OnPassStencilFailDepth == b.OnPassStencilFailDepth) &
+           (a.OnPassStencilDepth == b.OnPassStencilDepth);
+}
+
 
 //TODO: Implement all the string shit.

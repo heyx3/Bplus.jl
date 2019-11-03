@@ -8,12 +8,6 @@
     </ClInclude>
     <ClInclude Include="Platform.h" />
     <ClInclude Include="App.h" />
-    <ClInclude Include="Dear ImGui\imgui_impl_opengl3.h">
-      <Filter>Dear ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="Dear ImGui\imgui_impl_sdl.h">
-      <Filter>Dear ImGui</Filter>
-    </ClInclude>
     <ClInclude Include="Dear ImGui\imgui_internal.h">
       <Filter>Dear ImGui</Filter>
     </ClInclude>
@@ -61,12 +55,6 @@
     </ClCompile>
     <ClCompile Include="App.cpp" />
     <ClCompile Include="Dear ImGui\imgui_draw.cpp">
-      <Filter>Dear ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="Dear ImGui\imgui_impl_opengl3.cpp">
-      <Filter>Dear ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="Dear ImGui\imgui_impl_sdl.cpp">
       <Filter>Dear ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Dear ImGui\imgui_stdlib.cpp">

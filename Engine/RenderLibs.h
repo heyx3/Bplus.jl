@@ -1,10 +1,9 @@
 #pragma once
 
+//Os/platform defines.
 #include "Platform.h"
 
-//Dear ImGUI : the GUI library.
-#define IMGUI_IMPL_OPENGL_LOADER_GLEW
-#include "Dear ImGui\imgui.h"
+//Dear ImGUI.
 #include "Dear ImGui\ImGuiInterfaces.h"
 
 //SDL.
@@ -15,7 +14,7 @@
 #include <gl/glew.h>
 #include <sdl/SDL_opengl.h>
 
-//GLM, the GL math library.
+//GLM, the OpenGL math library.
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 

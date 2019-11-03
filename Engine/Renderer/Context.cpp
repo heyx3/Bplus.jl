@@ -68,15 +68,13 @@ Context::~Context()
 
 void Context::RefreshDriverState()
 {
-    //Keep depth-testing on permanently.
-    //You can still disable it via DepthTests::Off,
-    //    and using glDisable() on this would have the side effect of disabling depth writes.
-    //We already expose a separate mechanism for disabling those.
-    glEnable(GL_DEPTH_TEST);
-
-    //To keep things similarly simple for blending, keep blending on permanently
-    //    and just use an Opaque blend state to effectively turn it off.
+    //A handful of features will be left enabled permanently for simplicity;
+    //    they can still be effectively disabled via their specific parameters.
     glEnable(GL_BLEND);
+    glEnable(GL_STENCIL_TEST);
+    //Depth-testing is particularly important to keep on, because disabling it
+    //    has a side effect of disabling any depth writes.
+    glEnable(GL_DEPTH_TEST);
 
     isScissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
     isDepthWriteEnabled = glIsEnabled(GL_DEPTH_WRITEMASK);
@@ -97,7 +95,7 @@ void Context::RefreshDriverState()
     }
 
     glGetIntegerv(GL_DEPTH_FUNC, &tempI);
-    currentDepthTest = (DepthTests)tempI;
+    currentDepthTest = (ValueTests)tempI;
 
     //Get color blending settings.
     glGetIntegerv(GL_BLEND_SRC_RGB, &tempI);
@@ -119,6 +117,37 @@ void Context::RefreshDriverState()
     glGetFloatv(GL_BLEND_COLOR, &tempV4[0]);
     currentColorBlending.Constant = { tempV4.r, tempV4.g, tempV4.b };
     currentAlphaBlending.Constant = tempV4.a;
+
+    //Get the stencil tests and write ops.
+    for (int faceI = 0; faceI < 2; ++faceI)
+    {
+        StencilTest& testData = (faceI == 0) ? stencilTestFront : stencilTestBack;
+        StencilResult& resultData = (faceI == 0) ? stencilResultFront : stencilResultBack;
+
+        GLenum side = (faceI == 0) ? GL_FRONT : GL_BACK,
+               key_test = (faceI == 0) ? GL_STENCIL_FUNC : GL_STENCIL_BACK_FUNC,
+               key_ref = (faceI == 0) ? GL_STENCIL_REF : GL_STENCIL_BACK_REF,
+               key_valueMask = (faceI == 0) ? GL_STENCIL_VALUE_MASK : GL_STENCIL_BACK_VALUE_MASK,
+               key_onFail = (faceI == 0) ? GL_STENCIL_FAIL : GL_STENCIL_BACK_FAIL,
+               key_onFailDepth = (faceI == 0) ? GL_STENCIL_PASS_DEPTH_FAIL : GL_STENCIL_BACK_PASS_DEPTH_FAIL,
+               key_onPass = (faceI == 0) ? GL_STENCIL_PASS_DEPTH_PASS : GL_STENCIL_BACK_PASS_DEPTH_PASS,
+               key_writeMask = (faceI == 0) ? GL_STENCIL_WRITEMASK : GL_STENCIL_BACK_WRITEMASK;
+
+        glGetIntegerv(key_test, &tempI);
+        testData.Test = (ValueTests)tempI;
+        glGetIntegerv(key_ref, &tempI);
+        testData.RefValue = tempI;
+        static_assert(false, "How to get stencil test mask fron int -> uint?");
+
+        glGetIntegerv(key_onFail, &tempI);
+        resultData.OnFailStencil = (StencilOps)tempI;
+        glGetIntegerv(key_onFailDepth, &tempI);
+        resultData.OnPassStencilFailDepth = (StencilOps)tempI;
+        glGetIntegerv(key_onPass, &tempI);
+        resultData.OnPassStencilDepth = (StencilOps)tempI;
+
+        static_assert(false, "How to get stencil write mask fron int -> uint?");
+    }
 }
 
 
@@ -199,7 +228,7 @@ void Context::SetFaceCulling(GL::FaceCullModes mode)
     }
 }
 
-void Context::SetDepthTest(GL::DepthTests newTest)
+void Context::SetDepthTest(GL::ValueTests newTest)
 {
     //If we haven't initialized depth-testing yet, turn it on permanently.
     //Disabling depth-testing also disables depth writes,
@@ -224,6 +253,20 @@ void Context::SetDepthWrites(bool canWriteDepth)
         else
             glDisable(GL_DEPTH_WRITEMASK);
     }
+}
+
+
+GL::BlendStateRGBA Context::GetBlending() const
+{
+    //Make sure the same blend settings are being used for both RGB and Alpha.
+    BlendStateAlpha colorBlendTest{ currentColorBlending.Src, currentColorBlending.Dest,
+                                    currentColorBlending.Op,
+                                    currentAlphaBlending.Constant };
+    assert(currentAlphaBlending == colorBlendTest);
+
+    return BlendStateRGBA{ currentColorBlending.Src, currentColorBlending.Dest,
+                           currentColorBlending.Op,
+                           { currentColorBlending.Constant, currentAlphaBlending.Constant } };
 }
 
 void Context::SetBlending(const BlendStateRGBA& state)
@@ -274,4 +317,115 @@ void Context::SetAlphaBlending(const BlendStateAlpha& state)
                  currentColorBlending.Constant.g,
                  currentColorBlending.Constant.b,
                  currentAlphaBlending.Constant);
+}
+
+
+const GL::StencilTest& Context::GetStencilTest() const
+{
+    //Make sure the same settings are being used for both front- and back-faces.
+    assert(stencilTestFront == stencilTestBack);
+    return stencilTestFront;
+}
+
+void Context::SetStencilTest(const StencilTest& test)
+{
+    if ((stencilTestFront == test) & (stencilTestBack == test))
+        return;
+
+    stencilTestFront = test;
+    stencilTestBack = test;
+
+    glStencilFunc((GLenum)test.Test, test.RefValue, test.Mask);
+}
+void Context::SetStencilTestFrontFaces(const StencilTest& test)
+{
+    if (test == stencilTestFront)
+        return;
+
+    stencilTestFront = test;
+    glStencilFuncSeparate(GL_FRONT, (GLenum)test.Test, test.RefValue, test.Mask);
+}
+void Context::SetStencilTestBackFaces(const StencilTest& test)
+{
+    if (test == stencilTestBack)
+        return;
+
+    stencilTestBack = test;
+    glStencilFuncSeparate(GL_BACK, (GLenum)test.Test, test.RefValue, test.Mask);
+}
+
+
+const GL::StencilResult& Context::GetStencilResult() const
+{
+    //Make sure the same settings are being used for both front- and back-faces.
+    assert(stencilResultFront == stencilResultBack);
+    return stencilResultFront;
+}
+
+void Context::SetStencilResult(const StencilResult& result)
+{
+    if ((stencilResultFront == result) & (stencilResultBack == result))
+        return;
+
+    stencilResultFront = result;
+    stencilResultBack = result;
+    glStencilOp((GLenum)result.OnFailStencil,
+                (GLenum)result.OnPassStencilFailDepth,
+                (GLenum)result.OnPassStencilDepth);
+}
+void Context::SetStencilResultFrontFaces(const StencilResult& result)
+{
+    if (result == stencilResultFront)
+        return;
+
+    stencilResultFront = result;
+    glStencilOpSeparate(GL_FRONT,
+                        (GLenum)result.OnFailStencil,
+                        (GLenum)result.OnPassStencilFailDepth,
+                        (GLenum)result.OnPassStencilDepth);
+}
+void Context::SetStencilResultBackFaces(const StencilResult& result)
+{
+    if (result == stencilResultBack)
+        return;
+
+    stencilResultBack = result;
+    glStencilOpSeparate(GL_BACK,
+                        (GLenum)result.OnFailStencil,
+                        (GLenum)result.OnPassStencilFailDepth,
+                        (GLenum)result.OnPassStencilDepth);
+}
+
+
+GLuint Context::GetStencilMask() const
+{
+    //Make sure the same settings are being used for both front- and back-faces.
+    assert(stencilMaskFront == stencilMaskBack);
+    return stencilMaskFront;
+}
+
+void Context::SetStencilMask(GLuint mask)
+{
+    if ((stencilMaskFront == mask) & (stencilMaskBack == mask))
+        return;
+
+    stencilMaskFront = mask;
+    stencilMaskBack = mask;
+    glStencilMask(mask);
+}
+void Context::SetStencilMaskFrontFaces(GLuint mask)
+{
+    if (mask == stencilMaskFront)
+        return;
+
+    stencilMaskFront = mask;
+    glStencilMaskSeparate(GL_FRONT, mask);
+}
+void Context::SetStencilMaskBackFaces(GLuint mask)
+{
+    if (mask == stencilMaskBack)
+        return;
+
+    stencilMaskBack = mask;
+    glStencilMaskSeparate(GL_BACK, mask);
 }
