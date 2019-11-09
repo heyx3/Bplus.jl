@@ -141,7 +141,7 @@ void Context::RefreshDriverState()
                key_writeMask = (faceI == 0) ? GL_STENCIL_WRITEMASK : GL_STENCIL_BACK_WRITEMASK;
 
         glGetIntegerv(key_test, &tempI);
-        testData.Test = ValueTests::_from_index(tempI);
+        testData.Test = ValueTests::_from_integral(tempI);
         glGetIntegerv(key_ref, &tempI);
         testData.RefValue = tempI;
         glGetIntegerv(key_valueMask, &tempI);
