@@ -143,7 +143,7 @@ void App::Run()
     //Configure SDL/OpenGL.
     bool doubleBuffer;
     int depthBits, stencilBits;
-    GL::VsyncModes vSyncMode;
+    GL::VsyncModes vSyncMode(GL::VsyncModes::Off);
     ConfigureOpenGL(doubleBuffer, depthBits, stencilBits, vSyncMode);
     if (!TrySDL(SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, doubleBuffer ? 1 : 0), "Error setting double-buffering") ||
         !TrySDL(SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, depthBits), "Error setting back buffer's depth bits") ||

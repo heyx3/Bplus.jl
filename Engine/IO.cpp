@@ -1,5 +1,7 @@
 #include "IO.h"
 
+#include <cctype>
+
 using namespace Bplus;
 
 

@@ -12,7 +12,12 @@ namespace
 Context* Context::GetCurrentContext() { return contextInstance; }
 
 Context::Context(SDL_Window* _owner, std::string& errMsg)
-    : owner(_owner)
+    : owner(_owner),
+      //Must give the better_enum types constructed values to avoid a compile error.
+      //The actual value is unimportant.
+      currentVsync(VsyncModes::Off),
+      currentCullMode(FaceCullModes::Off),
+      currentDepthTest(ValueTests::Off)
 {
     if (contextInstance != nullptr)
     {
@@ -117,7 +122,7 @@ void Context::RefreshDriverState()
     //Get the blend constant.
     glGetFloatv(GL_BLEND_COLOR, &tempV4[0]);
     currentColorBlending.Constant = { tempV4.r, tempV4.g, tempV4.b };
-    currentAlphaBlending.Constant = tempV4.a;
+    currentAlphaBlending.Constant = glm::vec1(tempV4.a);
 
     //Get the stencil tests and write ops.
     for (int faceI = 0; faceI < 2; ++faceI)
@@ -203,7 +208,7 @@ bool Context::SetVsyncMode(GL::VsyncModes mode)
     int err = SDL_GL_SetSwapInterval((int)mode);
 
     //If it failed, maybe the hardware just doesn't support G-sync/FreeSync.
-    if (err != 0 && mode == GL::VsyncModes::Adaptive)
+    if (err != 0 && mode == +GL::VsyncModes::Adaptive)
         err = SDL_GL_SetSwapInterval((int)GL::VsyncModes::On);
 
     return err == 0;
@@ -211,17 +216,17 @@ bool Context::SetVsyncMode(GL::VsyncModes mode)
 
 void Context::SetFaceCulling(GL::FaceCullModes mode)
 {
-    if (mode == FaceCullModes::Off)
+    if (mode == +FaceCullModes::Off)
     {
-        if (currentCullMode != FaceCullModes::Off)
+        if (currentCullMode != +FaceCullModes::Off)
         {
             glDisable(GL_CULL_FACE);
-            currentCullMode = FaceCullModes::Off;
+            currentCullMode = +FaceCullModes::Off;
         }
     }
     else
     {
-        if (currentCullMode == FaceCullModes::Off)
+        if (currentCullMode == +FaceCullModes::Off)
             glEnable(GL_CULL_FACE);
 
         if (currentCullMode != mode)
@@ -287,7 +292,8 @@ void Context::SetBlending(const GL::BlendStateRGBA& state)
     //Don't waste time in the GPU driver if we're already in this blend state.
     BlendStateRGB newColorBlending{ state.Src, state.Dest, state.Op,
                                     { state.Constant.r, state.Constant.g, state.Constant.b } };
-    BlendStateAlpha newAlphaBlending{ state.Src, state.Dest, state.Op, state.Constant.a };
+    BlendStateAlpha newAlphaBlending{ state.Src, state.Dest, state.Op,
+                                      glm::vec1(state.Constant.a) };
     if ((newColorBlending == currentColorBlending) &
         (newAlphaBlending == currentAlphaBlending))
     {
@@ -314,7 +320,7 @@ void Context::SetColorBlending(const GL::BlendStateRGB& state)
     glBlendColor(currentColorBlending.Constant.r,
                  currentColorBlending.Constant.g,
                  currentColorBlending.Constant.b,
-                 currentAlphaBlending.Constant);
+                 currentAlphaBlending.Constant.x);
 }
 void Context::SetAlphaBlending(const GL::BlendStateAlpha& state)
 {
@@ -329,7 +335,7 @@ void Context::SetAlphaBlending(const GL::BlendStateAlpha& state)
     glBlendColor(currentColorBlending.Constant.r,
                  currentColorBlending.Constant.g,
                  currentColorBlending.Constant.b,
-                 currentAlphaBlending.Constant);
+                 currentAlphaBlending.Constant.x);
 }
 
 

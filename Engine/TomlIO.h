@@ -18,7 +18,7 @@ namespace Bplus::IO
     //Gets the TOML field with the given name if it exists,
     //    or a "default" result if it doesn't.
     T TomlTryGet(const toml::Value& object, const char* key,
-                 const T& defaultIfMissing = default)
+                 const T& defaultIfMissing = {})
     {
         const auto* found = object.find(key);
         if (found == nullptr)
@@ -70,7 +70,7 @@ namespace Bplus::IO
             throw IO::Exception(std::string("Unable to find TOML array element a[") +
                                   std::to_string(index) + "]");
 
-        return TomlTryGet<T>(object, key);
+        return TomlTryGet<T>(object, index);
     }
     
     
@@ -149,6 +149,6 @@ namespace Bplus::IO
 
 
     //TOML has limited support for the variety of integer types.
-    int32_t ToTomlInt(uint32_t u) { return *((int32_t*)(&u)); }
-    uint32_t FromTomlInt(int32_t i) { return *((uint32_t*)(&i)); }
+    inline BP_API int32_t ToTomlInt(uint32_t u) { return *((int32_t*)(&u)); }
+    inline BP_API uint32_t FromTomlInt(int32_t i) { return *((uint32_t*)(&i)); }
 }
