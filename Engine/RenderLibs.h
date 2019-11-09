@@ -5,6 +5,7 @@
 
 //Dear ImGUI.
 #include "Dear ImGui\ImGuiInterfaces.h"
+#include "ImGuiHelpers.h"
 
 //SDL.
 #define SDL_MAIN_HANDLED 1

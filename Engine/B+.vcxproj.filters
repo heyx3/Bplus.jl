@@ -3,9 +3,6 @@
   <ItemGroup>
     <ClInclude Include="IO.h" />
     <ClInclude Include="RenderLibs.h" />
-    <ClInclude Include="Renderer\Helpers.h">
-      <Filter>Renderer</Filter>
-    </ClInclude>
     <ClInclude Include="Platform.h" />
     <ClInclude Include="App.h" />
     <ClInclude Include="Dear ImGui\imgui_internal.h">
@@ -48,12 +45,15 @@
       <Filter>Dear ImGui</Filter>
     </ClInclude>
     <ClInclude Include="TomlIO.h" />
+    <ClInclude Include="Renderer\Data.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\ImGuiHelpers.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
-    <ClCompile Include="Renderer\Helpers.cpp">
-      <Filter>Renderer</Filter>
-    </ClCompile>
     <ClCompile Include="App.cpp" />
     <ClCompile Include="Dear ImGui\imgui_draw.cpp">
       <Filter>Dear ImGui</Filter>
@@ -79,6 +79,10 @@
     <ClCompile Include="Dear ImGui\ImGuiInterfaces.cpp">
       <Filter>Dear ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer\Data.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="TomlIO.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Native File Dialog">

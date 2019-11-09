@@ -361,7 +361,8 @@ exit 0</Command>
     <ClCompile Include="NativeFileDialog\nfd_common.c" />
     <ClCompile Include="NativeFileDialog\nfd_win.cpp" />
     <ClCompile Include="Renderer\Context.cpp" />
-    <ClCompile Include="Renderer\Helpers.cpp" />
+    <ClCompile Include="Renderer\Data.cpp" />
+    <ClCompile Include="TomlIO.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
@@ -379,7 +380,8 @@ exit 0</Command>
     <ClInclude Include="Platform.h" />
     <ClInclude Include="Renderer\Context.h" />
     <ClInclude Include="Renderer\Files\MaterialData.h" />
-    <ClInclude Include="Renderer\Helpers.h" />
+    <ClInclude Include="Renderer\Data.h" />
+    <ClInclude Include="Renderer\ImGuiHelpers.h" />
     <ClInclude Include="RenderLibs.h" />
     <ClInclude Include="IO.h" />
     <ClInclude Include="TomlIO.h" />

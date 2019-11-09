@@ -1,4 +1,5 @@
 #include "../Engine/App.h"
+#include "../Engine/TomlIO.h"
 
 //A template command-line + window app based on B+ and SDL.
 //Command-line arguments:
@@ -81,9 +82,21 @@ protected:
 
     virtual void OnRendering(float deltaT)
     {
-        GetContext().Clear(1, 1, 1, 1,
-                           1);
+        auto& context = GetContext();
+        context.Clear(1, 1, 1, 1,
+                      1);
 
+        //Test render data serialization/gui:
+        auto blendMode = context.GetBlending();
+        auto blendModeToml = blendMode.ToToml();
+        blendMode.FromToml(blendModeToml);
+        if (blendMode.EditGUI())
+        {
+            std::cout << "Blend changed! It is now: \n" << blendMode.ToToml() << "\n---------\n\n";
+        }
+        context.SetBlending(blendMode);
+
+        //Test uint<=>int mask conversion safety.
         auto doMask = [](GLuint originalMask)
         {
             glStencilMask(originalMask);

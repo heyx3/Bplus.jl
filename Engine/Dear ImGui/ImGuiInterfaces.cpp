@@ -268,7 +268,7 @@ void SDLImpl::BeginFrame(float deltaTime)
     glm::ivec2 windowSize;
     glm::fvec2 windowDisplayScale;
     GetWindowDisplayScale(windowSize, windowDisplayScale);
-    io.DisplaySize = ImVec2(windowSize.x, windowSize.y);
+    io.DisplaySize = ImVec2((float)windowSize.x, (float)windowSize.y);
     io.DisplayFramebufferScale = ImVec2(windowDisplayScale.x, windowDisplayScale.y);
 
 

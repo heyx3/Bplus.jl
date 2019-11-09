@@ -14,6 +14,11 @@
 
 namespace Bplus::IO
 {
+    std::string BP_API ToTomlString(const toml::Value& tomlData,
+                                    toml::FormatFlag flags = toml::FormatFlag::FORMAT_INDENT);
+
+    #pragma region Get/TryGet for tables
+
     template<typename T>
     //Gets the TOML field with the given name if it exists,
     //    or a "default" result if it doesn't.
@@ -47,6 +52,9 @@ namespace Bplus::IO
         return TomlTryGet<T>(object, key);
     }
 
+    #pragma endregion
+
+    #pragma region Get/TryGet for arrays
 
     template<typename T>
     //Gets the TOML array element at the given index if it exists,
@@ -73,7 +81,42 @@ namespace Bplus::IO
         return TomlTryGet<T>(object, index);
     }
     
-    
+    #pragma endregion
+
+    #pragma region Converters between TOML-supported numbers and all int/float/bool
+
+    //TOML has limited support for the variety of number types.
+    //This helper function converts floats to double, ints to int64,
+    //    and leaves booleans alone (included for GLM).
+    template<typename T>
+    auto ToTomlNumber(T rawValue)
+    {
+        if constexpr (std::is_floating_point_v<T>)
+            return (double)rawValue;
+        else if constexpr (std::is_integral_v<T>)
+            return (int64_t)rawValue;
+        else //Assume it's a boolean.
+            return (bool)rawValue;
+    }
+
+    //TOML has limited support for the variety of number types.
+    //This helper function reads a TOML value as one of the supported types,
+    //    and converts it to the desired float, integer, or bool type.
+    template<typename T>
+    auto FromTomlNumber(const toml::Value& value)
+    {
+        if constexpr (std::is_floating_point_v<T>)
+            return (T)value.as<double>();
+        else if constexpr (std::is_integral_v<T>)
+            return (T)value.as<int64_t>();
+        else
+            return value.as<bool>();
+    }
+
+    #pragma endregion
+
+    #pragma region Enum value from TOML string
+
     //Enum_t should be an enum created with the better_enums library.
     template<typename Enum_t>
     //Converts the given toml table's field from a string to an enum.
@@ -95,30 +138,32 @@ namespace Bplus::IO
         }
     }
 
+    #pragma endregion
+
+    #pragma region Converters for GLM vectors
 
     template<glm::length_t L, class T>
     toml::Value ToToml(const glm::vec<L, T>& v)
     {
         toml::Value outToml;
         for (glm::length_t i = 0; i < L; ++i)
-            outToml.push(v[i]);
+            outToml.push(v[(size_t)i]);
+        return outToml;
     }
 
     template<glm::length_t L, class T>
     glm::vec<L, T> FromToml(const toml::Value& inToml)
     {
-        glm::vec<L, T>& v;
+        glm::vec<L, T> v;
 
-        try
-        {
-            for (glm::length_t i = 0; i < L; ++i)
-                v[i] = inToml.get(i);
-        }
-        catch (const std::runtime_error& e)
-        {
-            throw IO::Exception(std::string("Unable to parse value as Xvec") +
-                                  std::to_string(L) + ": " + e.what());
-        }
+        if (inToml.type() != toml::Value::ARRAY_TYPE)
+            throw IO::Exception("Vector value isn't a TOML array");
+        if (inToml.size() != L)
+            throw IO::Exception(std::string("Vector has ") + std::to_string(inToml.size()) +
+                                    " elements instead of the expected " + std::to_string(L));
+
+        for (glm::length_t i = 0; i < L; ++i)
+            v[i] = FromTomlNumber<T>(*inToml.find(i));
 
         return v;
     }
@@ -128,27 +173,26 @@ namespace Bplus::IO
     template<class T>
     toml::Value ToToml(const glm::vec<1, T>& v)
     {
-        toml::Value val;
-        val = v[0];
+        toml::Value val = v[0];
         return val;
     }
     template<class T>
     glm::vec<1, T> FromToml(const toml::Value& inToml)
     {
+        glm::vec<1, T> output;
+
         try
         {
-            T t = inToml.as<T>();
-            return glm::vec<1, T>(t);
+            output.x = FromTomlNumber<T>(inToml);
         }
         catch (const std::runtime_error& e)
         {
             throw IO::Exception(std::string("Unable to parse value as its expected type\
  in the vector: ") + e.what());
         }
+
+        return output;
     }
 
-
-    //TOML has limited support for the variety of integer types.
-    inline BP_API int32_t ToTomlInt(uint32_t u) { return *((int32_t*)(&u)); }
-    inline BP_API uint32_t FromTomlInt(int32_t i) { return *((uint32_t*)(&i)); }
+    #pragma endregion
 }

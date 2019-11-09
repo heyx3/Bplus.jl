@@ -1,9 +1,9 @@
 #pragma once
 
 #include "../RenderLibs.h"
+#include <better_enums.h>
 #include "../TomlIO.h"
 
-#include <better_enums.h>
 
 
 namespace Bplus::GL
@@ -152,7 +152,9 @@ namespace Bplus::GL
         static BlendState Additive() { return BlendState{ BlendFactors::One,
                                                           BlendFactors::Zero }; }
 
-        void Read(const toml::Value& tomlData)
+        #pragma region Serialization/GUI
+
+        void FromToml(const toml::Value& tomlData)
         {
             const char* status = "[null]";
             try
@@ -181,15 +183,29 @@ namespace Bplus::GL
                                     std::string("Error parsing BlendState<>::") + status + ": ");
             }
         }
-        void Write(toml::Value& tomlData) const
+        toml::Value ToToml() const
         {
-            tomlData["Src"] = Src._name();
-            tomlData["Dest"] = Dest._name();
-            tomlData["Op"] = Op._name();
+            toml::Value tomlData;
+            tomlData["Src"] = Src._to_string();
+            tomlData["Dest"] = Dest._to_string();
+            tomlData["Op"] = Op._to_string();
 
             if (UsesConstant())
                 tomlData["Constant"] = IO::ToToml(Constant);
+
+            return tomlData;
         }
+
+        //Displays Dear ImGUI widgets to edit this instance.
+        //Returns whether any changes were made.
+        bool EditGUI(int popupMaxItemHeight = -1)
+        {
+            return ImGui::EnumCombo<BlendFactors>("Src Factor", Src, popupMaxItemHeight) |
+                   ImGui::EnumCombo<BlendFactors>("Dest Factor", Dest, popupMaxItemHeight) |
+                   ImGui::EnumCombo<BlendOps>("Op", Op, popupMaxItemHeight);
+        }
+
+        #pragma endregion
     };
 
     //Note that equality comparisons don't check whether the two states are
@@ -224,8 +240,10 @@ namespace Bplus::GL
         GLint RefValue = 0;
         GLuint Mask = ~0;
 
-        void Read(const toml::Value& tomlData);
-        void Write(toml::Value& tomlData) const;
+        //Serialization/ImGUI editor:
+        void FromToml(const toml::Value& tomlData);
+        toml::Value ToToml() const;
+        bool EditGUI(int popupMaxItemHeight = -1);
     };
     bool BP_API operator==(const StencilTest& a, const StencilTest& b);
     inline bool BP_API operator!=(const StencilTest& a, const StencilTest& b) { return !(a == b); }
@@ -245,8 +263,10 @@ namespace Bplus::GL
               OnPassStencilDepth(onPassStencilDepth) { }
         StencilResult(StencilOps onPassStencilDepth) : OnPassStencilDepth(onPassStencilDepth) { }
 
-        void Read(const toml::Value& tomlData);
-        void Write(toml::Value& tomlData) const;
+        //Serialization/ImGUI editor:
+        void FromToml(const toml::Value& tomlData);
+        toml::Value ToToml() const;
+        bool EditGUI(int popupMaxItemHeight = -1);
     };
     bool BP_API operator==(const StencilResult& a, const StencilResult& b);
     inline bool BP_API operator!=(const StencilResult& a, const StencilResult& b) { return !(a == b); }
