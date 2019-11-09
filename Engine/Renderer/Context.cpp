@@ -78,7 +78,7 @@ void Context::RefreshDriverState()
 
     isScissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
     isDepthWriteEnabled = glIsEnabled(GL_DEPTH_WRITEMASK);
-    currentVsync = (VsyncModes)SDL_GL_GetSwapInterval();
+    currentVsync = VsyncModes::_from_integral(SDL_GL_GetSwapInterval());
     glGetBooleanv(GL_COLOR_WRITEMASK, (GLboolean*)(&colorWriteMask[0]));
 
     //Containers for various OpenGL settings.
@@ -88,7 +88,7 @@ void Context::RefreshDriverState()
     if (glIsEnabled(GL_CULL_FACE))
     {
         glGetIntegerv(GL_CULL_FACE_MODE, &tempI);
-        currentCullMode = (FaceCullModes)tempI;
+        currentCullMode = FaceCullModes::_from_integral(tempI);
     }
     else
     {
@@ -96,23 +96,23 @@ void Context::RefreshDriverState()
     }
 
     glGetIntegerv(GL_DEPTH_FUNC, &tempI);
-    currentDepthTest = (ValueTests)tempI;
+    currentDepthTest = ValueTests::_from_integral(tempI);
 
     //Get color blending settings.
     glGetIntegerv(GL_BLEND_SRC_RGB, &tempI);
-    currentColorBlending.Src = (BlendFactors)tempI;
+    currentColorBlending.Src = BlendFactors::_from_integral(tempI);
     glGetIntegerv(GL_BLEND_DST_RGB, &tempI);
-    currentColorBlending.Dest = (BlendFactors)tempI;
+    currentColorBlending.Dest = BlendFactors::_from_integral(tempI);
     glGetIntegerv(GL_BLEND_EQUATION_RGB, &tempI);
-    currentColorBlending.Op = (BlendOps)tempI;
+    currentColorBlending.Op = BlendOps::_from_integral(tempI);
 
     //Get alpha blending settings.
     glGetIntegerv(GL_BLEND_SRC_ALPHA, &tempI);
-    currentAlphaBlending.Src = (BlendFactors)tempI;
+    currentAlphaBlending.Src = BlendFactors::_from_integral(tempI);
     glGetIntegerv(GL_BLEND_DST_ALPHA, &tempI);
-    currentAlphaBlending.Dest = (BlendFactors)tempI;
+    currentAlphaBlending.Dest = BlendFactors::_from_integral(tempI);
     glGetIntegerv(GL_BLEND_EQUATION_ALPHA, &tempI);
-    currentAlphaBlending.Op = (BlendOps)tempI;
+    currentAlphaBlending.Op = BlendOps::_from_integral(tempI);
 
     //Get the blend constant.
     glGetFloatv(GL_BLEND_COLOR, &tempV4[0]);
@@ -136,18 +136,18 @@ void Context::RefreshDriverState()
                key_writeMask = (faceI == 0) ? GL_STENCIL_WRITEMASK : GL_STENCIL_BACK_WRITEMASK;
 
         glGetIntegerv(key_test, &tempI);
-        testData.Test = (ValueTests)tempI;
+        testData.Test = ValueTests::_from_index(tempI);
         glGetIntegerv(key_ref, &tempI);
         testData.RefValue = tempI;
         glGetIntegerv(key_valueMask, &tempI);
         testData.Mask = (GLuint)tempI;
 
         glGetIntegerv(key_onFail, &tempI);
-        resultData.OnFailStencil = (StencilOps)tempI;
+        resultData.OnFailStencil = StencilOps::_from_integral(tempI);
         glGetIntegerv(key_onFailDepth, &tempI);
-        resultData.OnPassStencilFailDepth = (StencilOps)tempI;
+        resultData.OnPassStencilFailDepth = StencilOps::_from_integral(tempI);
         glGetIntegerv(key_onPass, &tempI);
-        resultData.OnPassStencilDepth = (StencilOps)tempI;
+        resultData.OnPassStencilDepth = StencilOps::_from_integral(tempI);
 
         glGetIntegerv(key_writeMask, &tempI);
         writeMask = (GLuint)tempI;

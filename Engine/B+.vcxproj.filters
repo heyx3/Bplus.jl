@@ -47,6 +47,7 @@
     <ClInclude Include="Dear ImGui\ImGuiInterfaces.h">
       <Filter>Dear ImGui</Filter>
     </ClInclude>
+    <ClInclude Include="TomlIO.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />

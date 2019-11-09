@@ -45,3 +45,9 @@ void IO::ToLowercase(std::string& str)
     for (auto& c : str)
         c = std::tolower(c);
 }
+std::string IO::ToLowercase(const char* str)
+{
+    std::string strClass = str;
+    ToLowercase(strClass);
+    return strClass;
+}

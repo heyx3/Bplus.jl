@@ -382,6 +382,7 @@ exit 0</Command>
     <ClInclude Include="Renderer\Helpers.h" />
     <ClInclude Include="RenderLibs.h" />
     <ClInclude Include="IO.h" />
+    <ClInclude Include="TomlIO.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

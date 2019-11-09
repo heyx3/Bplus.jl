@@ -698,13 +698,9 @@ void OGLImpl::RenderFrame()
     //Restore the external GL state.
     glUseProgram(lastProgram);
     glBindTexture(GL_TEXTURE_2D, lastTexture);
-#ifdef GL_SAMPLER_BINDING
     glBindSampler(0, lastSampler);
-#endif
     glActiveTexture(lastActiveTexture);
-#ifndef IMGUI_IMPL_OPENGL_ES2
     glBindVertexArray(lastVAO);
-#endif
     glBindBuffer(GL_ARRAY_BUFFER, lastArrayBuffer);
     glBlendEquationSeparate(lastBlendEquationRGB, lastBlendEquationAlpha);
     glBlendFuncSeparate(lastBlendSrcRGB, lastBlendDestRGB, lastBlendSrcAlpha, lastBlendDestAlpha);
@@ -712,9 +708,7 @@ void OGLImpl::RenderFrame()
     if (lastCullFaceEnabled) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
     if (lastDepthTestEnabled) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
     if (lastScissorTestEnabled) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
-#ifdef GL_POLYGON_MODE
     glPolygonMode(GL_FRONT_AND_BACK, (GLenum)lastPolygonMode[0]);
-#endif
     glViewport(lastViewport[0], lastViewport[1], (GLsizei)lastViewport[2], (GLsizei)lastViewport[3]);
     glScissor(lastScissorBox[0], lastScissorBox[1], (GLsizei)lastScissorBox[2], (GLsizei)lastScissorBox[3]);
 }

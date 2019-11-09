@@ -11,7 +11,6 @@ namespace fs = std::filesystem;
 
 //Imported libraries:
 #include "NativeFileDialog\nfd.h"
-#include <toml.h>
 
 #include "Platform.h"
 
@@ -23,33 +22,28 @@ namespace Bplus
 
     namespace IO
     {
+        //The exception for something that goes bad during IO work, such as parsing.
+        //Makes it easy to "nest" these exceptions, so each level can attach information
+        //    about where that part of the parser went wrong.
+        class Exception
+        {
+        public:
+            const std::string Message;
+            Exception(const char* msg) : Message(msg) { }
+            Exception(const std::string& msg) : Message(msg) { }
+            Exception(const Exception& inner,
+                      const std::string& prefix, const std::string& suffix = "")
+                : Exception(prefix + inner.Message + suffix) { }
+        };
+
+
         //Returns whether it was successful.
         bool BP_API WriteEntireFile(const fs::path& path, const std::string& contents, bool append);
 
         std::string BP_API ReadEntireFile(const fs::path& path,
                                           const std::string& defaultIfMissing);
 
-        template<typename T>
-        T TomlTryGet(const toml::Value& object, const char* key,
-            const T& defaultIfMissing = default)
-        {
-            const auto* found = object.find(key);
-            if (found == nullptr)
-                return defaultIfMissing;
-            else
-                return found->as<T>();
-        }
-        template<typename T>
-        T TomlTryGet(const toml::Value& object, size_t index,
-                     const T& defaultIfMissing = default)
-        {
-            const auto* found = object.find(index);
-            if (found == nullptr)
-                return defaultIfMissing;
-            else
-                return found->as<T>();
-        }
-
-        void ToLowercase(std::string& str);
+        void BP_API ToLowercase(std::string& str);
+        std::string BP_API ToLowercase(const char* str);
     }
 }

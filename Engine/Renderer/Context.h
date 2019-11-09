@@ -134,9 +134,9 @@ namespace Bplus::GL
         SDL_GLContext sdlContext;
         SDL_Window* owner;
 
+        VsyncModes currentVsync;
         bool isScissorEnabled, isDepthWriteEnabled;
         glm::bvec4 colorWriteMask;
-        VsyncModes currentVsync;
         FaceCullModes currentCullMode;
         ValueTests currentDepthTest;
         BlendStateRGB currentColorBlending;

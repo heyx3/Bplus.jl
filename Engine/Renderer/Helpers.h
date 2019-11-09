@@ -1,6 +1,9 @@
 #pragma once
 
 #include "../RenderLibs.h"
+#include "../TomlIO.h"
+
+#include <better_enums.h>
 
 
 namespace Bplus::GL
@@ -15,28 +18,29 @@ namespace Bplus::GL
     bool BP_API TrySDL(void* shouldntBeNull, std::string& errOut, const char* prefix);
 
 
-    //The enum values line up with the SDL codes in SDL_GL_SetSwapInterval().
-    enum class BP_API VsyncModes : int
-    {
+    //Define various rendering enums with the help of the "Better Enums" library.
+    //This library provides toins of convenience such as iteration and easy string conversion,
+    //    but has one downside: comparing values must be done with the unary "+" operator,
+    //    e.x.: "if (mode == +VsyncModes::Off)"
+    //Note that the enum values generally line up with OpenGL and/or SDL codes.
+
+    //SDL Vsync settings.
+    BETTER_ENUM(VsyncModes, int,
         Off = 0,
         On = 1,
-
-        //AMD FreeSync and NVidia G-Sync
         Adaptive = -1
-    };
+    );
 
-    //The enum values line up with the OpenGL blend constants where applicable.
-    enum class BP_API FaceCullModes : GLenum
-    {
+    //Whether to cull polygon faces during rendering (and which side to cull).
+    BETTER_ENUM(FaceCullModes, GLenum,
         Off = GL_INVALID_ENUM,
         On = GL_BACK,
         Backwards = GL_FRONT,
         All = GL_FRONT_AND_BACK
-    };
+    );
 
-    //Lines up with the OpenGL depth/stencil test constants where applicable.
-    enum class BP_API ValueTests : GLenum
-    {
+    //The various modes for depth/stencil testing.
+    BETTER_ENUM(ValueTests, GLenum,
         //The test always passes. Note that this does NOT disable depth writes.
         Off = GL_ALWAYS,
         //The test always fails.
@@ -56,11 +60,10 @@ namespace Bplus::GL
         Equal = GL_EQUAL,
         //Passes if the fragment's value is not equal to the "test" value.
         NotEqual = GL_NOTEQUAL
-    };
+    );
 
-    //Lines up with the OpenGL stencil operation constants.
-    enum class BP_API StencilOps : GLenum
-    {
+    //The various actions that can be taken on a stencil buffer.
+    BETTER_ENUM(StencilOps, GLenum,
         //Don't modify the stencil buffer value.
         Nothing = GL_KEEP,
 
@@ -79,12 +82,11 @@ namespace Bplus::GL
         //Decrements the stencil buffer's value, clamping it to stay inside its range.
         DecrementClamp = GL_DECR,
         //Decrements the stencil buffer's value, wrapping around to the max value if it's at 0.
-        DecrementWrap = GL_DECR_WRAP,
-    };
+        DecrementWrap = GL_DECR_WRAP
+    );
 
-    //Lines up with the OpenGL blend constants where applicable.
-    enum class BP_API BlendFactors
-    {
+    //The different factors that can be used in the blend operation.
+    BETTER_ENUM(BlendFactors, GLenum,
         Zero = GL_ZERO,
         One = GL_ONE,
 
@@ -113,18 +115,21 @@ namespace Bplus::GL
         //Unlike the others, this isn't a multiplier --
         //    it replaces the original value with a user-defined constant.
         InverseConstantAlpha = GL_ONE_MINUS_CONSTANT_ALPHA
-    };
+    );
     bool BP_API UsesConstant(BlendFactors factor);
 
-    //Lines up with the OpenGL blend constants where applicable.
-    enum class BP_API BlendOps
-    {
+
+    BETTER_ENUM(BlendOps, GLenum,
         Add = GL_FUNC_ADD,
         Subtract = GL_FUNC_SUBTRACT,
         ReverseSubtract = GL_FUNC_REVERSE_SUBTRACT,
         Min = GL_MIN,
         Max = GL_MAX
-    };
+    );
+
+
+    //Below are some data structures grouping related rendering state settings.
+    //They all provide helper functions for writing/reading TOML data.
 
 
     #pragma region BlendState<> struct template
@@ -146,6 +151,45 @@ namespace Bplus::GL
                                                              BlendFactors::InverseSrcAlpha }; }
         static BlendState Additive() { return BlendState{ BlendFactors::One,
                                                           BlendFactors::Zero }; }
+
+        void Read(const toml::Value& tomlData)
+        {
+            const char* status = "[null]";
+            try
+            {
+                status = "Src";
+                Src = IO::EnumFromString<BlendFactors>(tomlData, "Src");
+
+                status = "Dest";
+                Dest = IO::EnumFromString<BlendFactors>(tomlData, "Dest");
+
+                status = "Op";
+                Op = IO::EnumFromString<BlendOps>(tomlData, "Op");
+
+                status = "Constant";
+                if (UsesConstant())
+                    if (tomlData.has("Constant"))
+                        Constant = IO::FromToml<Constant_t::length(),
+                                                Constant_t::value_type>
+                                           (*(tomlData.find("Constant")));
+                    else
+                        throw IO::Exception("Missing field");
+            }
+            catch (const IO::Exception& e)
+            {
+                throw IO::Exception(e,
+                                    std::string("Error parsing BlendState<>::") + status + ": ");
+            }
+        }
+        void Write(toml::Value& tomlData) const
+        {
+            tomlData["Src"] = Src._name();
+            tomlData["Dest"] = Dest._name();
+            tomlData["Op"] = Op._name();
+
+            if (UsesConstant())
+                tomlData["Constant"] = IO::ToToml(Constant);
+        }
     };
 
     //Note that equality comparisons don't check whether the two states are
@@ -170,7 +214,7 @@ namespace Bplus::GL
 
     #pragma endregion
     using BlendStateRGB = BlendState<glm::vec3>;
-    using BlendStateAlpha = BlendState<float>;
+    using BlendStateAlpha = BlendState<glm::vec1>;
     using BlendStateRGBA = BlendState<glm::vec4>;
 
 
@@ -179,6 +223,9 @@ namespace Bplus::GL
         ValueTests Test = ValueTests::Off;
         GLint RefValue = 0;
         GLuint Mask = ~0;
+
+        void Read(const toml::Value& tomlData);
+        void Write(toml::Value& tomlData) const;
     };
     bool BP_API operator==(const StencilTest& a, const StencilTest& b);
     inline bool BP_API operator!=(const StencilTest& a, const StencilTest& b) { return !(a == b); }
@@ -196,26 +243,11 @@ namespace Bplus::GL
                       StencilOps onPassStencilDepth)
             : OnFailStencil(onFailStencil), OnPassStencilFailDepth(onPassStencilFailDepth),
               OnPassStencilDepth(onPassStencilDepth) { }
-        StencilResult(StencilOps onPassStencilDepth)
-            : StencilResult(StencilOps::Nothing, StencilOps::Nothing, onPassStencilDepth) { }
+        StencilResult(StencilOps onPassStencilDepth) : OnPassStencilDepth(onPassStencilDepth) { }
+
+        void Read(const toml::Value& tomlData);
+        void Write(toml::Value& tomlData) const;
     };
     bool BP_API operator==(const StencilResult& a, const StencilResult& b);
     inline bool BP_API operator!=(const StencilResult& a, const StencilResult& b) { return !(a == b); }
-
-
-    //Converters from enums to string.
-    BP_API const char* ToString(VsyncModes mode);
-    BP_API const char* ToString(FaceCullModes culling);
-    BP_API const char* ToString(ValueTests mode);
-    BP_API const char* ToString(StencilOps op);
-    BP_API const char* ToString(BlendFactors factor);
-    BP_API const char* ToString(BlendOps op);
-
-    //Converters from strings to enum (case-insensitive).
-    VsyncModes    BP_API FromString_VsyncModes(const char* modeStr);
-    FaceCullModes BP_API FromString_FaceCullModes(const char* cullingStr);
-    StencilOps    BP_API FromString_StencilOps(const char* opStr);
-    ValueTests    BP_API FromString_ValueTests(const char* modeStr);
-    BlendFactors  BP_API FromString_BlendFactors(const char* factorStr);
-    BlendOps      BP_API FromString_BlendOps(const char* opStr);
 }
