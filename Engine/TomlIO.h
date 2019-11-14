@@ -142,22 +142,34 @@ namespace Bplus::IO
 
     #pragma region Converters for GLM vectors
 
-    template<glm::length_t L, class T>
-    toml::Value ToToml(const glm::vec<L, T>& v)
+    template<glm::length_t L, typename T, glm::qualifier Q = glm::packed_highp>
+    toml::Value ToToml(const glm::vec<L, T, Q>& v)
     {
         toml::Value outToml;
-        for (glm::length_t i = 0; i < L; ++i)
+        
+        //If it's just one value, don't bother with an array.
+        if constexpr (L == 1)
+            outToml = v[0];
+        else for (glm::length_t i = 0; i < L; ++i)
             outToml.push(v[(size_t)i]);
+
         return outToml;
     }
 
-    template<glm::length_t L, class T>
-    glm::vec<L, T> FromToml(const toml::Value& inToml)
+    template<glm::length_t L, typename T, glm::qualifier Q = glm::packed_highp>
+    glm::vec<L, T, Q> FromToml(const toml::Value& inToml)
     {
-        glm::vec<L, T> v;
+        glm::vec<L, T, Q> v;
+
+        //Note that, if it's a 1D vector, it doesn't have to be an array of values --
+        //    it can just be a lone naked value.
 
         if (inToml.type() != toml::Value::ARRAY_TYPE)
-            throw IO::Exception("Vector value isn't a TOML array");
+            if constexpr (L == 1)
+                return glm::vec<L, T, Q>(FromTomlNumber<T>(inToml));
+            else
+                throw IO::Exception("Vector value isn't a TOML array");
+
         if (inToml.size() != L)
             throw IO::Exception(std::string("Vector has ") + std::to_string(inToml.size()) +
                                     " elements instead of the expected " + std::to_string(L));
@@ -166,32 +178,6 @@ namespace Bplus::IO
             v[i] = FromTomlNumber<T>(*inToml.find(i));
 
         return v;
-    }
-
-    //For 1D vectors, don't bother with an array of values;
-    //    just serialize the value directly.
-    template<class T>
-    toml::Value ToToml(const glm::vec<1, T>& v)
-    {
-        toml::Value val = v[0];
-        return val;
-    }
-    template<class T>
-    glm::vec<1, T> FromToml(const toml::Value& inToml)
-    {
-        glm::vec<1, T> output;
-
-        try
-        {
-            output.x = FromTomlNumber<T>(inToml);
-        }
-        catch (const std::runtime_error& e)
-        {
-            throw IO::Exception(std::string("Unable to parse value as its expected type\
- in the vector: ") + e.what());
-        }
-
-        return output;
     }
 
     #pragma endregion

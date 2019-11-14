@@ -1,6 +1,8 @@
 #pragma once
 #include "../Dear ImGui/imgui.h"
 #include <better_enums.h>
+#include <glm/glm.hpp>
+#include <glm/ext.hpp>
 
 //Add-ons to the Dear ImGUI library.
 

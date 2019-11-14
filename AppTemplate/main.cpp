@@ -87,14 +87,17 @@ protected:
                       1);
 
         //Test render data serialization/gui:
-        auto blendMode = context.GetBlending();
+        auto blendMode = context.GetAlphaBlending();
         auto blendModeToml = blendMode.ToToml();
         blendMode.FromToml(blendModeToml);
-        if (blendMode.EditGUI())
+        if (blendMode.EditGUI([](const char* label, glm::vec1& val)
+                              {
+                                  return ImGui::DragFloat(label, &val.x, 0.01f, 0, 1);
+                              }))
         {
             std::cout << "Blend changed! It is now: \n" << blendMode.ToToml() << "\n---------\n\n";
         }
-        context.SetBlending(blendMode);
+        context.SetAlphaBlending(blendMode);
 
         //Test uint<=>int mask conversion safety.
         auto doMask = [](GLuint originalMask)

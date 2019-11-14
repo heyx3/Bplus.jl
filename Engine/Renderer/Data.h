@@ -198,11 +198,16 @@ namespace Bplus::GL
 
         //Displays Dear ImGUI widgets to edit this instance.
         //Returns whether any changes were made.
-        bool EditGUI(int popupMaxItemHeight = -1)
+        bool EditGUI(std::function<bool(const char*, Constant_t&)> editConstantValue,
+                     int popupMaxItemHeight = -1)
         {
-            return ImGui::EnumCombo<BlendFactors>("Src Factor", Src, popupMaxItemHeight) |
-                   ImGui::EnumCombo<BlendFactors>("Dest Factor", Dest, popupMaxItemHeight) |
-                   ImGui::EnumCombo<BlendOps>("Op", Op, popupMaxItemHeight);
+            bool changed =
+                     ImGui::EnumCombo<BlendFactors>("Src Factor", Src, popupMaxItemHeight) |
+                     ImGui::EnumCombo<BlendFactors>("Dest Factor", Dest, popupMaxItemHeight) |
+                     ImGui::EnumCombo<BlendOps>("Op", Op, popupMaxItemHeight);
+            if (UsesConstant())
+                changed |= editConstantValue("Constant", Constant);
+            return changed;
         }
 
         #pragma endregion
