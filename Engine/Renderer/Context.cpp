@@ -60,7 +60,8 @@ Context::~Context()
     {
         SDL_GL_DeleteContext(sdlContext);
 
-        assert(contextInstance == this);
+        BPAssert(contextInstance == this,
+                 "More than one initialized Context in this thread");
         contextInstance = nullptr;
     }
 }
@@ -275,7 +276,8 @@ GL::BlendStateRGBA Context::GetBlending() const
     BlendStateAlpha colorBlendTest{ ColorBlending.Src, ColorBlending.Dest,
                                     ColorBlending.Op,
                                     AlphaBlending.Constant };
-    assert(AlphaBlending == colorBlendTest);
+    BPAssert(AlphaBlending == colorBlendTest,
+             "Alpha blend state and color blend state do not match up");
 
     return BlendStateRGBA{ ColorBlending.Src, ColorBlending.Dest,
                            ColorBlending.Op,
@@ -337,7 +339,8 @@ void Context::SetAlphaBlending(const GL::BlendStateAlpha& state)
 const GL::StencilTest& Context::GetStencilTest() const
 {
     //Make sure the same settings are being used for both front- and back-faces.
-    assert(StencilTestFront == StencilTestBack);
+    BPAssert(StencilTestFront == StencilTestBack,
+             "Front-face stencil test and back-face stencil test don't match");
     return StencilTestFront;
 }
 
@@ -372,7 +375,8 @@ void Context::SetStencilTestBackFaces(const GL::StencilTest& test)
 const GL::StencilResult& Context::GetStencilResult() const
 {
     //Make sure the same settings are being used for both front- and back-faces.
-    assert(StencilResultFront == StencilResultBack);
+    BPAssert(StencilResultFront == StencilResultBack,
+             "Front-face stencil result and back-face stencil result don't match");
     return StencilResultFront;
 }
 
@@ -414,7 +418,8 @@ void Context::SetStencilResultBackFaces(const GL::StencilResult& result)
 GLuint Context::GetStencilMask() const
 {
     //Make sure the same settings are being used for both front- and back-faces.
-    assert(StencilMaskFront == StencilMaskBack);
+    BPAssert(StencilMaskFront == StencilMaskBack,
+             "Front-face stencil mask and back-face stencil mask don't match up");
     return StencilMaskFront;
 }
 

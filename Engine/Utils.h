@@ -3,6 +3,31 @@
 //A file that is included in Platform.h, essentially making this file's contents
 //    available everywhere in the project.
 
+#include <functional>
+
+//Custom assert function that can be changed by users of this engine.
+#pragma region BPAssert
+
+namespace Bplus
+{
+    //The function used for asserts.
+    //Only called in debug builds.
+    using AssertFuncSignature = void(*)(bool, const char*);
+    extern BP_API AssertFuncSignature assertFunc;
+
+    //Runs the standard "assert()" macro,
+    //    and also writes to stdout if it fails.
+    void DefaultAssertFunc(bool expr, const char* msg);
+}
+
+#ifdef NDEBUG
+    #define BPAssert(expr, msg) ((void)0)
+#else
+    #define BPAssert(expr, msg) Bplus::assertFunc(expr, msg)
+#endif
+
+#pragma endregion
+
 
 //The BETTER_ENUM() macro, to define an enum
 //    with added string conversions and iteration.
@@ -18,9 +43,10 @@
 //This helper macro escapes commas inside other macro calls.
 #define BP_COMMA ,
 
+
+#pragma region _strong_typedef helper struct
 namespace Bplus
 {
-    #pragma region _strong_typedef definition
     template <class Tag, typename T>
     struct _strong_typedef
     {
@@ -43,5 +69,5 @@ namespace Bplus
     private:
         T value_;
     };
-    #pragma endregion
 }
+#pragma endregion

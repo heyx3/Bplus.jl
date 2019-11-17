@@ -367,6 +367,7 @@ exit 0</Command>
     <ClCompile Include="Renderer\Materials\Material.cpp" />
     <ClCompile Include="Renderer\Materials\Uniforms.cpp" />
     <ClCompile Include="TomlIO.cpp" />
+    <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />

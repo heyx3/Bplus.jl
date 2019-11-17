@@ -28,12 +28,12 @@ ImGuiSDLInterface* ImGuiSDLInterface::GetThreadInstance()
 ImGuiSDLInterface::ImGuiSDLInterface(SDL_Window* _mainWindow, SDL_GLContext _glContext)
     : mainWindow(_mainWindow), glContext(_glContext)
 {
-    assert(currentSDLInterface == nullptr);
+    IM_ASSERT(currentSDLInterface == nullptr);
     currentSDLInterface = this;
 }
 ImGuiSDLInterface::~ImGuiSDLInterface()
 {
-    assert(currentSDLInterface == this);
+    IM_ASSERT(currentSDLInterface == this);
     currentSDLInterface = nullptr;
 }
 
@@ -44,12 +44,12 @@ ImGuiOpenGLInterface* ImGuiOpenGLInterface::GetThreadInstance()
 ImGuiOpenGLInterface::ImGuiOpenGLInterface(const char* _glslVersion)
     : glslVersion(_glslVersion)
 {
-    assert(currentOGLInterface == nullptr);
+    IM_ASSERT(currentOGLInterface == nullptr);
     currentOGLInterface = this;
 }
 ImGuiOpenGLInterface::~ImGuiOpenGLInterface()
 {
-    assert(currentOGLInterface == this);
+    IM_ASSERT(currentOGLInterface == this);
     currentOGLInterface = nullptr;
 }
 

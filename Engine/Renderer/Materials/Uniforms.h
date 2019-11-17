@@ -299,13 +299,14 @@ namespace Bplus::GL
             //Technically the C++ standard doesn't guarantee that std::vector's default constructor
             //    makes no heap allocations, but from what I understand, it never will in practice.
             //If this assert fails, you'll need to switch over to a raw array.
-            assert(arrayValue.capacity() < 1);
+            BPAssert(arrayValue.capacity() < 1,
+                     "std::vector makes heap allocations in default constructor!");
         }
 
         //Constructor with the uniform's value.
         template<typename Value_t>
         Uniform(const Value_t& _singleValue)
-            : Uniform() //Make sure the assert() gets called.
+            : Uniform() //Make sure the assert gets called.
         {
             type = GetUniformType<Value_t>();
             singleValue = _singleValue;
@@ -333,7 +334,7 @@ namespace Bplus::GL
 
         const ValueUnion_t& Get(size_t index = 0) const
         {
-            assert(index < count);
+            BPAssert(index < count, "index outside range");
             if ((index == 0) & (arrayValue.size() < 1))
                 return singleValue;
             else
@@ -350,7 +351,9 @@ namespace Bplus::GL
         template<typename Value_t>
         const Value_t& Get(size_t index = 0) const
         {
-            assert(type == GetUniformType<Value_t>());
+            BPAssert(type == GetUniformType<Value_t>(),
+                     (std::string("Type mismatch: ") + type._to_string() +
+                          " instead of " + GetUniformType<Value_t>()._to_string()).c_str());
             return Get(index).As<Value_t>();
         }
         template<typename Value_t>
@@ -364,7 +367,7 @@ namespace Bplus::GL
 
         void Set(size_t index, const ValueUnion_t& newValue)
         {
-            assert(index < GetCount());
+            BPAssert(index < GetCount(), "Index out of range");
             if (GetCount() == 1 && arrayValue.size() == 0)
                 singleValue = newValue;
             else
@@ -374,7 +377,9 @@ namespace Bplus::GL
         template<typename Value_t>
         void Set(size_t index, const Value_t& newValue)
         {
-            assert(type == GetUniformType<Value_t>());
+            BPAssert(type == GetUniformType<Value_t>(),
+                     (std::string("Type mismatch: ") + type._to_string() +
+                          " instead of " + GetUniformType<Value_t>()._to_string()).c_str());
             Set(index, ValueUnion_t{ newValue });
         }
 
@@ -388,9 +393,10 @@ namespace Bplus::GL
         void SetType(UniformTypes t)
         {
             //Changing the type is only allowed if no items are in the array yet.
-            assert(type == InvalidType ||
-                   type == t ||
-                   GetCount() == 0);
+            BPAssert(type == InvalidType ||
+                       type == t ||
+                       GetCount() == 0,
+                     "Trying to change the type when the array has values");
 
             type = t;
         }
@@ -425,12 +431,13 @@ namespace Bplus::GL
                 count += 1;
             }
 
-            assert((count == arrayValue.size()) ||
-                   (count < 2));
+            BPAssert(count == arrayValue.size() || count < 2,
+                     "count doesn't match up with arrayValue.size() as expected");
         }
         void Remove(size_t index)
         {
-            assert(index < count); //Both are unsigned, so this implies count > 0 as well.
+            BPAssert(index < count, //Both are unsigned, so this implies count > 0 as well.
+                     "Index out of range");
 
             if (count == 1)
                 count = 0;

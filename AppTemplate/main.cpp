@@ -127,7 +127,7 @@ protected:
 };
 
 
-
+//TODO: Make actual unit tests somehow.
 void TestVectorUniforms()
 {
     using namespace Bplus::GL;

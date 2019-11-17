@@ -91,6 +91,7 @@
       <Filter>Renderer\Materials</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\Materials\Uniforms.cpp" />
+    <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Native File Dialog">
