@@ -105,6 +105,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -166,6 +167,7 @@ exit 0</Command>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -362,12 +364,15 @@ exit 0</Command>
     <ClCompile Include="NativeFileDialog\nfd_win.cpp" />
     <ClCompile Include="Renderer\Context.cpp" />
     <ClCompile Include="Renderer\Data.cpp" />
+    <ClCompile Include="Renderer\Materials\Material.cpp" />
+    <ClCompile Include="Renderer\Materials\Uniforms.cpp" />
     <ClCompile Include="TomlIO.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
     <ClInclude Include="Dear ImGui\imconfig.h" />
     <ClInclude Include="Dear ImGui\imgui.h" />
+    <ClInclude Include="Dear ImGui\ImGuiAddons.h" />
     <ClInclude Include="Dear ImGui\ImGuiInterfaces.h" />
     <ClInclude Include="Dear ImGui\imgui_internal.h" />
     <ClInclude Include="Dear ImGui\imgui_stdlib.h" />
@@ -379,12 +384,13 @@ exit 0</Command>
     <ClInclude Include="NativeFileDialog\nfd_common.h" />
     <ClInclude Include="Platform.h" />
     <ClInclude Include="Renderer\Context.h" />
-    <ClInclude Include="Renderer\Files\MaterialData.h" />
     <ClInclude Include="Renderer\Data.h" />
-    <ClInclude Include="Renderer\ImGuiHelpers.h" />
+    <ClInclude Include="Renderer\Materials\Material.h" />
+    <ClInclude Include="Renderer\Materials\Uniforms.h" />
     <ClInclude Include="RenderLibs.h" />
     <ClInclude Include="IO.h" />
     <ClInclude Include="TomlIO.h" />
+    <ClInclude Include="Utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

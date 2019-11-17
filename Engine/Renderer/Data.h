@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../RenderLibs.h"
-#include <better_enums.h>
 #include "../TomlIO.h"
 
 
@@ -16,6 +15,9 @@ namespace Bplus::GL
     //    returns false and sets "errOut" to "prefix" plus the SDL error.
     //Otherwise, returns true.
     bool BP_API TrySDL(void* shouldntBeNull, std::string& errOut, const char* prefix);
+
+
+    //TODO: strong_typedef various handles to OpenGL data.
 
 
     //Define various rendering enums with the help of the "Better Enums" library.

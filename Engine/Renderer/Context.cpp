@@ -12,12 +12,7 @@ namespace
 Context* Context::GetCurrentContext() { return contextInstance; }
 
 Context::Context(SDL_Window* _owner, std::string& errMsg)
-    : owner(_owner),
-      //Must give the better_enum types constructed values to avoid a compile error.
-      //The actual value is unimportant.
-      currentVsync(VsyncModes::Off),
-      currentCullMode(FaceCullModes::Off),
-      currentDepthTest(ValueTests::Off)
+    : owner(_owner)
 {
     if (contextInstance != nullptr)
     {
@@ -57,7 +52,7 @@ that hasn't been cleaned up.";
         return;
     }
 
-    RefreshDriverState();
+    RefreshState();
 }
 Context::~Context()
 {
@@ -71,7 +66,7 @@ Context::~Context()
 }
 
 
-void Context::RefreshDriverState()
+void Context::RefreshState()
 {
     //A handful of features will be left enabled permanently for simplicity;
     //    they can still be effectively disabled via their specific parameters.
@@ -81,10 +76,10 @@ void Context::RefreshDriverState()
     //    has a side effect of disabling any depth writes.
     glEnable(GL_DEPTH_TEST);
 
-    isScissorEnabled = glIsEnabled(GL_SCISSOR_TEST);
-    isDepthWriteEnabled = glIsEnabled(GL_DEPTH_WRITEMASK);
-    currentVsync = VsyncModes::_from_integral(SDL_GL_GetSwapInterval());
-    glGetBooleanv(GL_COLOR_WRITEMASK, (GLboolean*)(&colorWriteMask[0]));
+    EnableScissor = glIsEnabled(GL_SCISSOR_TEST);
+    EnableDepthWrite = glIsEnabled(GL_DEPTH_WRITEMASK);
+    Vsync = VsyncModes::_from_integral(SDL_GL_GetSwapInterval());
+    glGetBooleanv(GL_COLOR_WRITEMASK, (GLboolean*)(&ColorWriteMask[0]));
 
     //Containers for various OpenGL settings.
     int tempI;
@@ -93,43 +88,43 @@ void Context::RefreshDriverState()
     if (glIsEnabled(GL_CULL_FACE))
     {
         glGetIntegerv(GL_CULL_FACE_MODE, &tempI);
-        currentCullMode = FaceCullModes::_from_integral(tempI);
+        CullMode = FaceCullModes::_from_integral(tempI);
     }
     else
     {
-        currentCullMode = FaceCullModes::Off;
+        CullMode = FaceCullModes::Off;
     }
 
     glGetIntegerv(GL_DEPTH_FUNC, &tempI);
-    currentDepthTest = ValueTests::_from_integral(tempI);
+    DepthTest = ValueTests::_from_integral(tempI);
 
     //Get color blending settings.
     glGetIntegerv(GL_BLEND_SRC_RGB, &tempI);
-    currentColorBlending.Src = BlendFactors::_from_integral(tempI);
+    ColorBlending.Src = BlendFactors::_from_integral(tempI);
     glGetIntegerv(GL_BLEND_DST_RGB, &tempI);
-    currentColorBlending.Dest = BlendFactors::_from_integral(tempI);
+    ColorBlending.Dest = BlendFactors::_from_integral(tempI);
     glGetIntegerv(GL_BLEND_EQUATION_RGB, &tempI);
-    currentColorBlending.Op = BlendOps::_from_integral(tempI);
+    ColorBlending.Op = BlendOps::_from_integral(tempI);
 
     //Get alpha blending settings.
     glGetIntegerv(GL_BLEND_SRC_ALPHA, &tempI);
-    currentAlphaBlending.Src = BlendFactors::_from_integral(tempI);
+    AlphaBlending.Src = BlendFactors::_from_integral(tempI);
     glGetIntegerv(GL_BLEND_DST_ALPHA, &tempI);
-    currentAlphaBlending.Dest = BlendFactors::_from_integral(tempI);
+    AlphaBlending.Dest = BlendFactors::_from_integral(tempI);
     glGetIntegerv(GL_BLEND_EQUATION_ALPHA, &tempI);
-    currentAlphaBlending.Op = BlendOps::_from_integral(tempI);
+    AlphaBlending.Op = BlendOps::_from_integral(tempI);
 
     //Get the blend constant.
     glGetFloatv(GL_BLEND_COLOR, &tempV4[0]);
-    currentColorBlending.Constant = { tempV4.r, tempV4.g, tempV4.b };
-    currentAlphaBlending.Constant = glm::vec1(tempV4.a);
+    ColorBlending.Constant = { tempV4.r, tempV4.g, tempV4.b };
+    AlphaBlending.Constant = glm::vec1(tempV4.a);
 
     //Get the stencil tests and write ops.
     for (int faceI = 0; faceI < 2; ++faceI)
     {
-        StencilTest& testData = (faceI == 0) ? stencilTestFront : stencilTestBack;
-        StencilResult& resultData = (faceI == 0) ? stencilResultFront : stencilResultBack;
-        GLuint& writeMask = (faceI == 0) ? stencilMaskFront : stencilMaskBack;
+        StencilTest& testData = (faceI == 0) ? StencilTestFront : StencilTestBack;
+        StencilResult& resultData = (faceI == 0) ? StencilResultFront : StencilResultBack;
+        GLuint& writeMask = (faceI == 0) ? StencilMaskFront : StencilMaskBack;
 
         GLenum side = (faceI == 0) ? GL_FRONT : GL_BACK,
                key_test = (faceI == 0) ? GL_STENCIL_FUNC : GL_STENCIL_BACK_FUNC,
@@ -186,20 +181,20 @@ void Context::SetViewport(int minX, int minY, int width, int height)
 
 void Context::SetScissor(int minX, int minY, int width, int height)
 {
-    if (!isScissorEnabled)
+    if (!EnableScissor)
     {
         glEnable(GL_SCISSOR_TEST);
-        isScissorEnabled = true;
+        EnableScissor = true;
     }
 
     glScissor(minX, minY, width, height);
 }
 void Context::DisableScissor()
 {
-    if (isScissorEnabled)
+    if (EnableScissor)
     {
         glDisable(GL_SCISSOR_TEST);
-        isScissorEnabled = false;
+        EnableScissor = false;
     }
 }
 
@@ -218,20 +213,20 @@ void Context::SetFaceCulling(GL::FaceCullModes mode)
 {
     if (mode == +FaceCullModes::Off)
     {
-        if (currentCullMode != +FaceCullModes::Off)
+        if (CullMode != +FaceCullModes::Off)
         {
             glDisable(GL_CULL_FACE);
-            currentCullMode = +FaceCullModes::Off;
+            CullMode = +FaceCullModes::Off;
         }
     }
     else
     {
-        if (currentCullMode == +FaceCullModes::Off)
+        if (CullMode == +FaceCullModes::Off)
             glEnable(GL_CULL_FACE);
 
-        if (currentCullMode != mode)
+        if (CullMode != mode)
         {
-            currentCullMode = mode;
+            CullMode = mode;
             glCullFace((GLenum)mode);
         }
     }
@@ -242,22 +237,22 @@ void Context::SetDepthTest(GL::ValueTests newTest)
     //If we haven't initialized depth-testing yet, turn it on permanently.
     //Disabling depth-testing also disables depth writes,
     //    but we expose a separate mechanism for handling that.
-    if ((GLenum)currentDepthTest == GL_INVALID_ENUM)
+    if ((GLenum)DepthTest == GL_INVALID_ENUM)
         glEnable(GL_DEPTH_TEST);
     
-    if (currentDepthTest != newTest)
+    if (DepthTest != newTest)
     {
         glDepthFunc((GLenum)newTest);
-        currentDepthTest = newTest;
+        DepthTest = newTest;
     }
 }
 
 void Context::SetDepthWrites(bool canWriteDepth)
 {
-    if (canWriteDepth != isDepthWriteEnabled)
+    if (canWriteDepth != EnableDepthWrite)
     {
-        isDepthWriteEnabled = canWriteDepth;
-        if (isDepthWriteEnabled)
+        EnableDepthWrite = canWriteDepth;
+        if (EnableDepthWrite)
             glEnable(GL_DEPTH_WRITEMASK);
         else
             glDisable(GL_DEPTH_WRITEMASK);
@@ -266,10 +261,10 @@ void Context::SetDepthWrites(bool canWriteDepth)
 
 void Context::SetColorWriteMask(glm::bvec4 canWrite)
 {
-    if (canWrite == colorWriteMask)
+    if (canWrite == ColorWriteMask)
         return;
 
-    colorWriteMask = canWrite;
+    ColorWriteMask = canWrite;
     glColorMask(canWrite.r, canWrite.g, canWrite.b, canWrite.a);
 }
 
@@ -277,14 +272,14 @@ void Context::SetColorWriteMask(glm::bvec4 canWrite)
 GL::BlendStateRGBA Context::GetBlending() const
 {
     //Make sure the same blend settings are being used for both RGB and Alpha.
-    BlendStateAlpha colorBlendTest{ currentColorBlending.Src, currentColorBlending.Dest,
-                                    currentColorBlending.Op,
-                                    currentAlphaBlending.Constant };
-    assert(currentAlphaBlending == colorBlendTest);
+    BlendStateAlpha colorBlendTest{ ColorBlending.Src, ColorBlending.Dest,
+                                    ColorBlending.Op,
+                                    AlphaBlending.Constant };
+    assert(AlphaBlending == colorBlendTest);
 
-    return BlendStateRGBA{ currentColorBlending.Src, currentColorBlending.Dest,
-                           currentColorBlending.Op,
-                           { currentColorBlending.Constant, currentAlphaBlending.Constant } };
+    return BlendStateRGBA{ ColorBlending.Src, ColorBlending.Dest,
+                           ColorBlending.Op,
+                           { ColorBlending.Constant, AlphaBlending.Constant } };
 }
 
 void Context::SetBlending(const GL::BlendStateRGBA& state)
@@ -294,14 +289,14 @@ void Context::SetBlending(const GL::BlendStateRGBA& state)
                                     { state.Constant.r, state.Constant.g, state.Constant.b } };
     BlendStateAlpha newAlphaBlending{ state.Src, state.Dest, state.Op,
                                       glm::vec1(state.Constant.a) };
-    if ((newColorBlending == currentColorBlending) &
-        (newAlphaBlending == currentAlphaBlending))
+    if ((newColorBlending == ColorBlending) &
+        (newAlphaBlending == AlphaBlending))
     {
         return;
     }
 
-    currentColorBlending = newColorBlending;
-    currentAlphaBlending = newAlphaBlending;
+    ColorBlending = newColorBlending;
+    AlphaBlending = newAlphaBlending;
 
     glBlendFunc((GLenum)state.Src, (GLenum)state.Dest);
     glBlendEquation((GLenum)state.Op);
@@ -309,67 +304,67 @@ void Context::SetBlending(const GL::BlendStateRGBA& state)
 }
 void Context::SetColorBlending(const GL::BlendStateRGB& state)
 {
-    if (state == currentColorBlending)
+    if (state == ColorBlending)
         return;
 
-    currentColorBlending = state;
-    glBlendFuncSeparate((GLenum)currentColorBlending.Src, (GLenum)currentColorBlending.Dest,
-                        (GLenum)currentAlphaBlending.Src, (GLenum)currentAlphaBlending.Dest);
-    glBlendEquationSeparate((GLenum)currentColorBlending.Op,
-                            (GLenum)currentAlphaBlending.Op);
-    glBlendColor(currentColorBlending.Constant.r,
-                 currentColorBlending.Constant.g,
-                 currentColorBlending.Constant.b,
-                 currentAlphaBlending.Constant.x);
+    ColorBlending = state;
+    glBlendFuncSeparate((GLenum)ColorBlending.Src, (GLenum)ColorBlending.Dest,
+                        (GLenum)AlphaBlending.Src, (GLenum)AlphaBlending.Dest);
+    glBlendEquationSeparate((GLenum)ColorBlending.Op,
+                            (GLenum)AlphaBlending.Op);
+    glBlendColor(ColorBlending.Constant.r,
+                 ColorBlending.Constant.g,
+                 ColorBlending.Constant.b,
+                 AlphaBlending.Constant.x);
 }
 void Context::SetAlphaBlending(const GL::BlendStateAlpha& state)
 {
-    if (state == currentAlphaBlending)
+    if (state == AlphaBlending)
         return;
 
-    currentAlphaBlending = state;
-    glBlendFuncSeparate((GLenum)currentColorBlending.Src, (GLenum)currentColorBlending.Dest,
-                        (GLenum)currentAlphaBlending.Src, (GLenum)currentAlphaBlending.Dest);
-    glBlendEquationSeparate((GLenum)currentColorBlending.Op,
-                            (GLenum)currentAlphaBlending.Op);
-    glBlendColor(currentColorBlending.Constant.r,
-                 currentColorBlending.Constant.g,
-                 currentColorBlending.Constant.b,
-                 currentAlphaBlending.Constant.x);
+    AlphaBlending = state;
+    glBlendFuncSeparate((GLenum)ColorBlending.Src, (GLenum)ColorBlending.Dest,
+                        (GLenum)AlphaBlending.Src, (GLenum)AlphaBlending.Dest);
+    glBlendEquationSeparate((GLenum)ColorBlending.Op,
+                            (GLenum)AlphaBlending.Op);
+    glBlendColor(ColorBlending.Constant.r,
+                 ColorBlending.Constant.g,
+                 ColorBlending.Constant.b,
+                 AlphaBlending.Constant.x);
 }
 
 
 const GL::StencilTest& Context::GetStencilTest() const
 {
     //Make sure the same settings are being used for both front- and back-faces.
-    assert(stencilTestFront == stencilTestBack);
-    return stencilTestFront;
+    assert(StencilTestFront == StencilTestBack);
+    return StencilTestFront;
 }
 
 void Context::SetStencilTest(const GL::StencilTest& test)
 {
-    if ((stencilTestFront == test) & (stencilTestBack == test))
+    if ((StencilTestFront == test) & (StencilTestBack == test))
         return;
 
-    stencilTestFront = test;
-    stencilTestBack = test;
+    StencilTestFront = test;
+    StencilTestBack = test;
 
     glStencilFunc((GLenum)test.Test, test.RefValue, test.Mask);
 }
 void Context::SetStencilTestFrontFaces(const GL::StencilTest& test)
 {
-    if (test == stencilTestFront)
+    if (test == StencilTestFront)
         return;
 
-    stencilTestFront = test;
+    StencilTestFront = test;
     glStencilFuncSeparate(GL_FRONT, (GLenum)test.Test, test.RefValue, test.Mask);
 }
 void Context::SetStencilTestBackFaces(const GL::StencilTest& test)
 {
-    if (test == stencilTestBack)
+    if (test == StencilTestBack)
         return;
 
-    stencilTestBack = test;
+    StencilTestBack = test;
     glStencilFuncSeparate(GL_BACK, (GLenum)test.Test, test.RefValue, test.Mask);
 }
 
@@ -377,27 +372,27 @@ void Context::SetStencilTestBackFaces(const GL::StencilTest& test)
 const GL::StencilResult& Context::GetStencilResult() const
 {
     //Make sure the same settings are being used for both front- and back-faces.
-    assert(stencilResultFront == stencilResultBack);
-    return stencilResultFront;
+    assert(StencilResultFront == StencilResultBack);
+    return StencilResultFront;
 }
 
 void Context::SetStencilResult(const GL::StencilResult& result)
 {
-    if ((stencilResultFront == result) & (stencilResultBack == result))
+    if ((StencilResultFront == result) & (StencilResultBack == result))
         return;
 
-    stencilResultFront = result;
-    stencilResultBack = result;
+    StencilResultFront = result;
+    StencilResultBack = result;
     glStencilOp((GLenum)result.OnFailStencil,
                 (GLenum)result.OnPassStencilFailDepth,
                 (GLenum)result.OnPassStencilDepth);
 }
 void Context::SetStencilResultFrontFaces(const GL::StencilResult& result)
 {
-    if (result == stencilResultFront)
+    if (result == StencilResultFront)
         return;
 
-    stencilResultFront = result;
+    StencilResultFront = result;
     glStencilOpSeparate(GL_FRONT,
                         (GLenum)result.OnFailStencil,
                         (GLenum)result.OnPassStencilFailDepth,
@@ -405,10 +400,10 @@ void Context::SetStencilResultFrontFaces(const GL::StencilResult& result)
 }
 void Context::SetStencilResultBackFaces(const GL::StencilResult& result)
 {
-    if (result == stencilResultBack)
+    if (result == StencilResultBack)
         return;
 
-    stencilResultBack = result;
+    StencilResultBack = result;
     glStencilOpSeparate(GL_BACK,
                         (GLenum)result.OnFailStencil,
                         (GLenum)result.OnPassStencilFailDepth,
@@ -419,32 +414,32 @@ void Context::SetStencilResultBackFaces(const GL::StencilResult& result)
 GLuint Context::GetStencilMask() const
 {
     //Make sure the same settings are being used for both front- and back-faces.
-    assert(stencilMaskFront == stencilMaskBack);
-    return stencilMaskFront;
+    assert(StencilMaskFront == StencilMaskBack);
+    return StencilMaskFront;
 }
 
 void Context::SetStencilMask(GLuint mask)
 {
-    if ((stencilMaskFront == mask) & (stencilMaskBack == mask))
+    if ((StencilMaskFront == mask) & (StencilMaskBack == mask))
         return;
 
-    stencilMaskFront = mask;
-    stencilMaskBack = mask;
+    StencilMaskFront = mask;
+    StencilMaskBack = mask;
     glStencilMask(mask);
 }
 void Context::SetStencilMaskFrontFaces(GLuint mask)
 {
-    if (mask == stencilMaskFront)
+    if (mask == StencilMaskFront)
         return;
 
-    stencilMaskFront = mask;
+    StencilMaskFront = mask;
     glStencilMaskSeparate(GL_FRONT, mask);
 }
 void Context::SetStencilMaskBackFaces(GLuint mask)
 {
-    if (mask == stencilMaskBack)
+    if (mask == StencilMaskBack)
         return;
 
-    stencilMaskBack = mask;
+    StencilMaskBack = mask;
     glStencilMaskSeparate(GL_BACK, mask);
 }

@@ -56,3 +56,7 @@
 #endif
 
 #define BP_C_API extern "C" BP_API
+
+
+//Bring in universal utilities that every file should have access to.
+#include "Utils.h"

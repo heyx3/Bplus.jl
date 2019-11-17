@@ -2,6 +2,10 @@
 // Visit http://github.com/aantron/better-enums.
 
 //Small modifications have been made for B+.
+//For example, we can now define BETTER_ENUMS_API to dllexport the data types.
+#ifndef BETTER_ENUMS_API
+    #define BETTER_ENUMS_API
+#endif
 
 #pragma once
 
@@ -621,7 +625,7 @@ BETTER_ENUMS_ID(GenerateSwitchType(Underlying, __VA_ARGS__))                   \
                                                                                \
 }                                                                              \
                                                                                \
-class Enum {                                                                   \
+class BETTER_ENUMS_API Enum {                                                                   \
   private:                                                                     \
     typedef ::better_enums::optional<Enum>                  _optional;         \
     typedef ::better_enums::optional<std::size_t>           _optional_index;   \

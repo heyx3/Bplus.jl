@@ -8,7 +8,6 @@
 
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
-#include <better_enums.h>
 #include <toml.h>
 
 

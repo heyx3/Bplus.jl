@@ -35,9 +35,6 @@
     <ClInclude Include="NativeFileDialog\nfd.h">
       <Filter>Native File Dialog</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\Files\MaterialData.h">
-      <Filter>Renderer\Files</Filter>
-    </ClInclude>
     <ClInclude Include="Renderer\Context.h">
       <Filter>Renderer</Filter>
     </ClInclude>
@@ -48,9 +45,16 @@
     <ClInclude Include="Renderer\Data.h">
       <Filter>Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\ImGuiHelpers.h">
-      <Filter>Renderer</Filter>
+    <ClInclude Include="Renderer\Materials\Uniforms.h">
+      <Filter>Renderer\Materials</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\Materials\Material.h">
+      <Filter>Renderer\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="Dear ImGui\ImGuiAddons.h">
+      <Filter>Dear ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
@@ -83,6 +87,10 @@
       <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="TomlIO.cpp" />
+    <ClCompile Include="Renderer\Materials\Material.cpp">
+      <Filter>Renderer\Materials</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Materials\Uniforms.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Native File Dialog">
@@ -94,8 +102,8 @@
     <Filter Include="Renderer">
       <UniqueIdentifier>{40c8695a-51c8-4ce1-a153-54ac8002ad24}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Renderer\Files">
-      <UniqueIdentifier>{4a024b15-3ff1-4fef-a7d8-515e8cea88d3}</UniqueIdentifier>
+    <Filter Include="Renderer\Materials">
+      <UniqueIdentifier>{1383e33b-f4af-4e68-ba5f-841a1bd915b8}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
