@@ -3,8 +3,19 @@
 #include <iostream>
 #include <assert.h>
 
+namespace
+{
+    Bplus::AssertFuncSignature currentAssertFunc = Bplus::DefaultAssertFunc;
+}
 
-Bplus::AssertFuncSignature Bplus::assertFunc = Bplus::DefaultAssertFunc;
+void Bplus::SetAssertFunc(Bplus::AssertFuncSignature f)
+{
+    currentAssertFunc = f;
+}
+Bplus::AssertFuncSignature Bplus::GetAssertFunc()
+{
+    return currentAssertFunc;
+}
 
 void Bplus::DefaultAssertFunc(bool expr, const char* msg)
 {

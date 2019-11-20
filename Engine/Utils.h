@@ -1,30 +1,29 @@
 #pragma once
 
-//A file that is included in Platform.h, essentially making this file's contents
-//    available everywhere in the project.
-
+#include "Platform.h"
 #include <functional>
 
-//Custom assert function that can be changed by users of this engine.
+//Custom assert macro that can be configured by users of this engine.
+//Only used in debug builds.
 #pragma region BPAssert
-
-namespace Bplus
-{
-    //The function used for asserts.
-    //Only called in debug builds.
-    using AssertFuncSignature = void(*)(bool, const char*);
-    extern BP_API AssertFuncSignature assertFunc;
-
-    //Runs the standard "assert()" macro,
-    //    and also writes to stdout if it fails.
-    void DefaultAssertFunc(bool expr, const char* msg);
-}
 
 #ifdef NDEBUG
     #define BPAssert(expr, msg) ((void)0)
 #else
-    #define BPAssert(expr, msg) Bplus::assertFunc(expr, msg)
+    #define BPAssert(expr, msg) Bplus::GetAssertFunc()(expr, msg)
 #endif
+
+namespace Bplus
+{
+    //The function used for asserts.
+    using AssertFuncSignature = void(*)(bool, const char*);
+    void BP_API SetAssertFunc(AssertFuncSignature f);
+    AssertFuncSignature BP_API GetAssertFunc();
+
+    //Runs the standard "assert()" macro,
+    //    and also writes to stdout if it fails.
+    void BP_API DefaultAssertFunc(bool expr, const char* msg);
+}
 
 #pragma endregion
 

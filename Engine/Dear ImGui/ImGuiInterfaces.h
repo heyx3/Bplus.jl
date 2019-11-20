@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Platform.h"
+#include "../Utils.h"
 
 #include <glm/vec2.hpp>
 #include <glm/fwd.hpp>
