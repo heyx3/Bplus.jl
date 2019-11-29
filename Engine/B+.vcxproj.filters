@@ -55,6 +55,12 @@
       <Filter>Dear ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Utils.h" />
+    <ClInclude Include="Renderer\Materials\MaterialPermutation.h">
+      <Filter>Renderer\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Materials\UniformSet.h">
+      <Filter>Renderer\Materials</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
@@ -92,6 +98,7 @@
     </ClCompile>
     <ClCompile Include="Renderer\Materials\Uniforms.cpp" />
     <ClCompile Include="Utils.cpp" />
+    <ClCompile Include="Renderer\Materials\UniformSet.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Native File Dialog">

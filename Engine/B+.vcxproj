@@ -366,6 +366,7 @@ exit 0</Command>
     <ClCompile Include="Renderer\Data.cpp" />
     <ClCompile Include="Renderer\Materials\Material.cpp" />
     <ClCompile Include="Renderer\Materials\Uniforms.cpp" />
+    <ClCompile Include="Renderer\Materials\UniformSet.cpp" />
     <ClCompile Include="TomlIO.cpp" />
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>
@@ -387,7 +388,9 @@ exit 0</Command>
     <ClInclude Include="Renderer\Context.h" />
     <ClInclude Include="Renderer\Data.h" />
     <ClInclude Include="Renderer\Materials\Material.h" />
+    <ClInclude Include="Renderer\Materials\MaterialPermutation.h" />
     <ClInclude Include="Renderer\Materials\Uniforms.h" />
+    <ClInclude Include="Renderer\Materials\UniformSet.h" />
     <ClInclude Include="RenderLibs.h" />
     <ClInclude Include="IO.h" />
     <ClInclude Include="TomlIO.h" />

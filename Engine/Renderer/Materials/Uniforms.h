@@ -281,7 +281,7 @@ namespace Bplus::GL
 
     #pragma endregion
 
-
+    #pragma region Uniform<> class
     //A value, or array of values, to be passed into a shader.
     //If there's only one value, no heap allocations will be made.
     template<typename ValueUnion_t,
@@ -327,6 +327,15 @@ namespace Bplus::GL
             return *this;
         }
 
+        #pragma region Standard constructors/assignment operators for copying/moving.
+
+        Uniform(const This_t& cpy) = default;
+        Uniform& operator=(const This_t& cpy) = default;
+
+        Uniform(This_t&& old) = default;
+        Uniform& operator=(This_t&& old) = default;
+
+        #pragma endregion
 
         #pragma region Size/index getters and setters
 
@@ -486,11 +495,12 @@ namespace Bplus::GL
     const UniformTypes Uniform<ValueUnion_t, _InvalidType>::InvalidType =
         UniformTypes::_from_integral(_InvalidType);
 
+    #pragma endregion
 
     using VectorUniform = Uniform<UniformDataStructures::UniformUnion_Vector,
                                   UniformTypes::Image>;
     using MatrixUniform = Uniform<UniformDataStructures::UniformUnion_Matrix,
                                   UniformTypes::Image>;
-    using TextureUniform = Uniform<UniformDataStructures::UniformUnion_Texture,
-                                   UniformTypes::Bool1>;
+    using TextureUniform  = Uniform<UniformDataStructures::UniformUnion_Texture,
+                                    UniformTypes::Bool1>;
 }
