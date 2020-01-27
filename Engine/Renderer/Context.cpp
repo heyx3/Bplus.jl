@@ -6,17 +6,23 @@ using Context = GL::Context;
 
 namespace
 {
-    thread_local Context* contextInstance = nullptr;
+    struct ContextThreadData
+    {
+        Context* Instance = nullptr;
+
+        std::vector<std::function<void()>> RefreshCallbacks, DestroyCallbacks;
+    };
+    thread_local ContextThreadData contextThreadData = ContextThreadData();
 }
 
-Context* Context::GetCurrentContext() { return contextInstance; }
+Context* Context::GetCurrentContext() { return contextThreadData.Instance; }
 
 Context::Context(SDL_Window* _owner, std::string& errMsg)
     : owner(_owner)
 {
-    if (contextInstance != nullptr)
+    if (contextThreadData.Instance != nullptr)
     {
-        if (contextInstance == this)
+        if (contextThreadData.Instance == this)
             errMsg = "This context has already been constructed!";
         else
             errMsg = "A context already exists on this thread \
@@ -39,7 +45,7 @@ that hasn't been cleaned up.";
     }
 
     //We started OpenGL successfully!
-    contextInstance = this;
+    contextThreadData.Instance = this;
     isInitialized = true;
 
     //Initialize GLEW.
@@ -60,10 +66,13 @@ Context::~Context()
     {
         SDL_GL_DeleteContext(sdlContext);
 
-        BPAssert(contextInstance == this,
+        BPAssert(contextThreadData.Instance == this,
                  "More than one initialized Context in this thread");
-        contextInstance = nullptr;
+        contextThreadData.Instance = nullptr;
     }
+
+    for (const auto& callback : contextThreadData.DestroyCallbacks)
+        callback();
 }
 
 
@@ -83,7 +92,7 @@ void Context::RefreshState()
     glGetBooleanv(GL_COLOR_WRITEMASK, (GLboolean*)(&ColorWriteMask[0]));
 
     //Containers for various OpenGL settings.
-    int tempI;
+    GLint tempI;
     glm::fvec4 tempV4;
 
     if (glIsEnabled(GL_CULL_FACE))
@@ -153,6 +162,10 @@ void Context::RefreshState()
         glGetIntegerv(key_writeMask, &tempI);
         writeMask = (GLuint)tempI;
     }
+
+    //Update other systems that want to refresh.
+    for (auto& f : contextThreadData.RefreshCallbacks)
+        f();
 }
 
 

@@ -55,11 +55,14 @@
       <Filter>Dear ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Utils.h" />
-    <ClInclude Include="Renderer\Materials\MaterialPermutation.h">
-      <Filter>Renderer\Materials</Filter>
-    </ClInclude>
     <ClInclude Include="Renderer\Materials\UniformSet.h">
       <Filter>Renderer\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Materials\CompiledShader.h">
+      <Filter>Renderer\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Device.h">
+      <Filter>Renderer</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -99,6 +102,12 @@
     <ClCompile Include="Renderer\Materials\Uniforms.cpp" />
     <ClCompile Include="Utils.cpp" />
     <ClCompile Include="Renderer\Materials\UniformSet.cpp" />
+    <ClCompile Include="Renderer\Materials\CompiledShader.cpp">
+      <Filter>Renderer\Materials</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Device.cpp">
+      <Filter>Renderer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Native File Dialog">

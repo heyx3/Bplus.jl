@@ -39,6 +39,7 @@ minQuality = 1 # Minimum shader quality (which is between 1 - 5) for this materi
     minQuality = 1 # Default
 
 [params]
-    [params.vec3.u_FogColor]
-        colorMode = "On" # Defaults to "Off". Another option is "Hdr". Hints to the UI how this value should be edited.
-        default = [ 0.5, 0.5, 0.5 ]
+    [params.color.u_FogColor]
+        hdr = true # Defaults to false.
+        showAlpha = true # Whether we care about its alpha value. Defaults to true
+        default = [ 0.5, 0.5, 0.5, 1.0 ]

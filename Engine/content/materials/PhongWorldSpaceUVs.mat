@@ -137,7 +137,7 @@ v_alpha = diffuse4.a;
 '''
         ApplyLight = '''
 //Apply the color ramp to the total sum of incoming light.
-float litBrightness = dot(totalLight, vec3(0.2126f, 0.7152f, 0.0722f)); //Luma greyscale value.
+float litBrightness = dot(v_totalLight, vec3(0.2126f, 0.7152f, 0.0722f)); //Luma greyscale value.
 v_totalLight *= texture(u_LightRamp, litBrightness).r; //Dim the light based on the ramp.
 
 //Also add the see-through effect to the scene.

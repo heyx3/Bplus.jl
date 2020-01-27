@@ -364,7 +364,9 @@ exit 0</Command>
     <ClCompile Include="NativeFileDialog\nfd_win.cpp" />
     <ClCompile Include="Renderer\Context.cpp" />
     <ClCompile Include="Renderer\Data.cpp" />
+    <ClCompile Include="Renderer\Device.cpp" />
     <ClCompile Include="Renderer\Materials\Material.cpp" />
+    <ClCompile Include="Renderer\Materials\CompiledShader.cpp" />
     <ClCompile Include="Renderer\Materials\Uniforms.cpp" />
     <ClCompile Include="Renderer\Materials\UniformSet.cpp" />
     <ClCompile Include="TomlIO.cpp" />
@@ -387,8 +389,9 @@ exit 0</Command>
     <ClInclude Include="Platform.h" />
     <ClInclude Include="Renderer\Context.h" />
     <ClInclude Include="Renderer\Data.h" />
+    <ClInclude Include="Renderer\Device.h" />
     <ClInclude Include="Renderer\Materials\Material.h" />
-    <ClInclude Include="Renderer\Materials\MaterialPermutation.h" />
+    <ClInclude Include="Renderer\Materials\CompiledShader.h" />
     <ClInclude Include="Renderer\Materials\Uniforms.h" />
     <ClInclude Include="Renderer\Materials\UniformSet.h" />
     <ClInclude Include="RenderLibs.h" />

@@ -1,6 +1,6 @@
 //This is an AUTO-GENERATED temporary GLSL file for editing
-//    as part of the B+ material editor.
-//DO NOT modify outside of the specially-marked areas;
+//    as part of the Bplus Material editor.
+//DO NOT modify outside of the marked areas far below;
 //    it won't accomplish anything.
 
 //=========================================
@@ -11,32 +11,19 @@
 //Graphics settings configuration:
 //General graphics quality level, from 1 to 5:
 uniform uint s_Quality;
-//Lights:
-#define c_MaxDirectionalLights 3
-#define c_MaxPointLights 6
 
-//Features toggled by the material/app settings:
-uniform bool s_HasColorGrab = true,
-             s_HasDepthGrab = true;
 
 //Vertex inputs:
-layout (location = 0) in vec2 vIn_UV;
+layout (location = 0) in vec3 vIn_Pos;
+layout (location = 1) in vec3 vIn_Color;
 
 //...user configuration goes here...
 
 //Vertex outputs:
-out vec2 vOut_UV;
+out vec3 vOut_Color;
 
 
 //Built-in structures:
-struct S_Camera {
-    vec3 Pos;
-    vec3 Forward, Up, Right;
-    bool IsOrthographic;
-    float FoV; // For perspective cameras, this is the vertical FoV.
-               // For orthographic cameras, this is the vertical view size.
-    float NearClip, FarClip;
-};
 struct S_Light_Params {
     vec3 Color;
     float AmbientIntensity, DiffuseIntensity, SpecularIntensity;
@@ -52,14 +39,10 @@ struct S_Light_Point {
 
 
 //Built-in uniforms:
-uniform mat4                u_M_View, u_M_Projection, u_M_VP,
-                            u_M_iView, u_M_iProjection, u_M_iVP;
-uniform S_Camera            u_Camera;
-uniform S_Light_Directional u_Lights_Directional[c_MaxDirectionalLights];
-uniform S_Light_Point       u_Lights_Point[c_MaxPointLights];
-uniform uint                u_Lights_NDirectional, u_Lights_NPoint;
+uniform float u_Aspect; //Width over height of the render target/screen.
+uniform uvec2 u_ScreenSize; //Size in pixels of the render target/screen.
 
-uniform sampler2D u_ScreenColor, u_ScreenDepth;
+vec2 GetScreenUV(vec2 pixelPos) { return pixelPos / vec2(u_ScreenSize); }
 
 //Point transformations:
 vec4 H_TransformPoint_Full(mat4 transf, vec3 p) { return transf          * vec4(p, 1.0f); }
@@ -109,38 +92,16 @@ vec3 H_GetLightColor(S_Light_Point light,
                            fragToCamDir);
 }
 
-float H_GetViewSpaceDepth_Fast(float depthTextureSample)
-{
-    //Based on: https://stackoverflow.com/questions/1153114/converting-a-depth-texture-sample-to-a-distance
-    vec4 screenPos4 = vec4(fIn_ScreenPos, (-1.0f + (2.0f * v_depth)), 1.0f);
-    vec4 mRow3 = vec4(u_M_iProjection[0][3], u_M_iProjection[1][3], u_M_iProjection[2][3], u_M_iProjection[3][3]),
-         mRow4 = vec4(u_M_iProjection[0][4], u_M_iProjection[1][4], u_M_iProjection[2][4], u_M_iProjection[3][4]);
-    vec2 viewPositionZW = vec2(dot(mRow3, screenPos4),
-                               dot(mRow4, screenPos4));
-    v_viewDepth = -(viewPositionZW.x / viewPositionZW.y);
-}
-float H_GetViewSpaceDepth(float depthTextureSample)
-{
-    return H_GetViewSpaceDepth(depthTextureSample) + u_Camera.NearClip;
-}
-
 //....custom user definitions go here....
 
 void main()
 {
-    //Module: Setup
-    //--------
-
-    //Module: UV.
-    vOut_UV = vIn_UV;
-    //--------
-
-    //Module: GLPos
-    gl_Position = vec4(-1.0f + (2.0f * vIn_UV.xy),
-                       0.0f, 1.0f);
+    //Module: gl_Position
+    gl_Position = vIn_Pos;
     //--------
 
     //Module: OtherOutputs
+    vOut_Color = vIn_Color * u_ColorTint;
     //--------
 }
 
@@ -153,48 +114,23 @@ void main()
 
 //...same defines as above...
 
-in (layout = 0) vec2 vOut_UV;
-
 //...user configuration goes here...
+
+in vec3 vOut_Color;
 
 out vec4 fOut;
 
 //...same defines/uniforms as in the vertex shader...
-
 vec2 GetScreenUV() { return GetScreenUV(gl_fragCoord.xy); }
-
-uniform vec3 u_FogColor;
 
 
 void main()
 {
     //Define local versions of the vertex inputs in case they'll be modified.
-    vec2 fIn_UV = vOut_UV;
-    vec2 fIn_ScreenPos = -1.0f + (2.0f * fIn_UV);
+    vec2 fIn_Color = vOut_Color;
 
-    //Module: Setup
-    //--------
-
-    vec3 v_color = vec3(1.0f, 0.0f, 1.0f);
-    float v_depth = 0.0f;
-    //Module: Sample Screen
-    //Module: SampleColor
-    if (s_HasColorGrab)
-        v_color = texture(u_ScreenColor, fIn_UV).rgb;
-    //--------
-    //Module: SampleDepth
-    if (s_HasDepthGrab)
-        v_depth = texture(u_ScreenDepth, fIn_UV).r;
-    //--------
-    //--------
-
-    //Module: DepthConversions
-    float v_viewDepth = H_GetViewSpaceDepth(v_depth);
-    //--------
-
-    fOut.rgb = v_color;
-    fOut.a = 1.0f;
-    //Module: SetOutputs
-    fOut.rgb = lerp(v_color, u_FogColor, v_viewDepth);
+    fOut = vec4(0, 0, 0, 1);
+    //Module: Output
+    fOut = fIn_Color;
     //--------
 }

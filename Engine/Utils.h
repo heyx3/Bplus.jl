@@ -5,9 +5,8 @@
 
 
 //Custom assert macro that can be configured by users of this engine.
-//Only used in debug builds.
+//Doesn't do anything in release builds.
 #pragma region BPAssert
-
 #ifdef NDEBUG
     #define BPAssert(expr, msg) ((void)0)
 #else
@@ -37,8 +36,32 @@ namespace Bplus
 
 //A type-safe form of typedef, that wraps the underlying data into a struct.
 //Based on: https://foonathan.net/2016/10/strong-typedefs/
+#define strong_typedef_start(Tag, UnderlyingType, classAttrs) \
+    struct classAttrs Tag : _strong_typedef<Tag, UnderlyingType> { \
+        using _strong_typedef::_strong_typedef; /* Make the constructors available */
+#define strong_typedef_end \
+    }
 #define strong_typedef(Tag, UnderlyingType, classAttrs) \
-    struct classAttrs Tag : _strong_typedef<Tag, UnderlyingType> { }
+    strong_typedef_start(Tag, UnderlyingType, classAttrs) \
+    strong_typedef_end
+
+//Defines '==' and '!=' operators for the type,
+//    assuming the underlying type has them too.
+//NOTE that this MUST be placed between 'strong_typedef_start' and 'strong_typedef_end'!
+#define strong_typedef_equatable(Tag, UnderlyingType) \
+    bool operator==(const Tag& t) const { return (UnderlyingType)t == (UnderlyingType)(*this); } \
+    bool operator!=(const Tag& t) const { return (UnderlyingType)t != (UnderlyingType)(*this); }
+//Defines a default hash implementation for the type,
+//    assuming the underlying type has a default hash implementation.
+//NOTE that this MUST be placed in the global namespace!
+#define strong_typedef_hashable(Tag, UnderlyingType) \
+    namespace std { template<> struct BP_API hash<Tag> { \
+        std::size_t operator()(const Tag& key) const \
+        { \
+            using std::hash; \
+            return hash<UnderlyingType>()((UnderlyingType)key);  \
+        } }; }
+
 
 //This helper macro escapes commas inside other macro calls.
 #define BP_COMMA ,
@@ -92,9 +115,20 @@ namespace Bplus
         {
             return const_cast<T&>(const_cast<const Lazy<T>*>(this)->Cast());
         }
+
+        //Makes this object un-instantiated again.
+        //If it was never instantiated in the first place, nothing happens.
+        void Clear()
+        {
+            if (isCreated)
+            {
+                isCreated = false;
+                Cast().~T();
+            }
+        }
         
 
-        #pragma region constructor, destructor, move, copy
+        #pragma region Constructor, destructor, copy, move
 
         Lazy() { }
         ~Lazy()
@@ -104,21 +138,69 @@ namespace Bplus
             isCreated = false;
         }
 
+        Lazy(const T& cpy) : isCreated(true) { Create(cpy); }
         Lazy(const Lazy<T>& cpy)
             : isCreated(cpy.isCreated)
         {
             if (cpy.isCreated)
                 Create(cpy.Cast());
         }
+        Lazy& operator=(const Lazy<T>& cpy)
+        {
+            //Destroy or copy the "cpy" object as necessary.
+            if (isCreated && !cpy.IsCreated)
+                Cast().~T();
+            else if (cpy.IsCreated)
+                if (isCreated)
+                    Cast() = cpy.Cast();
+                else
+                    new(&Cast()) T(cpy.Cast());
+
+            isCreated = cpy.IsCreated;
+
+            return *this;
+        }
+        Lazy& operator=(const T& cpy)
+        {
+            if (isCreated)
+                Cast() = cpy;
+            else
+                new(&Cast()) T(cpy);
+
+            isCreated = true;
+        }
+        
+        Lazy(T&& src) : isCreated(true) { Create(std::move(src)); }
         Lazy(Lazy<T>&& src)
             : isCreated(src.isCreated)
         {
             if (src.isCreated)
                 Create(std::move(src.Cast()));
         }
+        Lazy& operator=(Lazy<T>&& src)
+        {
+            //Destroy or move the "src" object as necessary.
+            if (isCreated && !cpy.IsCreated)
+                Cast().~T();
+            else if (cpy.IsCreated)
+                if (isCreated)
+                    Cast() = std::move(cpy.Cast());
+                else
+                    new(&Cast()) T(std::move(cpy.Cast()));
 
-        Lazy(const T& cpy) : isCreated(true) { Create(cpy); }
-        Lazy(T&& src)      : isCreated(true) { Create(std::move(src)); }
+            isCreated = cpy.IsCreated;
+
+            return *this;
+        }
+        Lazy& operator=(T&& cpy)
+        {
+            if (isCreated)
+                Cast() = std::move(cpy);
+            else
+                new(&Cast()) T(std::move(cpy));
+
+            isCreated = true;
+        }
 
         #pragma endregion
 
@@ -146,6 +228,8 @@ namespace Bplus
 
         explicit operator T&() noexcept { return value_; }
         explicit operator const T&() const noexcept { return value_; }
+        const T& Get() noexcept const { return value_; }
+        T& Get() noexcept { return value_; }
 
         friend void swap(_strong_typedef& a, _strong_typedef& b) noexcept
         {

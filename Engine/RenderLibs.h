@@ -1,7 +1,7 @@
 #pragma once
 
 //Os/platform defines.
-#include "Utils.h"
+#include "Platform.h"
 
 //Dear ImGUI.
 #include "Dear ImGui\ImGuiInterfaces.h"

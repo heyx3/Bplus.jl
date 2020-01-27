@@ -1,0 +1,107 @@
+# This is an example of a material for the engine's material system.
+# This is the simplest-possible kind of Material,
+#     which the other Material types inherit from.
+# It passes the model vertices through without transformation,
+#    and multiplies their color with a color uniform.
+
+#TODO: Stencil settings.
+#TODO: Depth-test settings.
+#TODO: MRT settings.
+
+
+type = "Basic"
+
+faceCull = "off" # Options are On, Off, and Backwards
+
+configuration = '''
+//This code goes after the definition of shader inputs,
+//    and before the definition of shader outputs,
+//    for ALL shader stages.
+'''
+definitions = '''
+//This goes after all input/output/uniform/function declarations,
+//    for ALL shader stages.
+struct MyData { };
+float ProcessData(MyData d) { return 0.5; }
+'''
+
+[blending] # Default is this, a.k.a. opaque blending.
+    src = "One"
+    dest = "Zero"
+    op = "Add"
+
+[params]
+    [params.color.u_ColorTint]
+        hdr = true # Defaults to false.
+        showAlpha = false # Whether we care about its alpha value. Defaults to true
+        default = [ 0.5, 0.5, 0.5, 1.0 ]
+
+# Exists for all materials, with variation:
+[vertexShader]
+    configuration = '''
+//This code goes after the definition of shader inputs,
+//    and before the definition of shader outputs,
+//    ONLY in the vertex shader.
+'''
+    definitions = '''
+//Custom defines/functions go here, ONLY for the vertex shader.
+'''
+
+    # Note that the order of the below inputs
+    #    matches up with their layout order in the vertex shader
+    #    and must match up with their ordering as buffer objects in OpenGL.
+    [[vertexShader.inputs]]
+        name = "Pos" # In the shader, the name will be prefixed with "vIn_",
+                     #   e.x. "vIn_Pos"
+        tag = "Pos" # One of several enum values representing standard mesh vertex data (Pos, UV, Normal, etc).
+                    # If left unset, it will default to the 'name' field
+                    #    (so it's redundant here).
+    [[vertexShader.inputs]]
+        name = "Color"  # "vIn_Color" in the shader.
+        tag = "Custom1" # Expects Color to come in through the "Custom1" vertex data channel.
+                        #    "CustomX" values require you to specify their type,
+                        #    unlike the standard "Pos", "UV", "Normal", etc. types
+                        #    which have an implied type ("vec3", "vec2", and "vec3" respectively).
+        type = "vec3" # Could be float, bool, int, uint,
+                      #    or one of the vector versions of those types.
+
+    [[vertexShader.customOutput]] # A user-defined vertex shader output/fragment shader input.
+                                  # In the vertex shader, it'll be prefixed with "vOut_"
+                                  #    (e.x. "vOut_Color").
+                                  # In the fragment shader, it'll be prefixed with "fIn_"
+                                  #    (e.x. "fIn_Color") and can be modified like any other variable.
+        name = "Color" # "vOut_Color" in vertex shader, "fIn_Color" in fragment shader.
+        type = "vec3" # Always required for outputs.
+
+    [vertexShader.customModules] # Changing how various "modules" of the shader are implemented.
+        gl_Position = '''
+//This is the default behavior if a "Pos"-tagged input exists.
+gl_Position = vIn_Pos;
+'''
+        OtherOutputs = '''
+//A module to set custom vertex shader outputs.
+//Placed at the very end of the shader.
+vOut_Color = vIn_Color * u_ColorTint;
+'''
+
+[fragmentShader]
+
+    configuration = '''
+//This code goes after the definition of shader inputs,
+//    and before the definition of shader outputs,
+//    ONLY in the vertex shader.
+//The below statement is an example; it configures depth-testing
+//    for a fragment shader that writes to gl_FragDepth.
+//It's a promise to the compiler that any values you write
+//    will always be greater than the incoming depth value from the vertex shader.
+//layout (greater) out float gl_FragDepth;
+'''
+    definitions = '''
+//Defining stuff for the fragment shader.
+'''
+
+    [fragmentShader.customModules]
+        Output = '''
+//fOut is already initialized to (0, 0, 0, 1).
+fOut.rgb = fIn_Color;
+'''

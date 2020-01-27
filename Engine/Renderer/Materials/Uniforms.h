@@ -7,6 +7,21 @@
 
 namespace Bplus::GL
 {
+    namespace Ptr
+    {
+        //An OpenGL handle to a specific uniform within a shader.
+        //If it points to an array of uniforms,
+        //    you can get element 'i' in the array by adding 'i' to this value.
+        //The byte-size of the uniform has no bearing on this numbering scheme.
+        strong_typedef_start(ShaderUniform, GLint, BP_API)
+            static const ShaderUniform INVALID;
+            strong_typedef_equatable(ShaderUniform, GLint);
+            //strong_typedef_hashable is invoked at the bottom of the file.
+        strong_typedef_end;
+        const ShaderUniform ShaderUniform::INVALID = ShaderUniform(-1);
+    }
+
+
     //All the different types of uniforms.
     BETTER_ENUM(UniformTypes, uint_fast8_t,
         //Vector types:
@@ -503,4 +518,11 @@ namespace Bplus::GL
                                   UniformTypes::Image>;
     using TextureUniform  = Uniform<UniformDataStructures::UniformUnion_Texture,
                                     UniformTypes::Bool1>;
+
+    
+    void SetUniform(Ptr::ShaderUniform ptr, const VectorUniform& value);
+    void SetUniform(Ptr::ShaderUniform ptr, const MatrixUniform& value);
+    void SetUniform(Ptr::ShaderUniform ptr, const TextureUniform& value);
 }
+
+strong_typedef_hashable(Bplus::GL::Ptr::ShaderUniform, GLint);

@@ -1,10 +1,14 @@
 #pragma once
 
 #include "Data.h"
+#include <functional>
 
 
 namespace Bplus::GL
 {
+    class CompiledShader;
+
+
     //Represents OpenGL's global state, like the current blend mode and stencil test.
     //Does not include bound objects, shader uniforms, etc.
     class BP_API RenderState
@@ -22,6 +26,8 @@ namespace Bplus::GL
         StencilResult StencilResultFront, StencilResultBack;
         GLuint StencilMaskFront, StencilMaskBack;
         //TODO: Anything else?
+
+        CompiledShader* ActiveShader = nullptr;
 
 
         //Must give the better_enum types constructed values to avoid a compile error.
@@ -50,6 +56,22 @@ namespace Bplus::GL
         static Context* GetCurrentContext();
 
 
+        #pragma region Callbacks
+
+        //Registers a callback for when this thread's context is destroyed.
+        static void RegisterCallback_Destroyed(std::function<void()>);
+        //Unregisters a callback for when this thread's context is destroyed.
+        static void UnregisterCallback_Destroyed(std::function<void()>);
+
+        //Registers a callback for when this thread's context's "RefreshState()" is called.
+        static void RegisterCallback_RefreshState(std::function<void()>);
+        //Unregisters a callback for this thread's context's "RefreshState()".
+        //Asserts "false" if the callback was never actually registered.
+        static void UnregisterCallback_RefreshState(std::function<void()>);
+
+        #pragma endregion
+
+
         //Creates the context based on the given SDL window.
         //If there was an error, "errorMsg" will be set to it.
         Context(SDL_Window* owner, std::string& errorMsg);
@@ -65,8 +87,12 @@ namespace Bplus::GL
         //Call this after any OpenGL work is done not through this class.
         void RefreshState();
 
+
         const RenderState& GetState() const { return *this; }
 
+
+        bool SetVsyncMode(VsyncModes mode);
+        VsyncModes GetVsyncMode() const { return Vsync; }
 
         //Clears the current framebuffer's color and depth.
         void Clear(float r, float g, float b, float a, float depth);
@@ -79,17 +105,20 @@ namespace Bplus::GL
         template<typename TVec4>
         void Clear(const TVec4& rgba) { Clear(rgba.r, rgba.g, rgba.b, rgba.a); }
 
+        #pragma region Viewport
+
         void SetViewport(int minX, int minY, int width, int height);
         void SetViewport(int width, int height) { SetViewport(0, 0, width, height); }
 
         void SetScissor(int minX, int minY, int width, int height);
         void DisableScissor();
 
-        bool SetVsyncMode(VsyncModes mode);
-        VsyncModes GetVsyncMode() const { return Vsync; }
-
         void SetFaceCulling(FaceCullModes mode);
         FaceCullModes GetFaceCulling() const { return CullMode; }
+
+        #pragma endregion
+
+        #pragma region Depth/Color
 
         void SetDepthTest(ValueTests mode);
         ValueTests GetDepthTest() const { return DepthTest; }
@@ -99,6 +128,8 @@ namespace Bplus::GL
 
         void SetColorWriteMask(glm::bvec4 canWrite);
         glm::bvec4 GetColorWriteMask() const { return ColorWriteMask; }
+
+        #pragma endregion
 
         #pragma region Blending
 
@@ -156,8 +187,6 @@ namespace Bplus::GL
         void SetStencilMaskBackFaces(GLuint newMask);
 
         #pragma endregion
-
-
 
     private:
 

@@ -9,8 +9,8 @@
 
 namespace Bplus::GL
 {
-    //Manages a set of shader uniforms, including tracking which ones are "dirty",
-    //    a.k.a. ones that have been changed recently.
+    //Manages a set of shader uniforms for a specific compiled shader,
+    //    including tracking which ones are "dirty" (a.k.a. ones that have been changed recently).
     class BP_API UniformSet
     {
     public:
@@ -20,23 +20,30 @@ namespace Bplus::GL
 
         using NameSet = std::unordered_set<std::string>;
 
+
+        //The below methods get the total number of uniforms.
         size_t GetVectorUniformsCount() const;
         size_t GetMatrixUniformsCount() const;
         size_t GetTextureUniformsCount() const;
         auto GetTotalUniformsCount() const { return GetVectorUniformsCount() + GetMatrixUniformsCount() + GetTextureUniformsCount(); }
         
+        //The below methods get the total number of "dirty" uniforms,
+        //    i.e. ones that have been changed since the last "Clean()".
         size_t GetDirtyVectorUniformsCount() const;
         size_t GetDirtyMatrixUniformsCount() const;
         size_t GetDirtyTextureUniformsCount() const;
         auto GetTotalDirtyUniformsCount() const { return GetDirtyVectorUniformsCount() + GetDirtyMatrixUniformsCount() + GetDirtyTextureUniformsCount(); }
 
-        
+        //The below methods handle the mapping of uniform name to shader pointer.
+        const std::unordered_map<std::string, Ptr::ShaderUniform>& GetUniformPtrs() const { return uniformPtrs; }
+        void SetUniformPtr(const std::string& name, Ptr::ShaderUniform value) { uniformPtrs[name] = value; }
+
         #pragma region Getters and setters for uniform data
 
         //Note that, to reduce heap usage,
         //    the various collections inside this class aren't allocated until
         //    they are first used.
-        //All of the below functions count as a "usage".
+        //All of the below functions inside this #region count as "using" them.
         //If you're just checking the size of a collection, use the above helper functions.
 
         const UMap<VectorUniform>& GetVectors() const { return vectorUniforms.Get(); }
@@ -54,7 +61,6 @@ namespace Bplus::GL
 
         #pragma endregion
 
-
         //Resets all uniforms' "dirty" flag.
         void Clean();
 
@@ -66,5 +72,6 @@ namespace Bplus::GL
         Lazy<UMap<TextureUniform>> textureUniforms;
 
         Lazy<NameSet> dirtyVectors, dirtyMatrices, dirtyTextures;
+        std::unordered_map<std::string, Ptr::ShaderUniform> uniformPtrs;
     };
 }
