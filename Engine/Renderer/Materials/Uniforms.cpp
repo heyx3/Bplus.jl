@@ -6,63 +6,44 @@
 
 using namespace Bplus;
 using namespace Bplus::GL;
-using namespace Bplus::GL::UniformDataStructures;
 
-bool UniformUnion_Vector::IsValidType(UniformTypes type)
+#pragma region 
+#if 0
+
+void UniformArray::Remove(size_t index)
 {
-    switch (type)
-    {
-    #define T_CASES(prefix) \
-            case UniformTypes::prefix##1: \
-            case UniformTypes::prefix##2: \
-            case UniformTypes::prefix##3: \
-            case UniformTypes::prefix##4
+    BPAssert(index < count, //Both are unsigned, so this implies count > 0 as well.
+             (std::string("Trying to remove element i:") + std::to_string(index) +
+                  " from an array with only " + std::to_string(count) + " elements").c_str());
 
-        T_CASES(Bool):
-        T_CASES(Int):
-        T_CASES(Uint):
-        T_CASES(Float):
-        T_CASES(Double):
-            return true;
+    count -= 1;
 
-        default:
-            return false;
+    auto stride = GetUniformByteSize(type);
+    auto byteIndex = index * stride,
+            nextByteIndex = byteIndex + stride;
 
-    #undef T_CASES
-    }
+    arrayBytes.erase(arrayBytes.begin() + byteIndex,
+                        arrayBytes.begin() + nextByteIndex);
 }
-bool UniformUnion_Matrix::IsValidType(UniformTypes type)
+void UniformArray::Clear(UniformTypes newType)
 {
-    switch (type)
-    {
-    #define T_CASES(fType, nCols) \
-            case UniformTypes::fType##nCols##x##2: \
-            case UniformTypes::fType##nCols##x##3: \
-            case UniformTypes::fType##nCols##x##4
-    #define T_CASES2(fType) \
-            T_CASES(fType, 2): \
-            T_CASES(fType, 3): \
-            T_CASES(fType, 4)
-        
-        T_CASES2(Float) :
-        T_CASES2(Double) :
-            return true;
+    count = 0;
+    arrayBytes.clear();
 
-        default:
-            return false;
-    }
+    type = newType;
 }
-bool UniformUnion_Texture::IsValidType(UniformTypes type)
-{
-    switch (type)
-    {
-        case UniformTypes::Sampler:
-        case UniformTypes::Image:
-            return true;
 
-        default:
-            return false;
-    }
+void UniformArray::AssertIndex(size_t i) const
+{
+    BPAssert(count < i,
+             (std::string("Array has ") + std::to_string(count) +
+                 " elements but tried to access element " + std::to_string(i)).c_str());
+}
+void UniformArray::AssertType(UniformTypes expected) const
+{
+    BPAssert(type == expected,
+             (std::string("Expected uniform array to be ") +
+                 expected._to_string() + ", but it's " + type._to_string()).c_str());
 }
 
 void Bplus::GL::SetUniform(Ptr::ShaderUniform ptr, const VectorUniform& value)
@@ -149,3 +130,5 @@ void Bplus::GL::SetUniform(Ptr::ShaderUniform ptr, const TextureUniform& value)
             TODO: How to handle active texture slots
     }
 }
+
+#endif

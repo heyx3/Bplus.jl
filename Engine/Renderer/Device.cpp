@@ -17,9 +17,9 @@ namespace
 
 Device* Device::GetContextDevice()
 {
-    //If there is no context, make sure there is no Device either.
     if (Context::GetCurrentContext() == nullptr)
     {
+        //If there is no context, make sure there is no Device either.
         BPAssert(threadData.Device == nullptr,
                  "There is a device despite there being no context!");
     }
@@ -34,14 +34,36 @@ Device* Device::GetContextDevice()
 
 Device::Device(Context& context)
 {
+    BPAssert(Context::GetCurrentContext() != nullptr,
+             "Device created before context!");
+
     GLint tempI;
 
-    //Get 'Max Textures in Shader'
-    glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &tempI);
-    BPAssert(tempI >= 0, "'Max Textures in Shader' is negative??");
-    BPAssert(tempI <= std::numeric_limits<decltype(maxTexturesInShader)>().max(),
-             "'Max Textures in Shader' is larger than its type can fit");
-    maxTexturesInShader = (decltype(maxTexturesInShader))tempI;
+    #define LOAD_UINT(oglEnum, description, var) \
+        glGetIntegerv(oglEnum, &tempI); \
+        BPAssert(tempI >= 0, "'" description "' is negative??"); \
+        BPAssert(tempI <= std::numeric_limits<decltype(var)>().max(), \
+                 "'" description "' is larger than its type can fit"); \
+        var = (decltype(var))tempI
+
+    LOAD_UINT(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS,
+              "Max Textures in Shader",
+              maxTexturesInShader);
+    LOAD_UINT(GL_MAX_DRAW_BUFFERS,
+              "Max Output Render Targets",
+              maxOutputRenderTargets);
+    LOAD_UINT(GL_MAX_ELEMENTS_VERTICES,
+              "Soft Max Vertices in Buffer",
+              softMaxVertices);
+    LOAD_UINT(GL_MAX_ELEMENTS_INDICES,
+              "Soft Max Indices in Buffer",
+              softMaxIndices);
+    LOAD_UINT(GL_MAX_VERTEX_UNIFORM_COMPONENTS,
+              "Max Uniform Components in Vertex Shader",
+              maxUniformPrimitivesPerVertexShader);
+    LOAD_UINT(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS,
+              "Max Uniform Components in Fragment Shader",
+              maxUniformPrimitivesPerFragmentShader);
 
     //When the context is destroyed, destroy this Device.
     Context::RegisterCallback_Destroyed([]()

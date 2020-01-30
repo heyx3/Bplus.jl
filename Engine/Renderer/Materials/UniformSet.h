@@ -9,6 +9,9 @@
 
 namespace Bplus::GL
 {
+    #pragma region Old Uniform data representation
+    #if 0
+
     //Manages a set of shader uniforms for a specific compiled shader,
     //    including tracking which ones are "dirty" (a.k.a. ones that have been changed recently).
     class BP_API UniformSet
@@ -18,7 +21,8 @@ namespace Bplus::GL
         template<typename Uniform_t>
         using UMap = std::unordered_map<std::string, Uniform_t>;
 
-        using NameSet = std::unordered_set<std::string>;
+        using UPtrMap = std::unordered_map<std::string, Ptr::ShaderUniform>;
+        using UNameSet = std::unordered_set<std::string>;
 
 
         //The below methods get the total number of uniforms.
@@ -35,7 +39,7 @@ namespace Bplus::GL
         auto GetTotalDirtyUniformsCount() const { return GetDirtyVectorUniformsCount() + GetDirtyMatrixUniformsCount() + GetDirtyTextureUniformsCount(); }
 
         //The below methods handle the mapping of uniform name to shader pointer.
-        const std::unordered_map<std::string, Ptr::ShaderUniform>& GetUniformPtrs() const { return uniformPtrs; }
+        const UPtrMap& GetUniformPtrs() const { return uniformPtrs; }
         void SetUniformPtr(const std::string& name, Ptr::ShaderUniform value) { uniformPtrs[name] = value; }
 
         #pragma region Getters and setters for uniform data
@@ -47,13 +51,13 @@ namespace Bplus::GL
         //If you're just checking the size of a collection, use the above helper functions.
 
         const UMap<VectorUniform>& GetVectors() const { return vectorUniforms.Get(); }
-        const NameSet& GetDirtyVectors() const { return dirtyVectors.Get(); }
+        const UNameSet& GetDirtyVectors() const { return dirtyVectors.Get(); }
 
         const UMap<MatrixUniform>& GetMatrices() const { return matrixUniforms.Get(); }
-        const NameSet& GetDirtyMatrices() const { return dirtyMatrices.Get(); }
+        const UNameSet& GetDirtyMatrices() const { return dirtyMatrices.Get(); }
 
         const UMap<TextureUniform>& GetTextures() const { return textureUniforms.Get(); }
-        const NameSet& GetDirtyTextures() const { return dirtyTextures.Get(); }
+        const UNameSet& GetDirtyTextures() const { return dirtyTextures.Get(); }
 
         void Set(const std::string& uniformName, const VectorUniform& uniformValue);
         void Set(const std::string& uniformName, const MatrixUniform& uniformValue);
@@ -71,7 +75,10 @@ namespace Bplus::GL
         Lazy<UMap<MatrixUniform>> matrixUniforms;
         Lazy<UMap<TextureUniform>> textureUniforms;
 
-        Lazy<NameSet> dirtyVectors, dirtyMatrices, dirtyTextures;
-        std::unordered_map<std::string, Ptr::ShaderUniform> uniformPtrs;
+        Lazy<UNameSet> dirtyVectors, dirtyMatrices, dirtyTextures;
+        UPtrMap uniformPtrs;
     };
+
+    #endif
+    #pragma endregion
 }

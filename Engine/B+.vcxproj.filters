@@ -99,14 +99,18 @@
     <ClCompile Include="Renderer\Materials\Material.cpp">
       <Filter>Renderer\Materials</Filter>
     </ClCompile>
-    <ClCompile Include="Renderer\Materials\Uniforms.cpp" />
     <ClCompile Include="Utils.cpp" />
-    <ClCompile Include="Renderer\Materials\UniformSet.cpp" />
     <ClCompile Include="Renderer\Materials\CompiledShader.cpp">
       <Filter>Renderer\Materials</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\Device.cpp">
       <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Materials\Uniforms.cpp">
+      <Filter>Renderer\Materials</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Materials\UniformSet.cpp">
+      <Filter>Renderer\Materials</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

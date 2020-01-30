@@ -34,6 +34,8 @@ namespace Bplus
 #include <better_enums.h>
 
 
+#pragma region strong_typedef
+
 //A type-safe form of typedef, that wraps the underlying data into a struct.
 //Based on: https://foonathan.net/2016/10/strong-typedefs/
 #define strong_typedef_start(Tag, UnderlyingType, classAttrs) \
@@ -54,14 +56,15 @@ namespace Bplus
 //Defines a default hash implementation for the type,
 //    assuming the underlying type has a default hash implementation.
 //NOTE that this MUST be placed in the global namespace!
-#define strong_typedef_hashable(Tag, UnderlyingType) \
-    namespace std { template<> struct BP_API hash<Tag> { \
+#define strong_typedef_hashable(Tag, UnderlyingType, classAttrs) \
+    namespace std { template<> struct classAttrs hash<Tag> { \
         std::size_t operator()(const Tag& key) const \
         { \
             using std::hash; \
             return hash<UnderlyingType>()((UnderlyingType)key);  \
         } }; }
 
+#pragma endregion
 
 //This helper macro escapes commas inside other macro calls.
 #define BP_COMMA ,

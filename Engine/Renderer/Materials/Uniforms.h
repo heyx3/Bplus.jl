@@ -7,20 +7,14 @@
 
 namespace Bplus::GL
 {
-    namespace Ptr
-    {
-        //An OpenGL handle to a specific uniform within a shader.
-        //If it points to an array of uniforms,
-        //    you can get element 'i' in the array by adding 'i' to this value.
-        //The byte-size of the uniform has no bearing on this numbering scheme.
-        strong_typedef_start(ShaderUniform, GLint, BP_API)
-            static const ShaderUniform INVALID;
-            strong_typedef_equatable(ShaderUniform, GLint);
-            //strong_typedef_hashable is invoked at the bottom of the file.
-        strong_typedef_end;
-        const ShaderUniform ShaderUniform::INVALID = ShaderUniform(-1);
-    }
+    //I spent a long time working on the CPU-side representation of uniforms,
+    //    mainly because I wanted to postpone actually giving them to OpenGL until
+    //    the relevant shader program gets bound for rendering (to greatly reduce driver overhead).
+    //However, I later found out that this is unnecessary with OpenGL 4.5,
+    //    thanks to the glProgramUniform[X] functions.
 
+    #pragma region Old Uniform data representation
+    #if 0
 
     //All the different types of uniforms.
     BETTER_ENUM(UniformTypes, uint_fast8_t,
@@ -86,443 +80,298 @@ namespace Bplus::GL
         else { static_assert(false); return UniformTypes::_from_index(-1); }
     }
 
-
-    #pragma region Uniform unions
-    //Hide as many of the data structures as possible in an internal namespace
-    //    to simplify the outer namespace.
-    namespace UniformDataStructures
+    //Gets the size of the given uniform type.
+    //NOTE: booleans are stored as integers for OpenGL purposes,
+    //    so they're generally more than 1 byte.
+    uint32_t GetUniformByteSize(UniformTypes type)
     {
-        //Samplers and images have the same handle type, so use strong_typedef to differentiate them.
-        strong_typedef(SamplerUniformHandle, GLuint, BP_API);
-        strong_typedef(ImageUniformHandle, GLuint, BP_API);
-
-
-        //A union of the various 1D - 4D vector types.
-    //Wrapped in a struct to provide implicit casting and easy assignment.
-        struct BP_API UniformUnion_Vector
+        switch (type)
         {
-            #pragma region The union
-            union {
-                //The 1-dimensional types are given a second, simpler mode of access;
-                //    GLM doesn't have implicit casting from vec1<T> to T.
-                bool B;
-                uint32_t U;
-                int32_t I;
-                float F;
-                double D;
+            //Bool vectors require special handling.
+            case UniformTypes::Bool1:
+                return sizeof(int32_t);
+            case UniformTypes::Bool2:
+                return 2 * sizeof(int32_t);
+            case UniformTypes::Bool3:
+                return 3 * sizeof(int32_t);
+            case UniformTypes::Bool4:
+                return 4 * sizeof(int32_t);
 
-                //Macro to define the higher-dimensional data types.
-            #define MAKE_OF_SIZE(n) \
-                glm::vec<n, bool> B##n; \
-                glm::vec<n, uint32_t> U##n; \
-                glm::vec<n, int32_t> I##n; \
-                glm::vec<n, float> F##n; \
-                glm::vec<n, double> D##n
+             //Handle the non-boolean vector types.
+        #define CASE_VECTOR(Type, data) \
+            case UniformTypes::Type##1: \
+                return sizeof(glm::data##1); \
+            case UniformTypes::Type##2: \
+                return sizeof(glm::data##2); \
+            case UniformTypes::Type##3: \
+                return sizeof(glm::data##3); \
+            case UniformTypes::Type##4: \
+                return sizeof(glm::data##4)
 
-                MAKE_OF_SIZE(1);
-                MAKE_OF_SIZE(2);
-                MAKE_OF_SIZE(3);
-                MAKE_OF_SIZE(4);
-            #undef MAKE_OF_SIZE
-            } Value;
-            #pragma endregion
-        
-            #pragma region Casting/getting, assignment, and constructors
+            CASE_VECTOR(Int, ivec);
+            CASE_VECTOR(Uint, uvec);
+            CASE_VECTOR(Float, fvec);
+            CASE_VECTOR(Double, dvec);
+        #undef CASE_VECTOR
 
-            template<typename Value_t>
-            const Value_t& As() const { static_assert(false); } //Specialized for applicable types.
+            //Handle the matrix types.
+        #define CASE_MATRIX(nRows, nCols) \
+            case UniformTypes::Float##nCols##x##nRows: \
+                return sizeof(glm::fmat##nCols##x##nRows); \
+            case UniformTypes::Double##nCols##x##nRows: \
+                return sizeof(glm::dmat##nCols##x##nRows)
+        #define CASE_MATRICES(nRows) \
+            CASE_MATRIX(nRows, 2); \
+            CASE_MATRIX(nRows, 3); \
+            CASE_MATRIX(nRows, 4)
 
-            template<typename Value_t>
-            Value_t& As()
-            {
-                //Call the const version, and then just cast.
-                const auto& constThis = *this;
-                const auto& constVal = constThis.As<Value_t>();
-                return const_cast<Value_t&>(constVal);
-            }
+            CASE_MATRICES(2);
+            CASE_MATRICES(3);
+            CASE_MATRICES(4);
 
+        #undef CASE_MATRICES
+        #undef CASE_MATRIX
 
-            //Define cast operator, constructor, assignment operator, and "As()" for each type.
-        #define SUPPORT(t, field) \
-                operator t() const { return Value.field; } \
-                UniformUnion_Vector(const t& val) { Value.field = val; } \
-                UniformUnion_Vector& operator=(const t& val) { Value.field = val; return *this; } \
-                template<> const t& As<t>() const { return Value.field; }
+            //Handle the texture/image types.
+            case UniformTypes::Sampler:
+                return sizeof(Ptr::Sampler);
+            case UniformTypes::Image:
+                return sizeof(Ptr::Image);
 
-            //Define the basic data types.
-            SUPPORT(bool, B)
-            SUPPORT(int32_t, I)
-            SUPPORT(uint32_t, U)
-            SUPPORT(float, F)
-            SUPPORT(double, D)
-
-        #define SUPPORT_VECTORS(t, field) \
-                SUPPORT(glm::vec<1 BP_COMMA t>, field##1) \
-                SUPPORT(glm::vec<2 BP_COMMA t>, field##2) \
-                SUPPORT(glm::vec<3 BP_COMMA t>, field##3) \
-                SUPPORT(glm::vec<4 BP_COMMA t>, field##4)
-
-            SUPPORT_VECTORS(bool, B)
-            SUPPORT_VECTORS(int32_t, I)
-            SUPPORT_VECTORS(uint32_t, U)
-            SUPPORT_VECTORS(float, F)
-            SUPPORT_VECTORS(double, D)
-
-            #undef SUPPORT_VECTORS
-            #undef SUPPORT
-
-    #pragma endregion
-
-            UniformUnion_Vector() = default;
-            static bool IsValidType(UniformTypes type);
-        };
-
-    
-        //A union of the various 2x2 to 4x4 matrix types
-        //    (including rectangular sizes).
-        //Wrapped in a struct to provide implicit casting and easy assignment.
-        struct BP_API UniformUnion_Matrix
-        {
-            #pragma region The union
-            union {
-                //Names are in the form "F[C]x[R]" and "D[C]x[R]",
-                //    where C is the column count and R is the row count.
-
-            #define GLM_MAT(n, m) \
-                    glm::mat<n, m, glm::f32> F##n##x##m; \
-                    glm::mat<n, m, glm::f64> D##n##x##m
-
-            #define GLM_MATS(n) \
-                    GLM_MAT(n, 2); GLM_MAT(n, 3); GLM_MAT(n, 4)
-
-                GLM_MATS(2);
-                GLM_MATS(3);
-                GLM_MATS(4);
-
-            #undef GLM_MATS
-            #undef GLM_MAT
-            } Value;
-            #pragma endregion
-        
-            #pragma region Casting/getting, assignment, and constructors
-
-            template<typename Value_t>
-            const Value_t& As() const { static_assert(false); } //Specialized for applicable types.
-
-            template<typename Value_t>
-            Value_t& As()
-            {
-                //Call the const version, and then just cast.
-                const auto& constThis = *this;
-                const auto& constVal = constThis.As<Value_t>();
-                return const_cast<Value_t&>(constVal);
-            }
-
-
-            //Define cast operator, constructor, assignment operator, and "As()" for each type.
-        #define SUPPORT(t, field) \
-                operator t() const { return Value.field; } \
-                UniformUnion_Matrix(const t& val) { Value.field = val; } \
-                UniformUnion_Matrix& operator=(const t& val) { Value.field = val; return *this; } \
-                template<> const t& As<t>() const { return Value.field; }
-
-        #define SUPPORT_ALL_FTYPES(nCols, nRows) \
-                SUPPORT(glm::mat<nCols BP_COMMA nRows BP_COMMA float>, \
-                        F##nCols##x##nRows) \
-                SUPPORT(glm::mat<nCols BP_COMMA nRows BP_COMMA double>, \
-                        D##nCols##x##nRows)
-
-        #define SUPPORT_ALL_ROWS(nCols) \
-                SUPPORT_ALL_FTYPES(nCols, 2) \
-                SUPPORT_ALL_FTYPES(nCols, 3) \
-                SUPPORT_ALL_FTYPES(nCols, 4)
-
-            SUPPORT_ALL_ROWS(2)
-                SUPPORT_ALL_ROWS(3)
-                SUPPORT_ALL_ROWS(4)
-
-    #undef SUPPORT_ALL_ROWS
-    #undef SUPPORT_ALL_FTYPES
-    #undef SUPPORT
-
-    #pragma endregion
-
-            UniformUnion_Matrix() = default;
-            static bool IsValidType(UniformTypes type);
-        };
-
-        //A union of the various texture types.
-        //Wrapped in a struct to provide implicit casting and easy assignment.
-        struct BP_API UniformUnion_Texture
-        {
-            #pragma region The union
-            union Types{
-                SamplerUniformHandle Sampler;
-                ImageUniformHandle Image;
-            } Value;
-            #pragma endregion
-        
-            #pragma region Casting/getting, assignment, and constructors
-
-            template<typename Value_t>
-            const Value_t& As() const { static_assert(false); } //Specialized for applicable types.
-
-            template<typename Value_t>
-            Value_t& As()
-            {
-                //Call the const version, and then just cast.
-                const auto& constThis = *this;
-                const auto& constVal = constThis.As<Value_t>();
-                return const_cast<Value_t&>(constVal);
-            }
-
-
-            //Define cast operator, constructor, assignment operator, and "As()" for each type.
-        #define SUPPORT(t, field) \
-                operator t() const { return Value.field; } \
-                UniformUnion_Texture(const t& val) { Value.field = val; } \
-                UniformUnion_Texture& operator=(const t& val) { Value.field = val; return *this; } \
-                template<> const t& As<t>() const { return Value.field; }
-            SUPPORT(SamplerUniformHandle, Sampler)
-            SUPPORT(ImageUniformHandle, Image)
-        #undef SUPPORT
-
-    #pragma endregion
-            
-            UniformUnion_Texture() = default;
-            static bool IsValidType(UniformTypes type);
-        };
+            //Error for any other types we forgot to handle.
+            default:
+                BPAssert(false,
+                         (std::string("Unknown uniform type: ") + type._to_string()).c_str());
+        }
     }
 
-    #pragma endregion
 
-    #pragma region Uniform<> class
-    //A value, or array of values, to be passed into a shader.
-    //If there's only one value, no heap allocations will be made.
-    template<typename ValueUnion_t,
-             UniformTypes::_integral _InvalidType>
-    class Uniform
+    //A single uniform value of any type.
+    struct BP_API UniformValue
     {
-    public:
+        #pragma region The union
+        union {
+            bool B;
+            uint32_t U;
+            int32_t I;
+            float F;
+            double D;
 
-        static const UniformTypes InvalidType;
-        using This_t = Uniform<ValueUnion_t, _InvalidType>;
+            //Macro to define the vector types.
+            //Note that there are 1D vectors, which represent the exact same data
+            //    as the above primitive types.
+        #define MAKE_OF_SIZE(n) \
+            glm::vec<n, bool> B##n; \
+            glm::vec<n, uint32_t> U##n; \
+            glm::vec<n, int32_t> I##n; \
+            glm::vec<n, float> F##n; \
+            glm::vec<n, double> D##n
 
+            MAKE_OF_SIZE(1);
+            MAKE_OF_SIZE(2);
+            MAKE_OF_SIZE(3);
+            MAKE_OF_SIZE(4);
+        #undef MAKE_OF_SIZE
 
-        Uniform() : type(InvalidType), count(0)
-        {
-            //Technically the C++ standard doesn't guarantee that std::vector's default constructor
-            //    makes no heap allocations, but from what I understand, it never will in practice.
-            //If this assert fails, you'll need to switch over to a raw array.
-            BPAssert(arrayValue.capacity() < 1,
-                     "std::vector makes heap allocations in default constructor!");
-        }
+            //Macro to define the matrix types.
+            //Names are in the form "F[C]x[R]" and "D[C]x[R]",
+            //    where C is the column count and R is the row count.
+        #define GLM_MAT(n, m) \
+            glm::mat<n, m, glm::f32> F##n##x##m; \
+            glm::mat<n, m, glm::f64> D##n##x##m
+        #define GLM_MATS(n) \
+            GLM_MAT(n, 2); GLM_MAT(n, 3); GLM_MAT(n, 4)
 
-        //Constructor with the uniform's value.
-        template<typename Value_t>
-        Uniform(const Value_t& _singleValue)
-            : Uniform() //Make sure the assert gets called.
-        {
-            type = GetUniformType<Value_t>();
-            singleValue = _singleValue;
-            count = 1;
-        }
+            GLM_MATS(2);
+            GLM_MATS(3);
+            GLM_MATS(4);
+        #undef GLM_MATS
+        #undef GLM_MAT
+               
+            Ptr::Sampler Sampler;
+            Ptr::Image Image;
 
-        //Assignment operator with the uniform's value.
-        template<typename Value_t>
-        Uniform& operator=(const Value_t& _singleValue)
-        {
-            if (arrayValue.capacity() > 0)
-                arrayValue.clear();
-
-            type = GetUniformType<Value_t>();
-            singleValue = _singleValue;
-            count = 1;
-
-            return *this;
-        }
-
-        #pragma region Standard constructors/assignment operators for copying/moving.
-
-        Uniform(const This_t& cpy) = default;
-        Uniform& operator=(const This_t& cpy) = default;
-
-        Uniform(This_t&& old) = default;
-        Uniform& operator=(This_t&& old) = default;
-
+        } Value;
         #pragma endregion
-
-        #pragma region Size/index getters and setters
-
-        size_t GetCount() const { return count; }
-
-        const ValueUnion_t& Get(size_t index = 0) const
-        {
-            BPAssert(index < count, "index outside range");
-            if ((index == 0) & (arrayValue.size() < 1))
-                return singleValue;
-            else
-                return arrayValue[index];
-        }
-        ValueUnion_t& Get(size_t index = 0)
-        {
-            //Just call the const version and cast it.
-            const auto& constThis = *this;
-            const auto& constVal = constThis.Get(index);
-            return const_cast<ValueUnion_t&>(constVal);
-        }
+        
+        #pragma region Casting/getting, assignment, and constructors
 
         template<typename Value_t>
-        const Value_t& Get(size_t index = 0) const
-        {
-            BPAssert(type == GetUniformType<Value_t>(),
-                     (std::string("Type mismatch: ") + type._to_string() +
-                          " instead of " + GetUniformType<Value_t>()._to_string()).c_str());
-            return Get(index).As<Value_t>();
-        }
+        const Value_t& As() const { static_assert(false); } //Specialized for applicable types.
+
         template<typename Value_t>
-        Value_t& Get(size_t index = 0)
+        Value_t& As()
         {
-            //Just call the const version and cast it.
+            //Call the const version, and then just cast.
             const auto& constThis = *this;
-            const auto& constVal = constThis.Get<Value_t>(index);
+            const auto& constVal = constThis.As<Value_t>();
             return const_cast<Value_t&>(constVal);
         }
 
-        void Set(size_t index, const ValueUnion_t& newValue)
+
+        //Define cast operator, constructor, assignment operator, and "As()" for each type.
+    #define SUPPORT(t, field, enumType) \
+        operator t() const { return Value.field; } \
+        UniformValue(const t& val): type(UniformTypes::enumType) { Value.field = val; } \
+        UniformValue& operator=(const t& val) { Value.field = val; type = UniformTypes::enumType; return *this; } \
+        template<> const t& As<t>() const { BPAssert(type == +UniformTypes::enumType, \
+                                                     (std::string("Expected ") + (+UniformTypes::enumType)._to_string() + \
+                                                        " but got " + type._to_string()).c_str()); \
+                                            return Value.field; }
+
+        //Define the basic data types.
+        SUPPORT(bool, B, Bool1)
+        SUPPORT(int32_t, I, Int1)
+        SUPPORT(uint32_t, U, Uint1)
+        SUPPORT(float, F, Float1)
+        SUPPORT(double, D, Double1)
+
+        //Define the vector types.
+    #define SUPPORT_VECTORS(t, field, typePrefix) \
+        SUPPORT(glm::vec<1 BP_COMMA t>, field##1, typePrefix##1) \
+        SUPPORT(glm::vec<2 BP_COMMA t>, field##2, typePrefix##2) \
+        SUPPORT(glm::vec<3 BP_COMMA t>, field##3, typePrefix##3) \
+        SUPPORT(glm::vec<4 BP_COMMA t>, field##4, typePrefix##4)
+
+        SUPPORT_VECTORS(bool, B, Bool)
+        SUPPORT_VECTORS(int32_t, I, Int)
+        SUPPORT_VECTORS(uint32_t, U, Uint)
+        SUPPORT_VECTORS(float, F, Float)
+        SUPPORT_VECTORS(double, D, Double)
+    #undef SUPPORT_VECTORS
+
+        //Define the matrix types.
+    #define SUPPORT_ALL_FTYPES(nCols, nRows) \
+        SUPPORT(glm::mat<nCols BP_COMMA nRows BP_COMMA float>, \
+                F##nCols##x##nRows, Float##nCols##x##nRows) \
+        SUPPORT(glm::mat<nCols BP_COMMA nRows BP_COMMA double>, \
+                D##nCols##x##nRows, Double##nCols##x##nRows)
+    #define SUPPORT_ALL_ROWS(nCols) \
+        SUPPORT_ALL_FTYPES(nCols, 2) \
+        SUPPORT_ALL_FTYPES(nCols, 3) \
+        SUPPORT_ALL_FTYPES(nCols, 4)
+
+        SUPPORT_ALL_ROWS(2)
+        SUPPORT_ALL_ROWS(3)
+        SUPPORT_ALL_ROWS(4)
+    #undef SUPPORT_ALL_ROWS
+    #undef SUPPORT_ALL_FTYPES
+    
+        SUPPORT(Ptr::Sampler, Sampler, Sampler);
+        SUPPORT(Ptr::Image, Image, Image);
+
+    #undef SUPPORT
+
+        #pragma endregion
+
+        UniformValue() = default;
+
+    private:
+
+        UniformTypes type;
+    };
+
+
+    //An array of some kind of uniform value.
+    class BP_API UniformArray
+    {
+    public:
+
+        UniformArray(UniformTypes _type) : type(_type) { }
+
+        //Constructor with a single value.
+        template<typename Value_t>
+        UniformArray(const Value_t& singleValue)
+            : this(GetUniformType<Value_t>()), count(1)
         {
-            BPAssert(index < GetCount(), "Index out of range");
-            if (GetCount() == 1 && arrayValue.size() == 0)
-                singleValue = newValue;
-            else
-                arrayValue[index] = newValue;
+            arrayBytes.resize(GetUniformByteSize(type));
+            *(Value_t*)arrayBytes.data() = singleValue;
         }
+
+        //Constructor with an array of values.
+        template<typename Value_t>
+        UniformArray(const Value_t* arrayValues, size_t _count)
+            : this(GetUniformType<Value_t>()), count(_count)
+        {
+            arrayBytes.resize(count * GetUniformByteSize(type));
+            memcpy(arrayBytes.data(), arrayValues, arrayBytes.size());
+        }
+
+
+        #pragma region Getters
+
+        UniformTypes GetType() const { return type; }
+        size_t GetCount() const { return count; }
+
+        const std::byte* GetData() const { return arrayBytes.data(); }
+              std::byte* GetData()       { return arrayBytes.data(); }
+
+        template<typename Value_t>
+        const Value_t* GetData() const { AssertType<Value_t>(); return (Value_t*)GetData(); }
+        template<typename Value_t>
+              Value_t* GetData()       { AssertType<Value_t>(); return (Value_t*)GetData(); }
+
+        template<typename Value_t>
+        const Value_t& Get(size_t index) const { AssertType<Value_t>(); AssertIndex(index); return GetData<Value_t>()[index]; }
+        template<typename Value_t>
+              Value_t& Get(size_t index)       { AssertType<Value_t>(); AssertIndex(index); return GetData<Value_t>()[index]; }
+        
+        #pragma endregion
+
+        #pragma region Setters
 
         template<typename Value_t>
         void Set(size_t index, const Value_t& newValue)
         {
-            BPAssert(type == GetUniformType<Value_t>(),
-                     (std::string("Type mismatch: ") + type._to_string() +
-                          " instead of " + GetUniformType<Value_t>()._to_string()).c_str());
-            Set(index, ValueUnion_t{ newValue });
-        }
-
-        #pragma endregion
-
-        #pragma region Type data getters/setters
-
-        bool HasAType() const { return type != InvalidType; }
-
-        UniformTypes GetType() const { return type; }
-        void SetType(UniformTypes t)
-        {
-            //Changing the type is only allowed if no items are in the array yet.
-            BPAssert(type == InvalidType ||
-                       type == t ||
-                       GetCount() == 0,
-                     "Trying to change the type when the array has values");
-
-            type = t;
-        }
-
-        template<typename Value_t>
-        void SetType() { SetType(GetUniformType<Value_t>()); }
-
-        #pragma endregion
-
-        #pragma region Add/Insert/Remove/Clear
-
-        void Add(const ValueUnion_t& val)
-        {
-            if (count == 0)
-            {
-                count = 1;
-                singleValue = val;
-            }
-            else if (count == 1)
-            {
-                //If we're still caching the single value,
-                //    move it into the heap.
-                if (arrayValue.size() == 0)
-                    arrayValue.push_back(singleValue);
-
-                arrayValue.push_back(val);
-                count = 2;
-            }
-            else
-            {
-                arrayValue.push_back(val);
-                count += 1;
-            }
-
-            BPAssert(count == arrayValue.size() || count < 2,
-                     "count doesn't match up with arrayValue.size() as expected");
-        }
-        void Remove(size_t index)
-        {
-            BPAssert(index < count, //Both are unsigned, so this implies count > 0 as well.
-                     "Index out of range");
-
-            if (count == 1)
-                count = 0;
-            else
-            {
-                arrayValue.erase(arrayValue.begin() + index);
-                count -= 1;
-            }
+            AssertType<Value_t>();
+            AssertIndex(index);
+            GetData<Value_t>()[index] = newValue;
         }
 
         template<typename Value_t>
         void Add(const Value_t& val)
         {
-            SetType<Value_t>();
-            Add(ValueUnion_t{ val });
+            AssertType<Value_t>();
+            
+            arrayBytes.resize(arrayBytes.size() + GetUniformByteSize(type));
+            Get<Value_t>()[count] = val;
+
+            count += 1;
         }
 
-        void Clear()
-        {
-            count = 0;
-            if (arrayValue.size() > 0)
-                arrayValue.clear();
-        }
+        void Remove(size_t index);
+
+        void Clear(UniformTypes newType);
+        void Clear() { Clear(type); }
 
         //Clears this list AND changes its type to the given one.
         template<typename Value_t>
-        void Clear()
-        {
-            Clear();
-            SetType<Value_t>();
-        }
+        void Clear() { Clear(GetUniformType<Value_t>()); }
 
         #pragma endregion
 
+        //TODO: A non-template version of Get, Set, and Add which use the UniformValue class
+
+
     private:
 
-        UniformTypes type = InvalidType;
-        size_t count = 0;
+        UniformTypes type;
+        size_t count;
+        std::vector<std::byte> arrayBytes;
 
-        ValueUnion_t singleValue;
-        std::vector<ValueUnion_t> arrayValue;
+
+        void AssertIndex(size_t i) const;
+
+        void AssertType(UniformTypes expected) const;
+
+        template<typename Value_t>
+        void AssertType() const { AssertType(GetUniformType<Value_t>(); }
     };
-
-    template<typename ValueUnion_t,
-             UniformTypes::_integral _InvalidType>
-    const UniformTypes Uniform<ValueUnion_t, _InvalidType>::InvalidType =
-        UniformTypes::_from_integral(_InvalidType);
-
-    #pragma endregion
-
-    using VectorUniform = Uniform<UniformDataStructures::UniformUnion_Vector,
-                                  UniformTypes::Image>;
-    using MatrixUniform = Uniform<UniformDataStructures::UniformUnion_Matrix,
-                                  UniformTypes::Image>;
-    using TextureUniform  = Uniform<UniformDataStructures::UniformUnion_Texture,
-                                    UniformTypes::Bool1>;
-
     
-    void SetUniform(Ptr::ShaderUniform ptr, const VectorUniform& value);
-    void SetUniform(Ptr::ShaderUniform ptr, const MatrixUniform& value);
-    void SetUniform(Ptr::ShaderUniform ptr, const TextureUniform& value);
-}
+    //void SetUniform(Ptr::ShaderUniform ptr, const VectorUniform& value);
+    //void SetUniform(Ptr::ShaderUniform ptr, const MatrixUniform& value);
+    //void SetUniform(Ptr::ShaderUniform ptr, const TextureUniform& value);
 
-strong_typedef_hashable(Bplus::GL::Ptr::ShaderUniform, GLint);
+    #endif
+    #pragma endregion
+}

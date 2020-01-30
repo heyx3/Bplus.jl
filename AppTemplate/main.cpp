@@ -170,12 +170,13 @@ void TestMatrixUniforms()
     assert(myUniform.Get<glm::mat2x2>() == glm::mat2x2(1, 0, 0, 1));
 }
 
+
 int main(int argc, char* argv[])
 {
     TestVectorUniforms();
     TestMatrixUniforms();
 
-    std::cout << "Tests passed! \n";
+    std::cout << "Tests passed! Loading rest of program... \n";
 
 
     //Parse command-line arguments.
