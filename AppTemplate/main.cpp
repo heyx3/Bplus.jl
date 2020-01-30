@@ -127,55 +127,10 @@ protected:
 };
 
 
-//TODO: Make actual unit tests somehow.
-void TestVectorUniforms()
-{
-    using namespace Bplus::GL;
-    VectorUniform myUniform;
-
-    assert(!myUniform.HasAType());
-
-    myUniform = 5.0f;
-    assert(myUniform.GetType() == +UniformTypes::Float1);
-    assert(myUniform.GetCount() == 1);
-    assert(myUniform.Get<float>() == 5.0f);
-
-    myUniform.Add(10.0f);
-    assert(myUniform.GetType() == +UniformTypes::Float1);
-    assert(myUniform.GetCount() == 2);
-    assert(myUniform.Get<float>(0) == 5.0f);
-    assert(myUniform.Get<float>(1) == 10.0f);
-
-    myUniform.Clear<glm::bvec3>();
-    assert(myUniform.GetType() == +UniformTypes::Bool3);
-    assert(myUniform.GetCount() == 0);
-
-    myUniform.Add(glm::bvec3{ false, true, false });
-    assert(myUniform.GetType() == +UniformTypes::Bool3);
-    assert(myUniform.GetCount() == 1);
-    assert(myUniform.Get<glm::bvec3>() == glm::bvec3(false, true, false));
-    
-    myUniform.Clear();
-    myUniform.SetType(VectorUniform::InvalidType);
-    assert(!myUniform.HasAType());
-}
-void TestMatrixUniforms()
-{
-    using namespace Bplus::GL;
-    MatrixUniform myUniform;
-
-    myUniform = MatrixUniform(glm::fmat2x2(1));
-    assert(myUniform.GetType() == +UniformTypes::Float2x2);
-    assert(myUniform.GetCount() == 1);
-    assert(myUniform.Get<glm::mat2x2>() == glm::mat2x2(1, 0, 0, 1));
-}
-
+//TODO: Unit testing
 
 int main(int argc, char* argv[])
 {
-    TestVectorUniforms();
-    TestMatrixUniforms();
-
     std::cout << "Tests passed! Loading rest of program... \n";
 
 
