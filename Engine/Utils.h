@@ -33,6 +33,46 @@ namespace Bplus
 #define BETTER_ENUMS_API BP_API
 #include <better_enums.h>
 
+#pragma region Bool struct, for making a sane vector<Bool>
+//Mimics the standard bool type, except that it can be used in a vector<>
+//    without becoming a bitfield.
+struct BP_API Bool
+{
+    Bool() { *this = false; }
+    Bool(bool b) { *this = b; }
+
+    operator const bool&() const { return *(bool*)data; }
+    operator       bool&()       { return *(bool*)data; }
+
+    Bool& operator=(bool b) { memcpy(data, &b, sizeof(bool)); return *this; }
+
+    bool operator!() const { return !((bool)*this); }
+    bool operator|(bool b) const { return ((bool)*this) | b; }
+    bool operator&(bool b) const { return ((bool)*this) & b; }
+
+    bool operator==(bool b) const { return b == (bool)*this; }
+    bool operator!=(bool b) const { return b != (bool)*this; }
+
+private:
+    std::byte data[sizeof(bool)];
+};
+
+static_assert(sizeof(Bool) == sizeof(bool), "Bool is too big");
+
+//Provide hashing for Bool.
+namespace std
+{
+    template<> struct BP_API hash<Bool>
+    {
+        std::size_t operator()(Bool key) const
+        {
+            using std::hash;
+            return hash<bool>()(key);
+        }
+    };
+}
+
+#pragma endregion
 
 #pragma region strong_typedef
 
@@ -40,6 +80,7 @@ namespace Bplus
 //Based on: https://foonathan.net/2016/10/strong-typedefs/
 #define strong_typedef_start(Tag, UnderlyingType, classAttrs) \
     struct classAttrs Tag : _strong_typedef<Tag, UnderlyingType> { \
+        using Data_t = UnderlyingType; \
         using _strong_typedef::_strong_typedef; /* Make the constructors available */
 #define strong_typedef_end \
     }
@@ -61,7 +102,7 @@ namespace Bplus
         std::size_t operator()(const Tag& key) const \
         { \
             using std::hash; \
-            return hash<UnderlyingType>()((UnderlyingType)key);  \
+            return hash<UnderlyingType>()((UnderlyingType)key); \
         } }; }
 
 #pragma endregion
@@ -231,8 +272,9 @@ namespace Bplus
 
         explicit operator T&() noexcept { return value_; }
         explicit operator const T&() const noexcept { return value_; }
-        const T& Get() noexcept const { return value_; }
-        T& Get() noexcept { return value_; }
+        
+        const T& Get() const { return value_; }
+        T& Get() { return value_; }
 
         friend void swap(_strong_typedef& a, _strong_typedef& b) noexcept
         {

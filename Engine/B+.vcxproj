@@ -367,8 +367,6 @@ exit 0</Command>
     <ClCompile Include="Renderer\Device.cpp" />
     <ClCompile Include="Renderer\Materials\Material.cpp" />
     <ClCompile Include="Renderer\Materials\CompiledShader.cpp" />
-    <ClCompile Include="Renderer\Materials\Uniforms.cpp" />
-    <ClCompile Include="Renderer\Materials\UniformSet.cpp" />
     <ClCompile Include="TomlIO.cpp" />
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>
@@ -392,8 +390,6 @@ exit 0</Command>
     <ClInclude Include="Renderer\Device.h" />
     <ClInclude Include="Renderer\Materials\Material.h" />
     <ClInclude Include="Renderer\Materials\CompiledShader.h" />
-    <ClInclude Include="Renderer\Materials\Uniforms.h" />
-    <ClInclude Include="Renderer\Materials\UniformSet.h" />
     <ClInclude Include="RenderLibs.h" />
     <ClInclude Include="IO.h" />
     <ClInclude Include="TomlIO.h" />
