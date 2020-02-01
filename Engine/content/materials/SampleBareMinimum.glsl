@@ -92,7 +92,8 @@ vec3 H_GetLightColor(S_Light_Point light,
                            fragToCamDir);
 }
 
-//....custom user definitions go here....
+uniform vec4 u_ColorTint = vec4(0.5, 0.5, 0.5, 1.0);
+uniform float u_Darkness = 
 
 void main()
 {
@@ -101,12 +102,22 @@ void main()
     //--------
 
     //Module: OtherOutputs
-    vOut_Color = vIn_Color * u_ColorTint;
+    //A module to set custom vertex shader outputs.
+    //Placed at the very end of the shader.
+
+    //Load the color tint from the array of structs.
+    vec3 chosenTint = u_ValueSelection[0];
+    for (uint i = 0; i < u_ValueSelection_SIZE; ++i)
+        if (u_ValueSelection[i].UseMe)
+            chosenTint = u_ValueSelection[i].Value;
+
+    //Compute the final color.
+    vOut_Color = vIn_Color * u_ColorTint *
+                 chosenTint * u_Darkness *
+                 vec3(u_ColorTint2[0], u_ColorTint2[1], u_ColorTint2[2]);
     //--------
 }
 
-
-//TODO: Geometry shader?
 
 //=========================================
 //           Fragment Shader:

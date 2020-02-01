@@ -2,11 +2,14 @@
 # This is the simplest-possible kind of Material,
 #     which the other Material types inherit from.
 # It passes the model vertices through without transformation,
-#    and multiplies their color with a color uniform.
+#    and multiplies their color with some color based on a uniform.
+# The way that color is selected is unnecessarily complicated
+#    to thoroughly illustrate the different parts of this format.
 
 #TODO: Stencil settings.
 #TODO: Depth-test settings.
 #TODO: MRT settings.
+#TODO: Geometry shader.
 
 
 type = "Basic"
@@ -31,10 +34,41 @@ float ProcessData(MyData d) { return 0.5; }
     op = "Add"
 
 [params]
-    [params.color.u_ColorTint]
+    [params.color.ColorTint] # Defined as a vec4 in the shader
         hdr = true # Defaults to false.
-        showAlpha = false # Whether we care about its alpha value. Defaults to true
-        default = [ 0.5, 0.5, 0.5, 1.0 ]
+        showAlpha = false # Whether we care about its alpha value. Defaults to true. If false, the alpha is always 1.
+        default = [ 0.5, 0.5, 0.5, 1.0 ] # Alpha is always optional; defaults to 1.
+
+    [params.range.Darkness] # A scalar multiplier on the color, represented as a slider range.
+        default = 1.0
+        min = 0.0 # Defaults to 0
+        max = 1.0 # Defaults to max(1, min + 0.0001)
+
+    [params."range[]".ColorTint2] # An array of 3 floats that defines a second tint color.
+        count = 3 # The shader will generate the following: #define SIZE_ColorTint2 3
+        [params."range[]".ColorTint2.element] # Parameters on the elements -- same data structure as a normal float param
+            default = 1.0
+            sliderMin = 0.0
+            sliderMax = 1.0
+        
+
+    # Example of how to define an array of a "U_InputData" structure.
+    # It will look like this in code:
+    #   struct U_ColorValue {
+    #       vec3 Value;
+    #       bool UseMe;
+    # } u_ValueSelection[2]
+    # Note that
+    [params.field]
+        [params.field.ColorValue.color.Value] # Defines the nature of the struct field "U_ColorValue::Value"
+            default = [ 0, 0, 0, 1 ]
+        [params.field.ColorValue.bool.UseMe] # Defines the nature of the struct field "UseMe"
+            default = false
+    [params.struct."ColorValue[]".ValueSelection] # Defines an array of the "U_ColorValue" struct,
+                                                  # Named "u_ValueSelection"
+        count = 2 # The shader will #define SIZE_ColorValue 2
+
+    # TODO: Nested structs example.
 
 # Exists for all materials, with variation:
 [vertexShader]
@@ -81,7 +115,17 @@ gl_Position = vIn_Pos;
         OtherOutputs = '''
 //A module to set custom vertex shader outputs.
 //Placed at the very end of the shader.
-vOut_Color = vIn_Color * u_ColorTint;
+
+//Load the color tint from the array of structs.
+vec3 chosenTint = u_ValueSelection[0];
+for (uint i = 0; i < u_ValueSelection_SIZE; ++i)
+    if (u_ValueSelection[i].UseMe)
+        chosenTint = u_ValueSelection[i].Value;
+
+//Compute the final color.
+vOut_Color = vIn_Color * u_ColorTint *
+             chosenTint * u_Darkness *
+             vec3(u_ColorTint2[0], u_ColorTint2[1], u_ColorTint2[2]);
 '''
 
 [fragmentShader]
