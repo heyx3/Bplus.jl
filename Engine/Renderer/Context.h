@@ -7,16 +7,17 @@
 namespace Bplus::GL
 {
     class CompiledShader;
+    
+    //TODO: Support MRT (many settings are per-RT).
 
 
     //Represents OpenGL's global state, like the current blend mode and stencil test.
-    //Does not include bound objects, shader uniforms, etc.
+    //Does not include some things like bound objects, shader uniforms, etc.
     class BP_API RenderState
     {
     public:
 
-        VsyncModes Vsync;
-        bool EnableScissor, EnableDepthWrite;
+        bool EnableDepthWrite;
         glm::bvec4 ColorWriteMask;
         FaceCullModes CullMode;
         ValueTests DepthTest;
@@ -27,14 +28,11 @@ namespace Bplus::GL
         GLuint StencilMaskFront, StencilMaskBack;
         //TODO: Anything else?
 
-        CompiledShader* ActiveShader = nullptr;
-
 
         //Must give the better_enum types constructed values to avoid a compile error.
-        RenderState(VsyncModes vsync = VsyncModes::Off,
-                    FaceCullModes cullMode = FaceCullModes::On,
+        RenderState(FaceCullModes cullMode = FaceCullModes::On,
                     ValueTests depthTest = ValueTests::LessThan)
-            : Vsync(vsync), CullMode(cullMode), DepthTest(depthTest) { }
+            : CullMode(cullMode), DepthTest(depthTest) { }
     };
 
 
@@ -42,10 +40,8 @@ namespace Bplus::GL
     //Ensures good performance by remembering the current state and ignoring duplicate calls.
     //Note that only one of these should exist in each thread,
     //    and this constraint is enforced in the constructor.
-    class BP_API Context : private RenderState
+    class BP_API Context
     {
-        //TODO: Support MRT (many settings are per-RT).
-
     public:
         static const char* GLSLVersion() { return "#version 450"; }
         static uint8_t GLVersion_Major() { return 4; }
@@ -74,7 +70,8 @@ namespace Bplus::GL
 
         //Creates the context based on the given SDL window.
         //If there was an error, "errorMsg" will be set to it.
-        Context(SDL_Window* owner, std::string& errorMsg);
+        Context(SDL_Window* owner, std::string& errorMsg,
+                VsyncModes vsync = VsyncModes::Off);
         ~Context();
 
         //Gets whether this context got initialized properly.
@@ -88,11 +85,12 @@ namespace Bplus::GL
         void RefreshState();
 
 
-        const RenderState& GetState() const { return *this; }
+        const RenderState& GetState() const { return state; }
+        void SetState(const RenderState& newState);
 
 
         bool SetVsyncMode(VsyncModes mode);
-        VsyncModes GetVsyncMode() const { return Vsync; }
+        VsyncModes GetVsyncMode() const { return vsync; }
 
         //Clears the current framebuffer's color and depth.
         void Clear(float r, float g, float b, float a, float depth);
@@ -105,29 +103,35 @@ namespace Bplus::GL
         template<typename TVec4>
         void Clear(const TVec4& rgba) { Clear(rgba.r, rgba.g, rgba.b, rgba.a); }
 
+
+        void SetFaceCulling(FaceCullModes mode);
+        FaceCullModes GetFaceCulling() const { return state.CullMode; }
+
         #pragma region Viewport
 
         void SetViewport(int minX, int minY, int width, int height);
         void SetViewport(int width, int height) { SetViewport(0, 0, width, height); }
+        void GetViewport(int& outMinX, int& outMinY, int& outWidth, int& outHeight);
 
         void SetScissor(int minX, int minY, int width, int height);
         void DisableScissor();
 
-        void SetFaceCulling(FaceCullModes mode);
-        FaceCullModes GetFaceCulling() const { return CullMode; }
+        //If scissor is disabled, returns false.
+        //Otherwise, returns true and sets the given output parameters.
+        bool GetScissor(int& outMinX, int& outMinY, int& outWidth, int& outHeight) const;
 
         #pragma endregion
 
         #pragma region Depth/Color
 
         void SetDepthTest(ValueTests mode);
-        ValueTests GetDepthTest() const { return DepthTest; }
+        ValueTests GetDepthTest() const { return state.DepthTest; }
 
         void SetDepthWrites(bool canWriteToDepth);
-        bool GetDepthWrites() const { return EnableDepthWrite; }
+        bool GetDepthWrites() const { return state.EnableDepthWrite; }
 
         void SetColorWriteMask(glm::bvec4 canWrite);
-        glm::bvec4 GetColorWriteMask() const { return ColorWriteMask; }
+        glm::bvec4 GetColorWriteMask() const { return state.ColorWriteMask; }
 
         #pragma endregion
 
@@ -139,10 +143,10 @@ namespace Bplus::GL
         //Sets both color and alpha blending to the given state.
         void SetBlending(const BlendStateRGBA& state);
 
-        BlendStateRGB GetColorBlending() const { return ColorBlending; }
+        BlendStateRGB GetColorBlending() const { return state.ColorBlending; }
         void SetColorBlending(const BlendStateRGB& state);
 
-        BlendStateAlpha GetAlphaBlending() const { return AlphaBlending; }
+        BlendStateAlpha GetAlphaBlending() const { return state.AlphaBlending; }
         void SetAlphaBlending(const BlendStateAlpha& state);
 
         #pragma endregion
@@ -155,10 +159,10 @@ namespace Bplus::GL
         //Sets both front- and back-faces to use the given stencil test.
         void SetStencilTest(const StencilTest& test);
 
-        const StencilTest& GetStencilTestFrontFaces() const { return StencilTestFront; }
+        const StencilTest& GetStencilTestFrontFaces() const { return state.StencilTestFront; }
         void SetStencilTestFrontFaces(const StencilTest& test);
 
-        const StencilTest& GetStencilTestBackFaces() const { return StencilTestBack; }
+        const StencilTest& GetStencilTestBackFaces() const { return state.StencilTestBack; }
         void SetStencilTestBackFaces(const StencilTest& test);
 
 
@@ -168,10 +172,10 @@ namespace Bplus::GL
         //Sets both front- and back-faces to use the given stencil write operations.
         void SetStencilResult(const StencilResult& writeResults);
 
-        const StencilResult& GetStencilResultFrontFaces() const { return StencilResultFront; }
+        const StencilResult& GetStencilResultFrontFaces() const { return state.StencilResultFront; }
         void SetStencilResultFrontFaces(const StencilResult& writeResult);
 
-        const StencilResult& GetStencilResultBackFaces() const { return StencilResultBack; }
+        const StencilResult& GetStencilResultBackFaces() const { return state.StencilResultBack; }
         void SetStencilResultBackFaces(const StencilResult& writeResult);
 
 
@@ -180,10 +184,10 @@ namespace Bplus::GL
         GLuint GetStencilMask() const;
         void SetStencilMask(GLuint newMask);
 
-        GLuint GetStencilMaskFrontFaces() const { return StencilMaskFront; }
+        GLuint GetStencilMaskFrontFaces() const { return state.StencilMaskFront; }
         void SetStencilMaskFrontFaces(GLuint newMask);
 
-        GLuint GetStencilMaskBackFaces() const { return StencilMaskBack; }
+        GLuint GetStencilMaskBackFaces() const { return state.StencilMaskBack; }
         void SetStencilMaskBackFaces(GLuint newMask);
 
         #pragma endregion
@@ -193,5 +197,12 @@ namespace Bplus::GL
         bool isInitialized = false;
         SDL_GLContext sdlContext;
         SDL_Window* owner;
+
+        RenderState state;
+        glm::ivec4 viewport;
+        Lazy<glm::ivec4> scissor;
+        VsyncModes vsync;
+
+        CompiledShader* activeShader = nullptr;
     };
 }
