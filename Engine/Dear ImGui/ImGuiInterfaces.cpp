@@ -445,7 +445,7 @@ void main()     \n\
     else
     {
         fprintf(stderr, "ImGUI shaders linked successfully. %s\n",
-                infoLog);
+                infoLog.c_str());
     }
 
     //Get attribute/uniform locations.

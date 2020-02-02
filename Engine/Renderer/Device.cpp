@@ -42,7 +42,7 @@ Device::Device(Context& context)
     #define LOAD_UINT(oglEnum, description, var) \
         glGetIntegerv(oglEnum, &tempI); \
         BPAssert(tempI >= 0, "'" description "' is negative??"); \
-        BPAssert(tempI <= std::numeric_limits<decltype(var)>().max(), \
+        BPAssert((decltype(var))tempI <= std::numeric_limits<decltype(var)>().max(), \
                  "'" description "' is larger than its type can fit"); \
         var = (decltype(var))tempI
 

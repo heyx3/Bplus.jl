@@ -59,7 +59,7 @@ Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader, const char* f
         outErrMsg = "Error compiling vertex shader: " + errorMsg;
         glDeleteShader(vertShaderObj);
         glDeleteShader(fragShaderObj);
-        return Ptr::ShaderProgram::Null;
+        return Ptr::ShaderProgram();
     }
 
     errorMsg = TryCompile(fragShaderObj);
@@ -68,7 +68,7 @@ Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader, const char* f
         outErrMsg = "Error compiling fragment shader: " + errorMsg;
         glDeleteShader(vertShaderObj);
         glDeleteShader(fragShaderObj);
-        return Ptr::ShaderProgram::Null;
+        return Ptr::ShaderProgram();
     }
 
     //Now that everything is compiled, try linking it all together.
@@ -92,7 +92,7 @@ Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader, const char* f
 
         glDeleteProgram(programObj);
         errorMsg = "Error linking shaders: " + std::string(msgBuffer.data());
-        return Ptr::ShaderProgram::Null;
+        return Ptr::ShaderProgram();
     }
 
     //If the link is successful, we need to "detach" the shader objects
@@ -123,7 +123,7 @@ Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader,
         glDeleteShader(vertShaderObj);
         glDeleteShader(geomShaderObj);
         glDeleteShader(fragShaderObj);
-        return Ptr::ShaderProgram::Null;
+        return Ptr::ShaderProgram();
     }
 
     errorMsg = TryCompile(geomShaderObj);
@@ -133,7 +133,7 @@ Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader,
         glDeleteShader(vertShaderObj);
         glDeleteShader(geomShaderObj);
         glDeleteShader(fragShaderObj);
-        return Ptr::ShaderProgram::Null;
+        return Ptr::ShaderProgram();
     }
 
     errorMsg = TryCompile(fragShaderObj);
@@ -143,7 +143,7 @@ Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader,
         glDeleteShader(vertShaderObj);
         glDeleteShader(geomShaderObj);
         glDeleteShader(fragShaderObj);
-        return Ptr::ShaderProgram::Null;
+        return Ptr::ShaderProgram();
     }
 
     //Now that everything is compiled, try linking it all together.
@@ -169,7 +169,7 @@ Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader,
 
         glDeleteProgram(programObj);
         errorMsg = "Error linking shaders: " + std::string(msgBuffer.data());
-        return Ptr::ShaderProgram::Null;
+        return Ptr::ShaderProgram();
     }
 
     //If the link is successful, we need to "detach" the shader objects
@@ -245,7 +245,7 @@ CompiledShader::~CompiledShader()
 CompiledShader::CompiledShader(CompiledShader&& src)
     : uniformPtrs(std::move(src.uniformPtrs)), programHandle(src.programHandle)
 {
-    src.programHandle = Ptr::ShaderProgram::Null;
+    src.programHandle = Ptr::ShaderProgram();
 
     BPAssert(threadData.shadersByHandle.find(programHandle) != threadData.shadersByHandle.end(),
              "CompiledShader is missing from 'shadersByHandle'");
@@ -258,7 +258,7 @@ CompiledShader& CompiledShader::operator=(CompiledShader&& src)
     uniformPtrs = std::move(src.uniformPtrs);
     programHandle = src.programHandle;
 
-    src.programHandle = Ptr::ShaderProgram::Null;
+    src.programHandle = Ptr::ShaderProgram();
     
     BPAssert(threadData.shadersByHandle.find(programHandle) != threadData.shadersByHandle.end(),
              "CompiledShader is missing from 'shadersByHandle'");
@@ -290,7 +290,7 @@ std::tuple<CompiledShader::UniformStates, Ptr::ShaderUniform>
     //Check whether the name exists.
     auto foundPtr = uniformPtrs.find(name);
     if (foundPtr == uniformPtrs.end())
-        return std::make_tuple(UniformStates::Missing, Ptr::ShaderUniform::Null);
+        return std::make_tuple(UniformStates::Missing, Ptr::ShaderUniform());
     
     //Check whether the name corresponds to a real uniform.
     auto ptr = foundPtr->second;
@@ -334,6 +334,20 @@ void CompiledShader::SetUniformArray(Ptr::ShaderUniform ptr, GLsizei count, cons
                          threadData.uniformBoolBuffer.data());
 }
 
+void CompiledShader::SetUniformArray(Ptr::ShaderUniform ptr, GLsizei count, const Bool* values) const
+{
+    //Originally I just passed this through to the "const bool*" version with a pointer cast,
+    //    but that violates "strict aliasing" assumptions that the compiler makes
+    //    for optimization purposes.
+    //So to be safe, I just copied the code over.
+
+    threadData.uniformBoolBuffer.resize(count);
+    for (GLsizei i = 0; i < count; ++i)
+        threadData.uniformBoolBuffer[i] = values[i];
+    glProgramUniform1uiv(programHandle.Get(), ptr.Get(), count,
+                         threadData.uniformBoolBuffer.data());
+}
+
 #define UNIFORM_SETTER_BOOLVEC(n, singleValue) \
     void CompiledShader::SetUniform(Ptr::ShaderUniform ptr, const glm::bvec##n & value) const \
     { \
@@ -357,7 +371,7 @@ UNIFORM_SETTER_BOOLVEC(2, value.x BP_COMMA(GLuint)value.y);
 UNIFORM_SETTER_BOOLVEC(3, value.x BP_COMMA(GLuint)value.y BP_COMMA(GLuint)value.z);
 UNIFORM_SETTER_BOOLVEC(4, value.x BP_COMMA (GLuint)value.y BP_COMMA (GLuint)value.z BP_COMMA (GLuint)value.w);
 
-#undef UNIFORM_SETTER_BOOLVEC;
+#undef UNIFORM_SETTER_BOOLVEC
 
 #pragma endregion
 
@@ -419,6 +433,11 @@ UNIFORM_SETTER_MATRICES(4x4, 4)
 #pragma region SetUniform() for textures
 
 //TODO: Figure out how to set sampler/image uniforms and uniform arrays.
+UNIFORM_SETTER(Ptr::Sampler, Ptr::Sampler, 1ui, 1uiv,
+               value.Get(), &values[0].Get());
+UNIFORM_SETTER(Ptr::Image, Ptr::Image, 1ui, 1uiv,
+               value.Get(), &values[0].Get());
+
 
 #pragma endregion
 

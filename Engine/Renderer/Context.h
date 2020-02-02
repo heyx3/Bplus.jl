@@ -56,14 +56,9 @@ namespace Bplus::GL
 
         //Registers a callback for when this thread's context is destroyed.
         static void RegisterCallback_Destroyed(std::function<void()>);
-        //Unregisters a callback for when this thread's context is destroyed.
-        static void UnregisterCallback_Destroyed(std::function<void()>);
 
         //Registers a callback for when this thread's context's "RefreshState()" is called.
         static void RegisterCallback_RefreshState(std::function<void()>);
-        //Unregisters a callback for this thread's context's "RefreshState()".
-        //Asserts "false" if the callback was never actually registered.
-        static void UnregisterCallback_RefreshState(std::function<void()>);
 
         #pragma endregion
 

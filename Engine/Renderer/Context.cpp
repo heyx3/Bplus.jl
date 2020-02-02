@@ -1,7 +1,7 @@
 #include "Context.h"
 
 using namespace Bplus;
-using Context = GL::Context;
+using namespace Bplus::GL;
 
 
 namespace
@@ -16,6 +16,15 @@ namespace
 }
 
 Context* Context::GetCurrentContext() { return contextThreadData.Instance; }
+
+void Context::RegisterCallback_Destroyed(std::function<void()> func)
+{
+    contextThreadData.DestroyCallbacks.push_back(func);
+}
+void Context::RegisterCallback_RefreshState(std::function<void()> func)
+{
+    contextThreadData.RefreshCallbacks.push_back(func);
+}
 
 
 Context::Context(SDL_Window* _owner, std::string& errMsg, VsyncModes _vsync)
@@ -282,18 +291,18 @@ bool Context::GetScissor(int& outMinX, int& outMinY, int& outWidth, int& outHeig
 }
 
 
-bool Context::SetVsyncMode(GL::VsyncModes mode)
+bool Context::SetVsyncMode(VsyncModes mode)
 {
     int err = SDL_GL_SetSwapInterval((int)mode);
 
     //If it failed, maybe the hardware just doesn't support G-sync/FreeSync.
-    if (err != 0 && mode == +GL::VsyncModes::Adaptive)
-        err = SDL_GL_SetSwapInterval((int)GL::VsyncModes::On);
+    if (err != 0 && mode == +VsyncModes::Adaptive)
+        err = SDL_GL_SetSwapInterval((int)VsyncModes::On);
 
     return err == 0;
 }
 
-void Context::SetFaceCulling(GL::FaceCullModes mode)
+void Context::SetFaceCulling(FaceCullModes mode)
 {
     if (mode == +FaceCullModes::Off)
     {
@@ -316,7 +325,7 @@ void Context::SetFaceCulling(GL::FaceCullModes mode)
     }
 }
 
-void Context::SetDepthTest(GL::ValueTests newTest)
+void Context::SetDepthTest(ValueTests newTest)
 {
     //If we haven't initialized depth-testing yet, turn it on permanently.
     //Disabling depth-testing also disables depth writes,
@@ -353,7 +362,7 @@ void Context::SetColorWriteMask(glm::bvec4 canWrite)
 }
 
 
-GL::BlendStateRGBA Context::GetBlending() const
+BlendStateRGBA Context::GetBlending() const
 {
     //Make sure the same blend settings are being used for both RGB and Alpha.
     BlendStateAlpha colorBlendTest{ state.ColorBlending.Src, state.ColorBlending.Dest,
@@ -367,7 +376,7 @@ GL::BlendStateRGBA Context::GetBlending() const
                            { state.ColorBlending.Constant, state.AlphaBlending.Constant } };
 }
 
-void Context::SetBlending(const GL::BlendStateRGBA& blendState)
+void Context::SetBlending(const BlendStateRGBA& blendState)
 {
     //Don't waste time in the GPU driver if we're already in this blend state.
     BlendStateRGB newColorBlending{ blendState.Src, blendState.Dest, blendState.Op,
@@ -387,7 +396,7 @@ void Context::SetBlending(const GL::BlendStateRGBA& blendState)
     glBlendEquation((GLenum)blendState.Op);
     glBlendColor(blendState.Constant.r, blendState.Constant.g, blendState.Constant.b, blendState.Constant.a);
 }
-void Context::SetColorBlending(const GL::BlendStateRGB& blendState)
+void Context::SetColorBlending(const BlendStateRGB& blendState)
 {
     if (blendState == state.ColorBlending)
         return;
@@ -402,7 +411,7 @@ void Context::SetColorBlending(const GL::BlendStateRGB& blendState)
                  state.ColorBlending.Constant.b,
                  state.AlphaBlending.Constant.x);
 }
-void Context::SetAlphaBlending(const GL::BlendStateAlpha& blendState)
+void Context::SetAlphaBlending(const BlendStateAlpha& blendState)
 {
     if (blendState == state.AlphaBlending)
         return;
@@ -419,7 +428,7 @@ void Context::SetAlphaBlending(const GL::BlendStateAlpha& blendState)
 }
 
 
-const GL::StencilTest& Context::GetStencilTest() const
+const StencilTest& Context::GetStencilTest() const
 {
     //Make sure the same settings are being used for both front- and back-faces.
     BPAssert(state.StencilTestFront == state.StencilTestBack,
@@ -427,7 +436,7 @@ const GL::StencilTest& Context::GetStencilTest() const
     return state.StencilTestFront;
 }
 
-void Context::SetStencilTest(const GL::StencilTest& test)
+void Context::SetStencilTest(const StencilTest& test)
 {
     if ((state.StencilTestFront == test) & (state.StencilTestBack == test))
         return;
@@ -437,7 +446,7 @@ void Context::SetStencilTest(const GL::StencilTest& test)
 
     glStencilFunc((GLenum)test.Test, test.RefValue, test.Mask);
 }
-void Context::SetStencilTestFrontFaces(const GL::StencilTest& test)
+void Context::SetStencilTestFrontFaces(const StencilTest& test)
 {
     if (test == state.StencilTestFront)
         return;
@@ -445,7 +454,7 @@ void Context::SetStencilTestFrontFaces(const GL::StencilTest& test)
     state.StencilTestFront = test;
     glStencilFuncSeparate(GL_FRONT, (GLenum)test.Test, test.RefValue, test.Mask);
 }
-void Context::SetStencilTestBackFaces(const GL::StencilTest& test)
+void Context::SetStencilTestBackFaces(const StencilTest& test)
 {
     if (test == state.StencilTestBack)
         return;
@@ -455,7 +464,7 @@ void Context::SetStencilTestBackFaces(const GL::StencilTest& test)
 }
 
 
-const GL::StencilResult& Context::GetStencilResult() const
+const StencilResult& Context::GetStencilResult() const
 {
     //Make sure the same settings are being used for both front- and back-faces.
     BPAssert(state.StencilResultFront == state.StencilResultBack,
@@ -463,7 +472,7 @@ const GL::StencilResult& Context::GetStencilResult() const
     return state.StencilResultFront;
 }
 
-void Context::SetStencilResult(const GL::StencilResult& result)
+void Context::SetStencilResult(const StencilResult& result)
 {
     if ((state.StencilResultFront == result) & (state.StencilResultBack == result))
         return;
@@ -474,7 +483,7 @@ void Context::SetStencilResult(const GL::StencilResult& result)
                 (GLenum)result.OnPassStencilFailDepth,
                 (GLenum)result.OnPassStencilDepth);
 }
-void Context::SetStencilResultFrontFaces(const GL::StencilResult& result)
+void Context::SetStencilResultFrontFaces(const StencilResult& result)
 {
     if (result == state.StencilResultFront)
         return;
@@ -485,7 +494,7 @@ void Context::SetStencilResultFrontFaces(const GL::StencilResult& result)
                         (GLenum)result.OnPassStencilFailDepth,
                         (GLenum)result.OnPassStencilDepth);
 }
-void Context::SetStencilResultBackFaces(const GL::StencilResult& result)
+void Context::SetStencilResultBackFaces(const StencilResult& result)
 {
     if (result == state.StencilResultBack)
         return;

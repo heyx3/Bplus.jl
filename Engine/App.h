@@ -96,8 +96,8 @@ namespace Bplus
         App& operator=(const App& cpy) = delete;
 
 
-        GL::Context* GetContextP() const { return glContext.get(); }
-        GL::Context& GetContext() const { return *glContext.get(); }
+        GL::Context& GetContext()  const { BPAssert(glContext.get() != nullptr, ""); return *glContext.get(); }
+        GL::Context* GetContextP() const {                                           return  glContext.get(); }
 
         //Runs this app from beginning to end, blocking the calling thread
         //    until it's completed.

@@ -21,14 +21,12 @@ namespace Bplus::GL
 
         strong_typedef_start(ShaderProgram, GLuint, BP_API)
 
-            static const ShaderProgram Null;
-
-            strong_typedef_equatable(ShaderProgram, GLuint);
+            static const Data_t Null = 0;
+            strong_typedef_defaultConstructor(ShaderProgram, Null);
+            strong_typedef_equatable();
             //strong_typedef_hashable is invoked at the bottom of the file.
 
         strong_typedef_end;
-
-        const ShaderProgram ShaderProgram::Null = ShaderProgram(0);
 
         #pragma endregion
         
@@ -40,14 +38,13 @@ namespace Bplus::GL
 
         strong_typedef_start(ShaderUniform, GLint, BP_API)
 
-            static const ShaderUniform Null;
+            static const Data_t Null = -1;
 
-            strong_typedef_equatable(ShaderUniform, GLint);
+            strong_typedef_defaultConstructor(ShaderUniform, Null);
+            strong_typedef_equatable();
             //strong_typedef_hashable is invoked at the bottom of the file.
 
         strong_typedef_end;
-
-        const ShaderUniform ShaderUniform::Null = ShaderUniform(-1);
 
         #pragma endregion
 
@@ -59,14 +56,13 @@ namespace Bplus::GL
 
         strong_typedef_start(Sampler, GLuint, BP_API)
 
-            static const Sampler Null;
-
-            strong_typedef_equatable(Sampler, GLuint);
+            static const Data_t Null = 0;
+        
+            strong_typedef_defaultConstructor(Sampler, Null);
+            strong_typedef_equatable();
             //strong_typedef_hashable is invoked at the bottom of the file.
 
         strong_typedef_end;
-
-        const Sampler Sampler::Null = Sampler(0);
 
         #pragma endregion
 
@@ -79,14 +75,12 @@ namespace Bplus::GL
         strong_typedef_start(Image, GLuint, BP_API)
 
             //TODO: Check whether 0 is actually the "invalid" handle for an Image.
-            //static const Image Null;
-
-            strong_typedef_equatable(Image, GLuint);
+            //static const Data_t Null = 0;
+            //strong_typedef_defaultConstructor(Image, Null);
+            strong_typedef_equatable();
             //strong_typedef_hashable is invoked at the bottom of the file.
 
         strong_typedef_end;
-
-        //const Image Image::Null = Image(0);
 
         #pragma endregion
     }
@@ -255,9 +249,9 @@ namespace Bplus::GL
 
         //TODO: Change to a single templated function like GetUniform()
 
-    #define UNIFORM_SETTER(inType, inRefType) \
+    #define UNIFORM_SETTER_SINGLE(inType) \
         public: \
-        bool SetUniform(const std::string& name, inRefType value) const \
+        bool SetUniform(const std::string& name, inType value) const \
         { \
             UniformStates state; \
             Ptr::ShaderUniform ptr; \
@@ -271,6 +265,11 @@ namespace Bplus::GL
                 default: BPAssert(false, "Unknown UniformStates value"); return false; \
             } \
         } \
+        private: \
+        void SetUniform(Ptr::ShaderUniform ptr, inType value) const; \
+        public:
+
+    #define UNIFORM_SETTER_ARRAY(inType) \
         bool SetUniformArray(const std::string& name, GLsizei count, const inType *values) const \
         { \
             UniformStates state; \
@@ -286,9 +285,13 @@ namespace Bplus::GL
             } \
         } \
         private: \
-        void SetUniform(Ptr::ShaderUniform ptr, inRefType value) const; \
         void SetUniformArray(Ptr::ShaderUniform ptr, GLsizei count, const inType *values) const; \
         public:
+
+    #define UNIFORM_SETTER(inType, inRefType) \
+        UNIFORM_SETTER_SINGLE(inRefType) \
+        UNIFORM_SETTER_ARRAY(inType)
+
 
         #pragma region SetUniform() for primitive/vector types
 
@@ -296,8 +299,7 @@ namespace Bplus::GL
         //    it can be a pain to work with arrays of bool values.
         //To help ameliorate that, this class provies an extra overload
         //    that uses the "Bool" struct, which acts exactly like a bool.
-        bool SetUniformArray(const std::string& name, GLsizei count, const Bool* elements) const
-            { return SetUniformArray(name, count, (bool*)elements); }
+        UNIFORM_SETTER_ARRAY(Bool)
 
     #define UNIFORM_SETTER_VECTOR(glmLetter, n) \
         UNIFORM_SETTER(glm::glmLetter##vec##n, const glm::glmLetter##vec##n &)
@@ -347,11 +349,12 @@ namespace Bplus::GL
 
         #pragma endregion
 
+    #undef UNIFORM_SETTER
         #pragma endregion
 
     private:
 
-        Ptr::ShaderProgram programHandle = Ptr::ShaderProgram::Null;
+        Ptr::ShaderProgram programHandle{ Ptr::ShaderProgram::Null };
 
         std::unordered_map<std::string, Ptr::ShaderUniform> uniformPtrs;
 
@@ -376,21 +379,49 @@ namespace Bplus::GL
 
             #pragma region Vector/primitive types
 
-        #define CASE_PRIMITIVE(T, glmType, oglLetters, outputExpr) \
-            CASE(T) \
-                glm::glmType result; \
-                glGetUniform##oglLetters##v(programHandle.Get(), uniformPtr.Get(), \
-                                            glm::value_ptr(result)); \
-                return (T)(outputExpr)
+            //Bools are a special case becuause they go through the OpenGL API
+            //    as integers or floats.
+            #pragma region Bool types
+            
+            CASE(bool)
+                GLuint result;
+                glGetUniformuiv(programHandle.Get(), ptr.Get(), &result);
+                return (bool)result;
 
-        #define CASE_PRIMITIVES(T, glmPrefix, oglLetters) \
-            CASE_PRIMITIVE(T, glmPrefix##1, oglLetters, result.x); \
-            CASE_PRIMITIVE(glmPrefix##1, glmPrefix##1, oglLetters, { result.x }); \
-            CASE_PRIMITIVE(glmPrefix##2, glmPrefix##2, { result.x BP_COMMA result.y }); \
-            CASE_PRIMITIVE(glmPrefix##3, glmPrefix##3, { result.x BP_COMMA result.y BP_COMMA result.z }); \
-            CASE_PRIMITIVE(glmPrefix##4, glmPrefix##4, { result.x BP_COMMA result.y BP_COMMA result.z BP_COMMA result.w })
+        #define CASE_BOOLVEC(n) \
+            CASE(glm::bvec##n) \
+                glm::uvec##n result; \
+                auto* inputPtr = glm::value_ptr(result); \
+                glGetUniformuiv(programHandle.Get(), ptr.Get(), inputPtr); \
+                glm::bvec##n returnVal; \
+                for (glm::length_t i = 0; i < n; ++i) \
+                    returnVal[i] = (bool)result[i]; \
+                return returnVal
 
-            CASE_PRIMITIVES(bool, uvec, ui);
+            CASE_BOOLVEC(1);
+            CASE_BOOLVEC(2);
+            CASE_BOOLVEC(3);
+            CASE_BOOLVEC(4);
+
+        #undef CASE_BOOLVEC
+
+            #pragma endregion
+
+
+        #define CASE_PRIMITIVE(type, oglLetters, inputExpr) \
+            CASE(type) \
+                type result; \
+                auto* dataPtr = inputExpr; \
+                glGetUniform##oglLetters##v(programHandle.Get(), ptr.Get(), dataPtr); \
+                return result
+
+        #define CASE_PRIMITIVES(primitive, glmPrefix, oglLetters) \
+            CASE_PRIMITIVE(primitive,         oglLetters, &result               ); \
+            CASE_PRIMITIVE(glm::glmPrefix##1, oglLetters, glm::value_ptr(result)); \
+            CASE_PRIMITIVE(glm::glmPrefix##2, oglLetters, glm::value_ptr(result)); \
+            CASE_PRIMITIVE(glm::glmPrefix##3, oglLetters, glm::value_ptr(result)); \
+            CASE_PRIMITIVE(glm::glmPrefix##4, oglLetters, glm::value_ptr(result))
+
             CASE_PRIMITIVES(uint32_t, uvec, ui);
             CASE_PRIMITIVES(int32_t, ivec, i);
             CASE_PRIMITIVES(float, fvec, f);
@@ -406,16 +437,16 @@ namespace Bplus::GL
         #define CASE_MATRIX(glmType, oglLetter) \
             CASE(glm::glmType) \
                 glm::glmType result; \
-                glGetUniform##oglLetter##v(programHandle.Get(), uniformPtr.Get(), \
+                glGetUniform##oglLetter##v(programHandle.Get(), ptr.Get(), \
                                            glm::value_ptr(result)); \
-                return result;
+                return result
         #define CASE_MATRIX_DUAL(size) \
             CASE_MATRIX(fmat##size, f); \
             CASE_MATRIX(dmat##size, d)
         #define CASE_MATRICES(nRows) \
-            CASE_MATRIX_DUAL(2##nRows); \
-            CASE_MATRIX_DUAL(3##nRows); \
-            CASE_MATRIX_DUAL(4##nRows)
+            CASE_MATRIX_DUAL(2x##nRows); \
+            CASE_MATRIX_DUAL(3x##nRows); \
+            CASE_MATRIX_DUAL(4x##nRows)
 
             CASE_MATRICES(2);
             CASE_MATRICES(3);
@@ -447,7 +478,7 @@ namespace Bplus::GL
 
 
 //Add hashing support for the various OpenGL handles.
-strong_typedef_hashable(Bplus::GL::Ptr::ShaderProgram, GLuint);
-strong_typedef_hashable(Bplus::GL::Ptr::ShaderUniform, GLint, BP_API);
-strong_typedef_hashable(Bplus::GL::Ptr::Sampler, GLuint, BP_API);
-strong_typedef_hashable(Bplus::GL::Ptr::Image, GLuint, BP_API);
+strong_typedef_hashable(Bplus::GL::Ptr::ShaderProgram, BP_API);
+strong_typedef_hashable(Bplus::GL::Ptr::ShaderUniform, BP_API);
+strong_typedef_hashable(Bplus::GL::Ptr::Sampler,       BP_API);
+strong_typedef_hashable(Bplus::GL::Ptr::Image,         BP_API);

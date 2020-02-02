@@ -81,6 +81,7 @@ namespace std
 #define strong_typedef_start(Tag, UnderlyingType, classAttrs) \
     struct classAttrs Tag : _strong_typedef<Tag, UnderlyingType> { \
         using Data_t = UnderlyingType; \
+        using Me_t = Tag; \
         using _strong_typedef::_strong_typedef; /* Make the constructors available */
 #define strong_typedef_end \
     }
@@ -91,18 +92,26 @@ namespace std
 //Defines '==' and '!=' operators for the type,
 //    assuming the underlying type has them too.
 //NOTE that this MUST be placed between 'strong_typedef_start' and 'strong_typedef_end'!
-#define strong_typedef_equatable(Tag, UnderlyingType) \
-    bool operator==(const Tag& t) const { return (UnderlyingType)t == (UnderlyingType)(*this); } \
-    bool operator!=(const Tag& t) const { return (UnderlyingType)t != (UnderlyingType)(*this); }
+#define strong_typedef_equatable() \
+    bool operator==(const Me_t& t) const { return (Data_t)t == (Data_t)(*this); } \
+    bool operator!=(const Me_t& t) const { return (Data_t)t != (Data_t)(*this); } \
+    bool operator==(const Data_t& t) const { return t == (Data_t)(*this); } \
+    bool operator!=(const Data_t& t) const { return t != (Data_t)(*this); }
+
+//Adds a default constructor initializing to the given value.
+//NOTE that this MUST be placed between 'strong_typedef_start' and 'strong_typedef_end'!
+#define strong_typedef_defaultConstructor(Tag, defaultVal) \
+    Tag() : Tag(defaultVal) { }
+
 //Defines a default hash implementation for the type,
 //    assuming the underlying type has a default hash implementation.
 //NOTE that this MUST be placed in the global namespace!
-#define strong_typedef_hashable(Tag, UnderlyingType, classAttrs) \
+#define strong_typedef_hashable(Tag, classAttrs) \
     namespace std { template<> struct classAttrs hash<Tag> { \
         std::size_t operator()(const Tag& key) const \
         { \
             using std::hash; \
-            return hash<UnderlyingType>()((UnderlyingType)key); \
+            return hash<Tag::Data_t>()((Tag::Data_t)key); \
         } }; }
 
 #pragma endregion
@@ -192,16 +201,15 @@ namespace Bplus
         Lazy& operator=(const Lazy<T>& cpy)
         {
             //Destroy or copy the "cpy" object as necessary.
-            if (isCreated && !cpy.IsCreated)
+            if (isCreated && !cpy.isCreated)
                 Cast().~T();
-            else if (cpy.IsCreated)
+            else if (cpy.isCreated)
                 if (isCreated)
                     Cast() = cpy.Cast();
                 else
                     new(&Cast()) T(cpy.Cast());
 
-            isCreated = cpy.IsCreated;
-
+            isCreated = cpy.isCreated;
             return *this;
         }
         Lazy& operator=(const T& cpy)
@@ -212,6 +220,7 @@ namespace Bplus
                 new(&Cast()) T(cpy);
 
             isCreated = true;
+            return *this;
         }
         
         Lazy(T&& src) : isCreated(true) { Create(std::move(src)); }
@@ -224,16 +233,15 @@ namespace Bplus
         Lazy& operator=(Lazy<T>&& src)
         {
             //Destroy or move the "src" object as necessary.
-            if (isCreated && !cpy.IsCreated)
+            if (isCreated && !src.isCreated)
                 Cast().~T();
-            else if (cpy.IsCreated)
+            else if (src.isCreated)
                 if (isCreated)
-                    Cast() = std::move(cpy.Cast());
+                    Cast() = std::move(src.Cast());
                 else
-                    new(&Cast()) T(std::move(cpy.Cast()));
+                    new(&Cast()) T(std::move(src.Cast()));
 
-            isCreated = cpy.IsCreated;
-
+            isCreated = src.isCreated;
             return *this;
         }
         Lazy& operator=(T&& cpy)
@@ -244,6 +252,7 @@ namespace Bplus
                 new(&Cast()) T(std::move(cpy));
 
             isCreated = true;
+            return *this;
         }
 
         #pragma endregion

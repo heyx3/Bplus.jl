@@ -104,7 +104,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4996;4251</DisableSpecificWarnings>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
     </ClCompile>
     <Link>
@@ -166,7 +166,7 @@ exit 0</Command>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4996;4251</DisableSpecificWarnings>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
     </ClCompile>
     <Link>
@@ -230,7 +230,7 @@ exit 0</Command>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4996;4251</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -297,7 +297,7 @@ exit 0</Command>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4996;4251</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -365,7 +365,7 @@ exit 0</Command>
     <ClCompile Include="Renderer\Context.cpp" />
     <ClCompile Include="Renderer\Data.cpp" />
     <ClCompile Include="Renderer\Device.cpp" />
-    <ClCompile Include="Renderer\Materials\Material.cpp" />
+    <ClCompile Include="Renderer\Materials\Material_Basic.cpp" />
     <ClCompile Include="Renderer\Materials\CompiledShader.cpp" />
     <ClCompile Include="TomlIO.cpp" />
     <ClCompile Include="Utils.cpp" />
@@ -388,7 +388,7 @@ exit 0</Command>
     <ClInclude Include="Renderer\Context.h" />
     <ClInclude Include="Renderer\Data.h" />
     <ClInclude Include="Renderer\Device.h" />
-    <ClInclude Include="Renderer\Materials\Material.h" />
+    <ClInclude Include="Renderer\Materials\Material_Basic.h" />
     <ClInclude Include="Renderer\Materials\CompiledShader.h" />
     <ClInclude Include="RenderLibs.h" />
     <ClInclude Include="IO.h" />

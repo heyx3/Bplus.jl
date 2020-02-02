@@ -45,9 +45,6 @@
     <ClInclude Include="Renderer\Data.h">
       <Filter>Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\Materials\Material.h">
-      <Filter>Renderer\Materials</Filter>
-    </ClInclude>
     <ClInclude Include="Dear ImGui\ImGuiAddons.h">
       <Filter>Dear ImGui</Filter>
     </ClInclude>
@@ -57,6 +54,9 @@
     </ClInclude>
     <ClInclude Include="Renderer\Device.h">
       <Filter>Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Materials\Material_Basic.h">
+      <Filter>Renderer\Materials</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -90,15 +90,15 @@
       <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="TomlIO.cpp" />
-    <ClCompile Include="Renderer\Materials\Material.cpp">
-      <Filter>Renderer\Materials</Filter>
-    </ClCompile>
     <ClCompile Include="Utils.cpp" />
     <ClCompile Include="Renderer\Materials\CompiledShader.cpp">
       <Filter>Renderer\Materials</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\Device.cpp">
       <Filter>Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Materials\Material_Basic.cpp">
+      <Filter>Renderer\Materials</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
