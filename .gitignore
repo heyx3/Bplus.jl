@@ -1,3 +1,6 @@
+# Any auto-generated code files
+UnitTests/AllTests.h
+
 # Compiled Object files
 *.slo
 *.lo

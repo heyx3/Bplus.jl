@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Tests">
+      <UniqueIdentifier>{33dbbc71-f065-4b13-8be7-da2d38828dfd}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Tests\CoreLibraries.hpp">
+      <Filter>Tests</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
