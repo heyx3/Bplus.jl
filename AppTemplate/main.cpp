@@ -1,6 +1,5 @@
 #include "../Engine/App.h"
 #include "../Engine/TomlIO.h"
-#include "../Engine/Renderer/Materials/Uniforms.h"
 
 //A template command-line + window app based on B+ and SDL.
 //Command-line arguments:
@@ -61,18 +60,16 @@ class MyApp : public Bplus::App
 {
 public:
 
-    MyApp(bool noConfigWriteOnExit)
-        : Bplus::App(*::Config, ::OnError)
-    {
+    const std::string TestName;
 
-    }
+    MyApp() : Bplus::App(*::Config, ::OnError) { }
 
 protected:
 
     virtual void ConfigureMainWindow(int& flags, std::string& title)
     {
         App::ConfigureMainWindow(flags, title);
-        title = "My B+ App";
+        title = "Sample B+ app";
     }
     virtual void ConfigureOpenGL(bool& doubleBuffering,
                                  int& depthBits, int& stencilBits,
@@ -87,53 +84,13 @@ protected:
         context.Clear(1, 1, 1, 1,
                       1);
 
-        //Test render data serialization/gui:
-        auto blendMode = context.GetAlphaBlending();
-        auto blendModeToml = blendMode.ToToml();
-        blendMode.FromToml(blendModeToml);
-        if (blendMode.EditGUI([](const char* label, glm::vec1& val)
-                              {
-                                  return ImGui::DragFloat(label, &val.x, 0.01f, 0, 1);
-                              }))
-        {
-            std::cout << "Blend changed! It is now: \n" << blendMode.ToToml() << "\n---------\n\n";
-        }
-        context.SetAlphaBlending(blendMode);
-
-        //Test uint<=>int mask conversion safety.
-        auto doMask = [](GLuint originalMask)
-        {
-            glStencilMask(originalMask);
-            GLint newMaskI;
-            glGetIntegerv(GL_STENCIL_WRITEMASK, &newMaskI);
-            GLuint newMask_Reinterpret = *((GLuint*)(&newMaskI)),
-                   newMask_Cast = (GLuint)newMaskI;
-
-            std::string data = "From ";
-            data += std::to_string(originalMask);
-            data += " to [reinterpret:";
-            data += std::to_string(newMask_Reinterpret);
-            data += "] [cast:";
-            data += std::to_string(newMask_Cast);
-            data += "]";
-            ImGui::Text(data.c_str());
-        };
-        doMask(25);
-        doMask(~(0U));
-        doMask(~(0U) - 32 - 8 - 256);
-        doMask(~(0U) - 1 - 32 - 8 - 256);
-        doMask(-1);
+        ImGui::Text("This is a label in the template app");
     }
 };
 
 
-//TODO: Unit testing
-
 int main(int argc, char* argv[])
 {
-    std::cout << "Tests passed! Loading rest of program... \n";
-
-
     //Parse command-line arguments.
     bool noWriteConfig = false;
     for (int i = 0; i < argc; ++i)
@@ -152,7 +109,7 @@ int main(int argc, char* argv[])
                                             noWriteConfig);
 
     //Run the app.
-    App = std::make_unique<MyApp>(noWriteConfig);
+    App = std::make_unique<MyApp>();
     App->Run();
 
     return exitCode;
