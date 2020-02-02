@@ -8,7 +8,14 @@ Dependencies are already in the repo, for a 64-bit Windows build (including the 
 
 # Build
 
-The code itself is designed to be platform-agnostic, but I'm a Windows developer and both WFC++ and B+ are Visual Studio 2017 projects, using C++17. I haven't actually tested this code on any other platforms.
+The code itself is designed to be platform-agnostic, but I'm a Windows developer and both WFC++ and B+ are Visual Studio 2017 projects, using C++17. I haven't actually tested this code on any other platforms, compilers, or configurations.
+
+# Organization
+
+There are currently three projects:
+1. **B+** -- the core engine, built into a dll called *B+.dll*. Exists in the "Engine" folder.
+2. **AppTemplate** -- an example of an "App" that uses the engine. Exists in the "AppTemplate" folder.
+3. **UnitTests** -- the unit testing project.
 
 
 # License
