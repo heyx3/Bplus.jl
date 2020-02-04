@@ -58,6 +58,9 @@
     <ClInclude Include="Renderer\Materials\Material_Basic.h">
       <Filter>Renderer\Materials</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\Buffer.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
@@ -99,6 +102,9 @@
     </ClCompile>
     <ClCompile Include="Renderer\Materials\Material_Basic.cpp">
       <Filter>Renderer\Materials</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Buffer.cpp">
+      <Filter>Renderer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

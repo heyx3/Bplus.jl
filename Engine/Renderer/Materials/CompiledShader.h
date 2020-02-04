@@ -13,79 +13,6 @@
 
 namespace Bplus::GL
 {
-    //Various OpenGL handles, wrapped in type-safety.
-    namespace Ptr
-    {
-        //An OpenGL handle to a compiled shader program.
-        #pragma region ShaderProgram
-
-        strong_typedef_start(ShaderProgram, GLuint, BP_API)
-
-            static const Data_t Null = 0;
-            strong_typedef_defaultConstructor(ShaderProgram, Null);
-            strong_typedef_equatable();
-            //strong_typedef_hashable is invoked at the bottom of the file.
-
-        strong_typedef_end;
-
-        #pragma endregion
-        
-        //An OpenGL handle to a specific uniform within a shader.
-        //If it points to an array of uniforms,
-        //    you can get element 'i' in the array by adding 'i' to this value.
-        //The byte-size of the uniform has no bearing on this numbering scheme.
-        #pragma region ShaderUniform
-
-        strong_typedef_start(ShaderUniform, GLint, BP_API)
-
-            static const Data_t Null = -1;
-
-            strong_typedef_defaultConstructor(ShaderUniform, Null);
-            strong_typedef_equatable();
-            //strong_typedef_hashable is invoked at the bottom of the file.
-
-        strong_typedef_end;
-
-        #pragma endregion
-
-        //An OpenGL handle to a specific sampleable texture.
-        //The difference between this and "Image" is that Samplers
-        //    have sampling settings (linear, wrap, etc)
-        //    while Images are basically plain 2D arrays.
-        #pragma region Sampler
-
-        strong_typedef_start(Sampler, GLuint, BP_API)
-
-            static const Data_t Null = 0;
-        
-            strong_typedef_defaultConstructor(Sampler, Null);
-            strong_typedef_equatable();
-            //strong_typedef_hashable is invoked at the bottom of the file.
-
-        strong_typedef_end;
-
-        #pragma endregion
-
-        //An OpenGL handle to a specific image buffer.
-        //The difference between this and "Sampler" is that Samplers
-        //    have sampling settings (linear, wrap, etc)
-        //    while Images are basically just 2D arrays.
-        #pragma region Image
-
-        strong_typedef_start(Image, GLuint, BP_API)
-
-            //TODO: Check whether 0 is actually the "invalid" handle for an Image.
-            //static const Data_t Null = 0;
-            //strong_typedef_defaultConstructor(Image, Null);
-            strong_typedef_equatable();
-            //strong_typedef_hashable is invoked at the bottom of the file.
-
-        strong_typedef_end;
-
-        #pragma endregion
-    }
-
-
     //A specific compiled shader, plus its "uniforms" (a.k.a. parameters).
     class BP_API CompiledShader
     {
@@ -99,15 +26,15 @@ namespace Bplus::GL
         //Compiles and returns an OpenGL shader program with a vertex and fragment shader.
         //If compilation failed, 0 is returned and an error message is written.
         //Otherwise, the result should eventually be cleaned up with glDeleteProgram().
-        static Ptr::ShaderProgram Compile(const char* vertexShader, const char* fragmentShader,
-                                          std::string& outErrMsg);
+        static OglPtr::ShaderProgram Compile(const char* vertexShader, const char* fragmentShader,
+                                             std::string& outErrMsg);
         //Compiles and returns an OpenGL shader program with a vertex, geometry,
         //    and fragment shader.
         //If compilation failed, 0 is returned and an error message is written.
         //Otherwise, the result should be cleaned up with glDeleteProgram().
-        static Ptr::ShaderProgram Compile(const char* vertexShader, const char* geometryShader,
-                                          const char* fragmentShader,
-                                          std::string& outErrMsg);
+        static OglPtr::ShaderProgram Compile(const char* vertexShader, const char* geometryShader,
+                                             const char* fragmentShader,
+                                             std::string& outErrMsg);
 
 
         //The render state this shader will use.
@@ -121,7 +48,7 @@ namespace Bplus::GL
         //Creates a new instance that manages the given shader program with RAII.
         //Also pre-calculates all shader uniform pointers if they're not set already.
         CompiledShader(RenderState defaultRenderSettings,
-                       Ptr::ShaderProgram compiledProgramHandle,
+                       OglPtr::ShaderProgram compiledProgramHandle,
                        const std::vector<std::string>& uniformNames);
 
         ~CompiledShader();
@@ -144,7 +71,7 @@ namespace Bplus::GL
         {
             auto found = uniformPtrs.find(uniformName);
             return (found != uniformPtrs.end()) &&
-                   (found->second == Ptr::ShaderUniform::Null);
+                   (found->second == OglPtr::ShaderUniform::Null);
         }
 
 
@@ -154,7 +81,7 @@ namespace Bplus::GL
         //Valid types are the primitives (32-bit int, 32-bit uint, float, double, and bool),
         //    GLM vectors of the primitives,
         //    GLM matrices of float and double,
-        //    Ptr::Image, and Ptr::Sampler.
+        //    OglPtr::Image, and OglPtr::Sampler.
         //Returns std::nullopt if a uniform with the given name doesn't exist.
         //If the shader optimized out the uniform, its "set" value is unknown and
         //    the given default value will be returned.
@@ -163,7 +90,7 @@ namespace Bplus::GL
                                           std::optional<Value_t> defaultIfOptimizedOut = Value_t())
         {
             UniformStates state;
-            Ptr::ShaderUniform ptr;
+            OglPtr::ShaderUniform ptr;
             std::tie(state, ptr) = CheckUniform(name);
             switch (state)
             {
@@ -178,17 +105,17 @@ namespace Bplus::GL
         //Valid types are the primitives (32-bit int, 32-bit uint, float, double, and bool),
         //    GLM vectors of the primitives,
         //    GLM matrices of float and double,
-        //    Ptr::Image, and Ptr::Sampler.
+        //    OglPtr::Image, and OglPtr::Sampler.
         //Returns std::nullopt if a uniform with the given name doesn't exist.
         //If the shader optimized out the uniform, its "set" value is unknown and
         //    the given default value will be returned.
         template<typename Value_t>
         std::optional<Value_t> GetUniformArrayElement(const std::string& name,
-                                                      Ptr::ShaderProgram::Data_t index,
+                                                      OglPtr::ShaderProgram::Data_t index,
                                                       std::optional<Value_t> defaultIfOptimizedOut = Value_t())
         {
             UniformStates state;
-            Ptr::ShaderUniform ptr;
+            OglPtr::ShaderUniform ptr;
             std::tie(state, ptr) = CheckUniform(name);
             switch (state)
             {
@@ -196,7 +123,7 @@ namespace Bplus::GL
                 case UniformStates::OptimizedOut: return defaultIfOptimizedOut;
 
                 case UniformStates::Exists:
-                    return GetUniform(Ptr::ShaderUniform(ptr.Get() + index));
+                    return GetUniform(OglPtr::ShaderUniform(ptr.Get() + index));
 
                 default: BPAssert(false, "Unknown uniform ptr state");
             }
@@ -206,16 +133,16 @@ namespace Bplus::GL
         //Valid types are the primitives (32-bit int, 32-bit uint, float, double, and bool),
         //    GLM vectors of the primitives,
         //    GLM matrices of float and double,
-        //    Ptr::Image, and Ptr::Sampler.
+        //    OglPtr::Image, and OglPtr::Sampler.
         //Returns true if everything went fine and the data was copied into "outData".
         //Returns false if the uniform didn't exist or was optimized out by the shader.
         template<typename Value_t>
         bool GetUniformArray(const std::string& name,
-                             Ptr::ShaderUniform::Data_t count,
+                             OglPtr::ShaderUniform::Data_t count,
                              Value_t* outData)
         {
             UniformStates state;
-            Ptr::ShaderUniform ptr;
+            OglPtr::ShaderUniform ptr;
             std::tie(state, ptr) = CheckUniform(name);
             switch (state)
             {
@@ -227,8 +154,8 @@ namespace Bplus::GL
                 case UniformStates::Exists:
                     for (decltype(count) i = 0; i < count; ++i)
                     {
-                        Ptr::ShaderUniform elementPtr{ ptr.Get() +
-                                                       (Ptr::ShaderUniform::Data_t)i };
+                        OglPtr::ShaderUniform elementPtr{ ptr.Get() +
+                                                          (OglPtr::ShaderUniform::Data_t)i };
                         outData[i] = GetUniform(elementPtr);
                     }
                     return true;
@@ -254,7 +181,7 @@ namespace Bplus::GL
         bool SetUniform(const std::string& name, inType value) const \
         { \
             UniformStates state; \
-            Ptr::ShaderUniform ptr; \
+            OglPtr::ShaderUniform ptr; \
             std::tie(state, ptr) = CheckUniform(name); \
             switch (state) { \
                 case UniformStates::Missing: return false; \
@@ -266,14 +193,14 @@ namespace Bplus::GL
             } \
         } \
         private: \
-        void SetUniform(Ptr::ShaderUniform ptr, inType value) const; \
+        void SetUniform(OglPtr::ShaderUniform ptr, inType value) const; \
         public:
 
     #define UNIFORM_SETTER_ARRAY(inType) \
         bool SetUniformArray(const std::string& name, GLsizei count, const inType *values) const \
         { \
             UniformStates state; \
-            Ptr::ShaderUniform ptr; \
+            OglPtr::ShaderUniform ptr; \
             std::tie(state, ptr) = CheckUniform(name); \
             switch (state) { \
                 case UniformStates::Missing: return false; \
@@ -285,7 +212,7 @@ namespace Bplus::GL
             } \
         } \
         private: \
-        void SetUniformArray(Ptr::ShaderUniform ptr, GLsizei count, const inType *values) const; \
+        void SetUniformArray(OglPtr::ShaderUniform ptr, GLsizei count, const inType *values) const; \
         public:
 
     #define UNIFORM_SETTER(inType, inRefType) \
@@ -344,8 +271,8 @@ namespace Bplus::GL
 
         #pragma region SetUniform() for texture types
 
-        UNIFORM_SETTER(Ptr::Sampler, Ptr::Sampler);
-        UNIFORM_SETTER(Ptr::Image, Ptr::Image);
+        UNIFORM_SETTER(OglPtr::Sampler, OglPtr::Sampler);
+        UNIFORM_SETTER(OglPtr::Image, OglPtr::Image);
 
         #pragma endregion
 
@@ -354,18 +281,18 @@ namespace Bplus::GL
 
     private:
 
-        Ptr::ShaderProgram programHandle{ Ptr::ShaderProgram::Null };
+        OglPtr::ShaderProgram programHandle{ OglPtr::ShaderProgram::Null };
 
-        std::unordered_map<std::string, Ptr::ShaderUniform> uniformPtrs;
+        std::unordered_map<std::string, OglPtr::ShaderUniform> uniformPtrs;
 
 
         enum class UniformStates { Missing, OptimizedOut, Exists };
-        std::tuple<UniformStates, Ptr::ShaderUniform> CheckUniform(const std::string& name) const;
+        std::tuple<UniformStates, OglPtr::ShaderUniform> CheckUniform(const std::string& name) const;
         
         template<typename Value_t>
-        Value_t GetUniform(Ptr::ShaderUniform ptr)
+        Value_t GetUniform(OglPtr::ShaderUniform ptr)
         {
-            BPAssert(ptr != Ptr::ShaderUniform::Null, "Given a null ptr!");
+            BPAssert(ptr != OglPtr::ShaderUniform::Null, "Given a null ptr!");
 
             //This "if" statement only exists so that all subsequent lines
             //    can start with "} else", to simplify the macros.
@@ -461,10 +388,10 @@ namespace Bplus::GL
             #pragma region Textures
 
             //TODO: Figure out how to use bindless textures.
-            //CASE(Ptr::Sampler)
+            //CASE(OglPtr::Sampler)
 
             //TODO: Figure out how to use images.
-            //CASE(Ptr::Image)
+            //CASE(OglPtr::Image)
 
             #pragma endregion
 
@@ -475,10 +402,3 @@ namespace Bplus::GL
         }
     };
 }
-
-
-//Add hashing support for the various OpenGL handles.
-strong_typedef_hashable(Bplus::GL::Ptr::ShaderProgram, BP_API);
-strong_typedef_hashable(Bplus::GL::Ptr::ShaderUniform, BP_API);
-strong_typedef_hashable(Bplus::GL::Ptr::Sampler,       BP_API);
-strong_typedef_hashable(Bplus::GL::Ptr::Image,         BP_API);

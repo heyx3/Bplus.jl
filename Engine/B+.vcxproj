@@ -362,6 +362,7 @@ exit 0</Command>
     <ClCompile Include="IO.cpp" />
     <ClCompile Include="NativeFileDialog\nfd_common.c" />
     <ClCompile Include="NativeFileDialog\nfd_win.cpp" />
+    <ClCompile Include="Renderer\Buffer.cpp" />
     <ClCompile Include="Renderer\Context.cpp" />
     <ClCompile Include="Renderer\Data.cpp" />
     <ClCompile Include="Renderer\Device.cpp" />
@@ -385,6 +386,7 @@ exit 0</Command>
     <ClInclude Include="NativeFileDialog\nfd.h" />
     <ClInclude Include="NativeFileDialog\nfd_common.h" />
     <ClInclude Include="Platform.h" />
+    <ClInclude Include="Renderer\Buffer.h" />
     <ClInclude Include="Renderer\Context.h" />
     <ClInclude Include="Renderer\Data.h" />
     <ClInclude Include="Renderer\Device.h" />

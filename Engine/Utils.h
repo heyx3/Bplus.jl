@@ -30,7 +30,9 @@ namespace Bplus
 
 //The BETTER_ENUM() macro, to define an enum
 //    with added string conversions and iteration.
-#define BETTER_ENUMS_API BP_API
+//#define BETTER_ENUMS_API BP_API
+//NOTE: The #define above was removed because it screws up usage from outside this library,
+//    and I'm pretty sure it's not even needed in the first place.
 #include <better_enums.h>
 
 #pragma region Bool struct, for making a sane vector<Bool>
@@ -85,9 +87,6 @@ namespace std
         using _strong_typedef::_strong_typedef; /* Make the constructors available */
 #define strong_typedef_end \
     }
-#define strong_typedef(Tag, UnderlyingType, classAttrs) \
-    strong_typedef_start(Tag, UnderlyingType, classAttrs) \
-    strong_typedef_end
 
 //Defines '==' and '!=' operators for the type,
 //    assuming the underlying type has them too.
@@ -102,6 +101,11 @@ namespace std
 //NOTE that this MUST be placed between 'strong_typedef_start' and 'strong_typedef_end'!
 #define strong_typedef_defaultConstructor(Tag, defaultVal) \
     Tag() : Tag(defaultVal) { }
+
+//Adds a "Null" value, given its actual value as an integer.
+//NOTE that this MUST be placed between 'strong_typedef_start' and 'strong_typedef_end'!
+#define strong_typedef_null(intValue) \
+    static const Data_t Null = intValue
 
 //Defines a default hash implementation for the type,
 //    assuming the underlying type has a default hash implementation.
