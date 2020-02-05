@@ -11,8 +11,8 @@ namespace
         CompiledShader* currentShader = nullptr;
         bool initializedYet = false;
 
-        std::unordered_map<Ptr::ShaderProgram, CompiledShader*> shadersByHandle =
-            std::unordered_map<Ptr::ShaderProgram, CompiledShader*>();
+        std::unordered_map<OglPtr::ShaderProgram, CompiledShader*> shadersByHandle =
+            std::unordered_map<OglPtr::ShaderProgram, CompiledShader*>();
 
         //Annoyingly, OpenGL booleans have to be sent in as 32-bit integers.
         //This buffer stores the booleans, converted to integers to be sent to OpenGL.
@@ -44,8 +44,8 @@ namespace
 
 
 
-Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader, const char* fragShader,
-                                           std::string& outErrMsg)
+OglPtr::ShaderProgram CompiledShader::Compile(const char* vertShader, const char* fragShader,
+                                              std::string& outErrMsg)
 {
     GLuint vertShaderObj = glCreateShader(GL_VERTEX_SHADER),
            fragShaderObj = glCreateShader(GL_FRAGMENT_SHADER);
@@ -59,7 +59,7 @@ Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader, const char* f
         outErrMsg = "Error compiling vertex shader: " + errorMsg;
         glDeleteShader(vertShaderObj);
         glDeleteShader(fragShaderObj);
-        return Ptr::ShaderProgram();
+        return OglPtr::ShaderProgram();
     }
 
     errorMsg = TryCompile(fragShaderObj);
@@ -68,7 +68,7 @@ Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader, const char* f
         outErrMsg = "Error compiling fragment shader: " + errorMsg;
         glDeleteShader(vertShaderObj);
         glDeleteShader(fragShaderObj);
-        return Ptr::ShaderProgram();
+        return OglPtr::ShaderProgram();
     }
 
     //Now that everything is compiled, try linking it all together.
@@ -92,7 +92,7 @@ Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader, const char* f
 
         glDeleteProgram(programObj);
         errorMsg = "Error linking shaders: " + std::string(msgBuffer.data());
-        return Ptr::ShaderProgram();
+        return OglPtr::ShaderProgram();
     }
 
     //If the link is successful, we need to "detach" the shader objects
@@ -100,13 +100,13 @@ Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader, const char* f
     glDetachShader(programObj, vertShaderObj);
     glDetachShader(programObj, fragShaderObj);
 
-    return Ptr::ShaderProgram(programObj);
+    return OglPtr::ShaderProgram(programObj);
 }
 
-Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader,
-                                           const char* geomShader,
-                                           const char* fragShader,
-                                           std::string& outErrMsg)
+OglPtr::ShaderProgram CompiledShader::Compile(const char* vertShader,
+                                              const char* geomShader,
+                                              const char* fragShader,
+                                              std::string& outErrMsg)
 {
     GLuint vertShaderObj = glCreateShader(GL_VERTEX_SHADER),
            geomShaderObj = glCreateShader(GL_GEOMETRY_SHADER),
@@ -123,7 +123,7 @@ Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader,
         glDeleteShader(vertShaderObj);
         glDeleteShader(geomShaderObj);
         glDeleteShader(fragShaderObj);
-        return Ptr::ShaderProgram();
+        return OglPtr::ShaderProgram();
     }
 
     errorMsg = TryCompile(geomShaderObj);
@@ -133,7 +133,7 @@ Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader,
         glDeleteShader(vertShaderObj);
         glDeleteShader(geomShaderObj);
         glDeleteShader(fragShaderObj);
-        return Ptr::ShaderProgram();
+        return OglPtr::ShaderProgram();
     }
 
     errorMsg = TryCompile(fragShaderObj);
@@ -143,7 +143,7 @@ Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader,
         glDeleteShader(vertShaderObj);
         glDeleteShader(geomShaderObj);
         glDeleteShader(fragShaderObj);
-        return Ptr::ShaderProgram();
+        return OglPtr::ShaderProgram();
     }
 
     //Now that everything is compiled, try linking it all together.
@@ -169,7 +169,7 @@ Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader,
 
         glDeleteProgram(programObj);
         errorMsg = "Error linking shaders: " + std::string(msgBuffer.data());
-        return Ptr::ShaderProgram();
+        return OglPtr::ShaderProgram();
     }
 
     //If the link is successful, we need to "detach" the shader objects
@@ -178,11 +178,11 @@ Ptr::ShaderProgram CompiledShader::Compile(const char* vertShader,
     glDetachShader(programObj, geomShaderObj);
     glDetachShader(programObj, fragShaderObj);
 
-    return Ptr::ShaderProgram(programObj);
+    return OglPtr::ShaderProgram(programObj);
 }
 
 CompiledShader::CompiledShader(RenderState renderSettings,
-                               Ptr::ShaderProgram compiledProgramHandle,
+                               OglPtr::ShaderProgram compiledProgramHandle,
                                const std::vector<std::string>& uniformNames)
     : programHandle(compiledProgramHandle),
       RenderSettings(renderSettings), DefaultRenderSettings(renderSettings)
@@ -196,7 +196,7 @@ CompiledShader::CompiledShader(RenderState renderSettings,
             //Get the handle of the currently-bound shader.
             GLint _currentProgram;
             glGetIntegerv(GL_CURRENT_PROGRAM, &_currentProgram);
-            Ptr::ShaderProgram currentProgram((GLuint)_currentProgram);
+            OglPtr::ShaderProgram currentProgram((GLuint)_currentProgram);
 
             //Look that shader up in the thread-local dictionary
             //    of all compiled shaders.
@@ -227,15 +227,15 @@ CompiledShader::CompiledShader(RenderState renderSettings,
     //    have been optimized out.
     for (const auto& uniformName : uniformNames)
     {
-        Ptr::ShaderUniform loc{ glGetUniformLocation(programHandle.Get(),
-                                                      uniformName.c_str()) };
-        if (loc != Ptr::ShaderUniform::Null)
+        OglPtr::ShaderUniform loc{ glGetUniformLocation(programHandle.Get(),
+                                                        uniformName.c_str()) };
+        if (loc != OglPtr::ShaderUniform::Null)
             uniformPtrs[uniformName] = loc;
     }
 }
 CompiledShader::~CompiledShader()
 {
-    if (programHandle != Ptr::ShaderProgram::Null)
+    if (programHandle != OglPtr::ShaderProgram::Null)
     {
         glDeleteProgram(programHandle.Get());
         threadData.shadersByHandle.erase(programHandle);
@@ -245,7 +245,7 @@ CompiledShader::~CompiledShader()
 CompiledShader::CompiledShader(CompiledShader&& src)
     : uniformPtrs(std::move(src.uniformPtrs)), programHandle(src.programHandle)
 {
-    src.programHandle = Ptr::ShaderProgram();
+    src.programHandle = OglPtr::ShaderProgram();
 
     BPAssert(threadData.shadersByHandle.find(programHandle) != threadData.shadersByHandle.end(),
              "CompiledShader is missing from 'shadersByHandle'");
@@ -258,7 +258,7 @@ CompiledShader& CompiledShader::operator=(CompiledShader&& src)
     uniformPtrs = std::move(src.uniformPtrs);
     programHandle = src.programHandle;
 
-    src.programHandle = Ptr::ShaderProgram();
+    src.programHandle = OglPtr::ShaderProgram();
     
     BPAssert(threadData.shadersByHandle.find(programHandle) != threadData.shadersByHandle.end(),
              "CompiledShader is missing from 'shadersByHandle'");
@@ -284,17 +284,17 @@ void CompiledShader::Activate()
     threadData.currentShader = this;
 }
 
-std::tuple<CompiledShader::UniformStates, Ptr::ShaderUniform>
+std::tuple<CompiledShader::UniformStates, OglPtr::ShaderUniform>
     CompiledShader::CheckUniform(const std::string& name) const
 {
     //Check whether the name exists.
     auto foundPtr = uniformPtrs.find(name);
     if (foundPtr == uniformPtrs.end())
-        return std::make_tuple(UniformStates::Missing, Ptr::ShaderUniform());
+        return std::make_tuple(UniformStates::Missing, OglPtr::ShaderUniform());
     
     //Check whether the name corresponds to a real uniform.
     auto ptr = foundPtr->second;
-    if (ptr == Ptr::ShaderUniform::Null)
+    if (ptr == OglPtr::ShaderUniform::Null)
         return std::make_tuple(UniformStates::OptimizedOut, ptr);
 
     //Everything checks out!
@@ -306,11 +306,11 @@ std::tuple<CompiledShader::UniformStates, Ptr::ShaderUniform>
 
 //Macro to define SetUniform() and SetUniformArray() that works with almost any type.
 #define UNIFORM_SETTER(plainType, refType, glSingleSuffix, glArraySuffix, glSingleValue, glArrayValue) \
-    void CompiledShader::SetUniform(Ptr::ShaderUniform ptr, refType value) const \
+    void CompiledShader::SetUniform(OglPtr::ShaderUniform ptr, refType value) const \
     { \
         glProgramUniform##glSingleSuffix(programHandle.Get(), ptr.Get(), glSingleValue); \
     } \
-    void CompiledShader::SetUniformArray(Ptr::ShaderUniform ptr, GLsizei count, \
+    void CompiledShader::SetUniformArray(OglPtr::ShaderUniform ptr, GLsizei count, \
                                          const plainType* values) const \
     { \
         if (count < 1) return; \
@@ -321,20 +321,23 @@ std::tuple<CompiledShader::UniformStates, Ptr::ShaderUniform>
 //Boolean uniforms need special treatment because they're sent into the OpenGL API as integers.
 #pragma region SetUniform() for boolean primitive/vectors
 
-void CompiledShader::SetUniform(Ptr::ShaderUniform ptr, bool value) const
+void CompiledShader::SetUniform(OglPtr::ShaderUniform ptr, bool value) const
 {
     glProgramUniform1ui(programHandle.Get(), ptr.Get(), (GLuint)value);
 }
-void CompiledShader::SetUniformArray(Ptr::ShaderUniform ptr, GLsizei count, const bool* values) const
+void CompiledShader::SetUniformArray(OglPtr::ShaderUniform ptr, GLsizei count, const bool* values) const
 {
+    //Restructure the booleans into an array of 32-bit integers.
     threadData.uniformBoolBuffer.resize(count);
     for (GLsizei i = 0; i < count; ++i)
         threadData.uniformBoolBuffer[i] = values[i];
+
+    //Send the integers into OpenGL.
     glProgramUniform1uiv(programHandle.Get(), ptr.Get(), count,
                          threadData.uniformBoolBuffer.data());
 }
 
-void CompiledShader::SetUniformArray(Ptr::ShaderUniform ptr, GLsizei count, const Bool* values) const
+void CompiledShader::SetUniformArray(OglPtr::ShaderUniform ptr, GLsizei count, const Bool* values) const
 {
     //Originally I just passed this through to the "const bool*" version with a pointer cast,
     //    but that violates "strict aliasing" assumptions that the compiler makes
@@ -349,11 +352,11 @@ void CompiledShader::SetUniformArray(Ptr::ShaderUniform ptr, GLsizei count, cons
 }
 
 #define UNIFORM_SETTER_BOOLVEC(n, singleValue) \
-    void CompiledShader::SetUniform(Ptr::ShaderUniform ptr, const glm::bvec##n & value) const \
+    void CompiledShader::SetUniform(OglPtr::ShaderUniform ptr, const glm::bvec##n & value) const \
     { \
         glProgramUniform##n##ui(programHandle.Get(), ptr.Get(), (GLuint)singleValue); \
     } \
-    void CompiledShader::SetUniformArray(Ptr::ShaderUniform ptr, GLsizei count, \
+    void CompiledShader::SetUniformArray(OglPtr::ShaderUniform ptr, GLsizei count, \
                                          const glm::bvec##n * value) const \
     { \
         threadData.uniformBoolBuffer.resize(count * glm::bvec##n::length()); \
@@ -433,9 +436,9 @@ UNIFORM_SETTER_MATRICES(4x4, 4)
 #pragma region SetUniform() for textures
 
 //TODO: Figure out how to set sampler/image uniforms and uniform arrays.
-UNIFORM_SETTER(Ptr::Sampler, Ptr::Sampler, 1ui, 1uiv,
+UNIFORM_SETTER(OglPtr::Sampler, OglPtr::Sampler, 1ui, 1uiv,
                value.Get(), &values[0].Get());
-UNIFORM_SETTER(Ptr::Image, Ptr::Image, 1ui, 1uiv,
+UNIFORM_SETTER(OglPtr::Image, OglPtr::Image, 1ui, 1uiv,
                value.Get(), &values[0].Get());
 
 

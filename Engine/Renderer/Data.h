@@ -19,6 +19,7 @@ namespace Bplus::GL
     //Otherwise, returns true.
     bool BP_API TrySDL(void* shouldntBeNull, std::string& errOut, const char* prefix);
 
+    #pragma region Enums
 
     //Define various rendering enums with the help of the "Better Enums" library.
     //The enum values generally line up with OpenGL and/or SDL codes
@@ -117,7 +118,8 @@ namespace Bplus::GL
     );
     bool BP_API UsesConstant(BlendFactors factor);
 
-
+    //The different ways that source and destination color can be combined
+    //    (after each is multiplied by their BlendFactor).
     BETTER_ENUM(BlendOps, GLenum,
         Add = GL_FUNC_ADD,
         Subtract = GL_FUNC_SUBTRACT,
@@ -126,8 +128,28 @@ namespace Bplus::GL
         Max = GL_MAX
     );
 
+    //The different ways a buffer can be used,
+    //    corresponding to the different OpenGL buffer targets.
+    BETTER_ENUM(BufferModes, GLenum,
+        MeshVertices = GL_ARRAY_BUFFER,
+        MeshIndices = GL_ELEMENT_ARRAY_BUFFER,
+        UniformBuffer = GL_UNIFORM_BUFFER,
+        DynamicBuffer = GL_SHADER_STORAGE_BUFFER,
+        IndirectDrawCommand = GL_DRAW_INDIRECT_BUFFER,
+        IndirectComputeCommand = GL_DISPATCH_INDIRECT_BUFFER,
+        QueryResult = GL_QUERY_BUFFER,
+        
+        //"Custom" modes do not have any special inherent meaning;
+        //    they exist to allow you to do general buffer work without disturbing
+        //    the other buffers activated for the "important" work above.
+        Custom1 = GL_COPY_READ_BUFFER,
+        Custom2 = GL_COPY_WRITE_BUFFER,
+        Custom3 = GL_TEXTURE_BUFFER
+    );
 
-    //Below are some data structures grouping related rendering state settings.
+    #pragma endregion
+
+    #pragma region Structures
 
     #pragma region BlendState<> struct template
 
@@ -272,4 +294,32 @@ namespace Bplus::GL
     };
     bool BP_API operator==(const StencilResult& a, const StencilResult& b);
     inline bool BP_API operator!=(const StencilResult& a, const StencilResult& b) { return !(a == b); }
+
+
+    #pragma endregion
 }
+
+#pragma region OpenGL handle typedefs
+
+//Creates a type-safe wrapper around a raw OpenGL integer value.
+//MUST be invoked in the global namespace!
+#define MAKE_GL_STRONG_TYPEDEF(NewName, glName, nullValue) \
+    namespace Bplus::GL::OglPtr { \
+        strong_typedef_start(NewName, glName, BP_API); \
+            strong_typedef_null(nullValue); \
+            strong_typedef_defaultConstructor(NewName, Null); \
+            strong_typedef_equatable(); \
+        strong_typedef_end; \
+    } \
+    strong_typedef_hashable(Bplus::GL::OglPtr::NewName, BP_API);
+
+MAKE_GL_STRONG_TYPEDEF(ShaderProgram, GLuint, 0);
+MAKE_GL_STRONG_TYPEDEF(ShaderUniform, GLint, -1);
+MAKE_GL_STRONG_TYPEDEF(Sampler, GLuint, 0);
+MAKE_GL_STRONG_TYPEDEF(Image, GLuint, 0); //TODO: Check that 0 is actually "null" for Images
+MAKE_GL_STRONG_TYPEDEF(VertexArrayObject, GLuint, 0);
+MAKE_GL_STRONG_TYPEDEF(Buffer, GLuint, 0);
+
+#undef MAKE_GL_STRONG_TYPEDEF
+
+#pragma endregion
