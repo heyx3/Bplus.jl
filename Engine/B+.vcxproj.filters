@@ -58,6 +58,12 @@
     <ClInclude Include="Renderer\Materials\Material_Basic.h">
       <Filter>Renderer\Materials</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\Materials\MaterialData.h">
+      <Filter>Renderer\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\DataTOML.h">
+      <Filter>Renderer</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
@@ -98,6 +104,9 @@
       <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\Materials\Material_Basic.cpp">
+      <Filter>Renderer\Materials</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Materials\MaterialData.cpp">
       <Filter>Renderer\Materials</Filter>
     </ClCompile>
   </ItemGroup>

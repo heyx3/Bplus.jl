@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CompiledShader.h"
+#include "MaterialData.h"
 
 
 namespace Bplus::GL
@@ -10,6 +11,9 @@ namespace Bplus::GL
     {
     public:
 
+
+        BlendStateRGBA Blending;
+        FaceCullModes CullMode;
 
     };
 }

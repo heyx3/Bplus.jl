@@ -1,7 +1,13 @@
 #pragma once
 
 #include "Platform.h"
-#include <functional>
+
+//The BETTER_ENUM() macro, to define an enum
+//    with added string conversions and iteration.
+//There is one downside: to use a literal value, it must be prepended with a '+',
+//    e.x. "if (mode == +VsyncModes::Off)".
+#define BETTER_ENUMS_API BP_API
+#include <better_enums.h>
 
 
 //Custom assert macro that can be configured by users of this engine.
@@ -28,36 +34,29 @@ namespace Bplus
 #pragma endregion
 
 
-//The BETTER_ENUM() macro, to define an enum
-//    with added string conversions and iteration.
-#define BETTER_ENUMS_API BP_API
-#include <better_enums.h>
-
 #pragma region Bool struct, for making a sane vector<Bool>
 //Mimics the standard bool type, except that it can be used in a vector<>
 //    without becoming a bitfield.
 struct BP_API Bool
 {
-    Bool() { *this = false; }
-    Bool(bool b) { *this = b; }
+    Bool() : data(false) { }
+    Bool(bool b) : data(b) { }
 
-    operator const bool&() const { return *(bool*)data; }
-    operator       bool&()       { return *(bool*)data; }
+    operator const bool&() const { return data; }
+    operator       bool&()       { return data; }
 
-    Bool& operator=(bool b) { memcpy(data, &b, sizeof(bool)); return *this; }
+    Bool& operator=(bool b) { data = b; return *this; }
 
-    bool operator!() const { return !((bool)*this); }
-    bool operator|(bool b) const { return ((bool)*this) | b; }
-    bool operator&(bool b) const { return ((bool)*this) & b; }
+    bool operator!() const { return !data; }
+    bool operator|(bool b) const { return data | b; }
+    bool operator&(bool b) const { return data & b; }
 
-    bool operator==(bool b) const { return b == (bool)*this; }
-    bool operator!=(bool b) const { return b != (bool)*this; }
+    bool operator==(bool b) const { return b == data; }
+    bool operator!=(bool b) const { return b != data; }
 
 private:
-    std::byte data[sizeof(bool)];
+    bool data;
 };
-
-static_assert(sizeof(Bool) == sizeof(bool), "Bool is too big");
 
 //Provide hashing for Bool.
 namespace std
@@ -118,7 +117,6 @@ namespace std
 
 //This helper macro escapes commas inside other macro calls.
 #define BP_COMMA ,
-
 
 #pragma region Lazy<> struct, for lazy instantiation of a class
 namespace Bplus

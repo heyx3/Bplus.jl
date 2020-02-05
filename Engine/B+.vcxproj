@@ -365,6 +365,7 @@ exit 0</Command>
     <ClCompile Include="Renderer\Context.cpp" />
     <ClCompile Include="Renderer\Data.cpp" />
     <ClCompile Include="Renderer\Device.cpp" />
+    <ClCompile Include="Renderer\Materials\MaterialData.cpp" />
     <ClCompile Include="Renderer\Materials\Material_Basic.cpp" />
     <ClCompile Include="Renderer\Materials\CompiledShader.cpp" />
     <ClCompile Include="TomlIO.cpp" />
@@ -387,7 +388,9 @@ exit 0</Command>
     <ClInclude Include="Platform.h" />
     <ClInclude Include="Renderer\Context.h" />
     <ClInclude Include="Renderer\Data.h" />
+    <ClInclude Include="Renderer\DataTOML.h" />
     <ClInclude Include="Renderer\Device.h" />
+    <ClInclude Include="Renderer\Materials\MaterialData.h" />
     <ClInclude Include="Renderer\Materials\Material_Basic.h" />
     <ClInclude Include="Renderer\Materials\CompiledShader.h" />
     <ClInclude Include="RenderLibs.h" />

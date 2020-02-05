@@ -98,7 +98,14 @@ void SetUpBplusApp()
     App->Run();
 }
 
+void TesterTest()
+{
+    std::cout << "Test\n";
+    char d;
+    std::cin >> d;
+}
+
 
 TEST_LIST = {
-    { 0 }
+    { "Test", TesterTest }
 };

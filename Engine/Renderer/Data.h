@@ -5,12 +5,11 @@
 #include "../TomlIO.h"
 
 
+//Defines various enums and data structures that represent rendering state.
+
 
 namespace Bplus::GL
 {
-    //TODO: Move the various ImGUI editor member functions to a separate file.
-
-
     //If the given SDL error code doesn't represent success,
     //    returns false and sets "errOut" to "prefix" plus the SDL error.
     //Otherwise, returns true.
@@ -22,10 +21,7 @@ namespace Bplus::GL
 
 
     //Define various rendering enums with the help of the "Better Enums" library.
-    //This library provides toins of convenience such as iteration and easy string conversion,
-    //    but has one downside: comparing values must be done with the unary "+" operator,
-    //    e.x.: "if (mode == +VsyncModes::Off)"
-    //Note that the enum values generally line up with OpenGL and/or SDL codes.
+    //The enum values generally line up with OpenGL and/or SDL codes
 
     //SDL Vsync settings.
     BETTER_ENUM(VsyncModes, int,
@@ -132,8 +128,6 @@ namespace Bplus::GL
 
 
     //Below are some data structures grouping related rendering state settings.
-    //They all provide helper functions for writing/reading TOML data.
-
 
     #pragma region BlendState<> struct template
 
@@ -257,9 +251,9 @@ namespace Bplus::GL
     inline bool BP_API operator!=(const StencilTest& a, const StencilTest& b) { return !(a == b); }
 
 
+    //What happens to the stencil buffer when a fragment is placed into a pixel.
     struct BP_API StencilResult
     {
-        //What happens to the stencil buffer when a fragment is placed into a pixel.
         StencilOps OnFailStencil = StencilOps::Nothing,
                    OnPassStencilFailDepth = StencilOps::Nothing,
                    OnPassStencilDepth = StencilOps::Nothing;

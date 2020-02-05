@@ -3,6 +3,7 @@
 
 //The "tinytoml" library.
 //https://github.com/mayah/tinytoml
+//With one modification: "typeToString()" was made public.
 
 
 #include <algorithm>
@@ -181,8 +182,8 @@ public:
 
     friend std::ostream& operator<<(std::ostream&, const Value&);
 
-private:
     static const char* typeToString(Type);
+private:
 
     template<typename T> void assureType() const;
     Value* ensureValue(const std::string& key);

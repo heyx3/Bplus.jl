@@ -53,3 +53,22 @@ std::string IO::ToLowercase(const char* str)
     ToLowercase(strClass);
     return strClass;
 }
+
+void Bplus::IO::Remove(std::string& str, char c)
+{
+    str.erase(std::remove_if(str.begin(), str.end(),
+                             [c](char c2) { return c == c2; }),
+              str.end());
+}
+void Bplus::IO::RemoveAll(std::string& str, const char* chars, size_t count)
+{
+    str.erase(std::remove_if(str.begin(), str.end(),
+                             [chars, count](char c)
+                             {
+                                 for (size_t i = 0; i < count; ++i)
+                                     if (chars[i] == c)
+                                         return true;
+                                 return false;
+                             }),
+              str.end());
+}
