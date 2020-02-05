@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iostream>
 #include <functional>
+#include <unordered_set>
 
 #include <filesystem>
 namespace fs = std::filesystem;
@@ -25,7 +26,7 @@ namespace Bplus
         //The exception for something that goes bad during IO work, such as parsing.
         //Makes it easy to "nest" these exceptions, so each level can attach information
         //    about where that part of the parser went wrong.
-        class Exception
+        class BP_API Exception
         {
         public:
             const std::string Message;
@@ -57,7 +58,7 @@ namespace Bplus
         //If the enum requires case-sensitivity or underscore-sensitivity
         //    to distinguish between its elements,
         //    this function is smart enough to notice and provide that.
-        BetterEnum_t BP_API EnumFromString(const std::string& _str)
+        BetterEnum_t EnumFromString(const std::string& _str)
         {
             //For each type of enum, we need to know if it is case-insensitive
             //    and underscore-insensitive.
@@ -116,7 +117,7 @@ namespace Bplus
 
                 #pragma endregion
 
-                #pragma region Generate 'agnosticLookup' values
+                #pragma region Generate agnosticLookup
 
                 BPAssert(agnosticLookup.size() == 0, "Uninitialized but it has values??");
 

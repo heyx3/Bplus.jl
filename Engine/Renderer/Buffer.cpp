@@ -47,7 +47,7 @@ Buffer::~Buffer()
 }
 
 Buffer::Buffer(Buffer&& src)
-    : dataPtr(src.dataPtr), mode(src.mode)
+    : dataPtr(src.dataPtr)
 {
     src.dataPtr = OglPtr::Buffer(OglPtr::Buffer::Null);
 }

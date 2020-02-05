@@ -51,16 +51,13 @@ void GL::StencilTest::FromToml(const toml::Value& tomlData)
     try
     {
         status = "Test";
-        Test = IO::EnumFromString<ValueTests>(tomlData, "Test");
+        Test = IO::EnumFromString<ValueTests>("Test");
 
         status = "RefValue";
-        RefValue = IO::TomlGet<GLint>(tomlData, "RefValue");
+        RefValue = tomlData.as<GLint>();
 
         status = "Mask";
-        //Work through one of TOML's supported number types.
-        auto tomlTypedMask = IO::ToTomlNumber(Mask);
-        tomlTypedMask = IO::TomlGet<decltype(tomlTypedMask)>(tomlData, "Mask");
-        Mask = (decltype(Mask))tomlTypedMask;
+        Mask = tomlData.as<GLuint>();
     }
     catch (const IO::Exception& e)
     {
@@ -72,7 +69,10 @@ toml::Value GL::StencilTest::ToToml() const
     toml::Value tomlData;
     tomlData["Test"] = Test._to_string();
     tomlData["RefValue"] = RefValue;
-    tomlData["Mask"] = IO::ToTomlNumber(Mask);
+
+    BPAssert((int64_t)Mask == Mask,
+             "Unable to serialize Mask; need to add native uint support to tinyTOML");
+    tomlData["Mask"] = (int64_t)Mask;
     return tomlData;
 }
 bool GL::StencilTest::EditGUI(int popupMaxItemHeight)
@@ -98,13 +98,13 @@ void GL::StencilResult::FromToml(const toml::Value& tomlData)
     try
     {
         status = "OnFailStencil";
-        OnFailStencil = IO::EnumFromString<StencilOps>(tomlData, status);
+        OnFailStencil = IO::EnumFromString<StencilOps>(status);
 
         status = "OnPassStencilFailDepth";
-        OnPassStencilFailDepth = IO::EnumFromString<StencilOps>(tomlData, status);
+        OnPassStencilFailDepth = IO::EnumFromString<StencilOps>(status);
 
         status = "OnPassStencilDepth";
-        OnPassStencilDepth = IO::EnumFromString<StencilOps>(tomlData, status);
+        OnPassStencilDepth = IO::EnumFromString<StencilOps>(status);
     }
     catch (const IO::Exception& e)
     {

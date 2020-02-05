@@ -122,17 +122,16 @@ namespace Bplus::IO
 
 #pragma region Extend TOML Value.as<T>() for all integer/float types, and struct Bool
 
-TOML_MAKE_PARSEABLE(int8_t, V.type() == Value::INT_TYPE, V.int_, "int8_t")
-TOML_MAKE_PARSEABLE(int16_t, V.type() == Value::INT_TYPE, V.int_, "int16_t")
-TOML_MAKE_PARSEABLE(int32_t, V.type() == Value::INT_TYPE, V.int_, "int32_t")
-TOML_MAKE_PARSEABLE(uint8_t, V.type() == Value::INT_TYPE, V.int_, "uint8_t")
-TOML_MAKE_PARSEABLE(uint16_t, V.type() == Value::INT_TYPE, V.int_, "uint16_t")
-TOML_MAKE_PARSEABLE(uint32_t, V.type() == Value::INT_TYPE, V.int_, "uint32_t")
-TOML_MAKE_PARSEABLE(uint64_t, V.type() == Value::INT_TYPE, V.int_, "uint64_t")
+TOML_MAKE_PARSEABLE(int8_t, V.type() == Value::INT_TYPE, V.int_, "int8_t", )
+TOML_MAKE_PARSEABLE(int16_t, V.type() == Value::INT_TYPE, V.int_, "int16_t", )
+TOML_MAKE_PARSEABLE(uint8_t, V.type() == Value::INT_TYPE, V.int_, "uint8_t", )
+TOML_MAKE_PARSEABLE(uint16_t, V.type() == Value::INT_TYPE, V.int_, "uint16_t", )
+TOML_MAKE_PARSEABLE(uint32_t, V.type() == Value::INT_TYPE, V.int_, "uint32_t", )
+TOML_MAKE_PARSEABLE(uint64_t, V.type() == Value::INT_TYPE, V.int_, "uint64_t", )
 
-TOML_MAKE_PARSEABLE(float, V.type() == Value::DOUBLE_TYPE, V.double_, "float")
+TOML_MAKE_PARSEABLE(float, V.type() == Value::DOUBLE_TYPE, V.double_, "float", )
 
-TOML_MAKE_PARSEABLE(Bool, V.type() == Value::BOOL_TYPE, V.bool_, "Bool")
+TOML_MAKE_PARSEABLE(Bool, V.type() == Value::BOOL_TYPE, V.bool_, "Bool", )
 
 #pragma endregion
 
@@ -179,20 +178,21 @@ namespace Bplus::IO::internal
         }
     }
 
-    template<typename glmVec_t>
-    glmVec_t glmVectorFromToml(const toml::Value& v)
+    template<glm::length_t L, typename T>
+    glm::vec<L, T> glmVectorFromToml(const toml::Value& v)
     {
+        using glmVec_t = glm::vec<L, T>;
+
         //Note that we're assuming the value is valid for this type,
         //    checked via the above "glmVectorCheckToml()".
-
-        BPAssert(v.size() == glmVec_t::length(),
+        BPAssert(v.size() == L,
                  "Expected size to match up");
 
         if (v.type() == toml::Value::ARRAY_TYPE)
         {
             glmVec_t result;
             for (glm::length_t i = 0; i < result.length(); ++i)
-                result[i] = v.get<glmVec_t::value_type>(i);
+                result[i] = v.get<T>(i);
             return result;
         }
         else if (v.type() == toml::Value::TABLE_TYPE)
@@ -201,7 +201,7 @@ namespace Bplus::IO::internal
 
             for (glm::length_t i = 0; i < result.length(); ++i)
             {
-                glmVec_t::value_type c;
+                T c;
 
                 static const char* modes[] = { "xyzw", "XYZW", "rgba", "RGBA" };
                 for (uint_fast8_t m = 0; m < 4; ++m)
@@ -210,7 +210,7 @@ namespace Bplus::IO::internal
 
                     if (v.has(str))
                     {
-                        c = v.get<glmVec_t::value_type>(str);
+                        c = v.get<T>(str);
                         break;
                     }
 
@@ -251,12 +251,12 @@ namespace Bplus::IO::internal
             name += std::to_string(L);
         }
 
-        return name.c_str();
+        return name.value().c_str();
     }
 }
 
 TOML_MAKE_PARSEABLE(glm::vec<L BP_COMMA T>,
-                    Bplus::IO::internal::glmVectorCheckToml<L BP_COMMA T>(V),
+                    Bplus::IO::internal::glmVectorCheckToml<glm::vec<L BP_COMMA T>>(V),
                     Bplus::IO::internal::glmVectorFromToml<L BP_COMMA T>(V),
                     Bplus::IO::internal::glmVectorTypeName<L BP_COMMA T>(V),
                     glm::length_t L BP_COMMA typename T);
