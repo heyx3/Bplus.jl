@@ -1,17 +1,35 @@
 // This file is part of Better Enums, released under the BSD 2-clause license.
 // Visit http://github.com/aantron/better-enums.
 
-//Small modifications have been made for B+.
-//For example, we can now define BETTER_ENUMS_API to dllexport the data types.
+//Some modifications have been made for B+:
+//   * Use of BETTER_ENUMS_API to allow e.x. dllexporting the data types
+//        (although I'm pretty sure this was a useless change; it's header-only).
+//   * Providing the is_better_enum<T> type trait.
+
+#pragma once
+
 #ifndef BETTER_ENUMS_API
     #define BETTER_ENUMS_API
 #endif
 
-#pragma once
-
 #ifndef BETTER_ENUMS_ENUM_H
 #define BETTER_ENUMS_ENUM_H
 
+
+#pragma region is_better_enum<T> and is_better_enum_v<T>
+
+#include <type_traits>
+
+template<class, class = std::void_t<>>
+struct is_better_enum : std::false_type{};
+template<class T>
+struct is_better_enum<T, std::void_t<typename T::_is_BE_flag>> : std::true_type { };
+
+//Uses SFINAE to find out whether a type was created thorugh BETTER_ENUM().
+template<class T>
+constexpr bool is_better_enum_v = is_better_enum<T>::value;
+
+#pragma endregion
 
 
 #include <cstddef>
@@ -625,13 +643,14 @@ BETTER_ENUMS_ID(GenerateSwitchType(Underlying, __VA_ARGS__))                   \
                                                                                \
 }                                                                              \
                                                                                \
-class BETTER_ENUMS_API Enum {                                                                   \
+class BETTER_ENUMS_API Enum {                                                  \
   private:                                                                     \
     typedef ::better_enums::optional<Enum>                  _optional;         \
     typedef ::better_enums::optional<std::size_t>           _optional_index;   \
                                                                                \
   public:                                                                      \
     typedef Underlying                                      _integral;         \
+    typedef char                                            _is_BE_flag;       \
                                                                                \
     enum _enumerated SetUnderlyingType(Underlying) { __VA_ARGS__ };            \
                                                                                \

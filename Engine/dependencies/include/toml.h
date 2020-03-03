@@ -3,7 +3,11 @@
 
 //The "tinytoml" library.
 //https://github.com/mayah/tinytoml
-//With one modification: "typeToString()" was made public.
+
+//With the following modifications:
+//   * "typeToString()" was made public
+//   * Various aspects of deserialization were changed
+//         to allow for template specialization.
 
 
 #include <algorithm>
@@ -44,7 +48,7 @@ template<typename T> struct call_traits_ref {
 };
 } // namespace internal
 
-template<typename T> struct call_traits;
+template<typename T, typename Traits=void> struct call_traits;
 template<> struct call_traits<bool> : public internal::call_traits_value<bool> {};
 template<> struct call_traits<int> : public internal::call_traits_value<int> {};
 template<> struct call_traits<int64_t> : public internal::call_traits_value<int64_t> {};
@@ -188,7 +192,7 @@ private:
     template<typename T> void assureType() const;
     Value* ensureValue(const std::string& key);
 
-    template<typename T> struct ValueConverter;
+    template<typename T, typename Traits=void> struct ValueConverter;
 
     Type type_;
     union {
@@ -202,7 +206,7 @@ private:
         Table* table_;
     };
 
-    template<typename T> friend struct ValueConverter;
+    template<typename T, typename Traits> friend struct ValueConverter;
 };
 
 // parse() returns ParseResult.
@@ -1253,22 +1257,23 @@ struct Value::ValueConverter<std::vector<T>>
 };
 
 namespace internal {
-template<typename T> inline const char* type_name();
-template<> inline const char* type_name<bool>() { return "bool"; }
-template<> inline const char* type_name<int>() { return "int"; }
-template<> inline const char* type_name<int64_t>() { return "int64_t"; }
-template<> inline const char* type_name<double>() { return "double"; }
-template<> inline const char* type_name<std::string>() { return "string"; }
-template<> inline const char* type_name<toml::Time>() { return "time"; }
-template<> inline const char* type_name<toml::Array>() { return "array"; }
-template<> inline const char* type_name<toml::Table>() { return "table"; }
+template<typename T, typename Traits=void> struct type_name;
+
+template<> struct type_name<bool>        { static const char* N() { return "bool"; } };
+template<> struct type_name<int>         { static const char* N() { return "int"; } };
+template<> struct type_name<int64_t>     { static const char* N() { return "int64_t"; } };
+template<> struct type_name<double>      { static const char* N() { return "double"; } };
+template<> struct type_name<std::string> { static const char* N() { return "string"; } };
+template<> struct type_name<toml::Time>  { static const char* N() { return "time"; } };
+template<> struct type_name<toml::Array> { static const char* N() { return "array"; } };
+template<> struct type_name<toml::Table> { static const char* N() { return "table"; } };
 } // namespace internal
 
 template<typename T>
 inline void Value::assureType() const
 {
     if (!is<T>())
-        failwith("type error: this value is ", typeToString(type_), " but ", internal::type_name<T>(), " was requested");
+        failwith("type error: this value is ", typeToString(type_), " but ", internal::type_name<T>::N(), " was requested");
 }
 
 template<typename T>

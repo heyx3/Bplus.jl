@@ -6,7 +6,9 @@
 //    with added string conversions and iteration.
 //There is one downside: to use a literal value, it must be prepended with a '+',
 //    e.x. "if (mode == +VsyncModes::Off)".
-#define BETTER_ENUMS_API BP_API
+//#define BETTER_ENUMS_API BP_API
+//NOTE: The #define above was removed because it screws up usage from outside this library,
+//    and I'm pretty sure it's not even needed in the first place.
 #include <better_enums.h>
 
 
@@ -33,13 +35,6 @@ namespace Bplus
 
 #pragma endregion
 
-
-//The BETTER_ENUM() macro, to define an enum
-//    with added string conversions and iteration.
-//#define BETTER_ENUMS_API BP_API
-//NOTE: The #define above was removed because it screws up usage from outside this library,
-//    and I'm pretty sure it's not even needed in the first place.
-#include <better_enums.h>
 
 #pragma region Bool struct, for making a sane vector<Bool>
 //Mimics the standard bool type, except that it can be used in a vector<>
