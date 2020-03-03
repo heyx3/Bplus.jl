@@ -106,6 +106,8 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <DisableSpecificWarnings>4996;4251</DisableSpecificWarnings>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <PreprocessToFile>false</PreprocessToFile>
+      <PreprocessKeepComments>false</PreprocessKeepComments>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -128,7 +130,7 @@ set VERIFY_RBCPY=if %ERRORLEVEL% GEQ 8 exit %ERRORLEVEL%
 REM Copy over the dependencies. Remove unexpected destination files with "/purge".
 robocopy "$(ProjectDir)dependencies\lib" "$(TargetDir)compile-time\lib" *.lib /E /purge
 %VERIFY_RBCPY%
-robocopy "$(ProjectDir)dependencies\include" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E /purge
+robocopy "$(ProjectDir)dependencies\include" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E /is /purge
 %VERIFY_RBCPY%
 REM For the copy of dll's into "run-time/", make sure to NOT purge the "content/" sub-folder!
 robocopy "$(ProjectDir)dependencies\bin" "$(TargetDir)run-time" *.dll /E /purge /xd "$(ProjectDir)dependencies\bin\content"
@@ -168,6 +170,8 @@ exit 0</Command>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <DisableSpecificWarnings>4996;4251</DisableSpecificWarnings>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
+      <PreprocessToFile>false</PreprocessToFile>
+      <PreprocessKeepComments>false</PreprocessKeepComments>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -190,7 +194,7 @@ set VERIFY_RBCPY=if %ERRORLEVEL% GEQ 8 exit %ERRORLEVEL%
 REM Copy over the dependencies. Remove unexpected destination files with "/purge".
 robocopy "$(ProjectDir)dependencies\lib" "$(TargetDir)compile-time\lib" *.lib /E /purge
 %VERIFY_RBCPY%
-robocopy "$(ProjectDir)dependencies\include" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E /purge
+robocopy "$(ProjectDir)dependencies\include" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E /is /purge
 %VERIFY_RBCPY%
 REM For the copy of dll's into "run-time/", make sure to NOT purge the "content/" sub-folder!
 robocopy "$(ProjectDir)dependencies\bin" "$(TargetDir)run-time" *.dll /E /purge /xd "$(ProjectDir)dependencies\bin\content"
@@ -231,6 +235,8 @@ exit 0</Command>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <DisableSpecificWarnings>4996;4251</DisableSpecificWarnings>
+      <PreprocessToFile>false</PreprocessToFile>
+      <PreprocessKeepComments>false</PreprocessKeepComments>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -255,9 +261,7 @@ set VERIFY_RBCPY=if %ERRORLEVEL% GEQ 8 exit %ERRORLEVEL%
 REM Copy over the dependencies. Remove unexpected destination files with "/purge".
 robocopy "$(ProjectDir)dependencies\lib" "$(TargetDir)compile-time\lib" *.lib /E /purge
 %VERIFY_RBCPY%
-robocopy "$(ProjectDir)dependencies\include" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E /purge
-%VERIFY_RBCPY%
-robocopy "$(ProjectDir)dependencies\Full Source" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E
+robocopy "$(ProjectDir)dependencies\include" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E /is /purge
 %VERIFY_RBCPY%
 REM For the copy of dll's into "run-time/", make sure to NOT purge the "content/" sub-folder!
 robocopy "$(ProjectDir)dependencies\bin" "$(TargetDir)run-time" *.dll /E /purge /xd "$(ProjectDir)dependencies\bin\content"
@@ -298,6 +302,8 @@ exit 0</Command>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <DisableSpecificWarnings>4996;4251</DisableSpecificWarnings>
+      <PreprocessToFile>false</PreprocessToFile>
+      <PreprocessKeepComments>false</PreprocessKeepComments>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -322,9 +328,7 @@ set VERIFY_RBCPY=if %ERRORLEVEL% GEQ 8 exit %ERRORLEVEL%
 REM Copy over the dependencies. Remove unexpected destination files with "/purge".
 robocopy "$(ProjectDir)dependencies\lib" "$(TargetDir)compile-time\lib" *.lib /E /purge
 %VERIFY_RBCPY%
-robocopy "$(ProjectDir)dependencies\include" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E /purge
-%VERIFY_RBCPY%
-robocopy "$(ProjectDir)dependencies\Full Source" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E
+robocopy "$(ProjectDir)dependencies\include" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E /is /purge
 %VERIFY_RBCPY%
 REM For the copy of dll's into "run-time/", make sure to NOT purge the "content/" sub-folder!
 robocopy "$(ProjectDir)dependencies\bin" "$(TargetDir)run-time" *.dll /E /purge /xd "$(ProjectDir)dependencies\bin\content"

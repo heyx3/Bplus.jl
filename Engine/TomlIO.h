@@ -17,7 +17,6 @@
 #include <glm/ext.hpp>
 #include <glm/gtc/matrix_access.hpp>
 
-
 #include <toml.h>
 
 
@@ -96,23 +95,28 @@ namespace Bplus::IO
     #pragma endregion
 }
 
-
 //The TOML_MAKE_PARSEABLE macro allows you to extend the "tiny toml" library
 //   to add partial native support for parsing custom data types from TOML.
 //It allows you to use the built-in Value::as<T>() to convert your own type "T" out of a toml::Value.
 //It requires the following arguments:
 //    T : the type
+//    templateOuter : the template arguments for the specialization
+//    templateInner : the template instantiation for the specialization
 //    checkTypeOfV : an expression that outputs whether the Value "V" can be interpreted as the type T
 //    getValueOfV : gets the value from V in a form that can be explicitly cast to "T".
 //    typeNameStr : the name of the new type as a C-style string (i.e. const char*).
-//    templateData : any custom template parameters for specialization
-#define TOML_MAKE_PARSEABLE(T, checkTypeOfV, getValueOfV, typeNameStr, templateData) \
+//    value_or_ref : "value" if the result is passed by value; "ref" if the result is passed by const reference.
+#define TOML_MAKE_PARSEABLE(T, templateOuter, templateInner, checkTypeOfV, getValueOfV, typeNameStr, value_or_ref) \
     namespace toml { \
         namespace internal { \
-            template<templateData> inline const char* type_name<T>() { return typeNameStr; } \
+            template<templateOuter> struct type_name<templateInner> \
+            { \
+                static const char* N() { return typeNameStr; } \
+            }; \
         } \
-        template<templateData> struct call_traits<T> : public internal::call_traits_value<T> {}; \
-        template<templateData> struct Value::ValueConverter<T> \
+        template<templateOuter> struct call_traits<templateInner> \
+                                : public internal::call_traits_##value_or_ref<T> {}; \
+        template<templateOuter> struct Value::ValueConverter<templateInner> \
         { \
             bool is(const Value& V) {                    return checkTypeOfV; } \
                T to(const Value& V) { V.assureType<T>(); return (T)(getValueOfV); } \
@@ -120,18 +124,32 @@ namespace Bplus::IO
     }
 
 
+#pragma region Extend TOML Value.as<T>() for enums
+
+TOML_MAKE_PARSEABLE(Enum_t, typename Enum_t,
+                    Enum_t BP_COMMA std::enable_if_t<is_better_enum_v<Enum_t> BP_COMMA Enum_t>,
+                    (V.type() == toml::Value::Type::INT_TYPE) ||
+                      (V.type() == toml::Value::Type::STRING_TYPE),
+                    (V.type() == toml::Value::Type::INT_TYPE) ?
+                        Enum_t::_from_index(V.as<size_t>()) :
+                        Bplus::IO::EnumFromString<Enum_t>(V.as<std::string>()),
+                    Enum_t::_name(),
+                    value);
+
+#pragma endregion
+
 #pragma region Extend TOML Value.as<T>() for all integer/float types, and struct Bool
 
-TOML_MAKE_PARSEABLE(int8_t, V.type() == Value::INT_TYPE, V.int_, "int8_t", )
-TOML_MAKE_PARSEABLE(int16_t, V.type() == Value::INT_TYPE, V.int_, "int16_t", )
-TOML_MAKE_PARSEABLE(uint8_t, V.type() == Value::INT_TYPE, V.int_, "uint8_t", )
-TOML_MAKE_PARSEABLE(uint16_t, V.type() == Value::INT_TYPE, V.int_, "uint16_t", )
-TOML_MAKE_PARSEABLE(uint32_t, V.type() == Value::INT_TYPE, V.int_, "uint32_t", )
-TOML_MAKE_PARSEABLE(uint64_t, V.type() == Value::INT_TYPE, V.int_, "uint64_t", )
+TOML_MAKE_PARSEABLE(int8_t,   , int8_t,   V.type() == Value::INT_TYPE, V.int_, "int8_t",   value)
+TOML_MAKE_PARSEABLE(int16_t,  , int16_t,  V.type() == Value::INT_TYPE, V.int_, "int16_t",  value)
+TOML_MAKE_PARSEABLE(uint8_t,  , uint8_t,  V.type() == Value::INT_TYPE, V.int_, "uint8_t",  value)
+TOML_MAKE_PARSEABLE(uint16_t, , uint16_t, V.type() == Value::INT_TYPE, V.int_, "uint16_t", value)
+TOML_MAKE_PARSEABLE(uint32_t, , uint32_t, V.type() == Value::INT_TYPE, V.int_, "uint32_t", value)
+TOML_MAKE_PARSEABLE(uint64_t, , uint64_t, V.type() == Value::INT_TYPE, V.int_, "uint64_t", value)
 
-TOML_MAKE_PARSEABLE(float, V.type() == Value::DOUBLE_TYPE, V.double_, "float", )
+TOML_MAKE_PARSEABLE(float, , float, V.type() == Value::DOUBLE_TYPE, V.double_, "float", value)
 
-TOML_MAKE_PARSEABLE(Bool, V.type() == Value::BOOL_TYPE, V.bool_, "Bool", )
+TOML_MAKE_PARSEABLE(Bool, , Bool, V.type() == Value::BOOL_TYPE, V.bool_, "Bool", value)
 
 #pragma endregion
 
@@ -225,7 +243,7 @@ namespace Bplus::IO::internal
         else
         {
             BPAssert(v.size() == 1, "Expected 1D vector value");
-            return glmVec_t(v.as<glmVec_t::value_type>());
+            return glmVec_t(v.as<T>());
         }
     }
 
@@ -256,10 +274,12 @@ namespace Bplus::IO::internal
 }
 
 TOML_MAKE_PARSEABLE(glm::vec<L BP_COMMA T>,
+                    glm::length_t L BP_COMMA typename T,
+                    glm::vec<L BP_COMMA T>,
                     Bplus::IO::internal::glmVectorCheckToml<glm::vec<L BP_COMMA T>>(V),
                     Bplus::IO::internal::glmVectorFromToml<L BP_COMMA T>(V),
-                    Bplus::IO::internal::glmVectorTypeName<L BP_COMMA T>(V),
-                    glm::length_t L BP_COMMA typename T);
+                    Bplus::IO::internal::glmVectorTypeName<L BP_COMMA T>(),
+                    value);
 
 template<typename glmVec_t>
 toml::Value GlmToToml(const glmVec_t& v)
@@ -267,9 +287,9 @@ toml::Value GlmToToml(const glmVec_t& v)
     toml::Value outToml;
         
     //If it's just one value, don't bother with an array.
-    if constexpr (L == 1)
+    if constexpr (glmVec_t::length() == 1)
         outToml = v[0];
-    else for (glm::length_t i = 0; i < L; ++i)
+    else for (glm::length_t i = 0; i < glmVec_t::length(); ++i)
         outToml.push(v[(size_t)i]);
 
     return outToml;
@@ -351,10 +371,12 @@ namespace Bplus::IO::internal
 }
 
 TOML_MAKE_PARSEABLE(glm::mat<C BP_COMMA R BP_COMMA T>,
+                    glm::length_t C BP_COMMA glm::length_t R BP_COMMA typename T,
+                    glm::mat<C BP_COMMA R BP_COMMA T>,
                     Bplus::IO::internal::glmMatrixCheckToml<C BP_COMMA R BP_COMMA T>(V),
                     Bplus::IO::internal::glmMatrixFromToml<C BP_COMMA R BP_COMMA T>(V),
-                    Bplus::IO::internal::glmMatrixTypeName<C BP_COMMA R BP_COMMA T>(V),
-                    glm::length_t C BP_COMMA glm::length_t R BP_COMMA typename T);
+                    Bplus::IO::internal::glmMatrixTypeName<C BP_COMMA R BP_COMMA T>(),
+                    value);
 
 template<glm::length_t C, glm::length_t R, typename T>
 toml::Value GlmToToml(const glm::mat<C, R, T>& m)
