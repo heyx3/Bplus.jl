@@ -9,7 +9,8 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Tests\CoreLibraries.hpp">
+    <ClInclude Include="AllTests.h" />
+    <ClInclude Include="Tests\StringAndIO.hpp">
       <Filter>Tests</Filter>
     </ClInclude>
   </ItemGroup>

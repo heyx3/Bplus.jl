@@ -1,5 +1,5 @@
-#include "../Engine/App.h"
-#include "../Engine/TomlIO.h"
+#include <B+/App.h>
+#include <B+/TomlIO.h>
 
 //Runs unit tests for BPlus.
 //Uses the "acutest" single-header unit test library: https://github.com/mity/acutest
@@ -103,9 +103,6 @@ void TesterTest()
     std::cout << "Test\n";
     char d;
     std::cin >> d;
+
+    std::cout << "You entered " << d << "\n";
 }
-
-
-TEST_LIST = {
-    { "Test", TesterTest }
-};

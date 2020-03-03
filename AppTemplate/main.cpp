@@ -1,5 +1,5 @@
-#include "../Engine/App.h"
-#include "../Engine/TomlIO.h"
+#include <B+/App.h>
+#include <B+/TomlIO.h>
 
 //A template command-line + window app based on B+ and SDL.
 //Command-line arguments:
