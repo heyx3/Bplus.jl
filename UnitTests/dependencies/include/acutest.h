@@ -24,6 +24,10 @@
  * IN THE SOFTWARE.
  */
 
+//Modified by William Manning to add "--pause" and "test_pause_at_end_",
+//    providing the option to manually pause the console after tests are done.
+
+
 #ifndef ACUTEST_H__
 #define ACUTEST_H__
 
@@ -340,6 +344,7 @@ static int test_worker__ = 0;
 static int test_worker_index__ = 0;
 static int test_cond_failed__ = 0;
 static int test_was_aborted__ = 0;
+static int test_pause_at_end__ = 0;
 static FILE *test_xml_output__ = NULL;
 
 static int test_stat_failed_units__ = 0;
@@ -1366,6 +1371,7 @@ static const TEST_CMDLINE_OPTION__ test_cmdline_options__[] = {
     { 'h',  "help",         'h', 0 },
     {  0,   "worker",       'w', TEST_CMDLINE_OPTFLAG_REQUIREDARG__ },  /* internal */
     { 'x',  "xml-output",   'x', TEST_CMDLINE_OPTFLAG_REQUIREDARG__ },
+    { 'p',  "pause",        'p', TEST_CMDLINE_OPTFLAG_OPTIONALARG__ },
     {  0,   NULL,            0,  0 }
 };
 
@@ -1413,6 +1419,10 @@ test_cmdline_callback__(int id, const char* arg)
 
         case 'S':
             test_no_summary__ = 1;
+            break;
+
+        case 'p':
+            test_pause_at_end__ = 1;
             break;
 
         case 'T':
@@ -1686,6 +1696,13 @@ main(int argc, char** argv)
     }
 
     free((void*) test_details__);
+
+    if (test_pause_at_end__)
+    {
+        printf("Enter anything to close.\n");
+        char c[1024];
+        gets_s(c, sizeof(c));
+    }
 
     return (test_stat_failed_units__ == 0) ? 0 : 1;
 }
