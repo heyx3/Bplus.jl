@@ -61,7 +61,6 @@
     <ClInclude Include="Renderer\Materials\MaterialData.h">
       <Filter>Renderer\Materials</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\DataTOML.h" />
     <ClInclude Include="Renderer\Buffer.h">
       <Filter>Renderer</Filter>
     </ClInclude>

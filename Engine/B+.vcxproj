@@ -398,7 +398,6 @@ exit 0</Command>
     <ClInclude Include="Renderer\Buffer.h" />
     <ClInclude Include="Renderer\Context.h" />
     <ClInclude Include="Renderer\Data.h" />
-    <ClInclude Include="Renderer\DataTOML.h" />
     <ClInclude Include="Renderer\Device.h" />
     <ClInclude Include="Renderer\Materials\MaterialData.h" />
     <ClInclude Include="Renderer\Materials\Material_Basic.h" />
