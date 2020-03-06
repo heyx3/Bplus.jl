@@ -78,7 +78,7 @@ namespace Bplus::GL
         #pragma region Uniform getting
 
         //Gets a uniform of the given templated type.
-        //Valid types are the primitives (32-bit int, 32-bit uint, float, double, and bool),
+        //Valid types are the primitives (int32_t, uint32_t, float, double, and bool),
         //    GLM vectors of the primitives,
         //    GLM matrices of float and double,
         //    OglPtr::Image, and OglPtr::Sampler.
@@ -97,7 +97,10 @@ namespace Bplus::GL
                 case UniformStates::Missing: return std::nullopt;
                 case UniformStates::OptimizedOut: return defaultIfOptimizedOut;
                 case UniformStates::Exists: return GetUniform(ptr);
-                default: BPAssert(false, "Unknown uniform ptr state");
+
+                default:
+                    BPAssert(false, "Unknown uniform ptr state");
+                    return std::nullopt;
             }
         }
 
@@ -123,9 +126,11 @@ namespace Bplus::GL
                 case UniformStates::OptimizedOut: return defaultIfOptimizedOut;
 
                 case UniformStates::Exists:
-                    return GetUniform(OglPtr::ShaderUniform(ptr.Get() + index));
+                    return GetUniform({ ptr.Get() + index });
 
-                default: BPAssert(false, "Unknown uniform ptr state");
+                default:
+                    BPAssert(false, "Unknown uniform ptr state");
+                    return std::nullopt;
             }
         }
 
@@ -134,8 +139,9 @@ namespace Bplus::GL
         //    GLM vectors of the primitives,
         //    GLM matrices of float and double,
         //    OglPtr::Image, and OglPtr::Sampler.
-        //Returns true if everything went fine and the data was copied into "outData".
-        //Returns false if the uniform didn't exist or was optimized out by the shader.
+        //Returns false if the uniform doesn't exist.
+        //If the shader optimized out the uniform,
+        //    nothing is done and "true" will be returned as if it exists.
         template<typename Value_t>
         bool GetUniformArray(const std::string& name,
                              OglPtr::ShaderUniform::Data_t count,
@@ -149,7 +155,7 @@ namespace Bplus::GL
                 case UniformStates::Missing:
                     return false;
                 case UniformStates::OptimizedOut:
-                    return false;
+                    return true;
 
                 case UniformStates::Exists:
                     for (decltype(count) i = 0; i < count; ++i)
@@ -168,115 +174,104 @@ namespace Bplus::GL
 
         #pragma endregion
 
-        //All SetUniform() calls return true if the uniform was successfully set,
-        //    or false if the uniform wasn't found.
-        //If the uniform exists but was optimized out of the shader,
-        //    nothing is done and true is returned.
-        #pragma region Uniform setting via SetUniform()
+        #pragma region Uniform setting
+        
+        //Sets a uniform of the given templated type.
+        //Valid types are the primitives (int32_t, uint32_t, float, double, and bool/Bool),
+        //    GLM vectors of the primitives,
+        //    GLM matrices of float and double,
+        //    OglPtr::Image, and OglPtr::Sampler.
+        //Returns false if the uniform doesn't exist.
+        //If the shader optimized out the uniform,
+        //    nothing is done and "true" will be returned as if it exists.
+        template<typename Value_t>
+        bool SetUniform(const std::string& name, const Value_t& value)
+        {
+            UniformStates state;
+            OglPtr::ShaderUniform ptr;
+            std::tie(state, ptr) = CheckUniform(name);
+            switch (state)
+            {
+                case UniformStates::Missing: return false;
+                case UniformStates::OptimizedOut: return true;
 
-        //TODO: Change to a single templated function like GetUniform()
+                case UniformStates::Exists:
+                    _SetUniform(ptr, value);
+                    return true;
 
-    #define UNIFORM_SETTER_SINGLE(inType) \
-        public: \
-        bool SetUniform(const std::string& name, inType value) const \
-        { \
-            UniformStates state; \
-            OglPtr::ShaderUniform ptr; \
-            std::tie(state, ptr) = CheckUniform(name); \
-            switch (state) { \
-                case UniformStates::Missing: return false; \
-                case UniformStates::OptimizedOut: return true; \
-                case UniformStates::Exists: \
-                    SetUniform(ptr, value); \
-                    return true; \
-                default: BPAssert(false, "Unknown UniformStates value"); return false; \
-            } \
-        } \
-        private: \
-        void SetUniform(OglPtr::ShaderUniform ptr, inType value) const; \
-        public:
+                default:
+                    BPAssert(false, "Unknown uniform ptr state");
+                    return false;
+            }
+        }
 
-    #define UNIFORM_SETTER_ARRAY(inType) \
-        bool SetUniformArray(const std::string& name, GLsizei count, const inType *values) const \
-        { \
-            UniformStates state; \
-            OglPtr::ShaderUniform ptr; \
-            std::tie(state, ptr) = CheckUniform(name); \
-            switch (state) { \
-                case UniformStates::Missing: return false; \
-                case UniformStates::OptimizedOut: return true; \
-                case UniformStates::Exists: \
-                    SetUniformArray(ptr, count, values); \
-                    return true; \
-                default: BPAssert(false, "Unknown UniformStates value"); return false; \
-            } \
-        } \
-        private: \
-        void SetUniformArray(OglPtr::ShaderUniform ptr, GLsizei count, const inType *values) const; \
-        public:
+        //Sets a uniform of the given templated type.
+        //Valid types are the primitives (32-bit int, 32-bit uint, float, double, and bool/Bool),
+        //    GLM vectors of the primitives,
+        //    GLM matrices of float and double,
+        //    OglPtr::Image, and OglPtr::Sampler.
+        //Returns false if the uniform doesn't exist.
+        //If the shader optimized out the uniform,
+        //    nothing is done and "true" will be returned as if it exists.
+        template<typename Value_t>
+        bool SetUniformArrayElement(const std::string& name, int index,
+                                    const Value_t& value)
+        {
+            UniformStates state;
+            OglPtr::ShaderUniform ptr;
+            std::tie(state, ptr) = CheckUniform(name);
+            switch (state)
+            {
+                case UniformStates::Missing: return false;
+                case UniformStates::OptimizedOut: return true;
 
-    #define UNIFORM_SETTER(inType, inRefType) \
-        UNIFORM_SETTER_SINGLE(inRefType) \
-        UNIFORM_SETTER_ARRAY(inType)
+                case UniformStates::Exists:
+                    _SetUniform({ ptr.Get() + (OglPtr::ShaderUniform::Data_t)index },
+                                value);
+                    return true;
 
+                default:
+                    BPAssert(false, "Unknown uniform ptr state");
+                    return false;
+            }
+        }
 
-        #pragma region SetUniform() for primitive/vector types
+        //Sets a uniform of the given templated type.
+        //Valid types are the primitives (32-bit int, 32-bit uint, float, double, and bool/Bool),
+        //    GLM vectors of the primitives,
+        //    GLM matrices of float and double,
+        //    OglPtr::Image, and OglPtr::Sampler.
+        //Returns false if the uniform doesn't exist.
+        //If the shader optimized out the uniform,
+        //    nothing is done and "true" will be returned as if it exists.
+        template<typename Value_t>
+        bool SetUniformArray(const std::string& name, int count, const Value_t* data)
+        {
+            UniformStates state;
+            OglPtr::ShaderUniform ptr;
+            std::tie(state, ptr) = CheckUniform(name);
+            switch (state)
+            {
+                case UniformStates::Missing:
+                    return false;
+                case UniformStates::OptimizedOut:
+                    return true;
 
-        //Quick note about bool: because vector<bool> doesn't provide a data() function,
-        //    it can be a pain to work with arrays of bool values.
-        //To help ameliorate that, this class provies an extra overload
-        //    that uses the "Bool" struct, which acts exactly like a bool.
-        UNIFORM_SETTER_ARRAY(Bool)
+                case UniformStates::Exists:
+                    for (int i = 0; i < count; ++i)
+                    {
+                        OglPtr::ShaderUniform elementPtr{ ptr.Get() +
+                                                          (OglPtr::ShaderUniform::Data_t)i };
+                        _SetUniform(elementPtr, data[i]);
+                    }
+                    return true;
 
-    #define UNIFORM_SETTER_VECTOR(glmLetter, n) \
-        UNIFORM_SETTER(glm::glmLetter##vec##n, const glm::glmLetter##vec##n &)
+                default:
+                    BPAssert(false, "Unknown uniform ptr state");
+                    return false;
+            }
+        }
 
-    #define UNIFORM_SETTER_VECTORS(glmLetter, primitive) \
-        UNIFORM_SETTER(primitive, primitive) \
-        UNIFORM_SETTER_VECTOR(glmLetter, 1) \
-        UNIFORM_SETTER_VECTOR(glmLetter, 2) \
-        UNIFORM_SETTER_VECTOR(glmLetter, 3) \
-        UNIFORM_SETTER_VECTOR(glmLetter, 4)
-
-        UNIFORM_SETTER_VECTORS(b, bool);
-        UNIFORM_SETTER_VECTORS(i, GLint);
-        UNIFORM_SETTER_VECTORS(u, GLuint);
-        UNIFORM_SETTER_VECTORS(f, GLfloat);
-        UNIFORM_SETTER_VECTORS(d, double);
-
-    #undef UNIFORM_SETTER_VECTORS
-    #undef UNIFORM_SETTER_VECTOR
-
-        #pragma endregion
-
-        #pragma region SetUniform() for matrix types
-
-    #define UNIFORM_SETTER_MATRIX(size) \
-        UNIFORM_SETTER(glm::fmat##size, const glm::fmat##size &); \
-        UNIFORM_SETTER(glm::dmat##size, const glm::dmat##size &);
-
-    #define UNIFORM_SETTER_MATRICES(nRows) \
-        UNIFORM_SETTER_MATRIX(2##x##nRows); \
-        UNIFORM_SETTER_MATRIX(3##x##nRows); \
-        UNIFORM_SETTER_MATRIX(4##x##nRows)
-
-        UNIFORM_SETTER_MATRICES(2);
-        UNIFORM_SETTER_MATRICES(3);
-        UNIFORM_SETTER_MATRICES(4);
-
-    #undef UNIFORM_SETTER_MATRICES
-    #undef UNIFORM_SETTER_MATRIX
-
-        #pragma endregion
-
-        #pragma region SetUniform() for texture types
-
-        UNIFORM_SETTER(OglPtr::Sampler, OglPtr::Sampler);
-        UNIFORM_SETTER(OglPtr::Image, OglPtr::Image);
-
-        #pragma endregion
-
-    #undef UNIFORM_SETTER
         #pragma endregion
 
     private:
@@ -306,11 +301,15 @@ namespace Bplus::GL
 
             #pragma region Vector/primitive types
 
-            //Bools are a special case becuause they go through the OpenGL API
+            //Bools are a special case because they go through the OpenGL API
             //    as integers or floats.
             #pragma region Bool types
             
             CASE(bool)
+                GLuint result;
+                glGetUniformuiv(programHandle.Get(), ptr.Get(), &result);
+                return (bool)result;
+            CASE(Bool)
                 GLuint result;
                 glGetUniformuiv(programHandle.Get(), ptr.Get(), &result);
                 return (bool)result;
@@ -392,6 +391,81 @@ namespace Bplus::GL
 
             //TODO: Figure out how to use images.
             //CASE(OglPtr::Image)
+
+            #pragma endregion
+
+        #undef CASE
+
+            //If none of the previous cases apply, then an invalid type was passed.
+            } else { static_assert(false); return (void*)nullptr; }
+        }
+
+        template<typename Value_t>
+        Value_t _SetUniform(OglPtr::ShaderUniform ptr, const Value_t& value)
+        {
+            BPAssert(ptr != OglPtr::ShaderUniform::Null, "Given a null ptr!");
+
+            //This "if" statement only exists so that all subsequent lines
+            //    must start with "} else", to simplify the macros.
+            if constexpr (false) { return (void*)nullptr;
+
+            //Each CASE is a new scope, for getting the given type.
+            //The last closing brace comes after all this macro stuff.
+        #define CASE(T) \
+            } else if constexpr (std::is_same_v<T, Value_t>) {
+                
+
+            #pragma region Vector/primitive types
+
+            //Treat Bool values like regular bools.
+            CASE(Bool)
+                glUniform1ui(ptr.Get(), (GLuint)((bool)value));
+
+            #define CASE_VECTORS(primitiveType, glType, glSuffix) \
+                CASE(primitiveType) \
+                    glUniform1##glSuffix(ptr.Get(), (primitiveType)value); \
+                CASE(glm::vec<1 BP_COMMA primitiveType>) \
+                    glUniform1##glSuffix(ptr.Get(), (primitiveType)value.x); \
+                CASE(glm::vec<2 BP_COMMA primitiveType>) \
+                    glUniform2##glSuffix(ptr.Get(), (primitiveType)value.x, (primitiveType)value.y); \
+                CASE(glm::vec<3 BP_COMMA primitiveType>) \
+                    glUniform3##glSuffix(ptr.Get(), (primitiveType)value.x, (primitiveType)value.y, (primitiveType)value.z); \
+                CASE(glm::vec<4 BP_COMMA primitiveType>) \
+                    glUniform4##glSuffix(ptr.Get(), (primitiveType)value.x, (primitiveType)value.y, (primitiveType)value.z, (primitiveType)value.w)
+
+                CASE_VECTORS(bool, GLuint, ui);
+                CASE_VECTORS(uint32_t, GLuint, ui);
+                CASE_VECTORS(int32_t, GLint, i);
+                CASE_VECTORS(float, GLfloat, f);
+                CASE_VECTORS(double, GLdouble, d);
+
+            #undef CASE_VECTORS
+
+            #pragma endregion
+
+            #pragma region Matrix types
+
+            #define CASE_MATRIX(C, R, glSize) \
+                CASE(glm::mat<C BP_COMMA R BP_COMMA float>) \
+                    glUniformMatrix##glSize##fv(ptr.Get(), 1, GL_FALSE, glm::value_ptr(value)); \
+                CASE(glm::mat<C BP_COMMA R BP_COMMA double>) \
+                    glUniformMatrix##glSize##dv(ptr.Get(), 1, GL_FALSE, glm::value_ptr(value))
+
+                CASE_MATRIX(2, 2, 2); CASE_MATRIX(2, 3, 2x3); CASE_MATRIX(2, 4, 2x4);
+                CASE_MATRIX(3, 2, 3x2); CASE_MATRIX(3, 3, 3); CASE_MATRIX(3, 4, 3x4);
+                CASE_MATRIX(4, 2, 4x2); CASE_MATRIX(4, 3, 4x3); CASE_MATRIX(4, 4, 4);
+
+            #undef CASE_MATRIX
+
+            #pragma endregion
+
+            #pragma region Textures
+
+                //TODO: Figure out how to use bindless textures.
+                //CASE(OglPtr::Sampler)
+
+                //TODO: Figure out how to use images.
+                //CASE(OglPtr::Image)
 
             #pragma endregion
 
