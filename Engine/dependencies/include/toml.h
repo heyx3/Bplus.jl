@@ -118,7 +118,7 @@ public:
 
     bool valid() const { return type_ != NULL_TYPE; }
     template<typename T> bool is() const;
-    template<typename T> typename call_traits<T>::return_type as() const;
+    template<typename T, typename Traits=void> typename call_traits<T, Traits>::return_type as() const;
 
     friend bool operator==(const Value& lhs, const Value& rhs);
     friend bool operator!=(const Value& lhs, const Value& rhs) { return !(lhs == rhs); }
@@ -141,7 +141,7 @@ public:
 
     // ----------------------------------------------------------------------
     // For Table value
-    template<typename T> typename call_traits<T>::return_type get(const std::string&) const;
+    template<typename T, typename Traits = void> typename call_traits<T, Traits>::return_type get(const std::string&) const;
     Value* set(const std::string& key, const Value& v);
     // Finds a Value with |key|. |key| can contain '.'
     // Note: if you would like to find a child value only, you need to use findChild.
@@ -168,7 +168,7 @@ public:
     // ----------------------------------------------------------------------
     // For Array value
 
-    template<typename T> typename call_traits<T>::return_type get(size_t index) const;
+    template<typename T, typename Traits=void> typename call_traits<T, Traits>::return_type get(size_t index) const;
     const Value* find(size_t index) const;
     Value* find(size_t index);
     Value* push(const Value& v);
@@ -1282,8 +1282,8 @@ inline bool Value::is() const
     return ValueConverter<T>().is(*this);
 }
 
-template<typename T>
-inline typename call_traits<T>::return_type Value::as() const
+template<typename T, typename Traits>
+inline typename call_traits<T, Traits>::return_type Value::as() const
 {
     return ValueConverter<T>().to(*this);
 }
@@ -1461,8 +1461,8 @@ inline bool operator==(const Value& lhs, const Value& rhs)
     }
 }
 
-template<typename T>
-inline typename call_traits<T>::return_type Value::get(const std::string& key) const
+template<typename T, typename Traits>
+inline typename call_traits<T, Traits>::return_type Value::get(const std::string& key) const
 {
     if (!is<Table>())
         failwith("type must be table to do get(key).");
@@ -1609,8 +1609,8 @@ inline Value& Value::operator[](const std::string& key)
     return *setChild(key, Value());
 }
 
-template<typename T>
-inline typename call_traits<T>::return_type Value::get(size_t index) const
+template<typename T, typename Traits>
+inline typename call_traits<T, Traits>::return_type Value::get(size_t index) const
 {
     if (!is<Array>())
         failwith("type must be array to do get(index).");
