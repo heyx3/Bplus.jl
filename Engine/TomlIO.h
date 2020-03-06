@@ -194,11 +194,7 @@ namespace Bplus::IO
     template<typename T>
     T TomlUnwrap(const toml::Value& v)
     {
-        auto val = v["t"];
-        if constexpr (std::is_same_v<T, toml::Value>())
-            return val;
-        else
-            return val.as<T>();
+        return v.get<T>("t");
     }
 
     #pragma endregion

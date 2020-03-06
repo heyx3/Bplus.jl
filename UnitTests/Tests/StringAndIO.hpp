@@ -33,20 +33,20 @@ void TomlWrapping()
     //Note that TOML uses std::map for its tables,
     //    and both toml::Value and std::map implements operator==,
     //    so this should work just fine.
-    toml::Value tVal;
-    tVal["a"] = 5;
-    tVal["c"] = "hi";
-    tVal["..."] = false;
-    _TomlWrapping(tVal);
+    toml::Table tTab;
+    tTab["a"] = 5;
+    tTab["c"] = "hi";
+    tTab["..."] = false;
+    _TomlWrapping(tTab);
 
     //Similarly, TOML uses std::vector for its arrays,
     //    and those implement operator== as well,
     //    so we can test the wrapping of a TOML array.
-    tVal = toml::Array();
-    tVal.push(5);
-    tVal.push("Hello there. General Kenobiiiii");
-    tVal.push(true);
-    _TomlWrapping(tVal);
+    toml::Array tArr;
+    tArr.push_back(5);
+    tArr.push_back("Hello there. General Kenobiiiii");
+    tArr.push_back(true);
+    _TomlWrapping(tArr);
 }
 
 
@@ -68,7 +68,7 @@ void TomlEnums()
     auto tomlA = TomlWrap<TestEnum>(a);
     TEST_CHECK_(TomlUnwrap<TestEnum>(tomlA) == a,
                 "Casting 'A' to TOML and back: \n\t%s",
-                ToTomlString(tomlA, toml::FORMAT_NONE));
+                TomlToString(tomlA, toml::FORMAT_NONE));
 
     TEST_CHECK_(ToToml(a).as<TestEnum>() == a,
                 "TestEnum::A conversion to TOML");
