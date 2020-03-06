@@ -118,12 +118,14 @@
 REM   Visual Studio considers anything other than 0 an error. So we have to manually fix this.
 set VERIFY_RBCPY=if %ERRORLEVEL% GEQ 8 exit %ERRORLEVEL%
 
+set ROBOCOPY_STDOUT="$(IntermediateOutputPath)robocopy.txt"
+
 REM Copy B+ stuff to the build, using /purge but preserving this app's executable and pdb
-robocopy "$(TargetDir)..\B+\run-time" "$(TargetDir.TrimEnd('\'))" *.* /E /purge /xf "$(TargetPath)" /xf "$([System.IO.Path]::ChangeExtension($(TargetPath), "pdb"))"
+robocopy "$(TargetDir)..\B+\run-time" "$(TargetDir.TrimEnd('\'))" *.* /E /purge /xf "$(TargetPath)" /xf "$([System.IO.Path]::ChangeExtension($(TargetPath), "pdb"))" &gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM Copy project content to the build, overwriting the engine's content if necessary
-robocopy "$(ProjectDir)content" "$(TargetDir)content" *.* /E
+robocopy "$(ProjectDir)content" "$(TargetDir)content" *.* /E &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM Robocopies succeeded; so exit successfully.
@@ -157,12 +159,14 @@ exit 0</Command>
 REM   Visual Studio considers anything other than 0 an error. So we have to manually fix this.
 set VERIFY_RBCPY=if %ERRORLEVEL% GEQ 8 exit %ERRORLEVEL%
 
+set ROBOCOPY_STDOUT="$(IntermediateOutputPath)robocopy.txt"
+
 REM Copy B+ stuff to the build, using /purge but preserving this app's executable and pdb
-robocopy "$(TargetDir)..\B+\run-time" "$(TargetDir.TrimEnd('\'))" *.* /E /purge /xf "$(TargetPath)" /xf "$([System.IO.Path]::ChangeExtension($(TargetPath), "pdb"))"
+robocopy "$(TargetDir)..\B+\run-time" "$(TargetDir.TrimEnd('\'))" *.* /E /purge /xf "$(TargetPath)" /xf "$([System.IO.Path]::ChangeExtension($(TargetPath), "pdb"))" &gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM Copy project content to the build, overwriting the engine's content if necessary
-robocopy "$(ProjectDir)content" "$(TargetDir)content" *.* /E
+robocopy "$(ProjectDir)content" "$(TargetDir)content" *.* /E &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM Robocopies succeeded; so exit successfully.
@@ -200,12 +204,14 @@ exit 0</Command>
 REM   Visual Studio considers anything other than 0 an error. So we have to manually fix this.
 set VERIFY_RBCPY=if %ERRORLEVEL% GEQ 8 exit %ERRORLEVEL%
 
+set ROBOCOPY_STDOUT="$(IntermediateOutputPath)robocopy.txt"
+
 REM Copy B+ stuff to the build, using /purge but preserving this app's executable and pdb
-robocopy "$(TargetDir)..\B+\run-time" "$(TargetDir.TrimEnd('\'))" *.* /E /purge /xf "$(TargetPath)" /xf "$([System.IO.Path]::ChangeExtension($(TargetPath), "pdb"))"
+robocopy "$(TargetDir)..\B+\run-time" "$(TargetDir.TrimEnd('\'))" *.* /E /purge /xf "$(TargetPath)" /xf "$([System.IO.Path]::ChangeExtension($(TargetPath), "pdb"))" &gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM Copy project content to the build, overwriting the engine's content if necessary
-robocopy "$(ProjectDir)content" "$(TargetDir)content" *.* /E
+robocopy "$(ProjectDir)content" "$(TargetDir)content" *.* /E &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM Robocopies succeeded; so exit successfully.
@@ -243,12 +249,14 @@ exit 0</Command>
 REM   Visual Studio considers anything other than 0 an error. So we have to manually fix this.
 set VERIFY_RBCPY=if %ERRORLEVEL% GEQ 8 exit %ERRORLEVEL%
 
+set ROBOCOPY_STDOUT="$(IntermediateOutputPath)robocopy.txt"
+
 REM Copy B+ stuff to the build, using /purge but preserving this app's executable and pdb
-robocopy "$(TargetDir)..\B+\run-time" "$(TargetDir.TrimEnd('\'))" *.* /E /purge /xf "$(TargetPath)" /xf "$([System.IO.Path]::ChangeExtension($(TargetPath), "pdb"))"
+robocopy "$(TargetDir)..\B+\run-time" "$(TargetDir.TrimEnd('\'))" *.* /E /purge /xf "$(TargetPath)" /xf "$([System.IO.Path]::ChangeExtension($(TargetPath), "pdb"))" &gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM Copy project content to the build, overwriting the engine's content if necessary
-robocopy "$(ProjectDir)content" "$(TargetDir)content" *.* /E
+robocopy "$(ProjectDir)content" "$(TargetDir)content" *.* /E &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM Robocopies succeeded; so exit successfully.

@@ -122,33 +122,34 @@ if not exist "$(TargetDir)compile-time\include" md "$(TargetDir)compile-time\inc
 if not exist "$(TargetDir)compile-time\lib"     md "$(TargetDir)compile-time\lib"
 
 set HEADER_TYPES=*.h *.hpp *.hxx *.hh *.inl *.inc
+set ROBOCOPY_STDOUT="$(IntermediateOutputPath)robocopy.txt"
 
 REM Note: Annoyingly, Robocopy return values are very non-standard; anything below 8 should be considered a success.
 REM   Visual Studio considers anything other than 0 an error. So we have to manually fix this.
 set VERIFY_RBCPY=if %ERRORLEVEL% GEQ 8 exit %ERRORLEVEL%
 
 REM Copy over the dependencies. Remove unexpected destination files with "/purge".
-robocopy "$(ProjectDir)dependencies\lib" "$(TargetDir)compile-time\lib" *.lib /E /purge
+robocopy "$(ProjectDir)dependencies\lib" "$(TargetDir)compile-time\lib" *.lib /E /purge &gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
-robocopy "$(ProjectDir)dependencies\include" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E /is /purge
+robocopy "$(ProjectDir)dependencies\include" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E /is /purge &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 REM For the copy of dll's into "run-time/", make sure to NOT purge the "content/" sub-folder!
-robocopy "$(ProjectDir)dependencies\bin" "$(TargetDir)run-time" *.dll /E /purge /xd "$(ProjectDir)dependencies\bin\content"
+robocopy "$(ProjectDir)dependencies\bin" "$(TargetDir)run-time" *.dll /E /purge /xd "$(ProjectDir)dependencies\bin\content" &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM Copy the current build products into their associated sub-folders.
 REM Don't use "/purge", because we already purge-moved the dependencies in.
 REM Also make sure to ignore the sub-folders that we are copying into.
 set RBCPY_EXCLUDE_SUBFOLDERS=/xd "$(TargetDir)compile-time" /xd "$(TargetDir)run-time"
-robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)run-time" *.dll *.pdb *.exe /E /move %RBCPY_EXCLUDE_SUBFOLDERS%
+robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)run-time" *.dll *.pdb *.exe /E /move %RBCPY_EXCLUDE_SUBFOLDERS% &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
-robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)compile-time\lib" *.lib /E /move %RBCPY_EXCLUDE_SUBFOLDERS%
+robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)compile-time\lib" *.lib /E /move %RBCPY_EXCLUDE_SUBFOLDERS% &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
-robocopy "$(ProjectDir.TrimEnd('\'))" "$(TargetDir)compile-time\include\B+" %HEADER_TYPES% /E
+robocopy "$(ProjectDir.TrimEnd('\'))" "$(TargetDir)compile-time\include\B+" %HEADER_TYPES% /E &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM Finally, copy over the content folder.
-robocopy "$(ProjectDir)content" "$(TargetDir)run-time\content" /E /purge
+robocopy "$(ProjectDir)content" "$(TargetDir)run-time\content" /E /purge &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM robocopies succeeded; exit successfully
@@ -186,33 +187,34 @@ if not exist "$(TargetDir)compile-time\include" md "$(TargetDir)compile-time\inc
 if not exist "$(TargetDir)compile-time\lib"     md "$(TargetDir)compile-time\lib"
 
 set HEADER_TYPES=*.h *.hpp *.hxx *.hh *.inl *.inc
+set ROBOCOPY_STDOUT="$(IntermediateOutputPath)robocopy.txt"
 
 REM Note: Annoyingly, Robocopy return values are very non-standard; anything below 8 should be considered a success.
 REM   Visual Studio considers anything other than 0 an error. So we have to manually fix this.
 set VERIFY_RBCPY=if %ERRORLEVEL% GEQ 8 exit %ERRORLEVEL%
 
 REM Copy over the dependencies. Remove unexpected destination files with "/purge".
-robocopy "$(ProjectDir)dependencies\lib" "$(TargetDir)compile-time\lib" *.lib /E /purge
+robocopy "$(ProjectDir)dependencies\lib" "$(TargetDir)compile-time\lib" *.lib /E /purge &gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
-robocopy "$(ProjectDir)dependencies\include" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E /is /purge
+robocopy "$(ProjectDir)dependencies\include" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E /is /purge &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 REM For the copy of dll's into "run-time/", make sure to NOT purge the "content/" sub-folder!
-robocopy "$(ProjectDir)dependencies\bin" "$(TargetDir)run-time" *.dll /E /purge /xd "$(ProjectDir)dependencies\bin\content"
+robocopy "$(ProjectDir)dependencies\bin" "$(TargetDir)run-time" *.dll /E /purge /xd "$(ProjectDir)dependencies\bin\content" &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM Copy the current build products into their associated sub-folders.
 REM Don't use "/purge", because we already purge-moved the dependencies in.
 REM Also make sure to ignore the sub-folders that we are copying into.
 set RBCPY_EXCLUDE_SUBFOLDERS=/xd "$(TargetDir)compile-time" /xd "$(TargetDir)run-time"
-robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)run-time" *.dll *.pdb *.exe /E /move %RBCPY_EXCLUDE_SUBFOLDERS%
+robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)run-time" *.dll *.pdb *.exe /E /move %RBCPY_EXCLUDE_SUBFOLDERS% &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
-robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)compile-time\lib" *.lib /E /move %RBCPY_EXCLUDE_SUBFOLDERS%
+robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)compile-time\lib" *.lib /E /move %RBCPY_EXCLUDE_SUBFOLDERS% &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
-robocopy "$(ProjectDir.TrimEnd('\'))" "$(TargetDir)compile-time\include\B+" %HEADER_TYPES% /E
+robocopy "$(ProjectDir.TrimEnd('\'))" "$(TargetDir)compile-time\include\B+" %HEADER_TYPES% /E &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM Finally, copy over the content folder.
-robocopy "$(ProjectDir)content" "$(TargetDir)run-time\content" /E /purge
+robocopy "$(ProjectDir)content" "$(TargetDir)run-time\content" /E /purge &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM robocopies succeeded; exit successfully
@@ -253,33 +255,34 @@ if not exist "$(TargetDir)compile-time\include" md "$(TargetDir)compile-time\inc
 if not exist "$(TargetDir)compile-time\lib"     md "$(TargetDir)compile-time\lib"
 
 set HEADER_TYPES=*.h *.hpp *.hxx *.hh *.inl *.inc
+set ROBOCOPY_STDOUT="$(IntermediateOutputPath)robocopy.txt"
 
 REM Note: Annoyingly, Robocopy return values are very non-standard; anything below 8 should be considered a success.
 REM   Visual Studio considers anything other than 0 an error. So we have to manually fix this.
 set VERIFY_RBCPY=if %ERRORLEVEL% GEQ 8 exit %ERRORLEVEL%
 
 REM Copy over the dependencies. Remove unexpected destination files with "/purge".
-robocopy "$(ProjectDir)dependencies\lib" "$(TargetDir)compile-time\lib" *.lib /E /purge
+robocopy "$(ProjectDir)dependencies\lib" "$(TargetDir)compile-time\lib" *.lib /E /purge &gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
-robocopy "$(ProjectDir)dependencies\include" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E /is /purge
+robocopy "$(ProjectDir)dependencies\include" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E /is /purge &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 REM For the copy of dll's into "run-time/", make sure to NOT purge the "content/" sub-folder!
-robocopy "$(ProjectDir)dependencies\bin" "$(TargetDir)run-time" *.dll /E /purge /xd "$(ProjectDir)dependencies\bin\content"
+robocopy "$(ProjectDir)dependencies\bin" "$(TargetDir)run-time" *.dll /E /purge /xd "$(ProjectDir)dependencies\bin\content" &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM Copy the current build products into their associated sub-folders.
 REM Don't use "/purge", because we already purge-moved the dependencies in.
 REM Also make sure to ignore the sub-folders that we are copying into.
 set RBCPY_EXCLUDE_SUBFOLDERS=/xd "$(TargetDir)compile-time" /xd "$(TargetDir)run-time"
-robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)run-time" *.dll *.pdb *.exe /E /move %RBCPY_EXCLUDE_SUBFOLDERS%
+robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)run-time" *.dll *.pdb *.exe /E /move %RBCPY_EXCLUDE_SUBFOLDERS% &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
-robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)compile-time\lib" *.lib /E /move %RBCPY_EXCLUDE_SUBFOLDERS%
+robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)compile-time\lib" *.lib /E /move %RBCPY_EXCLUDE_SUBFOLDERS% &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
-robocopy "$(ProjectDir.TrimEnd('\'))" "$(TargetDir)compile-time\include\B+" %HEADER_TYPES% /E
+robocopy "$(ProjectDir.TrimEnd('\'))" "$(TargetDir)compile-time\include\B+" %HEADER_TYPES% /E &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM Finally, copy over the content folder.
-robocopy "$(ProjectDir)content" "$(TargetDir)run-time\content" /E /purge
+robocopy "$(ProjectDir)content" "$(TargetDir)run-time\content" /E /purge &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM robocopies succeeded; exit successfully
@@ -320,33 +323,34 @@ if not exist "$(TargetDir)compile-time\include" md "$(TargetDir)compile-time\inc
 if not exist "$(TargetDir)compile-time\lib"     md "$(TargetDir)compile-time\lib"
 
 set HEADER_TYPES=*.h *.hpp *.hxx *.hh *.inl *.inc
+set ROBOCOPY_STDOUT="$(IntermediateOutputPath)robocopy.txt"
 
 REM Note: Annoyingly, Robocopy return values are very non-standard; anything below 8 should be considered a success.
 REM   Visual Studio considers anything other than 0 an error. So we have to manually fix this.
 set VERIFY_RBCPY=if %ERRORLEVEL% GEQ 8 exit %ERRORLEVEL%
 
 REM Copy over the dependencies. Remove unexpected destination files with "/purge".
-robocopy "$(ProjectDir)dependencies\lib" "$(TargetDir)compile-time\lib" *.lib /E /purge
+robocopy "$(ProjectDir)dependencies\lib" "$(TargetDir)compile-time\lib" *.lib /E /purge &gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
-robocopy "$(ProjectDir)dependencies\include" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E /is /purge
+robocopy "$(ProjectDir)dependencies\include" "$(TargetDir)compile-time\include" %HEADER_TYPES% /E /is /purge &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 REM For the copy of dll's into "run-time/", make sure to NOT purge the "content/" sub-folder!
-robocopy "$(ProjectDir)dependencies\bin" "$(TargetDir)run-time" *.dll /E /purge /xd "$(ProjectDir)dependencies\bin\content"
+robocopy "$(ProjectDir)dependencies\bin" "$(TargetDir)run-time" *.dll /E /purge /xd "$(ProjectDir)dependencies\bin\content" &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM Copy the current build products into their associated sub-folders.
 REM Don't use "/purge", because we already purge-moved the dependencies in.
 REM Also make sure to ignore the sub-folders that we are copying into.
 set RBCPY_EXCLUDE_SUBFOLDERS=/xd "$(TargetDir)compile-time" /xd "$(TargetDir)run-time"
-robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)run-time" *.dll *.pdb *.exe /E /move %RBCPY_EXCLUDE_SUBFOLDERS%
+robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)run-time" *.dll *.pdb *.exe /E /move %RBCPY_EXCLUDE_SUBFOLDERS% &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
-robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)compile-time\lib" *.lib /E /move %RBCPY_EXCLUDE_SUBFOLDERS%
+robocopy "$(TargetDir.TrimEnd('\'))" "$(TargetDir)compile-time\lib" *.lib /E /move %RBCPY_EXCLUDE_SUBFOLDERS% &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
-robocopy "$(ProjectDir.TrimEnd('\'))" "$(TargetDir)compile-time\include\B+" %HEADER_TYPES% /E
+robocopy "$(ProjectDir.TrimEnd('\'))" "$(TargetDir)compile-time\include\B+" %HEADER_TYPES% /E &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM Finally, copy over the content folder.
-robocopy "$(ProjectDir)content" "$(TargetDir)run-time\content" /E /purge
+robocopy "$(ProjectDir)content" "$(TargetDir)run-time\content" /E /purge &gt;&gt; %ROBOCOPY_STDOUT%
 %VERIFY_RBCPY%
 
 REM robocopies succeeded; exit successfully
