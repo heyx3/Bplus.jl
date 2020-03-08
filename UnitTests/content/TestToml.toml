@@ -1,0 +1,8 @@
+root_string='hi'
+
+my_array = [ 7, 8, 9 ]
+
+["my table"]
+table_str = 'hello'
+table_int = 5
+table_bool = true

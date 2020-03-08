@@ -6,12 +6,79 @@
 #include <B+/TomlIO.h>
 
 #include <random>
+#include <fstream>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 
 BETTER_ENUM(TestEnum, int32_t,
                A =  1,  B =  2,  C =  3,
               _A = -1, _B = -2, _C = -3,
               Zero = 0);
+
+
+void TomlBasic()
+{
+    //Try to parse the TOML test file.
+    auto tomlPath = fs::path(BPLUS_CONTENT_FOLDER) / "TestToml.toml";
+    auto tomlParseResult = toml::parseFile(tomlPath.string());
+    TEST_CHECK_(tomlParseResult.valid(),
+                "Error parsing %s: %s",
+                tomlPath.c_str(), tomlParseResult.errorReason.c_str());
+    auto tomlData = tomlParseResult.value;
+
+    //Test the root values inside the file.
+    auto rootString = Bplus::IO::TomlTryGet<std::string>(tomlData, "root_string", "NO");
+    TEST_CHECK_(Bplus::IO::TomlTryGet<std::string>(tomlData, "root_string", "NO")
+                  == "hi",
+                "'root_string' key wasn't correct");
+    TEST_CHECK_(Bplus::IO::TomlTryGet<std::string>(tomlData, "nonexistent string./?", "NO")
+                  == "NO",
+                "key should not exist in the TOML, resulting in the default value being returned");
+
+    //Test the table inside the file.
+    TEST_CHECK_(tomlData.as<toml::Table>().find("my table")
+                  != tomlData.as<toml::Table>().end(),
+                "Can't find 'my table' in the TOML file %s",
+                tomlPath.c_str());
+    const auto& rootTable = tomlData["my table"];
+    TEST_CHECK_(rootTable.is<toml::Table>(),
+                "'my table' TOML item isn't actually a table, but a %s. %s",
+                toml::Value::typeToString(rootTable.type()), tomlPath.c_str());
+    TEST_CHECK_(Bplus::IO::TomlTryGet<std::string>(rootTable, "table_str", "NO")
+                  == "hello",
+                "'my table'/table_str doesn't exist or has the wrong value");
+    TEST_CHECK_(Bplus::IO::TomlTryGet<int64_t>(rootTable, "table_int", -5647)
+                  == 5,
+                "'my table'/table_int doesn't exist or has the wrong value");
+    TEST_CHECK_(Bplus::IO::TomlTryGet<bool>(rootTable, "table_bool", false)
+                  == true,
+                "'my table'/table_bool doesn't exist or has the wrong value");
+
+    //Test the array inside the file.
+    TEST_CHECK_(tomlData.as<toml::Table>().find("my_array")
+                  != tomlData.as<toml::Table>().end(),
+                "Can't find 'my_array' in the TOML file %s",
+                tomlPath.c_str());
+    const auto& rootArray = tomlData["my_array"];
+    TEST_CHECK_(rootArray.is<toml::Array>(),
+                "'my_array' TOML item isn't actually an array, but a %s. %s",
+                toml::Value::typeToString(rootArray.type()), tomlPath.c_str());
+    TEST_CHECK_(rootArray.size() == 3,
+                "'my_array' in TOML file should have 3 elements, but has %i",
+                rootArray.size());
+    for (size_t i = 0; i < rootArray.size(); ++i)
+    {
+        auto element = rootArray.as<toml::Array>()[i];
+        TEST_CHECK_(element.type() == toml::Value::INT_TYPE,
+                    "'my_array'[%i] isn't an int, but a %s",
+                    i, toml::Value::typeToString(element.type()));
+        TEST_CHECK_(element.as<int64_t>() == (7 + i),
+                    "'my_array'[%i]: expected %i, got %i",
+                    i, (7 + i), element.as<int64_t>());
+    }
+}
 
 
 template<typename T>
@@ -233,6 +300,7 @@ void TomlEnums()
 
 
 TEST_LIST = {
+    { "Toml basic tests",         TomlBasic },
     { "Toml wrapping/unwrapping", TomlWrapping },
     { "Toml <=> primitives",      TomlPrimitives },
     { "Toml <=> BETTER_ENUM",     TomlEnums },
