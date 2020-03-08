@@ -153,10 +153,10 @@ namespace Bplus::IO
         static toml::Value Convert(const vec_t& v)
         {
             auto result = toml::Array();
-            result.resize(L);
+            result.resize((size_t)L);
 
-            for (size_t i = 0; i < L; ++i)
-                result[i] = v[i];
+            for (glm::length_t i = 0; i < L; ++i)
+                result[(size_t)i] = ToToml<T>(v[i]);
 
             return result;
         }
@@ -173,7 +173,9 @@ namespace Bplus::IO
             result.resize(R);
 
             for (glm::length_t r = 0; r < R; ++r)
-                result.push_back(ToToml<mat_t::row_type>(glm::row(m, r)));
+                result[r] = ToToml<mat_t::row_type>(glm::row(m, r));
+
+            return result;
         }
     };
 
@@ -253,7 +255,7 @@ TOML_MAKE_PARSEABLE(Enum_t, typename Enum_t,
                     (V.type() == toml::Value::Type::INT_TYPE) ||
                       (V.type() == toml::Value::Type::STRING_TYPE),
                     (V.type() == toml::Value::Type::INT_TYPE) ?
-                        Enum_t::_from_index(V.as<size_t>()) :
+                        Enum_t::_from_integral(V.as<Enum_t::_integral>()) :
                         Bplus::IO::EnumFromString<Enum_t>(V.as<std::string>()),
                     Enum_t::_name(),
                     value);
@@ -278,7 +280,7 @@ namespace Bplus::IO::internal
         {
             //Check element types.
             for (glm::length_t i = 0; i < glmVec_t::length(); ++i)
-                if (!v.is<glmVec_t::value_type>())
+                if (!v.find((size_t)i)->is<glmVec_t::value_type>())
                     return false;
 
             return true;
@@ -373,7 +375,7 @@ namespace Bplus::IO::internal
             else
                 name = "?vec";
 
-            name += std::to_string(L);
+            name.value() += std::to_string(L);
         }
 
         return name.value().c_str();
@@ -422,11 +424,16 @@ namespace Bplus::IO::internal
     template<glm::length_t C, glm::length_t R, typename T>
     glm::mat<C, R, T> glmMatrixFromToml(const toml::Value& v)
     {
+        using mat_t = glm::mat<C, R, T>;
+
         if (v.type() == toml::Value::Type::ARRAY_TYPE)
         {
-            glm::mat<C, R, T> result;
-            for (size_t r = 0; r < R; ++r)
-                glm::row(result, r, v.find(r)->as<glm::mat<C, R, T>::row_type>());
+            mat_t result;
+            for (glm::length_t r = 0; r < R; ++r)
+            {
+                auto row = v.find(r)->as<mat_t::row_type>();
+                result = glm::row(result, r, row);
+            }
             return result;
         }
         else
@@ -456,7 +463,7 @@ namespace Bplus::IO::internal
             else
                 name = "?mat";
 
-            name += std::to_string(C) + "x" + std::to_string(R);
+            name.value() += std::to_string(C) + "x" + std::to_string(R);
         }
 
         return name.value().c_str();
