@@ -1,8 +1,7 @@
 #pragma once
 
-#include "../RenderLibs.h"
-#include "../Utils.h"
 #include "../TomlIO.h"
+#include "../RenderLibs.h"
 
 
 //Defines various enums and data structures that represent rendering state.

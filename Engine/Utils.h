@@ -12,6 +12,15 @@
 #include <better_enums.h>
 
 
+//The name of the folder where all engine and app content goes.
+//This folder is automatically copied to the output directory when building the engine.
+#define BPLUS_CONTENT_FOLDER "content"
+
+//The relative path to the engine's own content folder.
+//Apps should not put their own stuff in this folder.
+#define BPLUS_ENGINE_CONTENT_FOLDER (BPLUS_CONTENT_FOLDER "/engine")
+
+
 //Custom assert macro that can be configured by users of this engine.
 //Doesn't do anything in release builds.
 #pragma region BPAssert
