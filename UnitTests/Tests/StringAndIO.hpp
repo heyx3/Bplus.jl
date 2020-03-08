@@ -120,15 +120,16 @@ void TomlGLM()
     //Use a deterministic RNG to give values to the vectors/matrices.
     std::mt19937 rngE;
     rngE.seed(9743932);
-    auto rngD = std::uniform_real_distribution(0, 1);
+    auto rngD = std::uniform_real_distribution(0.0, 1.0);
     auto rng = [&]() { return rngD(rngE); };
 
     #pragma region Vectors
 
-#define TOML_TEST_VEC(L, T, v1_v2_el_i_equality) { \
+#define TOML_TEST_VEC(L, T, rngToType, v1_v2_el_i_equality) { \
+        TEST_CASE_("glm::vec<%i, %s>", L, #T); \
         glm::vec<L, T> v1; \
         for (int i = 0; i < L; ++i) \
-            v1[i] = rng(); \
+            v1[i] = rngToType; \
         auto v1Toml = Bplus::IO::TomlWrap(v1); \
         auto v2 = Bplus::IO::TomlUnwrap<glm::vec<L, T>>(v1Toml); \
         for (int i = 0; i < L; ++i) \
@@ -136,22 +137,23 @@ void TomlGLM()
                         "glm::vec<" #L ", " #T "> deserialization fail at i=%i", i); \
     }
 
-#define TOML_TEST_VECS(T, v1_v2_el_i_equality) \
-    TOML_TEST_VEC(1, T, v1_v2_el_i_equality); \
-    TOML_TEST_VEC(2, T, v1_v2_el_i_equality); \
-    TOML_TEST_VEC(3, T, v1_v2_el_i_equality); \
-    TOML_TEST_VEC(4, T, v1_v2_el_i_equality)
+#define TOML_TEST_VECS(T, rngToType, v1_v2_el_i_equality) \
+    TOML_TEST_VEC(1, T, rngToType, v1_v2_el_i_equality); \
+    TOML_TEST_VEC(2, T, rngToType, v1_v2_el_i_equality); \
+    TOML_TEST_VEC(3, T, rngToType, v1_v2_el_i_equality); \
+    TOML_TEST_VEC(4, T, rngToType, v1_v2_el_i_equality)
 
-#define TOML_TEST_VECS_EXACT(T) \
-    TOML_TEST_VECS(T, v1[i] == v2[i])
-#define TOML_TEST_VECS_EPSILON(T, eps) \
-    TOML_TEST_VECS(T, abs(v1[i] - v2[i]) <= eps)
+#define TOML_TEST_VECS_EXACT(T, rngToType) \
+    TOML_TEST_VECS(T, rngToType, v1[i] == v2[i])
+#define TOML_TEST_VECS_EPSILON(T, rngToType, eps) \
+    TOML_TEST_VECS(T, rngToType, abs(v1[i] - v2[i]) <= eps)
 
-    TOML_TEST_VECS_EXACT(int32_t);
-    TOML_TEST_VECS_EXACT(uint32_t);
-    TOML_TEST_VECS_EXACT(bool);
-    TOML_TEST_VECS_EPSILON(float, 0.0001);
-    TOML_TEST_VECS_EPSILON(double, 0.0000001);
+
+    TOML_TEST_VECS_EXACT(int32_t,  (int32_t)floor(rng() * 10000) - 5000);
+    TOML_TEST_VECS_EXACT(uint32_t, (uint32_t)floor(rng() * 20000));
+    TOML_TEST_VECS_EXACT(bool,     (rng() > 0.5));
+    TOML_TEST_VECS_EPSILON(float,  (float)rng(),    0.0001);
+    TOML_TEST_VECS_EPSILON(double, rng(),           0.0000001);
 
 #undef TOML_TEST_VEC
 #undef TOML_TEST_VECS
@@ -164,16 +166,18 @@ void TomlGLM()
 
 #define TOML_TEST_MAT(C, R, T, epsilon) { \
         glm::mat<C, R, T> m1; \
+        TEST_CASE_("glm::mat<%i, %i, %s>", C, R, #T); \
         for (int c = 0; c < C; ++c) \
             for (int r = 0; r < R; ++r) \
-                m1[c][r] = rng(); \
+                m1[c][r] = (T)rng(); \
         auto m1Toml = Bplus::IO::TomlWrap(m1); \
         auto m2 = Bplus::IO::TomlUnwrap<glm::mat<C, R, T>>(m1Toml); \
         for (int c = 0; c < C; ++c) \
             for (int r = 0; r < R; ++r) \
                 TEST_CHECK_(abs(m1[c][r] - m2[c][r]) <= epsilon, \
-                            "glm::mat<" #C ", " #R ", " #T "> deserialization fail at c=%i;r=%i", \
-                            c, r); \
+                            "glm::mat<" #C ", " #R ", " #T "> deserialization fail at c=%i;r=%i " \
+                              ": expected %f, got %f", \
+                            c, r, m1[c][r], m2[c][r]); \
     }
 
 #define TOML_TEST_MATS(R, T, epsilon) \
