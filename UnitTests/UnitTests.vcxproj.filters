@@ -10,8 +10,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AllTests.h" />
-    <ClInclude Include="Tests\StringAndIO.hpp">
+    <ClInclude Include="Tests\Toml.hpp">
       <Filter>Tests</Filter>
     </ClInclude>
+    <ClInclude Include="SimpleApp.h" />
   </ItemGroup>
 </Project>
