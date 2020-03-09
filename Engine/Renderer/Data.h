@@ -127,8 +127,9 @@ namespace Bplus::GL
         Max = GL_MAX
     );
 
-    //The different ways a buffer can be used,
+    //The different "slots" a buffer can be used in,
     //    corresponding to the different OpenGL buffer targets.
+    //TODO: Do I ever actually need to bind buffers in OpenGL 4.5?
     BETTER_ENUM(BufferModes, GLenum,
         MeshVertices = GL_ARRAY_BUFFER,
         MeshIndices = GL_ELEMENT_ARRAY_BUFFER,
@@ -144,6 +145,28 @@ namespace Bplus::GL
         Custom1 = GL_COPY_READ_BUFFER,
         Custom2 = GL_COPY_WRITE_BUFFER,
         Custom3 = GL_TEXTURE_BUFFER
+    );
+
+    //The different patterns of use that a buffer can experience.
+    //These values provide hints to the graphics driver on how to allocate the buffer's memory.
+    BETTER_ENUM(BufferHints_Frequency, uint8_t,
+        //The buffer is set once and read a handful of times.
+        Stream = 0,
+        //The buffer is set once and read many times (e.x. mesh data being read from a file).
+        Static = 1,
+        //The buffer is modified many times (i.e. per-frame).
+        Dynamic = 2
+    );
+
+    //The different reasons you might use a buffer.
+    //These values provide hints to the grahics driver on how to allocate the buffer's memory.
+    BETTER_ENUM(BufferHints_Purpose, uint8_t,
+        //The buffer is set on the CPU-side, and read on the GPU-side during rendering.
+        Draw = 0,
+        //The buffer is set on the GPU-side, and read on the CPU-side.
+        Read = 1,
+        //THe data is both set and read entirely on the GPU.
+        Copy = 2
     );
 
     #pragma endregion
