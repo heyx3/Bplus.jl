@@ -40,60 +40,10 @@ namespace
 }
 
 
-BufferMap::BufferMap(Buffer& source, bool read, bool write)
-    : src(&source), canRead(read), canWrite(write)
+const Buffer* Buffer::GetCurrentBuffer(BufferModes slot)
 {
-    //Convert parameters to OpenGL enum values.
-    GLenum readWrite;
-    if (canRead & canWrite)
-        readWrite = GL_READ_WRITE;
-    else if (canRead)
-        readWrite = GL_READ_ONLY;
-    else
-    {
-        BPAssert(canWrite, "Neither read nor write were passed into BufferMap()");
-        readWrite = GL_WRITE_ONLY;
-    }
-
-    //Create the map.
-    dataPtr = glMapNamedBuffer(src->dataPtr.Get(), readWrite);
+    return threadData.currentBuffers[slot._to_index()];
 }
-BufferMap::~BufferMap()
-{
-    if (dataPtr != nullptr)
-        glUnmapNamedBuffer(src->dataPtr.Get());
-}
-
-BufferMap::BufferMap(BufferMap&& srcM)
-    : canRead(srcM.canRead), canWrite(srcM.canWrite)
-{
-    src = srcM.src;
-    srcM.src = nullptr;
-
-    dataPtr = srcM.dataPtr;
-    srcM.dataPtr = nullptr;
-}
-BufferMap& BufferMap::operator=(BufferMap&& srcM)
-{
-    //Call deconstructor, then move constructor.
-    this->~BufferMap();
-    new (this) BufferMap(std::move(srcM));
-
-    return *this;
-}
-
-const std::byte* BufferMap::GetBytes() const
-{
-    BPAssert(canRead, "Buffer isn't readable");
-    return (const std::byte*)dataPtr;
-}
-std::byte* BufferMap::GetBytes_Writable()
-{
-    BPAssert(canWrite, "Buffer isn't writable");
-    return (std::byte*)dataPtr;
-}
-
-
 
 Buffer::Buffer()
     : hintFrequency(Bplus::GL::BufferHints_Frequency::Static),
@@ -118,8 +68,7 @@ Buffer::Buffer(Buffer&& src)
     : dataPtr(src.dataPtr),
       hintFrequency(Bplus::GL::BufferHints_Frequency::Static),
       hintPurpose(Bplus::GL::BufferHints_Purpose::Draw),
-      byteSize(src.byteSize),
-      map(std::move(src.map))
+      byteSize(src.byteSize)
 {
     src.dataPtr = OglPtr::Buffer(OglPtr::Buffer::Null);
 }
@@ -141,8 +90,6 @@ void Buffer::CopyTo(Buffer& dest,
         srcByteSize = byteSize;
 
     //Do error-checking.
-    BPAssert(!IsMapped(),
-             "Trying to read a buffer that is currently mapped");
     BPAssert(srcByteStartI + srcByteSize <= byteSize,
              "Trying to copy past the end of the source buffer");
     BPAssert(destByteStartI + srcByteSize <= dest.byteSize,
@@ -158,18 +105,6 @@ Buffer Buffer::Clone(size_t startByteI, size_t byteCount) const
     Buffer newB;
     CopyTo(newB, startByteI, byteCount);
     return newB;
-}
-
-BufferMap& Buffer::Map(bool readable, bool writable)
-{
-    BPAssert(!IsMapped(), "Buffer is already mapped!");
-    map.emplace(*this, readable, writable);
-    return *map;
-}
-void Buffer::Unmap()
-{
-    BPAssert(IsMapped(), "Trying to unmap a buffer that isn't mapped");
-    map.reset();
 }
 
 GLenum Buffer::GetUsageHint() const
@@ -203,47 +138,21 @@ GLenum Buffer::GetUsageHint() const
     return glPurposeHints[hintPurpose._to_index()];
 }
 
-void Buffer::SetByteData(const std::byte* data,
-                         size_t offset, size_t count)
+void Buffer::SetNewData(const std::byte* data, size_t newSize)
+{
+    byteSize = newSize;
+    glNamedBufferData(dataPtr.Get(), newSize, data, GetUsageHint());
+}
+void Buffer::ChangeData(const std::byte* data, size_t offset, size_t count)
 {
     BPAssert(offset + count <= byteSize,
-             "Trying to write past the end of a buffer");
+             "Trying to write past the end of the buffer");
 
-    //If currently memory-mapped, use the map.
-    if (IsMapped())
-    {
-        BPAssert(map->CanWrite(),
-                 "Trying to write to a buffer that is currently read-only-mapped");
-        BPAssert(byteSize == count,
-                 "Trying to change the size of a mapped buffer");
-
-        memcpy(map->GetBytes_Writable() + offset, data, count);
-    }
-    //Otherwise, use the usual way of setting buffer data.
-    else if (offset == 0)
-    {
-        byteSize = count;
-        glNamedBufferData(dataPtr.Get(), count, data, GetUsageHint());
-    }
-    else
-    {
-        glNamedBufferSubData(dataPtr.Get(), offset, count, data);
-    }
+    glNamedBufferSubData(dataPtr.Get(), offset, count, data);
 }
+
 void Buffer::GetByteData(std::byte* outData,
                          size_t offset, size_t count) const
 {
-    //If currently memory-mapped, use the map.
-    if (IsMapped())
-    {
-        BPAssert(map->CanRead(),
-                 "Trying to read from a buffer that is currently write-only-mapped");
-
-        memcpy(outData, map->GetBytes(), count);
-    }
-    else
-    {
-        glGetNamedBufferSubData(dataPtr.Get(), offset, count,
-                                outData);
-    }
+    glGetNamedBufferSubData(dataPtr.Get(), offset, count, outData);
 }
