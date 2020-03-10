@@ -36,7 +36,8 @@ namespace Bplus::GL
     };
 
 
-    //Manages OpenGL global state, like the current blend mode and stencil test.
+    //Manages OpenGL initialization, shutdown,
+    //    and global state such as the current blend mode and stencil test.
     //Ensures good performance by remembering the current state and ignoring duplicate calls.
     //Note that only one of these should exist in each thread,
     //    and this constraint is enforced in the constructor.

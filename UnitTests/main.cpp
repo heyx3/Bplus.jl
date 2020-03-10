@@ -19,7 +19,7 @@ TEST_LIST = {
 
     { "Simple Apps", SimpleApps },
 
-    //{ "Bplus::GL::Buffer basic tests", BuffersBasic },
+    { "Bplus::GL::Buffer creation", BufferCreation },
 
     { NULL, NULL }
 };

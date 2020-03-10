@@ -1,7 +1,12 @@
 #pragma once
 
+#include <random>
+
 #include <B+/App.h>
 #include <B+/TomlIO.h>
+
+#define TEST_NO_MAIN
+#include <acutest.h>
 
 
 namespace Simple
@@ -102,16 +107,38 @@ protected:
 
 namespace Simple
 {
+    //Runs a SimpleApp with the given logic.
     void Run(std::function<void(float)> onUpdate,
              std::function<void(float)> onRender,
              std::function<void()> onQuit)
     {
+        //Swap out the BPAssert function with something that hooks into acutest.
+        auto oldAssertFunc = Bplus::GetAssertFunc();
+        Bplus::SetAssertFunc([](bool condition, const char* msg)
+        {
+            TEST_CHECK_(condition, "BPAssert: %s", msg);
+
+            //If the test failed, stop running the app.
+            if (!condition && App.get() != nullptr)
+                App->Quit(true);
+        });
+
         //For unit-testing apps, don't write to the config file.
         //TODO: DO write to the config file, and add a final unit test that checks that config exists and has the expected values.
-
         Config = std::make_unique<SimpleConfigFile>(fs::current_path() / "Config.toml", true);
-
         App = std::make_unique<SimpleApp>(onUpdate, onRender, onQuit);
         App->Run();
+
+        //Restore the previous assertion function.
+        Bplus::SetAssertFunc(oldAssertFunc);
     }
+
+    //Returns a random double between 0 and 1.
+    double Rng() { return rngDistribution(rngEngine); }
+
+
+    std::mt19937 rngEngine;
+    std::uniform_real_distribution<double> rngDistribution;
 }
+std::mt19937 Simple::rngEngine{ std::random_device{}() };
+std::uniform_real_distribution<double> Simple::rngDistribution{ 0, 1 };
