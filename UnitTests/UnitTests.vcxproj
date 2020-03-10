@@ -379,7 +379,9 @@ echo #undef TEST_NO_MAIN &gt;&gt; "%OUT_FILE%"
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AllTests.h" />
+    <ClInclude Include="D:\Git Repos\B-plus\UnitTests\Tests\SimpleApps.hpp" />
     <ClInclude Include="SimpleApp.h" />
+    <ClInclude Include="Tests\Buffers.hpp" />
     <ClInclude Include="Tests\Toml.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

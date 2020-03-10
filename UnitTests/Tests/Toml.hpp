@@ -297,13 +297,3 @@ void TomlEnums()
     TEST_CHECK_(TomlUnwrap<TestEnum>(TomlWrap((int8_t)(+TestEnum::_A))) == +TestEnum::_A,
                 "TOML-wrap enum::_A's integer value, then unwrap to the enum type");
 }
-
-
-TEST_LIST = {
-    { "Toml basic tests",         TomlBasic },
-    { "Toml wrapping/unwrapping", TomlWrapping },
-    { "Toml <=> primitives",      TomlPrimitives },
-    { "Toml <=> BETTER_ENUM",     TomlEnums },
-    { "Toml <=> GLM",             TomlGLM },
-    { NULL, NULL }
-};

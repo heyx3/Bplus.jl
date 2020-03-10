@@ -9,11 +9,17 @@
 //    just hit "Compile" to fix.
 #include "AllTests.h"
 
-void TesterTest()
-{
-    std::cout << "Test\n";
-    char d;
-    std::cin >> d;
 
-    std::cout << "You entered " << d << "\n";
-}
+TEST_LIST = {
+    { "Toml basic tests",         TomlBasic },
+    { "Toml wrapping/unwrapping", TomlWrapping },
+    { "Toml <=> primitives",      TomlPrimitives },
+    { "Toml <=> BETTER_ENUM",     TomlEnums },
+    { "Toml <=> GLM",             TomlGLM },
+
+    { "Simple Apps", SimpleApps },
+
+    //{ "Bplus::GL::Buffer basic tests", BuffersBasic },
+
+    { NULL, NULL }
+};

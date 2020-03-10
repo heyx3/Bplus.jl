@@ -14,5 +14,11 @@
       <Filter>Tests</Filter>
     </ClInclude>
     <ClInclude Include="SimpleApp.h" />
+    <ClInclude Include="Tests\Buffers.hpp">
+      <Filter>Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="D:\Git Repos\B-plus\UnitTests\Tests\SimpleApps.hpp">
+      <Filter>Tests</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -251,7 +251,6 @@ void App::Run()
             double missingTime = MinDeltaT - deltaT;
             std::this_thread::sleep_for(std::chrono::duration<double>(missingTime + .00000001));
             continue;
-            return;
         }
         lastFrameStartTime = newFrameTime;
 
@@ -270,6 +269,10 @@ void App::Run()
 
         //Update other stuff.
         OnUpdate((float)deltaT);
+
+        //Exit early if the app is quitting.
+        if (!isRunning)
+            continue;
 
         //Do rendering.
         glContext->SetViewport((int)ImGuiContext->DisplaySize.x,

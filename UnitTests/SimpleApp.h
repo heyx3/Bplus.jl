@@ -52,12 +52,14 @@ class SimpleApp : public Bplus::App
 {
 public:
 
+    std::function<void()> _OnQuit;
     std::function<void(float)> _OnUpdate, _OnRender;
 
     SimpleApp(std::function<void(float)> onUpdate,
-              std::function<void(float)> onRender)
+              std::function<void(float)> onRender,
+              std::function<void()> onQuit)
         : Bplus::App(*Simple::Config, Simple::OnError),
-          _OnUpdate(onUpdate), _OnRender(onRender)
+          _OnUpdate(onUpdate), _OnRender(onRender), _OnQuit(onQuit)
     {
 
     }
@@ -78,14 +80,21 @@ protected:
 
     virtual void OnUpdate(float deltaT)
     {
+        Bplus::App::OnUpdate(deltaT);
+
         _OnUpdate(deltaT);
     }
     virtual void OnRendering(float deltaT)
     {
-        GetContext().Clear(1, 1, 1, 1,
-                           1);
+        Bplus::App::OnRendering(deltaT);
 
         _OnRender(deltaT);
+
+    }
+    virtual void OnQuit(bool force) override
+    {
+        _OnQuit();
+        Bplus::App::OnQuit(force);
     }
 };
 
@@ -94,14 +103,15 @@ protected:
 namespace Simple
 {
     void Run(std::function<void(float)> onUpdate,
-             std::function<void(float)> onRender)
+             std::function<void(float)> onRender,
+             std::function<void()> onQuit)
     {
         //For unit-testing apps, don't write to the config file.
         //TODO: DO write to the config file, and add a final unit test that checks that config exists and has the expected values.
 
         Config = std::make_unique<SimpleConfigFile>(fs::current_path() / "Config.toml", true);
 
-        App = std::make_unique<SimpleApp>(onUpdate, onRender);
+        App = std::make_unique<SimpleApp>(onUpdate, onRender, onQuit);
         App->Run();
     }
 }
