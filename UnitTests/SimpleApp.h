@@ -133,12 +133,10 @@ namespace Simple
         Bplus::SetAssertFunc(oldAssertFunc);
     }
 
+
+    std::mt19937 rngEngine{ std::random_device{}() };
+    std::uniform_real_distribution<double> rngDistribution{ 0, 1 };
+
     //Returns a random double between 0 and 1.
     double Rng() { return rngDistribution(rngEngine); }
-
-
-    std::mt19937 rngEngine;
-    std::uniform_real_distribution<double> rngDistribution;
 }
-std::mt19937 Simple::rngEngine{ std::random_device{}() };
-std::uniform_real_distribution<double> Simple::rngDistribution{ 0, 1 };

@@ -64,9 +64,9 @@ void _BufferGetSetData(Bplus::GL::Buffer& buffer,
         std::string msg = "Expected buffer[";
         msg += std::to_string(i);
         msg += "] to be ";
-        msg += std::to_string(data[i]);
+        msg += elToString(data[i]);
         msg += ", but it was ";
-        msg += std::to_string(data2[i]);
+        msg += elToString(data2[i]);
         TEST_CHECK_(data[i] == data2[i], msg.c_str());
     }
 }
