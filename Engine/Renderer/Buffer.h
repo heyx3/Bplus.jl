@@ -69,7 +69,8 @@ namespace Bplus::GL
         void SetData(const T* data, size_t count,
                      BufferHints_Frequency frequency, BufferHints_Purpose purpose)
         {
-            SetData((std::byte*)data, count, frequency, purpose);
+            SetData((std::byte*)data, count * sizeof(T),
+                    frequency, purpose);
         }
 
         //Changes the data in this buffer, without re-allocating it.

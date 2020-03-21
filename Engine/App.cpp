@@ -287,6 +287,10 @@ void App::Run()
 }
 void App::OnQuit(bool force)
 {
+    //Prevent an ImGUI error by properly ending the frame.
+    ImGui::Render();
+    ImGuiOpenGL->RenderFrame();
+
     //Clean up ImGUI.
     ImGuiOpenGL.reset();
     ImGuiSDL.reset();
