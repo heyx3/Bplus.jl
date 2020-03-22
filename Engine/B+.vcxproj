@@ -402,6 +402,7 @@ exit 0</Command>
     <ClInclude Include="Renderer\Materials\MaterialData.h" />
     <ClInclude Include="Renderer\Materials\Material_Basic.h" />
     <ClInclude Include="Renderer\Materials\CompiledShader.h" />
+    <ClInclude Include="Renderer\Texture.h" />
     <ClInclude Include="RenderLibs.h" />
     <ClInclude Include="IO.h" />
     <ClInclude Include="TomlIO.h" />

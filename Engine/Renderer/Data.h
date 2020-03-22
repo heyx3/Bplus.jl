@@ -145,6 +145,53 @@ namespace Bplus::GL
         Custom1 = GL_COPY_READ_BUFFER,
         Custom2 = GL_COPY_WRITE_BUFFER,
         Custom3 = GL_TEXTURE_BUFFER
+    ); 
+
+    //The different kinds of textures in OpenGL.
+    BETTER_ENUM(TextureTypes, GLenum,
+        OneD = GL_TEXTURE_1D,
+        TwoD = GL_TEXTURE_2D,
+        ThreeD = GL_TEXTURE_3D,
+        Cubemap = GL_TEXTURE_CUBE_MAP
+    );
+
+    //The behaviors of a texture when you sample past its boundaries.
+    BETTER_ENUM(TextureWrapping, GLenum,
+        //Repeat the texture indefinitely, creating a tiling effect.
+        Repeat = GL_REPEAT,
+        //Repeat the texture indefinitely, but mirror it across each edge.
+        MirroredRepeat = GL_MIRRORED_REPEAT,
+        //Clamp the coordinates so that the texture outputs its last edge pixels
+        //    when going past its border.
+        Clamp = GL_CLAMP_TO_EDGE,
+        //Outputs a custom color when outside the texture.
+        CustomBorder = GL_CLAMP_TO_BORDER
+    );
+
+    //The filtering mode for a texture when shrinking it on the screen.
+    BETTER_ENUM(TextureMinFilters, GLenum,
+        //Rough (or "nearest") sampling for both the pixels and the mipmaps.
+        Rough = GL_NEAREST_MIPMAP_NEAREST,
+        //Smooth (or "linear") sampling for both the pixels and the mipmaps.
+        Smooth = GL_NEAREST_MIPMAP_NEAREST,
+
+        //Smooth sampling for the pixels, and rough sampling for the mipmaps.
+        SmoothPixels_RoughMips = GL_LINEAR_MIPMAP_NEAREST,
+        //Rough sampling for the pixels, and smooth sampling for the mipmaps.
+        RoughPixels_SmoothMips = GL_NEAREST_MIPMAP_LINEAR,
+
+        //Rough sampling for the pixels, and no mip-maps (always use the largest mip).
+        RoughPixels_NoMips = GL_NEAREST,
+        //Smooth sammpling for the pixels, and no mip-maps (always use the largest mip).
+        SmoothPixels_NoMips = GL_LINEAR
+    );
+
+    //The filtering mode for a texture when enlarging it on the screen.
+    BETTER_ENUM(TextureMagFilters, GLenum,
+        //Rough, or "nearest" sampling.
+        Rough = GL_NEAREST,
+        //Smooth, or "linear" sampling.
+        Smooth = GL_LINEAR
     );
 
     //The different patterns of use that a buffer can experience.
@@ -338,6 +385,7 @@ namespace Bplus::GL
 MAKE_GL_STRONG_TYPEDEF(ShaderProgram, GLuint, 0);
 MAKE_GL_STRONG_TYPEDEF(ShaderUniform, GLint, -1);
 MAKE_GL_STRONG_TYPEDEF(Sampler, GLuint, 0);
+MAKE_GL_STRONG_TYPEDEF(Texture, GLuint, 0);
 MAKE_GL_STRONG_TYPEDEF(Image, GLuint, 0); //TODO: Check that 0 is actually "null" for Images
 MAKE_GL_STRONG_TYPEDEF(VertexArrayObject, GLuint, 0);
 MAKE_GL_STRONG_TYPEDEF(Buffer, GLuint, 0);
