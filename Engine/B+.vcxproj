@@ -377,6 +377,8 @@ exit 0</Command>
     <ClCompile Include="Renderer\Materials\MaterialData.cpp" />
     <ClCompile Include="Renderer\Materials\Material_Basic.cpp" />
     <ClCompile Include="Renderer\Materials\CompiledShader.cpp" />
+    <ClCompile Include="Renderer\Textures\Format.cpp" />
+    <ClCompile Include="Renderer\Textures\Texture.cpp" />
     <ClCompile Include="TomlIO.cpp" />
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>
@@ -402,7 +404,8 @@ exit 0</Command>
     <ClInclude Include="Renderer\Materials\MaterialData.h" />
     <ClInclude Include="Renderer\Materials\Material_Basic.h" />
     <ClInclude Include="Renderer\Materials\CompiledShader.h" />
-    <ClInclude Include="Renderer\Texture.h" />
+    <ClInclude Include="Renderer\Textures\Format.h" />
+    <ClInclude Include="Renderer\Textures\Texture.h" />
     <ClInclude Include="RenderLibs.h" />
     <ClInclude Include="IO.h" />
     <ClInclude Include="TomlIO.h" />

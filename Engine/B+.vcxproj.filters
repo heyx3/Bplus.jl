@@ -64,8 +64,11 @@
     <ClInclude Include="Renderer\Buffer.h">
       <Filter>Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\Texture.h">
-      <Filter>Renderer</Filter>
+    <ClInclude Include="Renderer\Textures\Texture.h">
+      <Filter>Renderer\Textures</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Textures\Format.h">
+      <Filter>Renderer\Textures</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -115,6 +118,12 @@
     <ClCompile Include="Renderer\Buffer.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer\Textures\Texture.cpp">
+      <Filter>Renderer\Textures</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Textures\Format.cpp">
+      <Filter>Renderer\Textures</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Native File Dialog">
@@ -128,6 +137,9 @@
     </Filter>
     <Filter Include="Renderer\Materials">
       <UniqueIdentifier>{1383e33b-f4af-4e68-ba5f-841a1bd915b8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer\Textures">
+      <UniqueIdentifier>{01b36350-c27e-42ac-bc78-6c40259a208c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
