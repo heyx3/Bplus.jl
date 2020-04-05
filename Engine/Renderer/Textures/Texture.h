@@ -133,7 +133,7 @@ namespace Bplus::GL::Textures
         OglPtr::Texture glPtr;
 
         TextureTypes type;
-        bool isArray;
+        bool isArray; //TODO: Bool multisample
         glm::uvec2 size = { 0, 0 };
         Format format;
 

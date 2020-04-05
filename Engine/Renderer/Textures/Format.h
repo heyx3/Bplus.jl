@@ -33,17 +33,23 @@ namespace Bplus::GL::Textures
 
     //The sets of components that can be stored in various texture formats.
     BETTER_ENUM(FormatComponents, uint8_t,
-        R, RG, RGB, RGBA
+        R = 1,
+        RG = 2,
+        RGB = 3,
+        RGBA = 4
     );
+
     //The sets of bit-depths that components can have in various texture formats.
     BETTER_ENUM(BitDepths, uint8_t,
+        //
         B2 = 2,
         B4 = 4,
         B5 = 5,
         B8 = 8,
         B10 = 10,
         B12 = 12,
-        B16 = 16
+        B16 = 16,
+        B32 = 32
     );
 
 
@@ -131,6 +137,7 @@ namespace Bplus::GL::Textures
         RGB_Float = GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT,
         //BC6 compression, with RGB color channels and *unsigned* floating-point values.
         RGB_UFloat = GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT,
+        //TODO: DXT1 for low-quality compression, with or without 1-bit alpha.
 
         //BC7 compression, with RGBA channels and values range from 0 - 1.
         RGBA_NormalizedUInt = GL_COMPRESSED_RGBA_BPTC_UNORM,
@@ -183,10 +190,20 @@ namespace Bplus::GL::Textures
 
         //Gets whether this is a "simple" format (i.e. uniform channel size, uncompressed, etc).
         bool IsSimple() const { return std::holds_alternative<SimpleFormat>(data); }
+        SimpleFormat AsSimple() const { return std::get<SimpleFormat>(data); }
+
         //Gets whether this is a block-compressed format.
         bool IsCompressed() const { return std::holds_alternative<CompressedFormats>(data); }
+        CompressedFormats AsCompressed() const { return std::get<CompressedFormats>(data); }
+
         //Gets whether this format represents any kind of depth/stencil type.
         bool IsDepthStencil() const { return std::holds_alternative<DepthStencilFormats>(data); }
+        DepthStencilFormats AsDepthStencil() const { return std::get<DepthStencilFormats>(data); }
+
+        //Gets whether this format is a weird type.
+        bool IsSpecial() const { return std::holds_alternative<SpecialFormats>(data); }
+        SpecialFormats AsSpecial() const { return std::get<SpecialFormats>(data); }
+
 
         //Gets whether this format represents a depth/stencil hybrid type.
         bool IsDepthAndStencil() const;
@@ -201,9 +218,11 @@ namespace Bplus::GL::Textures
 
         //Gets the number of bits for each channel in this format.
         //If a channel isn't given, assumes the channels are all the same bit-size.
-        //If a channel is given and it isn't stored in this texture, returns 0.
-        //If the format is compressed, it'll return a vague-but-precise value
+        //If a channel is given and it isn't stored in this format, returns 0.
+        //If the format is compressed, it'll return a precise but kinda-meaningless value
         //    based on the compression scheme.
+        //If the format is a "special" one that is hard to quantify,
+        //    a rough answer will be returned.
         uint_fast8_t GetChannelBitSize(std::optional<AllChannels> channel = {}) const;
 
         //Gets the number of bits for each pixel in this format.
@@ -213,6 +232,8 @@ namespace Bplus::GL::Textures
         
 
         //Gets the OpenGL enum value representing this format.
+        //Returns GL_NONE if the format isn't valid
+        //    (i.e. a SimpleFormat with an invalid arrangement).
         GLenum GetOglEnum() const;
 
 
