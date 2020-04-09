@@ -107,6 +107,71 @@ bool Format::IsStencilOnly() const
     }
 }
 
+std::optional<FormatTypes> Format::GetComponentType() const
+{
+    if (IsSimple())
+        return AsSimple().Type;
+    else if (IsSpecial()) switch (AsSpecial())
+    {
+        case SpecialFormats::R3_G3_B2:
+        case SpecialFormats::R5_G6_B5:
+        case SpecialFormats::RGB10_A2:
+        case SpecialFormats::RGB5_A1:
+        case SpecialFormats::sRGB:
+        case SpecialFormats::sRGB_LinearAlpha:
+            return FormatTypes::NormalizedUInt;
+
+        case SpecialFormats::RGB_TinyFloats:
+        case SpecialFormats::RGB_SharedExpFloats:
+            return FormatTypes::Float;
+
+        case SpecialFormats::RGB10_A2_UInt:
+            return FormatTypes::UInt;
+
+        SWITCH_DEFAULT(SpecialFormats, AsSpecial())
+            return FormatTypes::NormalizedUInt;
+    }
+    else if (IsCompressed()) switch (AsCompressed())
+    {
+        case CompressedFormats::Greyscale_NormalizedUInt:
+        case CompressedFormats::RG_NormalizedUInt:
+        case CompressedFormats::RGBA_NormalizedUInt:
+        case CompressedFormats::RGBA_sRGB_NormalizedUInt:
+            return FormatTypes::NormalizedUInt;
+
+        case CompressedFormats::Greyscale_NormalizedInt:
+        case CompressedFormats::RG_NormalizedInt:
+            return FormatTypes::NormalizedInt;
+
+        case CompressedFormats::RGB_Float:
+        case CompressedFormats::RGB_UFloat: //Pretend this is a float.
+            return FormatTypes::Float;
+
+        SWITCH_DEFAULT(CompressedFormats, AsCompressed())
+            return FormatTypes::NormalizedUInt;
+    }
+    else if (IsDepthStencil()) switch (AsDepthStencil())
+    {
+        case DepthStencilFormats::Depth_16U:
+        case DepthStencilFormats::Depth_24U:
+        case DepthStencilFormats::Depth_32U:
+            return FormatTypes::NormalizedUInt;
+
+        case DepthStencilFormats::Depth_32F:
+            return FormatTypes::Float;
+
+        case DepthStencilFormats::Stencil_8:
+            return FormatTypes::UInt;
+
+        case DepthStencilFormats::Depth24U_Stencil8:
+        case DepthStencilFormats::Depth32F_Stencil8:
+            return std::nullopt;
+
+        SWITCH_DEFAULT(DepthStencilFormats, AsDepthStencil())
+            return FormatTypes::NormalizedUInt;
+    }
+}
+
 bool Format::StoresChannel(AllChannels c) const
 {
     if (IsSimple())

@@ -4,6 +4,8 @@
 
 #include "Format.h"
 
+#include <glm/gtx/component_wise.hpp>
+
 
 namespace Bplus::GL::Textures
 {
@@ -97,6 +99,15 @@ namespace Bplus::GL::Textures
     };
 
 
+    //Gets the maximum number of mipmaps for a texture of the given size.
+    template<glm::length_t L>
+    uint_fast16_t GetMaxNumbMipmaps(const glm::vec<L, glm::u32>& texSize)
+    {
+        auto largestAxis = glm::compMax(texSize);
+        return 1 + (uint_fast16_t)floor(log2(largestAxis));
+    }
+
+
     //An OpenGL object representing a 2D grid of pixels that can be "sampled" in shaders.
     //May also be an array of textures.
     class Texture2D
@@ -105,7 +116,11 @@ namespace Bplus::GL::Textures
 
         //TODO: Finish: https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glTexParameter.xhtml
 
-        Texture2D(bool isArray);
+        //Creates a new texture or texture array.
+        //Pass "1" for nMipLevels to not use mip-maps.
+        //Pass "0" for nMipLevels to generate full mip-maps down to 1x1.
+        Texture2D(const glm::uvec2& size, Format format,
+                  uint_fast16_t nMipLevels = 0, uint_fast32_t arraySize = 1);
 
         virtual ~Texture2D();
 
@@ -120,12 +135,17 @@ namespace Bplus::GL::Textures
 
 
         TextureTypes GetType() const { return type; }
-        bool IsArray() const { return isArray; }
+        bool IsArray() const { return arrayCount > 1; }
+        uint_fast32_t GetArrayCount() const { return arrayCount; }
+        uint_fast16_t GetMipCount() const { return nMipLevels; }
 
         Sampler<2> GetSampler() const { return sampler; }
         void SetSampler(const Sampler<2>& s);
 
-        //void SetData(const glm::uvec2& size, )
+        //Changes the entire texture to use the given pixel data.
+        void SetData(const float* dataF, FormatComponents inputComponents);
+        void SetData(const uint32_t dataU, FormatComponents inputComponents);
+        void SetData(const int32_t dataI, FormatComponents inputComponents);
 
 
     private:
@@ -133,9 +153,12 @@ namespace Bplus::GL::Textures
         OglPtr::Texture glPtr;
 
         TextureTypes type;
-        bool isArray; //TODO: Bool multisample
-        glm::uvec2 size = { 0, 0 };
+        //TODO: Bool multisample
         Format format;
+
+        glm::uvec2 size = { 0, 0 };
+        uint_fast32_t arrayCount;
+        uint_fast16_t nMipLevels;
 
         Sampler<2> sampler;
     };

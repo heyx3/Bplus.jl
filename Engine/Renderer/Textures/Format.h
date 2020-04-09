@@ -14,8 +14,6 @@ namespace Bplus::GL::Textures
         Depth = 4, Stencil = 5);
 
 
-    #pragma region SimpleFormat
-
     //The type of data representing each color channel in a texture's pixels.
     BETTER_ENUM(FormatTypes, uint8_t,
         //A floating-point number (i.e. theoretically-unlimited range).
@@ -30,6 +28,9 @@ namespace Bplus::GL::Textures
         //A signed integer. Sampling from this texture yields integer values, not floats.
         Int
     );
+
+
+    #pragma region SimpleFormat
 
     //The sets of components that can be stored in various texture formats.
     BETTER_ENUM(FormatComponents, uint8_t,
@@ -192,6 +193,10 @@ namespace Bplus::GL::Textures
         bool IsSimple() const { return std::holds_alternative<SimpleFormat>(data); }
         SimpleFormat AsSimple() const { return std::get<SimpleFormat>(data); }
 
+        //Gets whether this format is a weird type.
+        bool IsSpecial() const { return std::holds_alternative<SpecialFormats>(data); }
+        SpecialFormats AsSpecial() const { return std::get<SpecialFormats>(data); }
+
         //Gets whether this is a block-compressed format.
         bool IsCompressed() const { return std::holds_alternative<CompressedFormats>(data); }
         CompressedFormats AsCompressed() const { return std::get<CompressedFormats>(data); }
@@ -200,10 +205,6 @@ namespace Bplus::GL::Textures
         bool IsDepthStencil() const { return std::holds_alternative<DepthStencilFormats>(data); }
         DepthStencilFormats AsDepthStencil() const { return std::get<DepthStencilFormats>(data); }
 
-        //Gets whether this format is a weird type.
-        bool IsSpecial() const { return std::holds_alternative<SpecialFormats>(data); }
-        SpecialFormats AsSpecial() const { return std::get<SpecialFormats>(data); }
-
 
         //Gets whether this format represents a depth/stencil hybrid type.
         bool IsDepthAndStencil() const;
@@ -211,6 +212,11 @@ namespace Bplus::GL::Textures
         bool IsDepthOnly() const;
         //Gets whether this format represents a stencil type (no depth).
         bool IsStencilOnly() const;
+
+        //Gets the type of data stored in each pixel channel.
+        //Returns nothing if the components aren't all the same type
+        //    (mainly with hybrid depth/stencil formats).
+        std::optional<FormatTypes> GetComponentType() const;
 
 
         //Gets whether this format stores the given channel.
