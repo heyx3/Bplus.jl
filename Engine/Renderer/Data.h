@@ -6,6 +6,7 @@
 
 //Defines various enums and data structures that represent rendering state.
 
+//TODO: Split into multiple files.
 //TODO: Add "Logical Blending", which is an alternative to normal blending. https://www.khronos.org/opengl/wiki/Logical_Operation
 //TODO: Add the enabling/disabling of GL_FRAMEBUFFER_SRGB, which determines what happens when rendering into an sRGB texture.
 

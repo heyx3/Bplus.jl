@@ -1,10 +1,7 @@
 #pragma once
 
-#include <array>
-
-#include "Format.h"
-
-#include <glm/gtx/component_wise.hpp>
+#include "Sampler.h"
+#include "../../Math/Box.hpp"
 
 
 namespace Bplus::GL::Textures
@@ -19,84 +16,71 @@ namespace Bplus::GL::Textures
         //A special kind of 2D texture that supports MSAA.
         TwoD_Multisample = GL_TEXTURE_2D_MULTISAMPLE
     );
+    
+    //Different types of specially-packed data that can be uploaded to texture memory.
+    //These are meant to speed up load times
+    //    when using the corresponding "Special" texture format on the GPU side.
+    //Each type of format can also be stored "reversed", meaning
+    //    the components (but NOT the bits inside each component) are in reverse order.
+    //Note that, because these packed formats are read as whole, multi-byte integers,
+    //    the endianness of your platform needs to be taken into account.
+    //For example, on Intel platforms, data is stored little-endian,
+    //    so data that you think is stored as U32_RGBA_8888 is actually stored as U32_ABGR_8888.
+    //TODO: Probably have to remove this enum; it won't get used :(
+    BETTER_ENUM(TextureUploadPackedFormats, GLenum,
+        //RGB packed into an unsigned 8-bit integer
+        //    as 332 (R is 3 bits, G is 3 bits, B is 2 bits).
+        U8_RGB_332 = GL_UNSIGNED_BYTE_3_3_2,
+        //RGB packed reversed into an unsigned 8-bit integer
+        //    as 233 (B is 2 bits, G is 3 bits, R is 3 bits).
+        U8_BGR_233 = GL_UNSIGNED_BYTE_2_3_3_REV,
+                
+        //RGB packed into an unsigned 16-bit integer
+        //    as 565 (R is 5 bits, G is 6 bits, B is 5 bits).
+        U16_RGB_565 = GL_UNSIGNED_SHORT_5_6_5,
+        //RGB packed reversed into an unsigned 16-bit integer
+        //    as 565 (B is 5 bits, G is 6 bits, R is 5 bits).
+        U16_BGR_565 = GL_UNSIGNED_SHORT_5_6_5_REV,
 
+        //RGBA packed into an unsigned short with 4 bits per component.
+        U16_RGBA_4444 = GL_UNSIGNED_SHORT_4_4_4_4,
+        //RGBA packed backwards (so, ABGR) into an unsigned short with 4 bits per component.
+        U16_ABGR_4444 = GL_UNSIGNED_SHORT_4_4_4_4_REV,
 
-    //The behaviors of a texture when you sample past its boundaries.
-    BETTER_ENUM(TextureWrapping, GLenum,
-        //Repeat the texture indefinitely, creating a tiling effect.
-        Repeat = GL_REPEAT,
-        //Repeat the texture indefinitely, but mirror it across each edge.
-        MirroredRepeat = GL_MIRRORED_REPEAT,
-        //Clamp the coordinates so that the texture outputs its last edge pixels
-        //    when going past its border.
-        Clamp = GL_CLAMP_TO_EDGE,
-        //Outputs a custom color when outside the texture.
-        CustomBorder = GL_CLAMP_TO_BORDER
+        //RGBA packed into an unsigned short with 5 bits per color component,
+        //    and 1 bit for alpha.
+        U16_RGBA_5551 = GL_UNSIGNED_SHORT_5_5_5_1,
+        //RGBA packed backwards (so, ABGR) into an unsigned short
+        //    with 1 bit for alpha, and 5 bits per color component.
+        U16_ABGR_1555 = GL_UNSIGNED_SHORT_1_5_5_5_REV,
+                
+        //RGBA packed into an unsigned int32 with 8 bits per component.
+        U32_RGBA_8888 = GL_UNSIGNED_INT_8_8_8_8,
+        //RGBA packed backwards (so, ABGR) into an unsigned int32 with 8 bits per component.
+        U32_ABGR_8888 = GL_UNSIGNED_INT_8_8_8_8,
+
+        //RGBA packed into an unsigned int32 with 10 bits per color component,
+        //    and 2 bits for alpha.
+        U32_RGBA_1010102 = GL_UNSIGNED_INT_10_10_10_2,
+        //RGBA packed backwards (so, ABGR) into an unsigned int32
+        //    with 2 bits for alpha, and 10 bits per color component.
+        U32_ABGR_2101010 = GL_UNSIGNED_INT_2_10_10_10_REV,
+
+        //RGB packed backwards (so, BGR) into an unsigned int32 as smaller floats:
+        //    10-bit for B, 11-bit for G, 11-bit for R.
+        U32_BGR_101111 = GL_UNSIGNED_INT_10F_11F_11F_REV,
+        //RGB packed backwards (so, BGR) into an unsigned int32
+        //    as 14-bit floats who share their 5-bit exponent.
+        U32_EBGR_5999 = GL_UNSIGNED_INT_5_9_9_9_REV,
+
+        //A special stencil upload format -- the first 24 bits are ignored (representing depth),
+        //    and the last 8 are the stencil value.
+        U32_Stencil_Last8 = GL_UNSIGNED_INT_24_8,
+        //A special depth/stencil upload format --
+        //    the first 32 bits are the depth value as a 32-bit float,
+        //    the next 24 bits are ignored, and the last 8 bits are the stencil.
+        F32U32_DepthStencil_32_Last8 = GL_FLOAT_32_UNSIGNED_INT_24_8_REV
     );
-
-    //The filtering mode for a texture when shrinking it on the screen.
-    BETTER_ENUM(TextureMinFilters, GLenum,
-        //Rough (or "nearest") sampling for both the pixels and the mipmaps.
-        Rough = GL_NEAREST_MIPMAP_NEAREST,
-        //Smooth (or "linear") sampling for both the pixels and the mipmaps.
-        Smooth = GL_NEAREST_MIPMAP_NEAREST,
-
-        //Smooth sampling for the pixels, and rough sampling for the mipmaps.
-        SmoothPixels_RoughMips = GL_LINEAR_MIPMAP_NEAREST,
-        //Rough sampling for the pixels, and smooth sampling for the mipmaps.
-        RoughPixels_SmoothMips = GL_NEAREST_MIPMAP_LINEAR,
-
-        //Rough sampling for the pixels, and no mip-maps (always use the largest mip).
-        RoughPixels_NoMips = GL_NEAREST,
-        //Smooth sammpling for the pixels, and no mip-maps (always use the largest mip).
-        SmoothPixels_NoMips = GL_LINEAR
-    );
-    //The filtering mode for a texture when enlarging it on the screen.
-    BETTER_ENUM(TextureMagFilters, GLenum,
-        //Rough, or "nearest" sampling.
-        Rough = GL_NEAREST,
-        //Smooth, or "linear" sampling.
-        Smooth = GL_LINEAR
-    );
-
-
-    //Information about a sampler for a texture of some number of dimensions.
-    template<uint8_t D>
-    struct Sampler
-    {
-        static_assert(D > 0);
-
-        TextureMinFilters MinFilter;
-        TextureMagFilters MagFilter;
-        std::array<TextureWrapping, D> Wrapping;
-
-
-        Sampler(TextureWrapping wrapping = TextureWrapping::Clamp)
-            : Sampler(TextureMinFilters::Smooth, TextureMagFilters::Smooth, wrapping) { }
-        Sampler(TextureMinFilters min, TextureMagFilters mag, TextureWrapping wrapping)
-            : MinFilter(min), MagFilter(mag)
-        {
-            SetWrapping(wrapping);
-        }
-
-
-        void SetWrapping(TextureWrapping w)
-        {
-            for (uint_fast8_t d = 0; d < D; ++d)
-                Wrapping[d] = w;
-        }
-
-        //Get this sampler's wrapping mode,
-        //    assuming all axes use the same wrapping.
-        TextureWrapping GetWrapping() const
-        {
-            BPAssert(std::all_of(Wrapping.begin(), Wrapping.end(),
-                                 [&](TextureWrapping w) { return w == Wrapping[0]; }),
-                     "Sampler's axes have different wrap modes");
-
-            return Wrapping[0];
-        }
-    };
 
 
     //Gets the maximum number of mipmaps for a texture of the given size.
@@ -114,13 +98,12 @@ namespace Bplus::GL::Textures
     {
     public:
 
-        //TODO: Finish: https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glTexParameter.xhtml
-
-        //Creates a new texture or texture array.
+        //Creates a new texture.
         //Pass "1" for nMipLevels to not use mip-maps.
         //Pass "0" for nMipLevels to generate full mip-maps down to 1x1.
+        //Pass anything else to generate a fixed amount of mip levels.
         Texture2D(const glm::uvec2& size, Format format,
-                  uint_fast16_t nMipLevels = 0, uint_fast32_t arraySize = 1);
+                  uint_fast16_t nMipLevels = 0);
 
         virtual ~Texture2D();
 
@@ -134,18 +117,64 @@ namespace Bplus::GL::Textures
         Texture2D& operator=(Texture2D&& src);
 
 
+        glm::uvec2 GetSize(uint_fast16_t mipLevel = 0) const; //TODO: Implement.
+
         TextureTypes GetType() const { return type; }
-        bool IsArray() const { return arrayCount > 1; }
-        uint_fast32_t GetArrayCount() const { return arrayCount; }
         uint_fast16_t GetMipCount() const { return nMipLevels; }
 
         Sampler<2> GetSampler() const { return sampler; }
         void SetSampler(const Sampler<2>& s);
 
-        //Changes the entire texture to use the given pixel data.
-        void SetData(const float* dataF, FormatComponents inputComponents);
-        void SetData(const uint32_t dataU, FormatComponents inputComponents);
-        void SetData(const int32_t dataI, FormatComponents inputComponents);
+        #pragma region SetData methods
+
+        //TODO: SetData that handles pre-packed AND pre-compressed formats.
+        //TODO: SetData for depth/stencil formats.
+
+
+        //Below are functions for setting texture data using simple arrays of pixel components.
+        //The input data does not have to match up with the texture's actual pixel format
+        //    once it's in GPU memory; the driver does all the heavy lifting to convert it.
+        //However, note that the driver implementations for Block-Compressing textures
+        //    can vary widely in quality, so it's recommended to pre-compress them yourself.
+
+        //They all take the form of two overloads:
+        //    void SetData(const T* data, FormatComponents dataChannels,
+        //                 const Math::Box2D<glm::u32>& destRange,
+        //                 uint8_t mipLevel = 0);
+        //    void SetData(const T* data, FormatComponents dataChannels,
+        //                 uint8_t mipLevel = 0);
+        //There are lots of different number types, so we use a macro to make things easier.
+        
+        //The pixel data should be ordered from left to right, then from bottom to top
+        //    (then from back to front for 3D data).
+        //In other words, rows are contiguous.
+
+        #define MAKE_FUNC_SET_DATA_SIMPLE(numberType, dataType) \
+            void SetData(const numberType* data, FormatComponents dataChannels, \
+                         const Math::Box2D<glm::u32>& destRange, \
+                         uint_fast16_t mipLevel = 0) { \
+                SetData((const void*)data, \
+                        (GLenum)dataChannels._to_integral(), dataType, \
+                        destRange, mipLevel); \
+            } \
+            void SetData(const numberType* data, FormatComponents dataChannels, \
+                         uint_fast16_t mipLevel = 0) { \
+                SetData(data, dataChannels, \
+                        Math::Box2D<glm::u32>{ { 0 }, GetSize(mipLevel) }, \
+                        mipLevel); \
+            }
+        
+            MAKE_FUNC_SET_DATA_SIMPLE(uint8_t,  GL_UNSIGNED_BYTE);
+            MAKE_FUNC_SET_DATA_SIMPLE(int8_t,   GL_BYTE);
+            MAKE_FUNC_SET_DATA_SIMPLE(uint16_t, GL_UNSIGNED_SHORT);
+            MAKE_FUNC_SET_DATA_SIMPLE(int16_t,  GL_SHORT);
+            MAKE_FUNC_SET_DATA_SIMPLE(uint32_t, GL_UNSIGNED_INT);
+            MAKE_FUNC_SET_DATA_SIMPLE(int32_t,  GL_INT);
+            MAKE_FUNC_SET_DATA_SIMPLE(float,    GL_FLOAT);
+
+        #undef MAKE_FUNC_SET_DATA_SIMPLE
+
+        #pragma endregion
 
 
     private:
@@ -157,10 +186,14 @@ namespace Bplus::GL::Textures
         Format format;
 
         glm::uvec2 size = { 0, 0 };
-        uint_fast32_t arrayCount;
         uint_fast16_t nMipLevels;
 
         Sampler<2> sampler;
+
+        void SetData(const void* data,
+                     GLenum dataFormat, GLenum dataType,
+                     const Math::Box2D<glm::u32>& destRange,
+                     uint_fast16_t mipLevel);
     };
 
 

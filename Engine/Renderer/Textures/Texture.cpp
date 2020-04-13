@@ -6,12 +6,11 @@ using namespace Bplus::GL::Textures;
 
 
 Texture2D::Texture2D(const glm::uvec2& _size, Format _format,
-                     uint_fast16_t _nMipLevels, uint_fast32_t _arrayCount)
-    : type(TextureTypes::TwoD), arrayCount(_arrayCount),
+                     uint_fast16_t _nMipLevels)
+    : type(TextureTypes::TwoD),
       size(_size), format(_format),
       nMipLevels((_nMipLevels < 1) ? GetMaxNumbMipmaps(_size) : _nMipLevels)
 {
-    BPAssert(_arrayCount > 0, "Can't make a Texture2D array with 0 elements");
     BPAssert(format.GetOglEnum() != GL_NONE, "Invalid OpenGL format");
 
     //Create the texture handle.
@@ -20,10 +19,7 @@ Texture2D::Texture2D(const glm::uvec2& _size, Format _format,
     glPtr.Get() = texPtr;
 
     //Allocate GPU storage.
-    if (IsArray())
-        glTextureStorage3D(glPtr.Get(), nMipLevels, format.GetOglEnum(), size.x, size.y, arrayCount);
-    else
-        glTextureStorage2D(glPtr.Get(), nMipLevels, format.GetOglEnum(), size.x, size.y);
+    glTextureStorage2D(glPtr.Get(), nMipLevels, format.GetOglEnum(), size.x, size.y);
 
     //Load the initial sampler data.
     GLint p;
@@ -44,7 +40,7 @@ Texture2D::~Texture2D()
 
 Texture2D::Texture2D(Texture2D&& src)
     : glPtr(src.glPtr), type(src.type),
-      size(src.size), arrayCount(src.arrayCount), nMipLevels(src.nMipLevels),
+      size(src.size), nMipLevels(src.nMipLevels),
       format(src.format), sampler(src.sampler)
 {
     src.glPtr.Get() = OglPtr::Texture::Null;
@@ -71,4 +67,14 @@ void Texture2D::SetSampler(const Sampler<2>& s)
                         (GLint)sampler.Wrapping[0]);
     glTextureParameteri(glPtr.Get(), GL_TEXTURE_WRAP_T,
                         (GLint)sampler.Wrapping[1]);
+}
+
+void Texture2D::SetData(const void* data, GLenum dataFormat, GLenum dataType,
+                        const Math::Box2D<glm::u32>& destRange,
+                        uint_fast16_t mipLevel)
+{
+    glTextureSubImage2D(glPtr.Get(), mipLevel,
+                        destRange.MinCorner.x, destRange.MinCorner.y,
+                        destRange.Size.x, destRange.Size.y,
+                        dataFormat, dataType, data);
 }
