@@ -70,6 +70,24 @@
     <ClInclude Include="Renderer\Textures\Format.h">
       <Filter>Renderer\Textures</Filter>
     </ClInclude>
+    <ClInclude Include="Math\Math.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\Box.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\Ray.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\Sphere.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\Shapes.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Textures\Sampler.h">
+      <Filter>Renderer\Textures</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
@@ -140,6 +158,9 @@
     </Filter>
     <Filter Include="Renderer\Textures">
       <UniqueIdentifier>{01b36350-c27e-42ac-bc78-6c40259a208c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Math">
+      <UniqueIdentifier>{6f80ac6e-5965-493c-b49c-1bcb7cc51280}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

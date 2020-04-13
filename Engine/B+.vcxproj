@@ -393,6 +393,11 @@ exit 0</Command>
     <ClInclude Include="Dear ImGui\imstb_rectpack.h" />
     <ClInclude Include="Dear ImGui\imstb_textedit.h" />
     <ClInclude Include="Dear ImGui\imstb_truetype.h" />
+    <ClInclude Include="Math\Math.h" />
+    <ClInclude Include="Math\Box.hpp" />
+    <ClInclude Include="Math\Ray.hpp" />
+    <ClInclude Include="Math\Shapes.hpp" />
+    <ClInclude Include="Math\Sphere.hpp" />
     <ClInclude Include="NativeFileDialog\common.h" />
     <ClInclude Include="NativeFileDialog\nfd.h" />
     <ClInclude Include="NativeFileDialog\nfd_common.h" />
@@ -405,6 +410,7 @@ exit 0</Command>
     <ClInclude Include="Renderer\Materials\Material_Basic.h" />
     <ClInclude Include="Renderer\Materials\CompiledShader.h" />
     <ClInclude Include="Renderer\Textures\Format.h" />
+    <ClInclude Include="Renderer\Textures\Sampler.h" />
     <ClInclude Include="Renderer\Textures\Texture.h" />
     <ClInclude Include="RenderLibs.h" />
     <ClInclude Include="IO.h" />
