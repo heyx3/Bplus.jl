@@ -125,13 +125,42 @@ namespace Bplus::GL::Textures
         Sampler<2> GetSampler() const { return sampler; }
         void SetSampler(const Sampler<2>& s);
 
+
         #pragma region SetData methods
 
-        //TODO: SetData that handles pre-packed AND pre-compressed formats.
+
+        //TODO: SetData for pre-packed formats.
         //TODO: SetData for depth/stencil formats.
 
+        //Directly sets block-compressed data for the texture,
+        //    based on its current format.
+        //This is highly recommended over the other "SetData()" forms;
+        //    while the GPU driver should support doing the compression
+        //    under the hood for you, the results vary widely and are often bad.
+        //Note that, because Block-Compression works in square groups of pixels,
+        //    the destination rectangle is in units of blocks, not individual pixels.
+        //Additionally, mipmaps cannot be regenerated automatically.
+        void SetData(const std::byte* compressedData, size_t compressedDataSize,
+                     Math::Box2Du destBlockRange = Math::Box2Du(),
+                     uint_fast16_t mipLevel = 0);
 
-        //Below are functions for setting texture data using simple arrays of pixel components.
+
+        struct SetDataInfo
+        {
+            Math::Box2Du DestRange;
+            uint_fast32_t MipLevel = 0;
+            bool RecomputeMips = true;
+
+            SetDataInfo() : DestRange(Math::Box2Du::MakeCenterSize({ 0 }, { 0 })) { }
+            SetDataInfo(const Math::Box2Du& destRange) : DestRange(destRange) { }
+            SetDataInfo(uint_fast32_t mipLevel) : SetDataInfo() { MipLevel = mipLevel; }
+            SetDataInfo(const Math::Box2Du& destRange,
+                        uint_fast32_t mipLevel,
+                        bool recomputeMips = true) : DestRange(destRange), MipLevel(mipLevel) { }
+        };
+
+        //Below are functions named "SetData(...)", for setting texture data
+        //    using simple arrays of pixel components.
         //The input data does not have to match up with the texture's actual pixel format
         //    once it's in GPU memory; the driver does all the heavy lifting to convert it.
         //However, note that the driver implementations for Block-Compressing textures
@@ -151,17 +180,12 @@ namespace Bplus::GL::Textures
 
         #define MAKE_FUNC_SET_DATA_SIMPLE(numberType, dataType) \
             void SetData(const numberType* data, FormatComponents dataChannels, \
-                         const Math::Box2D<glm::u32>& destRange, \
-                         uint_fast16_t mipLevel = 0) { \
+                         SetDataInfo optionalParams = { }) { \
                 SetData((const void*)data, \
                         (GLenum)dataChannels._to_integral(), dataType, \
-                        destRange, mipLevel); \
-            } \
-            void SetData(const numberType* data, FormatComponents dataChannels, \
-                         uint_fast16_t mipLevel = 0) { \
-                SetData(data, dataChannels, \
-                        Math::Box2D<glm::u32>{ { 0 }, GetSize(mipLevel) }, \
-                        mipLevel); \
+                        optionalParams.DestRange, optionalParams.MipLevel); \
+                if (optionalParams.RecomputeMips) \
+                    RecomputeMips(); \
             }
         
             MAKE_FUNC_SET_DATA_SIMPLE(uint8_t,  GL_UNSIGNED_BYTE);
@@ -176,6 +200,9 @@ namespace Bplus::GL::Textures
 
         #pragma endregion
 
+        //Updates mipmaps for this texture.
+        //Not allowed if the texture is compressed.
+        void RecomputeMips(uint_fast32_t);
 
     private:
 

@@ -1,5 +1,7 @@
 #include "Texture.h"
 
+#include <glm/gtx/component_wise.hpp>
+
 using namespace Bplus;
 using namespace Bplus::GL;
 using namespace Bplus::GL::Textures;
@@ -69,10 +71,36 @@ void Texture2D::SetSampler(const Sampler<2>& s)
                         (GLint)sampler.Wrapping[1]);
 }
 
-void Texture2D::SetData(const void* data, GLenum dataFormat, GLenum dataType,
-                        const Math::Box2D<glm::u32>& destRange,
+void Texture2D::SetData(const std::byte* compressedData,
+                        size_t compressedDataSize,
+                        Math::Box2Du destBlockRange,
                         uint_fast16_t mipLevel)
 {
+    //Process default arguments.
+    if (glm::all(glm::lessThan(destBlockRange.Size, glm::uvec2{ 0 })))
+        destBlockRange = Math::Box2Du::MakeMinSize({ 0 }, size);
+
+    //Convert block range to pixel size.
+    auto blockSize = GetBlockSize(format.AsCompressed());
+    auto destPixelRange = Math::Box2Du::MakeMinSize(destBlockRange.MinCorner * blockSize,
+                                                    destBlockRange.Size * blockSize);
+    BPAssert(glm::all(glm::lessThan(destPixelRange.GetMaxCorner(), size)),
+             "Block range goes beyond the texture's size");
+
+    glCompressedTextureSubImage2D(glPtr.Get(), mipLevel,
+                                  destPixelRange.MinCorner.x, destPixelRange.MinCorner.y,
+                                  destPixelRange.Size.x, destPixelRange.Size.y,
+                                  format.GetOglEnum(),
+                                  compressedDataSize, compressedData);
+}
+void Texture2D::SetData(const void* data, GLenum dataFormat, GLenum dataType,
+                        const Math::Box2Du& _destRange,
+                        uint_fast16_t mipLevel)
+{
+    auto destRange = _destRange;
+    if (glm::all(glm::lessThan(destRange.Size, glm::uvec2{ 0 })))
+        destRange = Math::Box2Du::MakeMinSize({ 0 }, size);
+
     glTextureSubImage2D(glPtr.Get(), mipLevel,
                         destRange.MinCorner.x, destRange.MinCorner.y,
                         destRange.Size.x, destRange.Size.y,

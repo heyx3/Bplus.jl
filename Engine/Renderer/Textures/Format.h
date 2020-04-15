@@ -147,6 +147,8 @@ namespace Bplus::GL::Textures
         RGBA_sRGB_NormalizedUInt = GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM
     );
 
+    const BP_API glm::uvec2 GetBlockSize(CompressedFormats format);
+
     #pragma endregion
     
     #pragma region DepthStencilFormats

@@ -136,4 +136,12 @@ namespace Bplus::Math
     using Box2Df = Box2D<float>;
     using Box3Df = Box3D<float>;
     using Box4Df = Box4D<float>;
+
+    using Box2Du = Box2D<glm::u32>;
+    using Box3Du = Box3D<glm::u32>;
+    using Box4Du = Box4D<glm::u32>;
+
+    using Box2Di = Box2D<glm::i32>;
+    using Box3Di = Box3D<glm::i32>;
+    using Box4Di = Box4D<glm::i32>;
 }

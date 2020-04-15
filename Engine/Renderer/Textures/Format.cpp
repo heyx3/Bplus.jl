@@ -40,6 +40,9 @@ namespace
 }
 
 
+const glm::uvec2 GetBlockSize(CompressedFormats format);
+
+
 bool Format::IsDepthAndStencil() const
 {
     if (!IsDepthStencil())
