@@ -71,7 +71,7 @@ namespace Bplus::GL::Textures
         Texture2D& operator=(Texture2D&& src);
 
 
-        glm::uvec2 GetSize(uint_mipLevel_t mipLevel = 0) const; //TODO: Implement.
+        glm::uvec2 GetSize(uint_mipLevel_t mipLevel = 0) const;
 
         //Gets the number of bytes needed to store this texture in its native format.
         size_t GetByteSize(uint_mipLevel_t mipLevel = 0) const { return format.GetByteSize(GetSize(mipLevel)); }
@@ -101,7 +101,7 @@ namespace Bplus::GL::Textures
         {
             //The subset of the texture to set.
             //A size-0 box represents the full texture.
-            Math::Box2Du DestRange = Math::Box2Du::MakeCenterSize({ 0 }, { 0 });
+            Math::Box2Du DestRange = Math::Box2Du::MakeCenterSize(glm::uvec2{ 0 }, glm::uvec2{ 0 });
             //The mip level. 0 is the original texture, higher values are smaller mips.
             uint_fast32_t MipLevel = 0;
 
@@ -229,7 +229,7 @@ namespace Bplus::GL::Textures
         {
             //The subset of the texture to set.
             //A size-0 box represents the full texture.
-            Math::Box2Du Range = Math::Box2Du::MakeCenterSize({ 0 }, { 0 });
+            Math::Box2Du Range = Math::Box2Du::MakeCenterSize(glm::uvec2{ 0 }, glm::uvec2{ 0 });
             //The mip level. 0 is the original texture, higher values are smaller mips.
             uint_fast32_t MipLevel = 0;
 

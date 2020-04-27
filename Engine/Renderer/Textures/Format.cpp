@@ -8,6 +8,8 @@ using namespace Bplus::GL;
 using namespace Bplus::GL::Textures;
 
 
+//This file has a lot of complex switch statements.
+//This macro helps a lot with ensuring we don't silently fall though any missed cases.
 #define SWITCH_DEFAULT(enumName, enumVal) \
     default: { \
         std::string errMsg = "Unknown: " #enumName "::"; \
@@ -152,7 +154,7 @@ std::optional<FormatTypes> Format::GetComponentType() const
             return FormatTypes::UInt;
 
         SWITCH_DEFAULT(SpecialFormats, AsSpecial())
-            return FormatTypes::NormalizedUInt;
+            return std::nullopt;
     }
     else if (IsCompressed()) switch (AsCompressed())
     {
@@ -171,7 +173,7 @@ std::optional<FormatTypes> Format::GetComponentType() const
             return FormatTypes::Float;
 
         SWITCH_DEFAULT(CompressedFormats, AsCompressed())
-            return FormatTypes::NormalizedUInt;
+            return std::nullopt;
     }
     else if (IsDepthStencil()) switch (AsDepthStencil())
     {
@@ -191,7 +193,14 @@ std::optional<FormatTypes> Format::GetComponentType() const
             return std::nullopt;
 
         SWITCH_DEFAULT(DepthStencilFormats, AsDepthStencil())
-            return FormatTypes::NormalizedUInt;
+            return std::nullopt;
+    }
+    else
+    {
+        std::string errMsg = "Unknown format type, index ";
+        errMsg += std::to_string(data.index());
+        BPAssert(false, errMsg.c_str());
+        return std::nullopt;
     }
 }
 
@@ -408,9 +417,10 @@ uint_fast8_t Format::GetChannelBitSize(std::optional<AllChannels> channel) const
                 return 10;
             else
                 COMPUTE_SEPARATE_OUTPUT("RGB_SharedExpFloats", 11, 11, 10, 0, 0, 0)
-            
-            
-        SWITCH_DEFAULT(SpecialFormats, AsSpecial());
+
+
+        SWITCH_DEFAULT(SpecialFormats, AsSpecial())
+            return 0;
     }
     else if (IsCompressed()) switch (AsCompressed())
     {
@@ -443,16 +453,16 @@ uint_fast8_t Format::GetChannelBitSize(std::optional<AllChannels> channel) const
                 return 0;
 
         SWITCH_DEFAULT(CompressedFormats, AsCompressed())
+            return 0;
     }
     else if (IsDepthStencil())
     {
-        //Easy exit early if asking for any channel other than depth or stencil.
+        //Exit early if asking for any channel other than depth or stencil.
         if (channel.has_value() &&
             channel.value() != +AllChannels::Depth && channel.value() != +AllChannels::Stencil)
         {
             return 0;
         }
-
 
         switch (AsDepthStencil())
         {
@@ -518,7 +528,7 @@ uint_fast8_t Format::GetPixelBitSize() const
 }
 uint_fast32_t Format::GetByteSize(const glm::uvec3& textureSize) const
 {
-    size_t nPixels = glm::compMul(textureSize);
+    glm::u32 nPixels = glm::compMul(textureSize);
 
     if (IsSimple())
     {
@@ -552,7 +562,7 @@ uint_fast32_t Format::GetByteSize(const glm::uvec3& textureSize) const
     {
         //The texture is stored in blocks, so pad the size out to fit whole blocks.
         auto blockSize = GetBlockSize(AsCompressed());
-        size_t nBlocks = glm::compMul(GetBlockCount(AsCompressed(), textureSize));
+        glm::u32 nBlocks = glm::compMul(GetBlockCount(AsCompressed(), textureSize));
 
         switch (AsCompressed())
         {
@@ -712,6 +722,7 @@ GLenum Format::GetOglEnum() const
 
 
             SWITCH_DEFAULT(BitDepths, _data.ChannelBitSize)
+                return GL_NONE;
         }
 
         #undef R
@@ -735,7 +746,7 @@ GLenum Format::GetOglEnum() const
         std::string errMsg = "Unknown format type, index ";
         errMsg += std::to_string(data.index());
         BPAssert(false, errMsg.c_str());
-        return 0;
+        return GL_NONE;
     }
 }
 

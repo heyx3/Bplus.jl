@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <algorithm>
 
 namespace Bplus::Math
 {
@@ -21,7 +22,7 @@ namespace Bplus::Math
     template<typename F>
     bool SolveQuadratic(F a, F b, F c, std::array<F, 2>& result)
     {
-        using std;
+        using namespace std;
 
         F discriminant = (b * b) - (4 * a * c);
         if (discriminant == 0)

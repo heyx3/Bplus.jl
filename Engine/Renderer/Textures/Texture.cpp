@@ -60,6 +60,16 @@ Texture2D& Texture2D::operator=(Texture2D&& src)
 }
 
 
+glm::uvec2 Texture2D::GetSize(uint_mipLevel_t mipLevel) const
+{
+    //TODO: Verify this.
+    auto _size = size;
+    for (uint_mipLevel_t i = 0; i < mipLevel; ++i)
+        _size = glm::max(_size / glm::uvec2{ 2 },
+                         glm::uvec2{ 1 });
+    return _size;
+}
+
 void Texture2D::SetSampler(const Sampler<2>& s)
 {
     sampler = s;
@@ -81,6 +91,7 @@ void Texture2D::RecomputeMips()
 
 }
 
+
 void Texture2D::SetData_Compressed(const std::byte* compressedData,
                                    size_t compressedDataSize,
                                    Math::Box2Du destBlockRange,
@@ -93,7 +104,7 @@ void Texture2D::SetData_Compressed(const std::byte* compressedData,
 
     //Process default arguments.
     if (glm::all(glm::equal(destPixelRange.Size, glm::uvec2{ 0 })))
-        destPixelRange = Math::Box2Du::MakeMinSize({ 0 }, size);
+        destPixelRange = Math::Box2Du::MakeMinSize(glm::uvec2{ 0 }, size);
 
     BPAssert(glm::all(glm::lessThan(destPixelRange.GetMaxCorner(), size)),
              "Block range goes beyond the texture's size");
@@ -103,7 +114,7 @@ void Texture2D::SetData_Compressed(const std::byte* compressedData,
                                   destPixelRange.MinCorner.x, destPixelRange.MinCorner.y,
                                   destPixelRange.Size.x, destPixelRange.Size.y,
                                   format.GetOglEnum(),
-                                  compressedDataSize, compressedData);
+                                  (GLsizei)compressedDataSize, compressedData);
 }
 void Texture2D::SetData(const void* data,
                         GLenum dataFormat, GLenum dataType,
@@ -112,7 +123,7 @@ void Texture2D::SetData(const void* data,
     //Process default arguments.
     auto destRange = params.DestRange;
     if (glm::all(glm::equal(destRange.Size, glm::uvec2{ 0 })))
-        destRange = Math::Box2Du::MakeMinSize({ 0 }, size);
+        destRange = Math::Box2Du::MakeMinSize(glm::uvec2{ 0 }, size);
 
     //Upload.
     glTextureSubImage2D(glPtr.Get(), params.MipLevel,
@@ -132,7 +143,7 @@ void Texture2D::GetData_Compressed(void* compressedData,
 
     //Process default arguments.
     if (glm::all(glm::equal(pixelRange.Size, glm::uvec2{ 0 })))
-        pixelRange = Math::Box2Du::MakeMinSize({ 0 }, size);
+        pixelRange = Math::Box2Du::MakeMinSize(glm::uvec2{ 0 }, size);
 
     BPAssert(glm::all(glm::lessThan(pixelRange.GetMaxCorner(), size)),
              "Block range goes beyond the texture's size");
@@ -151,12 +162,13 @@ void Texture2D::GetData(void* data,
     //Process default arguments.
     auto range = params.Range;
     if (glm::all(glm::equal(range.Size, glm::uvec2{ 0 })))
-        range = Math::Box2Du::MakeMinSize({ 0 }, size);
+        range = Math::Box2Du::MakeMinSize(glm::uvec2{ 0 }, size);
 
     //Download.
     glGetTextureSubImage(glPtr.Get(), params.MipLevel,
                          range.MinCorner.x, range.MinCorner.y, 0,
                          range.Size.x, range.Size.y, 1,
                          dataFormat, dataType,
-                         GetByteSize(params.MipLevel), data);
+                         (GLsizei)GetByteSize(params.MipLevel),
+                         data);
 }
