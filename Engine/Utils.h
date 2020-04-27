@@ -26,9 +26,18 @@
 //Apps should not put their own stuff in this folder.
 #define BPLUS_ENGINE_CONTENT_FOLDER (BPLUS_CONTENT_FOLDER "/engine")
 
-//Not actually defined in the standard...
-#define BP_MATH_PI (3.1415926535897932384626433832795028841971693993751)
-#define BP_MATH_E  (2.71828182845904523536028747135266)
+
+//Not defined in the standard before C++20...
+constexpr bool IsPlatformLittleEndian()
+{
+    //Reference: https://stackoverflow.com/a/1001328
+    static_assert(sizeof(char) < sizeof(int),
+                  "Only works if int is larger than char");
+
+    int i = 1;
+    char* iBytes = (char*)(&i);
+    return (*iBytes) == 1;
+}
 
 
 //Custom assert macro that can be configured by users of this engine.

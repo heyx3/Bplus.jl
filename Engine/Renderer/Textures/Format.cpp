@@ -1,5 +1,8 @@
 #include "Format.h"
 
+#include <glm/gtx/component_wise.hpp>
+#include "../../Math/Math.h"
+
 using namespace Bplus;
 using namespace Bplus::GL;
 using namespace Bplus::GL::Textures;
@@ -40,7 +43,24 @@ namespace
 }
 
 
-const glm::uvec2 GetBlockSize(CompressedFormats format);
+uint_fast32_t Bplus::GL::Textures::GetBlockSize(CompressedFormats format)
+{
+    switch (format)
+    {
+        case CompressedFormats::Greyscale_NormalizedUInt:
+        case CompressedFormats::Greyscale_NormalizedInt:
+        case CompressedFormats::RG_NormalizedUInt:
+        case CompressedFormats::RG_NormalizedInt:
+        case CompressedFormats::RGB_Float:
+        case CompressedFormats::RGB_UFloat:
+        case CompressedFormats::RGBA_NormalizedUInt:
+        case CompressedFormats::RGBA_sRGB_NormalizedUInt:
+            return 4;
+
+        SWITCH_DEFAULT(CompressedFormats, format)
+            return 0;
+    }
+}
 
 
 bool Format::IsDepthAndStencil() const
@@ -172,6 +192,88 @@ std::optional<FormatTypes> Format::GetComponentType() const
 
         SWITCH_DEFAULT(DepthStencilFormats, AsDepthStencil())
             return FormatTypes::NormalizedUInt;
+    }
+}
+
+bool Format::IsInteger() const
+{
+    if (IsSimple())
+        switch (AsSimple().Type)
+        {
+            case FormatTypes::NormalizedUInt:
+            case FormatTypes::NormalizedInt:
+            case FormatTypes::Float:
+                return false;
+
+            case FormatTypes::UInt:
+            case FormatTypes::Int:
+                return true;
+
+            SWITCH_DEFAULT(FormatTypes, AsSimple().Type);
+                return false;
+        }
+    else if (IsSpecial())
+        switch (AsSpecial())
+        {
+            case SpecialFormats::R3_G3_B2:
+            case SpecialFormats::R5_G6_B5:
+            case SpecialFormats::RGB10_A2:
+            case SpecialFormats::RGB5_A1:
+            case SpecialFormats::RGB_SharedExpFloats:
+            case SpecialFormats::RGB_TinyFloats:
+            case SpecialFormats::sRGB:
+            case SpecialFormats::sRGB_LinearAlpha:
+                return false;
+
+            case SpecialFormats::RGB10_A2_UInt:
+                return true;
+
+            SWITCH_DEFAULT(SpecialFormats, AsSpecial());
+                return false;
+        }
+    else if (IsCompressed())
+        switch (AsCompressed())
+        {
+            case CompressedFormats::Greyscale_NormalizedUInt:
+            case CompressedFormats::Greyscale_NormalizedInt:
+            case CompressedFormats::RG_NormalizedUInt:
+            case CompressedFormats::RG_NormalizedInt:
+            case CompressedFormats::RGB_Float:
+            case CompressedFormats::RGB_UFloat:
+            case CompressedFormats::RGBA_NormalizedUInt:
+            case CompressedFormats::RGBA_sRGB_NormalizedUInt:
+                return false;
+
+            SWITCH_DEFAULT(CompressedFormats, AsCompressed());
+                return false;
+        }
+    else if (IsDepthAndStencil())
+        switch (AsDepthStencil())
+        {
+            case DepthStencilFormats::Depth_16U:
+            case DepthStencilFormats::Depth_24U:
+            case DepthStencilFormats::Depth_32U:
+            case DepthStencilFormats::Depth_32F:
+                return false;
+                
+            case DepthStencilFormats::Stencil_8:
+                return true;
+
+            case DepthStencilFormats::Depth24U_Stencil8:
+            case DepthStencilFormats::Depth32F_Stencil8:
+                //This is a weird case, but the function header
+                //    specifically promises to return "false" here.
+                return false;
+
+            SWITCH_DEFAULT(DepthStencilFormats, AsDepthStencil());
+                return false;
+        }
+    else
+    {
+        std::string errMsg = "Unknown format type, index ";
+        errMsg += std::to_string(data.index());
+        BPAssert(false, errMsg.c_str());
+        return false;
     }
 }
 
@@ -414,6 +516,93 @@ uint_fast8_t Format::GetPixelBitSize() const
            GetChannelBitSize(AllChannels::Depth) +
            GetChannelBitSize(AllChannels::Stencil);
 }
+uint_fast32_t Format::GetByteSize(const glm::uvec3& textureSize) const
+{
+    size_t nPixels = glm::compMul(textureSize);
+
+    if (IsSimple())
+    {
+        auto simple = AsSimple();
+        return nPixels *
+               simple.ChannelBitSize._to_integral() *
+               simple.Components._to_integral();
+    }
+    else if (IsSpecial())
+    {
+        switch (AsSpecial())
+        {
+            case SpecialFormats::R3_G3_B2: return nPixels;
+
+            case SpecialFormats::R5_G6_B5: return nPixels * 2;
+            case SpecialFormats::RGB5_A1: return nPixels * 2;
+
+            case SpecialFormats::RGB10_A2: return nPixels * 4;
+            case SpecialFormats::RGB10_A2_UInt: return nPixels * 4;
+            case SpecialFormats::RGB_SharedExpFloats: return nPixels * 4;
+            case SpecialFormats::RGB_TinyFloats: return nPixels * 4;
+
+            case SpecialFormats::sRGB: return nPixels * 3;
+            case SpecialFormats::sRGB_LinearAlpha: return nPixels * 4;
+
+            SWITCH_DEFAULT(SpecialFormats, AsSpecial())
+                return 0;
+        }
+    }
+    else if (IsCompressed())
+    {
+        //The texture is stored in blocks, so pad the size out to fit whole blocks.
+        auto blockSize = GetBlockSize(AsCompressed());
+        size_t nBlocks = glm::compMul(GetBlockCount(AsCompressed(), textureSize));
+
+        switch (AsCompressed())
+        {
+            //Reference: https://www.khronos.org/registry/OpenGL/extensions/ARB/ARB_texture_compression_rgtc.txt
+
+            case CompressedFormats::Greyscale_NormalizedUInt:
+            case CompressedFormats::Greyscale_NormalizedInt:
+                return nBlocks * 8; //64 bits per block
+
+            case CompressedFormats::RG_NormalizedUInt:
+            case CompressedFormats::RG_NormalizedInt:
+                return nBlocks * 16; //128 bits per block
+
+            case CompressedFormats::RGB_Float:
+            case CompressedFormats::RGB_UFloat:
+            case CompressedFormats::RGBA_NormalizedUInt:
+            case CompressedFormats::RGBA_sRGB_NormalizedUInt:
+                return nBlocks * 16; //128 bits per block
+
+            SWITCH_DEFAULT(CompressedFormats, AsCompressed())
+                return 0;
+        }
+    }
+    else if (IsDepthStencil())
+    {
+        switch (AsDepthStencil())
+        {
+            case DepthStencilFormats::Depth_16U: return nPixels * 2;
+            case DepthStencilFormats::Depth_24U: return nPixels * 3;
+            case DepthStencilFormats::Depth_32U: return nPixels * 4;
+            case DepthStencilFormats::Depth_32F: return nPixels * 4;
+
+            case DepthStencilFormats::Stencil_8: return nPixels;
+
+            case DepthStencilFormats::Depth24U_Stencil8: return nPixels * 4;
+            case DepthStencilFormats::Depth32F_Stencil8: return nPixels * 8; //The stencil bits are padded out to 4 bytes
+
+            SWITCH_DEFAULT(DepthStencilFormats, AsDepthStencil())
+                return 0;
+        }
+    }
+    else
+    {
+        std::string errMsg = "Unknown format type, index ";
+        errMsg += std::to_string(data.index());
+        BPAssert(false, errMsg.c_str());
+        return false;
+    }
+}
+
 
 GLenum Format::GetOglEnum() const
 {

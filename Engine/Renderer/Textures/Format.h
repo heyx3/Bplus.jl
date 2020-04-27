@@ -41,8 +41,9 @@ namespace Bplus::GL::Textures
     );
 
     //The sets of bit-depths that components can have in various texture formats.
+    //Note that not all combinations of bit depth and channels/types are legal
+    //    (for example, 2-bit components are only allowed if you use all four RGBA channels).
     BETTER_ENUM(BitDepths, uint8_t,
-        //
         B2 = 2,
         B4 = 4,
         B5 = 5,
@@ -147,7 +148,18 @@ namespace Bplus::GL::Textures
         RGBA_sRGB_NormalizedUInt = GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM
     );
 
-    const BP_API glm::uvec2 GetBlockSize(CompressedFormats format);
+    //Gets the width/height/depth of each block in a block-compressed texture
+    //    of the given format.
+    BP_API uint_fast32_t GetBlockSize(CompressedFormats format);
+
+    //Gets the number of blocks along each axis for a block-compressed texture
+    //    of the given format.
+    template<glm::length_t L, typename I>
+    glm::vec<L, I> GetBlockCount(CompressedFormats format, const glm::vec<L, I>& size)
+    {
+        auto blockSize = GetBlockSize(format);
+        return (size + (blockSize - 1)) / blockSize; //Integer division with rounding up.
+    }
 
     #pragma endregion
     
@@ -220,6 +232,13 @@ namespace Bplus::GL::Textures
         //    (mainly with hybrid depth/stencil formats).
         std::optional<FormatTypes> GetComponentType() const;
 
+        //Gets whether this format is of "integer" type,
+        //    as opposed to float or normalized-integer types.
+        //For depth/stencil hybrid formats,
+        //    which have a non-integer depth component plus an integer stencil component,
+        //    "false" is always returned.
+        bool IsInteger() const;
+
 
         //Gets whether this format stores the given channel.
         bool StoresChannel(AllChannels c) const;
@@ -232,11 +251,15 @@ namespace Bplus::GL::Textures
         //If the format is a "special" one that is hard to quantify,
         //    a rough answer will be returned.
         uint_fast8_t GetChannelBitSize(std::optional<AllChannels> channel = {}) const;
-
         //Gets the number of bits for each pixel in this format.
         //If the format is compressed, it'll return a vague-but-precise value
         //    based on the compression scheme.
         uint_fast8_t GetPixelBitSize() const;
+
+        //Gets the number of bytes in a texture of this format and the given size.
+        uint_fast32_t GetByteSize(const glm::uvec1& textureSize) const { return GetByteSize(glm::uvec3(textureSize, 1, 1)); }
+        uint_fast32_t GetByteSize(const glm::uvec2& textureSize) const { return GetByteSize(glm::uvec3(textureSize, 1)); }
+        uint_fast32_t GetByteSize(const glm::uvec3& textureSize) const;
         
 
         //Gets the OpenGL enum value representing this format.
