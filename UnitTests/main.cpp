@@ -22,5 +22,7 @@ TEST_LIST = {
     { "Bplus::GL::Buffer creation",     BufferCreation   },
     { "Bplus::GL::Buffer get/set data", BufferGetSetData },
 
+    { "Bplus::GL::Texture creation", TextureCreation },
+
     { NULL, NULL }
 };

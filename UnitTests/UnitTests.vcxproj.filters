@@ -20,5 +20,8 @@
     <ClInclude Include="D:\Git Repos\B-plus\UnitTests\Tests\SimpleApps.hpp">
       <Filter>Tests</Filter>
     </ClInclude>
+    <ClInclude Include="Tests\Textures.hpp">
+      <Filter>Tests</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

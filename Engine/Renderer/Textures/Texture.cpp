@@ -32,9 +32,9 @@ Texture2D::Texture2D(const glm::uvec2& _size, Format _format,
     sampler.MinFilter = TextureMinFilters::_from_integral(p);
     glGetTextureParameteriv(glPtr.Get(), GL_TEXTURE_MAG_FILTER, &p);
     sampler.MagFilter = TextureMagFilters::_from_integral(p);
-    glGetTexParameteriv(glPtr.Get(), GL_TEXTURE_WRAP_S, &p);
+    glGetTextureParameteriv(glPtr.Get(), GL_TEXTURE_WRAP_S, &p);
     sampler.Wrapping[0] = TextureWrapping::_from_integral(p);
-    glGetTexParameteriv(glPtr.Get(), GL_TEXTURE_WRAP_T, &p);
+    glGetTextureParameteriv(glPtr.Get(), GL_TEXTURE_WRAP_T, &p);
     sampler.Wrapping[1] = TextureWrapping::_from_integral(p);
 }
 Texture2D::~Texture2D()
