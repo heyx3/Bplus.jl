@@ -359,6 +359,8 @@ namespace Bplus::GL::Textures
             } else {
                 static_assert(false, "T is an unexpected type");
             }
+
+            return type;
         }
 
         template<glm::length_t L>

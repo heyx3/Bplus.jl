@@ -102,19 +102,118 @@ void TextureCreation()
         });
 }
 
+//Runs a test for getting/setting texture data with some kind of precise format.
+template<typename T>
+void TestTextureGetSetExact(Format texFormat, ComponentData dataFormat, T testVal)
+{
+    std::string testCaseName = "{";
+    testCaseName += ToString(texFormat);
+    testCaseName += ": ";
+    testCaseName += dataFormat._to_string();
+    testCaseName += "}";
+    TEST_CASE(testCaseName.c_str());
+
+    Texture2D tex(glm::uvec2{ 1, 1 }, texFormat);
+    tex.SetData(&testVal, dataFormat);
+    
+    T outputTestVal;
+    tex.GetData(&outputTestVal, dataFormat);
+
+    std::string errMsg = "Expected ";
+    errMsg += std::to_string(testVal);
+    errMsg += " but got ";
+    errMsg += std::to_string(outputTestVal);
+    TEST_CHECK_(outputTestVal == testVal, errMsg.c_str());
+}
+template<typename T>
+void TestTextureGetSetExactMulti(Format texFormat, ComponentData dataFormat,
+                                 const T* testData, size_t testDataCount)
+{
+    std::string testCaseName = "{";
+    testCaseName += ToString(texFormat);
+    testCaseName += ": ";
+    testCaseName += dataFormat._to_string();
+    testCaseName += "}";
+    TEST_CASE(testCaseName.c_str());
+
+    Texture2D tex(glm::uvec2{ 1, 1 }, texFormat);
+    tex.SetData(testData, dataFormat);
+    
+    std::vector<T> outputTestVal;
+    outputTestVal.resize(testDataCount);
+    tex.GetData(outputTestVal.data(), dataFormat);
+
+    for (size_t i = 0; i < outputTestVal.size(); ++i)
+        TEST_CHECK(outputTestVal[i] == testData[i]);
+}
 void TextureSimpleGetSetData()
 {
-    std::unique_ptr<Texture2D> tex;
     Simple::Run(
         //Update:
         [&](float deltaT)
         {
-            tex = std::make_unique<Texture2D>(glm::uvec2{ 1, 1 },
-                                              SimpleFormat{FormatTypes::NormalizedUInt,
-                                                           FormatComponents::RGBA,
-                                                           BitDepths::B8});
+            //Test get/set of exact single-channel values:
+            TestTextureGetSetExact(
+                Format{ SimpleFormat{FormatTypes::NormalizedUInt,
+                                     FormatComponents::R,
+                                     BitDepths::B8} },
+                +ComponentData::Red,
+                (glm::u8)203);
+            TestTextureGetSetExact(
+                Format{ SimpleFormat{FormatTypes::NormalizedUInt,
+                                     FormatComponents::RG,
+                                     BitDepths::B8} },
+                +ComponentData::Red,
+                (glm::u8)203);
+            TestTextureGetSetExact(
+                Format{ SimpleFormat{FormatTypes::NormalizedUInt,
+                                     FormatComponents::RG,
+                                     BitDepths::B8} },
+                +ComponentData::Green,
+                (glm::u8)203);
+            TestTextureGetSetExact(
+                Format{ SimpleFormat{FormatTypes::NormalizedUInt,
+                                     FormatComponents::RGBA,
+                                     BitDepths::B8} },
+                +ComponentData::Blue,
+                (glm::u8)203);
+            TestTextureGetSetExact(
+                Format{ SimpleFormat{FormatTypes::NormalizedUInt,
+                                    FormatComponents::RGB,
+                                    BitDepths::B5} },
+                +ComponentData::Green,
+                (glm::u8)16);
+            TestTextureGetSetExact(
+                Format{ SimpleFormat{FormatTypes::NormalizedInt,
+                                     FormatComponents::RG,
+                                     BitDepths::B8} },
+                +ComponentData::Red,
+                (glm::i8)67);
+            TestTextureGetSetExact(
+                Format{ SimpleFormat{FormatTypes::NormalizedInt,
+                                     FormatComponents::RG,
+                                     BitDepths::B8} },
+                +ComponentData::Red,
+                (glm::i8)(-67));
+            TestTextureGetSetExact(
+                Format{ SimpleFormat{FormatTypes::Float,
+                                     FormatComponents::RGB,
+                                     BitDepths::B32} },
+                +ComponentData::Red,
+                (glm::f32)123.456f);
+            TestTextureGetSetExact(
+                Format{ SpecialFormats::RGB10_A2 },
+                +ComponentData::Green,
+                (glm::u8)32);
 
-            //TODO: Implement.
+            //Test get/set of exact multi-channel values.
+            glm::u8vec2 v2_u8{ 201, 203 };
+            TestTextureGetSetExactMulti(
+                Format{SimpleFormat{FormatTypes::UInt,
+                                    FormatComponents::RGB,
+                                    BitDepths::B16}},
+                +ComponentData::RG,
+                glm::value_ptr(v2_u8), 2);
 
             Simple::App->Quit(true);
         },
@@ -125,6 +224,7 @@ void TextureSimpleGetSetData()
         //Quit:
         [&]()
         {
-            tex.reset();
         });
 }
+
+//TODO: TextureSubRectData()

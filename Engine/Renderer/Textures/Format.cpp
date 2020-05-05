@@ -64,6 +64,48 @@ uint_fast32_t Bplus::GL::Textures::GetBlockSize(CompressedFormats format)
     }
 }
 
+std::string Bplus::GL::Textures::ToString(const SimpleFormat& format)
+{
+    std::string str;
+
+    str += format.Components._to_string();
+    str += "_";
+
+    std::string bitStr = format.ChannelBitSize._to_string();
+    bitStr = bitStr.substr(1); //Remove the 'B' from in front.
+    str += bitStr;
+
+    switch (format.Type)
+    {
+        case FormatTypes::Float:          str += "F"; break;
+        case FormatTypes::NormalizedUInt: str += "Un"; break;
+        case FormatTypes::NormalizedInt:  str += "In"; break;
+        case FormatTypes::UInt: str += "UInteger"; break;
+        case FormatTypes::Int: str += "SInteger"; break;
+
+        SWITCH_DEFAULT(FormatTypes, format.Type);
+            break;
+    }
+
+    return str;
+}
+std::string Bplus::GL::Textures::ToString(const Format& format)
+{
+    if (format.IsSimple())
+        return ToString(format.AsSimple());
+    else if (format.IsSpecial())
+        return format.AsSpecial()._to_string();
+    else if (format.IsCompressed())
+        return format.AsCompressed()._to_string();
+    else if (format.IsDepthStencil())
+        return format.AsDepthStencil()._to_string();
+    else
+    {
+        BPAssert(false, "Unexpected format type");
+        return "";
+    }
+}
+
 
 bool Format::IsDepthAndStencil() const
 {

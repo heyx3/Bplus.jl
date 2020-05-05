@@ -65,6 +65,9 @@ namespace Bplus::GL::Textures
         BitDepths ChannelBitSize;
     };
 
+    //Converts the given simple texture format to a human-readable string.
+    std::string BP_API ToString(const SimpleFormat& format);
+
     #pragma endregion
 
     #pragma region SpecialFormats
@@ -274,4 +277,7 @@ namespace Bplus::GL::Textures
                                        CompressedFormats, DepthStencilFormats>;
         TypeUnion data;
     };
+
+    //Converts the given texture format to a human-readable string.
+    std::string BP_API ToString(const Format& format);
 }

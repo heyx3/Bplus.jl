@@ -378,8 +378,6 @@ OGLImpl::ImGuiOpenGLInterface_Default(std::string& outErrorMsg,
         }
         else
         {
-            fprintf(stderr, "ImGUI %s compiled successfully. %s\n",
-                    description, infoLog.c_str());
             return true;
         }
     };
@@ -441,11 +439,6 @@ void main()     \n\
         outErrorMsg = "Unable to link vertex and fragment shader:\n\t";
         outErrorMsg += infoLog;
         return;
-    }
-    else
-    {
-        fprintf(stderr, "ImGUI shaders linked successfully. %s\n",
-                infoLog.c_str());
     }
 
     //Get attribute/uniform locations.
