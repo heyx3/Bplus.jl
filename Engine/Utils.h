@@ -42,6 +42,7 @@ constexpr bool IsPlatformLittleEndian()
 
 //Custom assert macro that can be configured by users of this engine.
 //Doesn't do anything in release builds.
+//TODO: Switch from plain C-style string to a std::string.
 #pragma region BPAssert
 #ifdef NDEBUG
     #define BPAssert(expr, msg) ((void)0)

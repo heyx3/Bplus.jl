@@ -15,7 +15,7 @@ namespace Bplus::Math
     struct Box
     {
         using vec_t = glm::vec<N, T>;
-        static T Epsilon()
+        static constexpr T Epsilon()
         {
             //std::numeric_limits<T>::epsilon() returns 0 for integers, not 1,
             //    so we need to check the type of T in order to find its epsilon.
@@ -121,6 +121,29 @@ namespace Bplus::Math
         {
             return glm::clamp(point, MinCorner, GetMaxCornerInclusive());
         }
+
+        //Casts this box to a box of the given number of dimensions,
+        //    assuming that any new dimensions are positioned at 0
+        //    and have the smallest non-zero size.
+        template<glm::length_t N2>
+        Box<N2, T> ChangeDimensions() const
+        {
+            const auto& me = *this;
+            Box<N2, T> newBox;
+
+            for (glm::length_t d = 0; d < N; ++d)
+            {
+                newBox.MinCorner[d] = me.MinCorner[d];
+                newBox.Size[d] = me.Size[d];
+            }
+            for (glm::length_t d = N; d < N2; ++d)
+            {
+                newBox.MinCorner[d] = 0;
+                newBox.Size[d] = Box<N2, T>::Epsilon();
+            }
+
+            return newBox;
+        }
     };
 
 
@@ -144,4 +167,14 @@ namespace Bplus::Math
     using Box2Di = Box2D<glm::i32>;
     using Box3Di = Box3D<glm::i32>;
     using Box4Di = Box4D<glm::i32>;
+
+    
+    //A type alias "Interval", for 1D boxes.
+
+    template<typename T>
+    using Interval = Box<1, T>;
+
+    using IntervalF = Interval<float>;
+    using IntervalU = Interval<glm::u32>;
+    using IntervalI = Interval<glm::i32>;
 }

@@ -88,6 +88,9 @@
     <ClInclude Include="Renderer\Textures\Sampler.h">
       <Filter>Renderer\Textures</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\Textures\TextureD.h">
+      <Filter>Renderer\Textures</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />

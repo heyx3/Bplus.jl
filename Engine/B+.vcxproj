@@ -412,6 +412,7 @@ exit 0</Command>
     <ClInclude Include="Renderer\Textures\Format.h" />
     <ClInclude Include="Renderer\Textures\Sampler.h" />
     <ClInclude Include="Renderer\Textures\Texture.h" />
+    <ClInclude Include="Renderer\Textures\TextureD.h" />
     <ClInclude Include="RenderLibs.h" />
     <ClInclude Include="IO.h" />
     <ClInclude Include="TomlIO.h" />

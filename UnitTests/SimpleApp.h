@@ -32,7 +32,7 @@ public:
     SimpleConfigFile(const fs::path& filePath, bool disableWrite)
         : Bplus::ConfigFile(filePath, Simple::OnError, disableWrite)
     {
-
+        WindowSize = { 1000, 1000 };
     }
 
     virtual void ResetToDefaults() override
@@ -107,7 +107,7 @@ protected:
 
 namespace Simple
 {
-    //Runs a SimpleApp with the given logic.
+    //Runs a SimpleApp with the given logic for unit testing.
     void Run(std::function<void(float)> onUpdate,
              std::function<void(float)> onRender,
              std::function<void()> onQuit)
