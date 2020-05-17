@@ -5,7 +5,8 @@
 #define TEST_NO_MAIN
 #include <acutest.h>
 
-#include <B+/Renderer/Textures/TextureD.h>
+#include <B+/Renderer/Textures/TextureD.hpp>
+#include <B+/Renderer/Textures/TextureCube.h>
 #include "../SimpleApp.h"
 
 using namespace Bplus::GL::Textures;
@@ -208,3 +209,4 @@ void TextureSimpleGetSetData()
 }
 
 //TODO: TextureSubRectData()
+//TODO: cubemap tests

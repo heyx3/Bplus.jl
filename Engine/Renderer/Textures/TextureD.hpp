@@ -2,7 +2,6 @@
 
 #include "Texture.h"
 
-
 namespace Bplus::GL::Textures
 {
     //A simple 1D, 2D, or 3D texture.
@@ -10,6 +9,18 @@ namespace Bplus::GL::Textures
     class TextureD : public Texture
     {
     public:
+        static constexpr Types GetClassType()
+        {
+            if constexpr (D == 1) {
+                return Types::OneD;
+            } else if constexpr (D == 2) {
+                return Types::TwoD;
+            } else if constexpr (D == 3) {
+                return Types::ThreeD;
+            } else {
+                static_assert(false, "TextureD<> should only be 1-, 2-, or 3-dimensional");
+            }
+        }
 
         using uVec_t = glm::vec<D, glm::u32>;
         using iVec_t = glm::vec<D, glm::i32>;
@@ -79,7 +90,6 @@ namespace Bplus::GL::Textures
 
         uVec_t GetSize(uint_mipLevel_t mipLevel = 0) const
         {
-            //TODO: Verify this.
             auto _size = size;
             for (uint_mipLevel_t i = 0; i < mipLevel; ++i)
                 _size = glm::max(_size / uVec_t{ 2 },
@@ -100,10 +110,6 @@ namespace Bplus::GL::Textures
                 sum += GetByteSize(mip);
             return sum;
         }
-
-        Types GetType() const { return type; }
-        uint_mipLevel_t GetMipCount() const { return nMipLevels; }
-
 
         Sampler<D> GetSampler() const { return sampler; }
         void SetSampler(const Sampler<D>& s)
@@ -134,7 +140,7 @@ namespace Bplus::GL::Textures
             //A size-0 box represents the full texture.
             uBox_t DestRange = uBox_t::MakeCenterSize(uVec_t{ 0 }, uVec_t{ 0 });
             //The mip level. 0 is the original texture, higher values are smaller mips.
-            uint_fast32_t MipLevel = 0;
+            uint_mipLevel_t MipLevel = 0;
 
             //If true, all mip-levels will be automatically recomputed after this operation.
             bool RecomputeMips;
@@ -144,11 +150,11 @@ namespace Bplus::GL::Textures
             SetDataParams(const uBox_t& destRange,
                           bool recomputeMips = true)
                 : DestRange(destRange), RecomputeMips(recomputeMips) { }
-            SetDataParams(uint_fast32_t mipLevel,
+            SetDataParams(uint_mipLevel_t mipLevel,
                           bool recomputeMips = false)
                 : MipLevel(mipLevel), RecomputeMips(recomputeMips) { }
             SetDataParams(const uBox_t& destRange,
-                          uint_fast32_t mipLevel,
+                          uint_mipLevel_t mipLevel,
                           bool recomputeMips = false)
                 : DestRange(destRange), MipLevel(mipLevel), RecomputeMips(recomputeMips) { }
 
@@ -163,7 +169,7 @@ namespace Bplus::GL::Textures
 
 
         //Updates mipmaps for this texture.
-        //Not allowed if the texture is compressed.
+        //Not allowed for compressed-format textures.
         void RecomputeMips()
         {
             BPAssert(!format.IsCompressed(),
@@ -287,15 +293,15 @@ namespace Bplus::GL::Textures
             //A size-0 box represents the full texture.
             uBox_t Range = uBox_t::MakeCenterSize(uVec_t{ 0 }, uVec_t{ 0 });
             //The mip level. 0 is the original texture, higher values are smaller mips.
-            uint_fast32_t MipLevel = 0;
+            uint_mipLevel_t MipLevel = 0;
 
             GetDataParams() { }
             GetDataParams(const uBox_t& range)
                 : Range(range) { }
-            GetDataParams(uint_fast32_t mipLevel)
+            GetDataParams(uint_mipLevel_t mipLevel)
                 : MipLevel(mipLevel) { }
             GetDataParams(const uBox_t& range,
-                          uint_fast32_t mipLevel)
+                          uint_mipLevel_t mipLevel)
                 : Range(range), MipLevel(mipLevel) { }
         };
 
@@ -326,7 +332,7 @@ namespace Bplus::GL::Textures
         //This is a fast, direct copy of the byte data stored in the texture.
         //Note that, because Block-Compression works in square groups of pixels,
         //    the "range" rectangle is in units of blocks, not individual pixels.
-        void GetData_Compressed(void* compressedData,
+        void GetData_Compressed(std::byte* compressedData,
                                 uBox_t blockRange = { },
                                 uint_mipLevel_t mipLevel = 0) const
         {
@@ -355,8 +361,6 @@ namespace Bplus::GL::Textures
 
 
     protected:
-
-        //TODO: multisample?
 
         Sampler<D> sampler;
         uVec_t size;
@@ -407,19 +411,6 @@ namespace Bplus::GL::Textures
                                  dataFormat, dataType,
                                  (GLsizei)GetByteSize(params.MipLevel),
                                  data);
-        }
-
-        static Types GetClassType()
-        {
-            if constexpr (D == 1) {
-                return Types::OneD;
-            } else if constexpr (D == 2) {
-                return Types::TwoD;
-            } else if constexpr (D == 3) {
-                return Types::ThreeD;
-            } else {
-                static_assert(false, "TextureD<> should only be 1-, 2-, or 3-dimensional");
-            }
         }
     };
 

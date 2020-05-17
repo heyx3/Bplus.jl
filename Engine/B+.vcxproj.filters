@@ -88,7 +88,10 @@
     <ClInclude Include="Renderer\Textures\Sampler.h">
       <Filter>Renderer\Textures</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\Textures\TextureD.h">
+    <ClInclude Include="Renderer\Textures\TextureCube.h">
+      <Filter>Renderer\Textures</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Textures\TextureD.hpp">
       <Filter>Renderer\Textures</Filter>
     </ClInclude>
   </ItemGroup>
@@ -143,6 +146,9 @@
       <Filter>Renderer\Textures</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\Textures\Format.cpp">
+      <Filter>Renderer\Textures</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Textures\TextureCube.cpp">
       <Filter>Renderer\Textures</Filter>
     </ClCompile>
   </ItemGroup>
