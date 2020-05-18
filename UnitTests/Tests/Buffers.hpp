@@ -48,8 +48,8 @@ void _BufferGetSetData(Bplus::GL::Buffer& buffer,
     //Feed the data into a buffer.
     TEST_CASE_("Setting buffer to a group of %s", elTypeName);
     buffer.SetData(data.data(), data.size(),
-                   Bplus::GL::BufferHints_Frequency::Stream,
-                   Bplus::GL::BufferHints_Purpose::Read);
+                   Bplus::GL::BufferHints_Frequency::SetOnce_ReadRarely,
+                   Bplus::GL::BufferHints_Purpose::SetGPU_ReadCPU);
 
     //Read the data back from the buffer into a new array.
     TEST_CASE_("Reading buffer data as a group of %s", elTypeName);

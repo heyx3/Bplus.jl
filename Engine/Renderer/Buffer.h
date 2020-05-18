@@ -8,23 +8,23 @@ namespace Bplus::GL
     //The different patterns of use that a buffer can experience.
     //These values provide hints to the graphics driver on how to allocate the buffer's memory.
     BETTER_ENUM(BufferHints_Frequency, uint8_t,
+        //The most common use-case (e.x. most mesh data): set once and read many times.
+        SetOnce_ReadOften,
         //The buffer is set once and read a handful of times.
-        Stream = 0,
-        //The buffer is set once and read many times (e.x. mesh data being read from a file).
-        Static = 1,
+        SetOnce_ReadRarely,
         //The buffer is modified many times (i.e. per-frame).
-        Dynamic = 2
+        UseOften
     );
 
     //The different reasons you might use a buffer.
     //These values provide hints to the grahics driver on how to allocate the buffer's memory.
     BETTER_ENUM(BufferHints_Purpose, uint8_t,
-        //The buffer is set on the CPU-side, and read on the GPU-side during rendering.
-        Draw = 0,
-        //The buffer is set on the GPU-side, and read on the CPU-side.
-        Read = 1,
-        //THe data is both set and read entirely on the GPU.
-        Copy = 2
+        //The most common use-case (e.x. most mesh data): set by the CPU, and read by the GPU.
+        SetCPU_ReadGPU,
+        //The buffer is set by the GPU, and read by the CPU.
+        SetGPU_ReadCPU,
+        //The data is both set and read entirely on the GPU.
+        OnlyGPU
     );
 
 

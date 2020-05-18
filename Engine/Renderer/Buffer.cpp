@@ -46,8 +46,8 @@ const Buffer* Buffer::GetCurrentBuffer(BufferModes slot)
 }
 
 Buffer::Buffer()
-    : hintFrequency(Bplus::GL::BufferHints_Frequency::Static),
-      hintPurpose(Bplus::GL::BufferHints_Purpose::Draw),
+    : hintFrequency(Bplus::GL::BufferHints_Frequency::SetOnce_ReadOften),
+      hintPurpose(Bplus::GL::BufferHints_Purpose::SetCPU_ReadGPU),
       byteSize(0)
 {
     CheckInit();
@@ -66,8 +66,8 @@ Buffer::~Buffer()
 
 Buffer::Buffer(Buffer&& src)
     : dataPtr(src.dataPtr),
-      hintFrequency(Bplus::GL::BufferHints_Frequency::Static),
-      hintPurpose(Bplus::GL::BufferHints_Purpose::Draw),
+      hintFrequency(src.hintFrequency),
+      hintPurpose(src.hintPurpose),
       byteSize(src.byteSize)
 {
     src.dataPtr = OglPtr::Buffer(OglPtr::Buffer::Null);
@@ -112,20 +112,20 @@ GLenum Buffer::GetUsageHint() const
     GLenum glPurposeHints[BufferHints_Purpose::_size_constant];
     switch (hintFrequency)
     {
-        case BufferHints_Frequency::Stream:
-            glPurposeHints[(+BufferHints_Purpose::Draw)._to_index()] = GL_STREAM_DRAW;
-            glPurposeHints[(+BufferHints_Purpose::Read)._to_index()] = GL_STREAM_READ;
-            glPurposeHints[(+BufferHints_Purpose::Copy)._to_index()] = GL_STREAM_COPY;
+        case BufferHints_Frequency::SetOnce_ReadRarely:
+            glPurposeHints[(+BufferHints_Purpose::SetCPU_ReadGPU)._to_index()] = GL_STREAM_DRAW;
+            glPurposeHints[(+BufferHints_Purpose::SetGPU_ReadCPU)._to_index()] = GL_STREAM_READ;
+            glPurposeHints[(+BufferHints_Purpose::OnlyGPU)._to_index()] = GL_STREAM_COPY;
             break;
-        case BufferHints_Frequency::Static:
-            glPurposeHints[(+BufferHints_Purpose::Draw)._to_index()] = GL_STATIC_DRAW;
-            glPurposeHints[(+BufferHints_Purpose::Read)._to_index()] = GL_STATIC_READ;
-            glPurposeHints[(+BufferHints_Purpose::Copy)._to_index()] = GL_STATIC_COPY;
+        case BufferHints_Frequency::SetOnce_ReadOften:
+            glPurposeHints[(+BufferHints_Purpose::SetCPU_ReadGPU)._to_index()] = GL_STATIC_DRAW;
+            glPurposeHints[(+BufferHints_Purpose::SetGPU_ReadCPU)._to_index()] = GL_STATIC_READ;
+            glPurposeHints[(+BufferHints_Purpose::OnlyGPU)._to_index()] = GL_STATIC_COPY;
             break;
-        case BufferHints_Frequency::Dynamic:
-            glPurposeHints[(+BufferHints_Purpose::Draw)._to_index()] = GL_DYNAMIC_DRAW;
-            glPurposeHints[(+BufferHints_Purpose::Read)._to_index()] = GL_DYNAMIC_READ;
-            glPurposeHints[(+BufferHints_Purpose::Copy)._to_index()] = GL_DYNAMIC_COPY;
+        case BufferHints_Frequency::UseOften:
+            glPurposeHints[(+BufferHints_Purpose::SetCPU_ReadGPU)._to_index()] = GL_DYNAMIC_DRAW;
+            glPurposeHints[(+BufferHints_Purpose::SetGPU_ReadCPU)._to_index()] = GL_DYNAMIC_READ;
+            glPurposeHints[(+BufferHints_Purpose::OnlyGPU)._to_index()] = GL_DYNAMIC_COPY;
             break;
 
         default:
