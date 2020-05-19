@@ -6,6 +6,9 @@ using namespace Bplus;
 using namespace Bplus::GL;
 using namespace Bplus::GL::Textures;
 
+//TODO: A static lookup like the other OpenGL objects.
+//TODO: At debug-time, provide safe deallocation checks for use in e.x. Targets.
+
 
 Texture::Texture(Types _type, Format _format, uint_mipLevel_t nMips)
     : type(_type), format(_format), nMipLevels(nMips)

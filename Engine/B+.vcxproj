@@ -412,6 +412,7 @@ exit 0</Command>
     <ClInclude Include="Renderer\Materials\CompiledShader.h" />
     <ClInclude Include="Renderer\Textures\Format.h" />
     <ClInclude Include="Renderer\Textures\Sampler.h" />
+    <ClInclude Include="Renderer\Textures\Target.h" />
     <ClInclude Include="Renderer\Textures\Texture.h" />
     <ClInclude Include="Renderer\Textures\TextureCube.h" />
     <ClInclude Include="Renderer\Textures\TextureD.hpp" />

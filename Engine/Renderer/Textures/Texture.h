@@ -45,6 +45,8 @@ namespace Bplus::GL::Textures
     }
 
     //TODO: Texture2DMSAA class.
+    //TODO: Copying from one texture to another (and from framebuffer into texture? it's redundant though).
+    //TODO: Memory Barriers. https://www.khronos.org/opengl/wiki/Memory_Model#Texture_barrier
 
     //An extremely basic wrapper around OpenGL textures.
     //More full-featured wrappers are defined below and inherit from this one.

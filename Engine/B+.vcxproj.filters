@@ -94,6 +94,9 @@
     <ClInclude Include="Renderer\Textures\TextureD.hpp">
       <Filter>Renderer\Textures</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\Textures\Target.h">
+      <Filter>Renderer\Textures</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
