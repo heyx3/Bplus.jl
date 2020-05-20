@@ -378,6 +378,7 @@ exit 0</Command>
     <ClCompile Include="Renderer\Materials\Material_Basic.cpp" />
     <ClCompile Include="Renderer\Materials\CompiledShader.cpp" />
     <ClCompile Include="Renderer\Textures\Format.cpp" />
+    <ClCompile Include="Renderer\Textures\Target.cpp" />
     <ClCompile Include="Renderer\Textures\Texture.cpp" />
     <ClCompile Include="Renderer\Textures\TextureCube.cpp" />
     <ClCompile Include="TomlIO.cpp" />

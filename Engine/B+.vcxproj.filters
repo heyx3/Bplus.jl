@@ -154,6 +154,9 @@
     <ClCompile Include="Renderer\Textures\TextureCube.cpp">
       <Filter>Renderer\Textures</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer\Textures\Target.cpp">
+      <Filter>Renderer\Textures</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Native File Dialog">
