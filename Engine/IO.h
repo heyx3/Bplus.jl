@@ -24,8 +24,6 @@ namespace Bplus
     namespace IO
     {
         //The exception for something that goes bad during IO work, such as parsing.
-        //Makes it easy to "nest" these exceptions, so each level can attach information
-        //    about where that part of the parser went wrong.
         class BP_API Exception
         {
         public:
@@ -46,6 +44,14 @@ namespace Bplus
 
         void BP_API ToLowercase(std::string& str);
         std::string BP_API ToLowercase(const char* str);
+
+        template<typename Int_t>
+        std::string ToHex(Int_t i)
+        {
+            std::stringstream ss;
+            ss << "0x" << std::hex << i;
+            return ss.str();
+        }
 
         void BP_API Remove(std::string& str, char c);
         void BP_API RemoveAll(std::string& str, const char* charsToRemove, size_t nChars);

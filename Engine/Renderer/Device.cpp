@@ -49,9 +49,9 @@ Device::Device(Context& context)
     LOAD_UINT(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS,
               "Max Textures in Shader",
               maxTexturesInShader);
-    LOAD_UINT(GL_MAX_DRAW_BUFFERS,
-              "Max Output Render Targets",
-              maxOutputRenderTargets);
+    LOAD_UINT(GL_MAX_COLOR_ATTACHMENTS,
+              "Max Color Attachments per Target",
+              maxColorTargets);
     LOAD_UINT(GL_MAX_ELEMENTS_VERTICES,
               "Soft Max Vertices in Buffer",
               softMaxVertices);

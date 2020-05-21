@@ -18,13 +18,10 @@ namespace Bplus::GL
         static Device* GetContextDevice();
 
 
-        //Gets the maximum number of different textures that can be given to a shader,
-        //    including both actual Textures and Images.
-        uint16_t GetMaxTexturesInShader() const { return maxTexturesInShader; }
-
-        //Gets the maximum number of render targets that can be output to at once.
+        //Gets the maximum number of color textures that a Target can output to at once.
         //Guaranteed by OpenGL to be at least 8.
-        uint16_t GetMaxOutputRenderTargets() const { return maxOutputRenderTargets; }
+        uint32_t GetMaxColorTargets() const { return maxColorTargets; }
+
 
         //Gets the driver-recommended maximum number of vertices for a single buffer.
         //Having more than this in a single buffer can result in a significant performance hit.
@@ -32,6 +29,11 @@ namespace Bplus::GL
         //Gets the driver-recommended maximum number of indices for a single buffer.
         //Having more than this in a single buffer can result in a significant performance hit.
         uint32_t GetSoftMaxMeshIndices() const { return softMaxIndices; }
+
+
+        //Gets the maximum number of different textures that can be given to a shader,
+        //    including both actual Textures and Images.
+        uint32_t GetMaxTexturesInShader() const { return maxTexturesInShader; }
 
         //The maximum number of individual float/int/bool uniform values
         //    that can exist in a vertex shader.
@@ -47,8 +49,8 @@ namespace Bplus::GL
 
         Device(Context& context);
 
-        uint16_t maxTexturesInShader, maxOutputRenderTargets;
         uint32_t softMaxVertices, softMaxIndices,
+                 maxTexturesInShader, maxColorTargets,
                  maxUniformPrimitivesPerVertexShader, maxUniformPrimitivesPerFragmentShader;
     };
 }
