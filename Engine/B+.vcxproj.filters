@@ -97,6 +97,9 @@
     <ClInclude Include="Renderer\Textures\Target.h">
       <Filter>Renderer\Textures</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\Textures\TargetBuffer.h">
+      <Filter>Renderer\Textures</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
@@ -155,6 +158,9 @@
       <Filter>Renderer\Textures</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\Textures\Target.cpp">
+      <Filter>Renderer\Textures</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Textures\TargetBuffer.cpp">
       <Filter>Renderer\Textures</Filter>
     </ClCompile>
   </ItemGroup>

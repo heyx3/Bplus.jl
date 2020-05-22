@@ -106,72 +106,85 @@ std::string Bplus::GL::Textures::ToString(const Format& format)
     }
 }
 
+bool Bplus::GL::Textures::IsDepthOnly(DepthStencilFormats format)
+{
+    switch (format)
+    {
+        case DepthStencilFormats::Depth_16U:
+        case DepthStencilFormats::Depth_24U:
+        case DepthStencilFormats::Depth_32U:
+        case DepthStencilFormats::Depth_32F:
+            return true;
+
+        case DepthStencilFormats::Depth24U_Stencil8:
+        case DepthStencilFormats::Depth32F_Stencil8:
+        case DepthStencilFormats::Stencil_8:
+            return false;
+            
+        SWITCH_DEFAULT(DepthStencilFormats, format)
+            return false;
+    }
+}
+bool Bplus::GL::Textures::IsStencilOnly(DepthStencilFormats format)
+{
+    switch (format)
+    {
+        case DepthStencilFormats::Stencil_8:
+            return true;
+
+        case DepthStencilFormats::Depth_16U:
+        case DepthStencilFormats::Depth_24U:
+        case DepthStencilFormats::Depth_32U:
+        case DepthStencilFormats::Depth_32F:
+        case DepthStencilFormats::Depth24U_Stencil8:
+        case DepthStencilFormats::Depth32F_Stencil8:
+            return false;
+            
+        SWITCH_DEFAULT(DepthStencilFormats, format)
+            return false;
+    }
+}
+bool Bplus::GL::Textures::IsDepthAndStencil(DepthStencilFormats format)
+{
+    switch (format)
+    {
+        case DepthStencilFormats::Depth24U_Stencil8:
+        case DepthStencilFormats::Depth32F_Stencil8:
+            return true;
+
+        case DepthStencilFormats::Depth_16U:
+        case DepthStencilFormats::Depth_24U:
+        case DepthStencilFormats::Depth_32U:
+        case DepthStencilFormats::Depth_32F:
+        case DepthStencilFormats::Stencil_8:
+            return false;
+
+        SWITCH_DEFAULT(DepthStencilFormats, format)
+            return false;
+    }
+}
+
 
 bool Format::IsDepthAndStencil() const
 {
     if (!IsDepthStencil())
         return false;
-
-    switch (std::get<DepthStencilFormats>(data))
-    {
-        case DepthStencilFormats::Depth24U_Stencil8:
-        case DepthStencilFormats::Depth32F_Stencil8:
-            return true;
-
-        case DepthStencilFormats::Depth_16U:
-        case DepthStencilFormats::Depth_24U:
-        case DepthStencilFormats::Depth_32U:
-        case DepthStencilFormats::Depth_32F:
-        case DepthStencilFormats::Stencil_8:
-            return false;
-
-        SWITCH_DEFAULT(DepthStencilFormats, std::get<DepthStencilFormats>(data))
-            return false;
-    }
+    else
+        return Bplus::GL::Textures::IsDepthAndStencil(AsDepthStencil());
 }
 bool Format::IsDepthOnly() const
 {
     if (!IsDepthStencil())
         return false;
-
-    switch (std::get<DepthStencilFormats>(data))
-    {
-        case DepthStencilFormats::Depth_16U:
-        case DepthStencilFormats::Depth_24U:
-        case DepthStencilFormats::Depth_32U:
-        case DepthStencilFormats::Depth_32F:
-            return true;
-
-        case DepthStencilFormats::Depth24U_Stencil8:
-        case DepthStencilFormats::Depth32F_Stencil8:
-        case DepthStencilFormats::Stencil_8:
-            return false;
-            
-        SWITCH_DEFAULT(DepthStencilFormats, std::get<DepthStencilFormats>(data))
-            return false;
-    }
+    else
+        return Bplus::GL::Textures::IsDepthOnly(AsDepthStencil());
 }
 bool Format::IsStencilOnly() const
 {
     if (!IsDepthStencil())
         return false;
-
-    switch (std::get<DepthStencilFormats>(data))
-    {
-        case DepthStencilFormats::Stencil_8:
-            return true;
-
-        case DepthStencilFormats::Depth_16U:
-        case DepthStencilFormats::Depth_24U:
-        case DepthStencilFormats::Depth_32U:
-        case DepthStencilFormats::Depth_32F:
-        case DepthStencilFormats::Depth24U_Stencil8:
-        case DepthStencilFormats::Depth32F_Stencil8:
-            return false;
-            
-        SWITCH_DEFAULT(DepthStencilFormats, std::get<DepthStencilFormats>(data))
-            return false;
-    }
+    else
+        return Bplus::GL::Textures::IsStencilOnly(AsDepthStencil());
 }
 
 std::optional<FormatTypes> Format::GetComponentType() const

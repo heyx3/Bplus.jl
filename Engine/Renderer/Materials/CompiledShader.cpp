@@ -229,13 +229,13 @@ CompiledShader::CompiledShader(RenderState renderSettings,
     {
         OglPtr::ShaderUniform loc{ glGetUniformLocation(programHandle.Get(),
                                                         uniformName.c_str()) };
-        if (loc != OglPtr::ShaderUniform::Null)
+        if (!loc.IsNull())
             uniformPtrs[uniformName] = loc;
     }
 }
 CompiledShader::~CompiledShader()
 {
-    if (programHandle != OglPtr::ShaderProgram::Null)
+    if (!programHandle.IsNull())
     {
         glDeleteProgram(programHandle.Get());
         threadData.shadersByHandle.erase(programHandle);
@@ -294,7 +294,7 @@ std::tuple<CompiledShader::UniformStates, OglPtr::ShaderUniform>
     
     //Check whether the name corresponds to a real uniform.
     auto ptr = foundPtr->second;
-    if (ptr == OglPtr::ShaderUniform::Null)
+    if (ptr.IsNull())
         return std::make_tuple(UniformStates::OptimizedOut, ptr);
 
     //Everything checks out!

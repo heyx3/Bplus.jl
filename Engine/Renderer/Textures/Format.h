@@ -191,6 +191,10 @@ namespace Bplus::GL::Textures
         //    and unsigned 8-bit stencil.
         Depth32F_Stencil8 = GL_DEPTH32F_STENCIL8
     );
+
+    bool BP_API IsDepthOnly(DepthStencilFormats format);
+    bool BP_API IsStencilOnly(DepthStencilFormats format);
+    bool BP_API IsDepthAndStencil(DepthStencilFormats format);
     
     #pragma endregion
 

@@ -22,7 +22,7 @@ Texture::Texture(Types _type, Format _format, uint_mipLevel_t nMips)
 }
 Texture::~Texture()
 {
-    if (glPtr != OglPtr::Texture::Null)
+    if (!glPtr.IsNull())
         glDeleteTextures(1, &glPtr.Get());
 }
 Texture::Texture(Texture&& src)

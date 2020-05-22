@@ -133,7 +133,8 @@ namespace std
 //Adds a "Null" value, given its actual value as an integer.
 //NOTE that this MUST be placed between 'strong_typedef_start' and 'strong_typedef_end'!
 #define strong_typedef_null(intValue) \
-    static const Data_t Null = intValue
+    static const Data_t Null = intValue; \
+    bool IsNull() const { return Get() == Null; }
 
 //Defines a default hash implementation for the type,
 //    assuming the underlying type has a default hash implementation.

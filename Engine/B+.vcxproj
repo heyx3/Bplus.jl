@@ -379,6 +379,7 @@ exit 0</Command>
     <ClCompile Include="Renderer\Materials\CompiledShader.cpp" />
     <ClCompile Include="Renderer\Textures\Format.cpp" />
     <ClCompile Include="Renderer\Textures\Target.cpp" />
+    <ClCompile Include="Renderer\Textures\TargetBuffer.cpp" />
     <ClCompile Include="Renderer\Textures\Texture.cpp" />
     <ClCompile Include="Renderer\Textures\TextureCube.cpp" />
     <ClCompile Include="TomlIO.cpp" />
@@ -414,6 +415,7 @@ exit 0</Command>
     <ClInclude Include="Renderer\Textures\Format.h" />
     <ClInclude Include="Renderer\Textures\Sampler.h" />
     <ClInclude Include="Renderer\Textures\Target.h" />
+    <ClInclude Include="Renderer\Textures\TargetBuffer.h" />
     <ClInclude Include="Renderer\Textures\Texture.h" />
     <ClInclude Include="Renderer\Textures\TextureCube.h" />
     <ClInclude Include="Renderer\Textures\TextureD.hpp" />

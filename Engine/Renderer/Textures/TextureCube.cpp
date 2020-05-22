@@ -29,7 +29,7 @@ TextureCube::TextureCube(const glm::uvec2& _size, Format format,
 }
 TextureCube::~TextureCube()
 {
-    if (glPtr != OglPtr::Texture::Null)
+    if (!glPtr.IsNull())
         glDeleteTextures(1, &glPtr.Get());
 }
 

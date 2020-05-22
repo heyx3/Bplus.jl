@@ -4,6 +4,7 @@
 
 #include "TextureD.hpp"
 #include "TextureCube.h"
+#include "TargetBuffer.h"
 
 
 namespace Bplus::GL::Textures
@@ -197,9 +198,11 @@ namespace Bplus::GL::Textures
         //    which works for rendering, but can't be sampled by another shader.
         //If the special texture has been used before, it will be re-used
         //    regardless of the "format" argument.
-        //If a depth texture is already attached, it will be released
-        //    (and deleted if owned by this Target).
         void AttachDepthPlaceholder(DepthStencilFormats format = DepthStencilFormats::Depth_24U);
+        //Cleans up the depth placeholder if one exists.
+        //The next time it's needed, it will be recreated at a new size/format.
+        //If it's currently being used, it will automatically be removed.
+        void DeleteDepthPlaceholder();
 
         #pragma endregion
 
@@ -218,12 +221,12 @@ namespace Bplus::GL::Textures
         std::vector<TargetOutput> tex_colors;
         std::optional<TargetOutput> tex_depth;
         std::optional<TargetOutput> tex_stencil;
-        bool isDepthStencilBound = false;
 
         //TODO: Other state that comes with FrameBuffers.
 
-        OglPtr::TargetBuffer glPtr_DepthRenderBuffer = OglPtr::TargetBuffer{ OglPtr::TargetBuffer::Null };
-        glm::uvec2 depthRenderBufferSize = { 0 };
+        std::optional<TargetBuffer> depthBuffer;
+        bool isDepthRBBound = false,
+             isStencilRBBound = false;
 
         //Note that "managedTextures" originally contained unique_ptr instances,
         //    but that made it more complicated/less efficient to search through it.

@@ -222,8 +222,8 @@ Target::~Target()
         delete texPtr;
 
     //Next, clean up the depth renderbuffer.
-    if (glPtr_DepthRenderBuffer.Get() != OglPtr::TargetBuffer::Null)
-        glDeleteRenderbuffers(1, &glPtr.Get());
+    if (depthBuffer.has_value())
+        depthBuffer.reset();
 
     //Finally, clean up the FBO itself.
     glDeleteFramebuffers(1, &glPtr.Get());
@@ -237,12 +237,12 @@ Target::Target(Target&& from)
     tex_colors = std::move(from.tex_colors);
     tex_depth = from.tex_depth;
     tex_stencil = from.tex_stencil;
-    isDepthStencilBound = from.isDepthStencilBound;
-    glPtr_DepthRenderBuffer = from.glPtr_DepthRenderBuffer;
+    isDepthRBBound = from.isDepthRBBound;
+    isStencilRBBound = from.isStencilRBBound;
+    depthBuffer = std::move(from.depthBuffer);
     managedTextures = std::move(from.managedTextures);
 
     from.glPtr.Get() = OglPtr::Target::Null;
-    from.glPtr_DepthRenderBuffer.Get() = OglPtr::TargetBuffer::Null;
 }
 
 TargetStates Target::Validate() const
@@ -373,11 +373,82 @@ void Target::OutputSet_Color(const TargetOutput& newOutput, size_t index,
         tex_colors.push_back(newOutput);
     }
     AttachAt(GL_COLOR_ATTACHMENT0 + index, newOutput);
-
-    //Update the size of this Target.
-    size = glm::min(size, newOutput.GetSize());
+    RecomputeSize();
 }
-//TODO: Other OutputSet_...()
+void Target::OutputSet_Depth(const TargetOutput& newOutput, bool takeOwnership)
+{
+    //Take ownership over the texture, if requested.
+    if (takeOwnership)
+        TakeOwnership(newOutput.GetTex());
+
+    BPAssert(newOutput.GetTex()->GetFormat().IsDepthOnly(),
+             "Trying to attach a texture with non-depth format to the depth!");
+
+    //If there's already a texture attached here, replace it.
+    if (tex_depth.has_value())
+    {
+        auto* texBeingRemoved = tex_depth.value().GetTex();
+        tex_depth = newOutput; //Doing this before HandleRemoval() is important.
+        HandleRemoval(texBeingRemoved);
+    }
+
+    tex_depth = newOutput;
+    AttachAt(GL_DEPTH_ATTACHMENT, newOutput);
+    RecomputeSize();
+    isDepthRBBound = false;
+}
+void Target::OutputSet_Stencil(const TargetOutput& newOutput, bool takeOwnership)
+{
+    //Take ownership over the texture, if requested.
+    if (takeOwnership)
+        TakeOwnership(newOutput.GetTex());
+
+    BPAssert(newOutput.GetTex()->GetFormat().IsStencilOnly(),
+             "Trying to attach a texture with non-stencil format to the stencil!");
+
+    //If there's already a texture attached here, replace it.
+    if (tex_stencil.has_value())
+    {
+        auto* texBeingRemoved = tex_stencil.value().GetTex();
+        tex_stencil = newOutput; //Doing this before HandleRemoval() is important.
+        HandleRemoval(texBeingRemoved);
+    }
+
+    tex_stencil = newOutput;
+    AttachAt(GL_STENCIL_ATTACHMENT, newOutput);
+    RecomputeSize();
+    isStencilRBBound = false;
+}
+void Target::OutputSet_DepthStencil(const TargetOutput& newOutput, bool takeOwnership)
+{
+    //Take ownership over the texture, if requested.
+    if (takeOwnership)
+        TakeOwnership(newOutput.GetTex());
+
+    BPAssert(newOutput.GetTex()->GetFormat().IsDepthAndStencil(),
+             "Trying to attach a depth/stencil hybrid output using a texture of the wrong format!");
+
+    //If there's already a texture attached here, replace it.
+    if (tex_depth.has_value())
+    {
+        auto* texBeingRemoved = tex_depth.value().GetTex();
+        tex_depth = newOutput; //Doing this before HandleRemoval() is important.
+        HandleRemoval(texBeingRemoved);
+    }
+    if (tex_stencil.has_value())
+    {
+        auto* texBeingRemoved = tex_stencil.value().GetTex();
+        tex_stencil = newOutput;
+        HandleRemoval(texBeingRemoved);
+    }
+
+    tex_depth = newOutput;
+    tex_stencil = newOutput;
+    AttachAt(GL_DEPTH_STENCIL_ATTACHMENT, newOutput);
+    RecomputeSize();
+    isDepthRBBound = false;
+    isStencilRBBound = false;
+}
 
 void Target::OutputRemove_Color(size_t index)
 {
@@ -393,7 +464,61 @@ void Target::OutputRemove_Color(size_t index)
     HandleRemoval(texToRemove);
     RecomputeSize();
 }
-//TODO: Other OutputRemove_...()
+void Target::OutputRemove_Depth(bool replaceWithRenderbuffer)
+{
+    auto* texToRemove = tex_depth.has_value() ? tex_depth.value().GetTex() : nullptr;
+    tex_depth = std::nullopt;
+
+    RemoveAt(GL_DEPTH_ATTACHMENT);
+    HandleRemoval(texToRemove);
+    RecomputeSize();
+
+    if (replaceWithRenderbuffer)
+        AttachDepthPlaceholder();
+    else
+        isDepthRBBound = true;
+}
+void Target::OutputRemove_Stencil()
+{
+    auto* texToRemove = tex_stencil.has_value() ? tex_stencil.value().GetTex() : nullptr;
+    tex_stencil = std::nullopt;
+
+    RemoveAt(GL_STENCIL_ATTACHMENT);
+    HandleRemoval(texToRemove);
+    RecomputeSize();
+
+    isStencilRBBound = false;
+}
+void Target::OutputRemove_DepthStencil(bool replaceWithRenderBuffer)
+{
+    OutputRemove_Stencil();
+    OutputRemove_Depth(replaceWithRenderBuffer);
+}
+
+void Target::AttachDepthPlaceholder(DepthStencilFormats format)
+{
+    BPAssert(!tex_stencil.has_value(),
+             "Can't use a stencil texture and a depth buffer separately; they must be the same texture");
+
+    //Create a new renderbuffer if we need it.
+    if (!depthBuffer.has_value() || depthBuffer.value().GetSize() != size)
+        depthBuffer = TargetBuffer{ Format{format}, size };
+
+    //Attach the renderbuffer.
+    GLenum attachment;
+    if (IsDepthOnly(format))
+        attachment = GL_DEPTH_ATTACHMENT;
+    else if (IsDepthAndStencil(format))
+        attachment = GL_DEPTH_STENCIL_ATTACHMENT;
+    else
+        BPAssert(false, "Attaching Renderbuffer for FBO, but format isn't supported");
+    glNamedFramebufferRenderbuffer(glPtr.Get(), attachment,
+                                   GL_RENDERBUFFER, depthBuffer.value().GetOglPtr().Get());
+}
+void Target::DeleteDepthPlaceholder()
+{
+    depthBuffer.reset();
+}
 
 void Target::OutputRelease(Texture* tex, bool removeOutputs)
 {

@@ -287,7 +287,7 @@ namespace Bplus::GL
         template<typename Value_t>
         Value_t GetUniform(OglPtr::ShaderUniform ptr)
         {
-            BPAssert(ptr != OglPtr::ShaderUniform::Null, "Given a null ptr!");
+            BPAssert(!ptr.IsNull(), "Given a null ptr!");
 
             //This "if" statement only exists so that all subsequent lines
             //    can start with "} else", to simplify the macros.

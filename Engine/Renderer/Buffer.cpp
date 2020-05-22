@@ -56,7 +56,7 @@ Buffer::Buffer()
 }
 Buffer::~Buffer()
 {
-    if (dataPtr != OglPtr::Buffer::Null)
+    if (!dataPtr.IsNull())
         glDeleteBuffers(1, &dataPtr.Get());
 
     for (size_t i = 0; i < Bplus::GL::BufferModes::_size_constant; ++i)
