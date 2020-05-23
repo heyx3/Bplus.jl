@@ -23,57 +23,44 @@ void TestTextureCreation(const char* testName,
 }
 void TextureCreation()
 {
-    Simple::Run(
-        //Update:
-        [&](float deltaT)
-        {
-            TestTextureCreation("Simple RGBA 8", { 1, 1 },
-                                SimpleFormat{ +FormatTypes::NormalizedUInt,
-                                              +FormatComponents::RGBA,
-                                              +BitDepths::B8 });
-            TestTextureCreation("Simple RG F32", { 2, 2 },
-                                SimpleFormat{ +FormatTypes::Float,
-                                              +FormatComponents::RG,
-                                              +BitDepths::B32 });
-            TestTextureCreation("Simple R I16", { 3, 7 },
-                                SimpleFormat{ +FormatTypes::Int,
-                                              +FormatComponents::R,
-                                              +BitDepths::B16 });
-            TestTextureCreation("Special: RGB10 A2 UInt", { 31, 33 },
-                                +SpecialFormats::RGB10_A2_UInt);
+    Simple::RunTest([&]()
+    {
+        TestTextureCreation("Simple RGBA 8", { 1, 1 },
+                            SimpleFormat{ +FormatTypes::NormalizedUInt,
+                                            +FormatComponents::RGBA,
+                                            +BitDepths::B8 });
+        TestTextureCreation("Simple RG F32", { 2, 2 },
+                            SimpleFormat{ +FormatTypes::Float,
+                                            +FormatComponents::RG,
+                                            +BitDepths::B32 });
+        TestTextureCreation("Simple R I16", { 3, 7 },
+                            SimpleFormat{ +FormatTypes::Int,
+                                            +FormatComponents::R,
+                                            +BitDepths::B16 });
+        TestTextureCreation("Special: RGB10 A2 UInt", { 31, 33 },
+                            +SpecialFormats::RGB10_A2_UInt);
 
-            TestTextureCreation("Special: RGB9 e5", { 41, 39 },
-                                +SpecialFormats::RGB_SharedExpFloats);
-            TestTextureCreation("Special: sRGB_LinA", { 41, 39 },
-                                +SpecialFormats::sRGB_LinearAlpha);
+        TestTextureCreation("Special: RGB9 e5", { 41, 39 },
+                            +SpecialFormats::RGB_SharedExpFloats);
+        TestTextureCreation("Special: sRGB_LinA", { 41, 39 },
+                            +SpecialFormats::sRGB_LinearAlpha);
 
-            TestTextureCreation("Compressed: Greyscale signed", { 31, 32 },
-                                +CompressedFormats::Greyscale_NormalizedInt);
-            TestTextureCreation("Compressed: RG unsigned", { 1, 3 },
-                                +CompressedFormats::RG_NormalizedUInt);
-            TestTextureCreation("Compressed: RGB unsigned float", { 5, 4 },
-                                +CompressedFormats::RGB_UFloat);
-            TestTextureCreation("Compressed: RGBA sRGB", { 32, 129 },
-                                +CompressedFormats::RGBA_sRGB_NormalizedUInt);
+        TestTextureCreation("Compressed: Greyscale signed", { 31, 32 },
+                            +CompressedFormats::Greyscale_NormalizedInt);
+        TestTextureCreation("Compressed: RG unsigned", { 1, 3 },
+                            +CompressedFormats::RG_NormalizedUInt);
+        TestTextureCreation("Compressed: RGB unsigned float", { 5, 4 },
+                            +CompressedFormats::RGB_UFloat);
+        TestTextureCreation("Compressed: RGBA sRGB", { 32, 129 },
+                            +CompressedFormats::RGBA_sRGB_NormalizedUInt);
 
-            TestTextureCreation("Depth: 24U", { 1920, 1080 },
-                                +DepthStencilFormats::Depth_24U);
-            TestTextureCreation("Stencil: 8U", { 1920, 1080 },
-                                +DepthStencilFormats::Stencil_8);
-            TestTextureCreation("Depth/Stencil: 32F, 8U", { 1921, 1079 },
-                                +DepthStencilFormats::Depth32F_Stencil8);
-
-            Simple::App->Quit(true);
-        },
-        //Render:
-        [&](float deltaT)
-        {
-        },
-        //Quit:
-        [&]()
-        {
-
-        });
+        TestTextureCreation("Depth: 24U", { 1920, 1080 },
+                            +DepthStencilFormats::Depth_24U);
+        TestTextureCreation("Stencil: 8U", { 1920, 1080 },
+                            +DepthStencilFormats::Stencil_8);
+        TestTextureCreation("Depth/Stencil: 32F, 8U", { 1921, 1079 },
+                            +DepthStencilFormats::Depth32F_Stencil8);
+    });
 }
 
 //Runs a test for getting/setting texture data with some kind of precise format.
@@ -136,76 +123,64 @@ void TestTextureGetSetExactMulti(Format texFormat, ComponentData dataFormat,
 }
 void TextureSimpleGetSetData()
 {
-    Simple::Run(
-        //Update:
-        [&](float deltaT)
-        {
-            //Test get/set of exact single-channel values:
-            TestTextureGetSetSingle(
-                SimpleFormat{FormatTypes::NormalizedUInt,
-                             FormatComponents::R,
-                             BitDepths::B8},
-                (glm::u8)203);
-            TestTextureGetSetSingle(
-                SimpleFormat{FormatTypes::NormalizedUInt,
-                                     FormatComponents::RG,
-                                     BitDepths::B8},
-                (glm::u8)203);
-            TestTextureGetSetSingle(
-                SimpleFormat{FormatTypes::NormalizedUInt,
-                             FormatComponents::RG,
-                             BitDepths::B8},
-                (glm::u8)203);
-            TestTextureGetSetSingle(
-                SimpleFormat{FormatTypes::NormalizedUInt,
-                             FormatComponents::RGBA,
-                             BitDepths::B8},
-                (glm::u8)203);
-            TestTextureGetSetSingle(
-                SimpleFormat{FormatTypes::NormalizedUInt,
-                             FormatComponents::RGB,
-                             BitDepths::B5},
-                (glm::u8)16);
-            TestTextureGetSetSingle(
-                SimpleFormat{FormatTypes::NormalizedInt,
-                             FormatComponents::RG,
-                             BitDepths::B8},
-                (glm::i8)67);
-            TestTextureGetSetSingle(
-                SimpleFormat{FormatTypes::NormalizedInt,
-                             FormatComponents::RG,
-                             BitDepths::B8},
-                (glm::i8)(-67));
-            TestTextureGetSetSingle(
-                SimpleFormat{FormatTypes::Float,
-                             FormatComponents::RGB,
-                             BitDepths::B32},
-                (glm::f32)123.456f);
+    Simple::RunTest([&]()
+    {
+        //Test get/set of exact single-channel values:
+        TestTextureGetSetSingle(
+            SimpleFormat{FormatTypes::NormalizedUInt,
+                            FormatComponents::R,
+                            BitDepths::B8},
+            (glm::u8)203);
+        TestTextureGetSetSingle(
+            SimpleFormat{FormatTypes::NormalizedUInt,
+                                    FormatComponents::RG,
+                                    BitDepths::B8},
+            (glm::u8)203);
+        TestTextureGetSetSingle(
+            SimpleFormat{FormatTypes::NormalizedUInt,
+                            FormatComponents::RG,
+                            BitDepths::B8},
+            (glm::u8)203);
+        TestTextureGetSetSingle(
+            SimpleFormat{FormatTypes::NormalizedUInt,
+                            FormatComponents::RGBA,
+                            BitDepths::B8},
+            (glm::u8)203);
+        TestTextureGetSetSingle(
+            SimpleFormat{FormatTypes::NormalizedUInt,
+                            FormatComponents::RGB,
+                            BitDepths::B5},
+            (glm::u8)16);
+        TestTextureGetSetSingle(
+            SimpleFormat{FormatTypes::NormalizedInt,
+                            FormatComponents::RG,
+                            BitDepths::B8},
+            (glm::i8)67);
+        TestTextureGetSetSingle(
+            SimpleFormat{FormatTypes::NormalizedInt,
+                            FormatComponents::RG,
+                            BitDepths::B8},
+            (glm::i8)(-67));
+        TestTextureGetSetSingle(
+            SimpleFormat{FormatTypes::Float,
+                            FormatComponents::RGB,
+                            BitDepths::B32},
+            (glm::f32)123.456f);
 
-            /*TestTextureGetSetExact(
-                { SpecialFormats::RGB10_A2 },
-                +ComponentData::Green,
-                (glm::u8)32);*/
+        /*TestTextureGetSetExact(
+            { SpecialFormats::RGB10_A2 },
+            +ComponentData::Green,
+            (glm::u8)32);*/
 
-            //Test get/set of exact multi-channel values.
-            glm::u8vec2 v2_u8{ 201, 203 };
-            TestTextureGetSetExactMulti(
-                Format{SimpleFormat{FormatTypes::UInt,
-                                    FormatComponents::RGB,
-                                    BitDepths::B16}},
-                +ComponentData::RG,
-                glm::value_ptr(v2_u8), 2);
-
-            Simple::App->Quit(true);
-        },
-        //Render:
-        [&](float deltaT)
-        {
-        },
-        //Quit:
-        [&]()
-        {
-        });
+        //Test get/set of exact multi-channel values.
+        glm::u8vec2 v2_u8{ 201, 203 };
+        TestTextureGetSetExactMulti(
+            Format{SimpleFormat{FormatTypes::UInt,
+                                FormatComponents::RGB,
+                                BitDepths::B16}},
+            +ComponentData::RG,
+            glm::value_ptr(v2_u8), 2);
+    });
 }
 
 //TODO: TextureSubRectData()

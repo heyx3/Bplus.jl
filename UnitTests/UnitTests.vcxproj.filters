@@ -23,5 +23,8 @@
     <ClInclude Include="Tests\Textures.hpp">
       <Filter>Tests</Filter>
     </ClInclude>
+    <ClInclude Include="Tests\TexTargets.hpp">
+      <Filter>Tests</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

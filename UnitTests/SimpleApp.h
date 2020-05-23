@@ -133,6 +133,16 @@ namespace Simple
         Bplus::SetAssertFunc(oldAssertFunc);
     }
 
+    //Starts a SimpleApp, runs the given test, then immediately quits.
+    //TODO: Change current tests to use this.
+    void RunTest(std::function<void()> test,
+                 std::optional<std::function<void()>> onQuit = std::nullopt)
+    {
+        Run([&](float deltaT) { test(); App->Quit(true); },
+            [&](float deltaT) { },
+            [&]() { if (onQuit.has_value()) onQuit.value()(); });
+    }
+
 
     std::mt19937 rngEngine{ std::random_device{}() };
     std::uniform_real_distribution<double> rngDistribution{ 0, 1 };
