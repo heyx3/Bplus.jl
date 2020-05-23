@@ -40,6 +40,20 @@ constexpr bool IsPlatformLittleEndian()
 }
 
 
+//Safe type-punning: reinterprets input A's byte-data as an instance of B.
+template<typename A, typename B>
+B Reinterpret(const A& a)
+{
+    static_assert(sizeof(A) == sizeof(B),
+                  "Can't Reinterpret() these two types; they're not the same size");
+
+    B b;
+    std::memcpy(&b, &a, sizeof(B));
+
+    return b;
+}
+
+
 //Custom assert macro that can be configured by users of this engine.
 //Doesn't do anything in release builds.
 //TODO: Switch from plain C-style string to a std::string.

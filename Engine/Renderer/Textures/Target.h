@@ -22,7 +22,7 @@ namespace Bplus::GL::Textures
         TargetOutput(Texture1D* tex, uint_mipLevel_t mipLevel = 0);
         TargetOutput(Texture2D* tex, uint_mipLevel_t mipLevel = 0);
 
-        TargetOutput(std::tuple<Texture3D*, size_t> zSliceOfTex3D, uint_mipLevel_t mipLevel = 0);
+        TargetOutput(std::tuple<Texture3D*, uint32_t> zSliceOfTex3D, uint_mipLevel_t mipLevel = 0);
         TargetOutput(std::tuple<TextureCube*, CubeFaces> faceOfCube, uint_mipLevel_t mipLevel = 0);
 
         TargetOutput(Texture3D* tex, uint_mipLevel_t mipLevel = 0);
@@ -36,25 +36,25 @@ namespace Bplus::GL::Textures
         bool IsLayered() const;
         //Gets the number of layers in this output.
         //Non-layered outputs (e.x. 1D or 2D textures) only have 1.
-        size_t GetLayerCount() const;
+        uint32_t GetLayerCount() const;
         //Returns which "layer" of the texture to use.
         //Returns 0 if there is only 1 layer available (i.e. 1D or 2D texture).
         //Fails if Islayered() is true.
-        size_t GetLayer() const;
+        uint32_t GetLayer() const;
 
 
         bool IsTex1D() const { return std::holds_alternative<Texture1D*>(data); }
         bool IsTex2D() const { return std::holds_alternative<Texture2D*>(data); }
         bool IsTex3D() const { return std::holds_alternative<Texture3D*>(data); }
         bool IsTexCube() const { return std::holds_alternative<TextureCube*>(data); }
-        bool IsTex3DSlice() const { return std::holds_alternative<std::tuple<Texture3D*, size_t>>(data); }
+        bool IsTex3DSlice() const { return std::holds_alternative<std::tuple<Texture3D*, uint32_t>>(data); }
         bool IsTexCubeFace() const { return std::holds_alternative<std::tuple<TextureCube*, CubeFaces>>(data); }
 
         Texture1D* GetTex1D() const { return std::get<Texture1D*>(data); }
         Texture2D* GetTex2D() const { return std::get<Texture2D*>(data); }
         Texture3D* GetTex3D() const { return std::get<Texture3D*>(data); }
         TextureCube* GetTexCube() const { return std::get<TextureCube*>(data); }
-        std::tuple<Texture3D*, size_t> GetTex3DSlice() const { return std::get<std::tuple<Texture3D*, size_t>>(data); }
+        std::tuple<Texture3D*, uint32_t> GetTex3DSlice() const { return std::get<std::tuple<Texture3D*, uint32_t>>(data); }
         std::tuple<TextureCube*, CubeFaces> GetTexCubeFace() const { return std::get<std::tuple<TextureCube*, CubeFaces>>(data); }
 
         bool operator==(const TargetOutput& other) const { return data == other.data; }
@@ -69,7 +69,7 @@ namespace Bplus::GL::Textures
         //   * An entire 3D texture. This makes the Target "layered", allowing you to output to 1 or more Z-slices at once
         //   * An entire cubemap. This makes the Target "layered", allowing you to output to 1 or more faces at once
         std::variant<Texture1D*, Texture2D*,
-                     std::tuple<Texture3D*, size_t>,
+                     std::tuple<Texture3D*, uint32_t>,
                      Texture3D*, TextureCube*,
                      std::tuple<TextureCube*, CubeFaces>
                     > data;
@@ -103,7 +103,7 @@ namespace Bplus::GL::Textures
         //Creates a new Target with no outputs.
         //Optionally acts like a "layered" Target, supporting multiple Geometry Shader outputs,
         //    even before any layered Outputs are attached to it.
-        Target(const glm::uvec2& size, size_t nLayers = 1);
+        Target(const glm::uvec2& size, uint32_t nLayers = 1);
 
         //Creates a new Target with the given size and output formats.
         //Automatically creates and takes ownership of the output textures.
@@ -121,7 +121,7 @@ namespace Bplus::GL::Textures
         //Creates a target with the given color outputs and depth output.
         //If no depth output is passed, a renderbuffer is used
         //    with the Depth_24U format.
-        Target(const TargetOutput* colorOutputs, size_t nColorOutputs,
+        Target(const TargetOutput* colorOutputs, uint32_t nColorOutputs,
                std::optional<TargetOutput> depthOutput = std::nullopt);
 
         ~Target();
@@ -144,7 +144,7 @@ namespace Bplus::GL::Textures
         //The size of this Target is equal to the smallest size of its outputs.
         glm::uvec2 GetSize() const { return size; }
         //Gets the number of color outputs currently in this target.
-        size_t GetNColorOutputs() const { return tex_colors.size(); }
+        uint32_t GetNColorOutputs() const { return (uint32_t)tex_colors.size(); }
 
 
         //Checks the status of this Target.
@@ -155,24 +155,17 @@ namespace Bplus::GL::Textures
 
         //Functions to get various outputs.
         //They all return nullptr if the output doesn't exist.
-        const TargetOutput* GetOutput_Color(size_t index = 0) const { return (index < tex_colors.size()) ? &tex_colors[index] : nullptr; }
+        const TargetOutput* GetOutput_Color(uint32_t index = 0) const { return (index < tex_colors.size()) ? &tex_colors[index] : nullptr; }
         const TargetOutput* GetOutput_Depth() const { return tex_depth.has_value() ? &tex_depth.value() : nullptr; }
         const TargetOutput* GetOutput_Stencil() const { return tex_stencil.has_value() ? &tex_stencil.value() : nullptr; }
-        const TargetOutput* GetOutput_DepthStencil() const
-        {
-            if (tex_depth.has_value() && tex_stencil.has_value() &&
-                tex_depth.value() == tex_stencil.value())
-            {
-                return &tex_depth.value();
-            }
-            else
-            {
-                return nullptr;
-            }
-        }
+        const TargetOutput* GetOutput_DepthStencil() const { return (tex_depth.has_value() &
+                                                                     tex_stencil.has_value() &
+                                                                     (tex_depth.value() == tex_stencil.value()))
+                                                                       ? &tex_depth.value() :
+                                                                         nullptr; }
 
         //The below functions set this target's outputs.
-        void OutputSet_Color(const TargetOutput& newOutput, size_t index = 0, bool takeOwnership = false);
+        void OutputSet_Color(const TargetOutput& newOutput, uint32_t index = 0, bool takeOwnership = false);
         void OutputSet_Depth(const TargetOutput& newOutput, bool takeOwnership = false);
         void OutputSet_Stencil(const TargetOutput& newOutput, bool takeOwnership = false);
         void OutputSet_DepthStencil(const TargetOutput& newOutput, bool takeOwnership = false);
@@ -181,7 +174,7 @@ namespace Bplus::GL::Textures
         //If the output was managed by this target, it will be deleted automatically.
         //If removing the depth buffer, you can optionally have it replaced with
         //    a render-buffer (like a texture, but not usable in other things like shaders).
-        void OutputRemove_Color(size_t index = 0);
+        void OutputRemove_Color(uint32_t index = 0);
         void OutputRemove_Depth(bool attachRenderBuffer = true);
         void OutputRemove_Stencil();
         void OutputRemove_DepthStencil(bool attachRenderBuffer = true);
@@ -206,11 +199,23 @@ namespace Bplus::GL::Textures
 
         #pragma endregion
 
-        //TODO: implement Clearing.
         #pragma region Clearing
 
+        //Clears a color buffer that has a floating-point or normalized integer format.
+        void ClearColor(const glm::fvec4& rgba, uint32_t index = 0);
+
+        //Clears a color buffer that has a UInteger format.
+        void ClearColor(const glm::uvec4& rgba_UInt, uint32_t index = 0);
+        //Clears a color buffer that has an Integer format.
+        void ClearColor(const glm::ivec4& rgba_Int, uint32_t index = 0);
+
+        void ClearDepth(float depth = 1.0f);
+        void ClearStencil(uint32_t value = 0);
+        void ClearDepthStencil(float depth = 1.0f, uint32_t stencil = 0);
 
         #pragma endregion
+
+        //TODO: Implement Copying: http://docs.gl/gl4/glBlitFramebuffer
 
 
     private:

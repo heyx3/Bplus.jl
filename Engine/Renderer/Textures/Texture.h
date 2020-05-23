@@ -71,6 +71,10 @@ namespace Bplus::GL::Textures
         uint_mipLevel_t GetNMipLevels() const { return nMipLevels; }
         OglPtr::Texture GetOglPtr() const { return glPtr; }
 
+        //Updates mipmaps for this texture.
+        //Not allowed for compressed-format textures.
+        void RecomputeMips();
+
     protected:
 
         OglPtr::Texture glPtr;

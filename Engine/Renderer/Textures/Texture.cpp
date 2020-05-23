@@ -39,3 +39,11 @@ Texture& Texture::operator=(Texture&& src)
 
     return *this;
 }
+
+void Texture::RecomputeMips()
+{
+    BPAssert(!format.IsCompressed(),
+             "Can't compute mipmaps for a compressed texture!");
+
+    glGenerateTextureMipmap(glPtr.Get());
+}

@@ -75,14 +75,6 @@ void TextureCube::SetMagFilter(TextureMagFilters filter) const
     glTextureParameteriv(glPtr.Get(), GL_TEXTURE_MAG_FILTER, &val);
 }
 
-void TextureCube::RecomputeMips()
-{
-    BPAssert(!format.IsCompressed(),
-             "Can't compute mipmaps for a compressed texture!");
-
-    glGenerateTextureMipmap(glPtr.Get());
-}
-
 void TextureCube::SetData_Compressed(CubeFaces face, const std::byte* compressedData,
                                      uint_mipLevel_t mipLevel,
                                      Math::Box2Du destBlockRange)

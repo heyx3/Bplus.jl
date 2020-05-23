@@ -155,10 +155,6 @@ namespace Bplus::GL::Textures
         };
 
 
-        //Updates mipmaps for this texture.
-        //Not allowed for compressed-format textures.
-        void RecomputeMips();
-
         //Clears part or all of this texture to the given value,
         //    on all 6 faces.
         //Not allowed for compressed-format textures.

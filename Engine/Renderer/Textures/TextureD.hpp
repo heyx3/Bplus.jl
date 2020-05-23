@@ -167,17 +167,6 @@ namespace Bplus::GL::Textures
             }
         };
 
-
-        //Updates mipmaps for this texture.
-        //Not allowed for compressed-format textures.
-        void RecomputeMips()
-        {
-            BPAssert(!format.IsCompressed(),
-                     "Can't compute mipmaps for a compressed texture!");
-
-            glGenerateTextureMipmap(glPtr.Get());
-        }
-
         //Clears part or all of this texture to the given value.
         //Not allowed for compressed-format textures.
         template<glm::length_t L, typename T>

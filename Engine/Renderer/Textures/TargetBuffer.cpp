@@ -28,5 +28,5 @@ TargetBuffer::~TargetBuffer()
 TargetBuffer::TargetBuffer(TargetBuffer&& from)
     : glPtr(from.glPtr), size(from.size), format(from.format)
 {
-    from.glPtr = OglPtr::TargetBuffer::Null;
+    from.glPtr.Get() = OglPtr::TargetBuffer::Null;
 }

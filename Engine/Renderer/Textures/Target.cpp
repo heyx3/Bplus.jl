@@ -2,6 +2,8 @@
 
 #include "../Device.h"
 
+#include <glm/gtc/type_ptr.hpp>
+
 
 using namespace Bplus;
 using namespace Bplus::GL;
@@ -16,7 +18,7 @@ TargetOutput::TargetOutput(Texture3D* tex, uint_mipLevel_t mipLevel)
     : data(tex), MipLevel(mipLevel) { }
 TargetOutput::TargetOutput(TextureCube* tex, uint_mipLevel_t mipLevel)
     : data(tex), MipLevel(mipLevel) { }
-TargetOutput::TargetOutput(std::tuple<Texture3D*, size_t> tex, uint_mipLevel_t mipLevel)
+TargetOutput::TargetOutput(std::tuple<Texture3D*, uint32_t> tex, uint_mipLevel_t mipLevel)
     : data(tex), MipLevel(mipLevel) { }
 TargetOutput::TargetOutput(std::tuple<TextureCube*, CubeFaces> data, uint_mipLevel_t mipLevel)
     : data(data), MipLevel(mipLevel) { }
@@ -68,10 +70,10 @@ glm::uvec2 TargetOutput::GetSize() const
     else
     {
         BPAssert(false, "Unknown type for TargetOutput");
-        return { 0 };
+        return glm::uvec2{ 0 };
     }
 }
-size_t TargetOutput::GetLayer() const
+uint32_t TargetOutput::GetLayer() const
 {
     BPAssert(!IsLayered(),
              "Trying to get the specific layer from a multi-layered output");
@@ -81,7 +83,7 @@ size_t TargetOutput::GetLayer() const
     else if (IsTex3DSlice())
         return std::get<1>(GetTex3DSlice());
     else if (IsTexCubeFace())
-        return std::get<1>(GetTexCubeFace())._to_index();
+        return (uint32_t)std::get<1>(GetTexCubeFace())._to_index();
     else if (IsTex3D() | IsTexCube())
         { BPAssert(false, "Shouldn't ever get here"); return -1; }
     else
@@ -90,12 +92,12 @@ size_t TargetOutput::GetLayer() const
         return -1;
     }
 }
-size_t TargetOutput::GetLayerCount() const
+uint32_t TargetOutput::GetLayerCount() const
 {
     if (!IsLayered())
         return 1;
     else if (IsTex3D())
-        return (size_t)GetTex3D()->GetSize().z;
+        return (uint32_t)GetTex3D()->GetSize().z;
     else if (IsTexCube())
         return 6;
     else
@@ -106,7 +108,7 @@ size_t TargetOutput::GetLayerCount() const
 }
 
 
-Target::Target(const glm::uvec2& _size, size_t nLayers)
+Target::Target(const glm::uvec2& _size, uint32_t nLayers)
     : size(_size)
 {
     BPAssert(size.x > 0, "Target's width can't be 0");
@@ -183,29 +185,31 @@ namespace
         if (optionalOutput.has_value())
             output = MinFunc(output, ValueGetter(optionalOutput.value()));
 
-        for (size_t i = 0; i < nOutputsInList; ++i)
+        for (uint32_t i = 0; i < nOutputsInList; ++i)
             output = MinFunc(output, ValueGetter(outputsList[i]));
 
         return output;
     }
 
     glm::uvec2 GetTargOutSize(const TargetOutput& to) { return to.GetSize(); }
-    size_t GetTargOutLayerCount(const TargetOutput& to) { return to.GetLayerCount(); }
+    uint32_t GetTargOutLayerCount(const TargetOutput& to) { return to.GetLayerCount(); }
+
+    uint32_t MinU32(const uint32_t& a, const uint32_t& b) { return std::min(a, b); }
 }
 #pragma endregion
-Target::Target(const TargetOutput* colorOutputs, size_t nColorOutputs,
+Target::Target(const TargetOutput* colorOutputs, uint32_t nColorOutputs,
                std::optional<TargetOutput> depthOutput)
     : Target(ComputeMin<glm::uvec2, GetTargOutSize, glm::min>(
                 colorOutputs, nColorOutputs, depthOutput,
                 glm::uvec2{ std::numeric_limits<glm::u32>().max() },
                 glm::uvec2{ 1 }),
-             ComputeMin<size_t, GetTargOutLayerCount, std::min>(
+             ComputeMin<uint32_t, GetTargOutLayerCount, MinU32>(
                 colorOutputs, nColorOutputs, depthOutput,
-                (size_t)std::numeric_limits<size_t>().max(),
-                (size_t)1))
+                std::numeric_limits<uint32_t>().max(),
+                (uint32_t)1))
 {
     //Set up the color attachments.
-    for (size_t i = 0; i < nColorOutputs; ++i)
+    for (uint32_t i = 0; i < nColorOutputs; ++i)
         OutputSet_Color(colorOutputs[i], i);
 
     //Set up the depth attachment.
@@ -273,6 +277,7 @@ TargetStates Target::Validate() const
         std::string errMsg = "Unexpected glCheckFramebufferStatus code: ";
         errMsg += IO::ToHex(status);
         BPAssert(false, errMsg.c_str());
+        return TargetStates::Unknown;
     }
 }
 
@@ -298,7 +303,7 @@ void Target::HandleRemoval(Texture* tex)
         (!tex_depth.has_value() || tex_depth.value().GetTex() != tex) &&
         (!tex_stencil.has_value() || tex_stencil.value().GetTex() != tex) &&
         std::none_of(tex_colors.begin(), tex_colors.end(),
-                     [&](const auto& tex) { return tex.GetTex() = tex; }))
+                     [&](const TargetOutput& tex2) { return tex == tex2.GetTex(); }))
     {
         delete *found;
         managedTextures.erase(found);
@@ -347,7 +352,7 @@ void Target::RecomputeSize()
     }
 }
 
-void Target::OutputSet_Color(const TargetOutput& newOutput, size_t index,
+void Target::OutputSet_Color(const TargetOutput& newOutput, uint32_t index,
                              bool takeOwnership)
 {
     //Take ownership over the texture, if requested.
@@ -372,7 +377,7 @@ void Target::OutputSet_Color(const TargetOutput& newOutput, size_t index,
                  "Trying to add a new color attachment out of order");
         tex_colors.push_back(newOutput);
     }
-    AttachAt(GL_COLOR_ATTACHMENT0 + index, newOutput);
+    AttachAt(GL_COLOR_ATTACHMENT0 + (GLenum)index, newOutput);
     RecomputeSize();
 }
 void Target::OutputSet_Depth(const TargetOutput& newOutput, bool takeOwnership)
@@ -450,7 +455,7 @@ void Target::OutputSet_DepthStencil(const TargetOutput& newOutput, bool takeOwne
     isStencilRBBound = false;
 }
 
-void Target::OutputRemove_Color(size_t index)
+void Target::OutputRemove_Color(uint32_t index)
 {
     //Make sure there are no color attachments after this one,
     //    so we don't create a "hole" in the list here.
@@ -532,8 +537,8 @@ void Target::OutputRelease(Texture* tex, bool removeOutputs)
     {
         //Start from the end of the color attachments, so things are removed in order.
         for (auto i = (int64_t)GetNColorOutputs() - 1; i >= 0; --i)
-            if (GetOutput_Color(i)->GetTex() == tex)
-                OutputRemove_Color(i);
+            if (GetOutput_Color((uint32_t)i)->GetTex() == tex)
+                OutputRemove_Color((uint32_t)i);
 
         //Remove it from depth/stencil attachments if applicable.
         if (GetOutput_Stencil() != nullptr && GetOutput_Stencil()->GetTex() == tex)
@@ -541,4 +546,58 @@ void Target::OutputRelease(Texture* tex, bool removeOutputs)
         if (GetOutput_Depth() != nullptr && GetOutput_Depth()->GetTex() == tex)
             OutputRemove_Depth(true);
     }
+}
+
+
+//Guide to clearing FBO's in OpenGL: https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glClearBuffer.xhtml
+
+void Target::ClearColor(const glm::fvec4& rgba, uint32_t index)
+{
+    BPAssert(index < GetNColorOutputs(), "Not enough color outputs to clear");
+    BPAssert(!GetOutput_Color(index)->GetTex()->GetFormat().IsInteger(),
+             "Trying to clear an int/uint texture with a float value");
+
+    //Currently there's a bug in GLEW where the rgba array in the below OpenGL call
+    //    isn't marked 'const', even though it should be.
+    //For now we're making a copy of the data and passing it as non-const,
+    //    but there's already a fix in GLEW and we should probably integrate
+    //    GLEW 2.2.0 once it comes out.
+    //TODO: Update to GLEW 2.2.0 when available: https://github.com/nigels-com/glew
+    auto rgbaCopy = rgba;
+
+    glClearNamedFramebufferfv(glPtr.Get(), GL_COLOR, index, glm::value_ptr(rgbaCopy));
+}
+void Target::ClearColor(const glm::uvec4& rgba, uint32_t index)
+{
+    BPAssert(index < GetNColorOutputs(), "Not enough color outputs to clear");
+    BPAssert(GetOutput_Color(index)->GetTex()->GetFormat().GetComponentType() ==
+                 +FormatTypes::UInt,
+             "Trying to clear a non-UInt texture with a uint value");
+
+    glClearNamedFramebufferuiv(glPtr.Get(), GL_COLOR, index, glm::value_ptr(rgba));
+}
+void Target::ClearColor(const glm::ivec4& rgba, uint32_t index)
+{
+    BPAssert(index < GetNColorOutputs(), "Not enough color outputs to clear");
+    BPAssert(GetOutput_Color(index)->GetTex()->GetFormat().GetComponentType() ==
+                 +FormatTypes::Int,
+             "Trying to clear a non-Int texture with an int value");
+
+    glClearNamedFramebufferiv(glPtr.Get(), GL_COLOR, index, glm::value_ptr(rgba));
+}
+
+void Target::ClearDepth(float depth)
+{
+    glClearNamedFramebufferfv(glPtr.Get(), GL_DEPTH, 0, &depth);
+}
+void Target::ClearStencil(uint32_t value)
+{
+    GLint valueI = Reinterpret<uint32_t, GLint>(value);
+    glClearNamedFramebufferiv(glPtr.Get(), GL_STENCIL, 0, &valueI);
+}
+void Target::ClearDepthStencil(float depth, uint32_t stencil)
+{
+    auto stencilI = Reinterpret<uint32_t, GLint>(stencil);
+    glClearNamedFramebufferfi(glPtr.Get(), GL_DEPTH_STENCIL, 0,
+                              depth, stencilI);
 }
