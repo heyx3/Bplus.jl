@@ -8,8 +8,9 @@ namespace Bplus::GL
 {
     class CompiledShader;
     
-    //TODO: Support MRT (many settings are per-RT).
-
+    //TODO: Move applicable settings into Target.
+    //TODO: Changing viewport Y axis and depth (how can GLM support this depth mode?): https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glClipControl.xhtml
+    //TODO: Give various object names with glObjectLabel
 
     //Represents OpenGL's global state, like the current blend mode and stencil test.
     //Does not include some things like bound objects, shader uniforms, etc.
