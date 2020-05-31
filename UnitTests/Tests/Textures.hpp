@@ -7,7 +7,7 @@
 
 #include <B+/Renderer/Textures/TextureD.hpp>
 #include <B+/Renderer/Textures/TextureCube.h>
-#include "../SimpleApp.h"
+#include "../SimpleApp.hpp"
 
 using namespace Bplus::GL::Textures;
 
@@ -88,10 +88,10 @@ void TestTextureGetSetSingle(SimpleFormat texFormat, T testVal)
         TEST_CASE(testCaseName.c_str());
 
         Texture2D tex(glm::uvec2{ 1, 1 }, texFormat);
-        tex.SetData(&testVal, components);
+        tex.SetData_Color(&testVal, components);
 
         T outputTestVal;
-        tex.GetData(&outputTestVal, components);
+        tex.GetData_Color(&outputTestVal, components);
 
         std::string errMsg = "Expected ";
         errMsg += std::to_string(testVal);
@@ -112,11 +112,11 @@ void TestTextureGetSetExactMulti(Format texFormat, ComponentData dataFormat,
     TEST_CASE(testCaseName.c_str());
 
     Texture2D tex(glm::uvec2{ 1, 1 }, texFormat);
-    tex.SetData(testData, dataFormat);
+    tex.SetData_Color(testData, dataFormat);
     
     std::vector<T> outputTestVal;
     outputTestVal.resize(testDataCount);
-    tex.GetData(outputTestVal.data(), dataFormat);
+    tex.GetData_Color(outputTestVal.data(), dataFormat);
 
     for (size_t i = 0; i < outputTestVal.size(); ++i)
         TEST_CHECK(outputTestVal[i] == testData[i]);
@@ -171,6 +171,8 @@ void TextureSimpleGetSetData()
             { SpecialFormats::RGB10_A2 },
             +ComponentData::Green,
             (glm::u8)32);*/
+
+        //TODO: Depth get/set
 
         //Test get/set of exact multi-channel values.
         glm::u8vec2 v2_u8{ 201, 203 };

@@ -5,7 +5,7 @@
 
 #include <glm/gtx/string_cast.hpp>
 
-#include "../SimpleApp.h"
+#include "../SimpleApp.hpp"
 
 
 void SimpleApps()

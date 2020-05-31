@@ -13,7 +13,6 @@
     <ClInclude Include="Tests\Toml.hpp">
       <Filter>Tests</Filter>
     </ClInclude>
-    <ClInclude Include="SimpleApp.h" />
     <ClInclude Include="Tests\Buffers.hpp">
       <Filter>Tests</Filter>
     </ClInclude>
@@ -26,5 +25,6 @@
     <ClInclude Include="Tests\TexTargets.hpp">
       <Filter>Tests</Filter>
     </ClInclude>
+    <ClInclude Include="SimpleApp.hpp" />
   </ItemGroup>
 </Project>

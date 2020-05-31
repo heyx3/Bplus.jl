@@ -6,7 +6,7 @@
 #include <acutest.h>
 
 #include <B+/Renderer/Buffer.h>
-#include "../SimpleApp.h"
+#include "../SimpleApp.hpp"
 
 
 void BufferCreation()

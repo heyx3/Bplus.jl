@@ -25,5 +25,7 @@ TEST_LIST = {
     { "Bplus::GL::Texture creation", TextureCreation },
     { "Bplus::GL::Texture get/set data", TextureSimpleGetSetData },
 
+    { "Bplus::GL::Target basic usage", TestTargetBasic },
+
     { NULL, NULL }
 };

@@ -22,6 +22,88 @@ namespace Simple
         App->Quit(true);
         throw std::exception(errorMsgBuffer.c_str());
     }
+
+    //Used for OpenGL debugging callbacks.
+    void GLAPIENTRY OnOglMsg(GLenum source, GLenum type,
+                             GLuint id, GLenum severity,
+                             GLsizei msgLength, const GLchar* msg,
+                             const void* userData)
+    {
+        bool isFatal = false;
+
+        //Generate relevant pieces of text describing the message.
+        std::string sourceStr, typeStr, severityStr;
+        switch (source)
+        {
+            case GL_DEBUG_SOURCE_API: sourceStr = "calling a 'gl' method"; break;
+            case GL_DEBUG_SOURCE_WINDOW_SYSTEM: sourceStr = "calling an SDL-related method"; break;
+            case GL_DEBUG_SOURCE_SHADER_COMPILER: sourceStr = "compiling a shader"; break;
+            case GL_DEBUG_SOURCE_THIRD_PARTY: sourceStr = "within some internal OpenGL app"; break;
+            case GL_DEBUG_SOURCE_APPLICATION: sourceStr = "a manual, user-raised error call ('glDebugMessageInsert()')"; break;
+            case GL_DEBUG_SOURCE_OTHER: sourceStr = "some unspecified source"; break;
+
+            default:
+                sourceStr = "[error: unexpected source ";
+                sourceStr += ToStringInBase(source, 16, "0x");
+                sourceStr += "]";
+            break;
+        }
+        switch (type)
+        {
+            case GL_DEBUG_TYPE_ERROR:
+                isFatal = true;
+                typeStr = "error";
+            break;
+
+            case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: typeStr = "deprecated usage"; break;
+            case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: typeStr = "undefined behavior detected"; break;
+            case GL_DEBUG_TYPE_PORTABILITY: typeStr = "non-portable behavior detected"; break;
+            case GL_DEBUG_TYPE_PERFORMANCE: typeStr = "suboptimal performance detected"; break;
+            case GL_DEBUG_TYPE_MARKER: typeStr = "command stream annotation event"; break;
+            case GL_DEBUG_TYPE_PUSH_GROUP: typeStr = "BEGIN group"; break;
+            case GL_DEBUG_TYPE_POP_GROUP: typeStr = "END group"; break;
+            case GL_DEBUG_TYPE_OTHER: typeStr = "unspecified event"; break;
+
+            default:
+                typeStr = "[error: unexpected event type ";
+                typeStr += ToStringInBase(type, 16, "0x");
+                typeStr += "]";
+            break;
+        }
+        switch (severity)
+        {
+            case GL_DEBUG_SEVERITY_HIGH:
+                isFatal = true;
+                severityStr = "Severe";
+            break;
+
+            case GL_DEBUG_SEVERITY_MEDIUM: severityStr = "Concerning"; break;
+            case GL_DEBUG_SEVERITY_LOW: severityStr = "Mild"; break;
+            case GL_DEBUG_SEVERITY_NOTIFICATION: severityStr = ""; break;
+
+            default:
+                severityStr = "[error: unexpected severity ";
+                severityStr += ToStringInBase(severity, 16, "0x");
+                severityStr += "]";
+            break;
+        }
+
+        //Put the pieces together into a coherent string.
+        std::string generatedMsg;
+        if (severityStr.size() > 0)
+            generatedMsg += severityStr + " ";
+        else
+            typeStr[0] = std::toupper(typeStr[0]);
+        generatedMsg += typeStr + " from " + sourceStr + ": ";
+        generatedMsg.append(msg, msgLength);
+
+        //If the event is bad, make it an error.
+        //Otherwise, just print it to stdout.
+        if (isFatal)
+            BPAssert(false, generatedMsg.c_str());
+        else
+            std::cout << "\t\t" << generatedMsg << "\n";
+    }
 }
 
 
@@ -83,6 +165,12 @@ protected:
         App::ConfigureOpenGL(doubleBuffering, depthBits, stencilBits, vSyncMode);
     }
 
+    virtual void OnBegin()
+    {
+        //Add an error/debug-message handler for OpenGL that asserts "false".
+        glEnable(GL_DEBUG_OUTPUT);
+        glDebugMessageCallback(Simple::OnOglMsg, 0);
+    }
     virtual void OnUpdate(float deltaT)
     {
         Bplus::App::OnUpdate(deltaT);
@@ -122,6 +210,7 @@ namespace Simple
             if (!condition && App.get() != nullptr)
                 App->Quit(true);
         });
+
 
         //For unit-testing apps, don't write to the config file.
         //TODO: DO write to the config file, and add a final unit test that checks that config exists and has the expected values.
