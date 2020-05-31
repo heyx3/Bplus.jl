@@ -36,6 +36,58 @@ namespace Bplus::GL::Textures
     //The unsigned integer type used to represent mip levels.
     using uint_mipLevel_t = uint_fast16_t;
 
+
+    #pragma region Depth-Stencil packing helpers
+
+    struct Unpacked_Depth24uStencil8u
+    {
+        unsigned Depth : 24;
+        unsigned Stencil : 8;
+    };
+    struct Unpacked_Depth32fStencil8u
+    {
+        float   Depth;
+        uint8_t Stencil;
+    };
+
+    uint32_t Pack_DepthStencil(Unpacked_Depth24uStencil8u depthStencilValues)
+    {
+        return (((uint32_t)depthStencilValues.Depth) << 8) |
+               depthStencilValues.Stencil;
+    }
+    uint64_t Pack_DepthStencil(Unpacked_Depth32fStencil8u depthStencilValues)
+    {
+        uint32_t depthAsInt = Reinterpret<float, uint32_t>(depthStencilValues.Depth),
+                 stencil = (uint32_t)depthStencilValues.Stencil;
+
+        uint64_t result = 0;
+        result |= depthAsInt;
+        result <<= 32;
+        result |= stencil;
+
+        return result;
+    }
+    
+    Unpacked_Depth24uStencil8u Unpack_DepthStencil(uint32_t packed)
+    {
+        return {
+                 ((packed & 0xffffff00) >> 8),
+                 (packed & 0x000000ff)
+               };
+    }
+    Unpacked_Depth32fStencil8u Unpack_DepthStencil(uint64_t packed)
+    {
+        uint32_t depthAsInt = (uint32_t)((packed & 0xffffffff00000000) >> 32);
+        uint8_t stencil = (uint8_t)(packed & 0x00000000000000ff);
+        return {
+                   Reinterpret<uint32_t, float>(depthAsInt),
+                   stencil
+               };
+    }
+
+    #pragma endregion
+
+
     //Gets the maximum number of mipmaps for a texture of the given size.
     template<glm::length_t L>
     uint_mipLevel_t GetMaxNumbMipmaps(const glm::vec<L, glm::u32>& texSize)

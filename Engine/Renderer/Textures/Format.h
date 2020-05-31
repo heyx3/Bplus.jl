@@ -188,7 +188,7 @@ namespace Bplus::GL::Textures
         //    and unsigned 8-bit stencil.
         Depth24U_Stencil8 = GL_DEPTH24_STENCIL8,
         //Hybrid Depth/Stencil texture with floating-point 32-bit depth
-        //    and unsigned 8-bit stencil.
+        //    and unsigned 8-bit stencil (and 24 bits of padding in between them).
         Depth32F_Stencil8 = GL_DEPTH32F_STENCIL8
     );
 
@@ -273,6 +273,8 @@ namespace Bplus::GL::Textures
         //Returns GL_NONE if the format isn't valid
         //    (i.e. a SimpleFormat with an invalid arrangement).
         GLenum GetOglEnum() const;
+
+        bool operator==(const Format& other) const { return data == other.data; }
 
 
     private:

@@ -129,7 +129,10 @@ namespace Bplus::GL::Textures
         }
 
 
-        //TODO: How to implement setting/getting of depth and/or stencil? Refer to https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glTexImage2D.xhtml, plus page 194 of https://www.khronos.org/registry/OpenGL/specs/gl/glspec45.core.pdf
+        //TODO: Pull SetDataParams into a template class above Texture.
+        //TODO: Move Clear functions into their own region.
+        //TODO: Move the private Clear/Set/Get functions into their respective pragma regions.
+        //TODO: Finish Get and Set based on the changes made to Clear.
 
         #pragma region Setting data
 
@@ -167,24 +170,67 @@ namespace Bplus::GL::Textures
             }
         };
 
-        //Clears part or all of this texture to the given value.
+        //Clears part or all of this color texture to the given value.
         //Not allowed for compressed-format textures.
         template<glm::length_t L, typename T>
-        void Clear(const glm::vec<L, T> value,
-                   SetDataParams optionalParams = { },
-                   bool bgrOrdering = false)
+        void Clear_Color(const glm::vec<L, T>& value,
+                         SetDataParams optionalParams = { },
+                         bool bgrOrdering = false)
         {
             BPAssert(!format.IsCompressed(), "Can't clear a compressed texture!");
-
-            auto range3D = optionalParams.GetRange(size).ChangeDimensions<3>();
-            glClearTexSubImage(glPtr.Get(), optionalParams.MipLevel,
-                               range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
-                               range3D.Size.x, range3D.Size.y, range3D.Size.z,
-                               GetOglInputFormat<T>(),
-                               GetOglChannels(GetComponents<L>(bgrOrdering)),
-                               glm::value_ptr(value));
+            BPAssert(!format.IsDepthStencil(), "Can't clear a depth/stencil texture with `Clear_Color()`!");
+            ClearData(glm::value_ptr(value),
+                      GetOglChannels(GetComponents<L>(bgrOrdering)),
+                      GetOglInputFormat<T>(),
+                      optionalParams);
         }
 
+        //Clears part or all of this depth texture to the given value.
+        template<typename T>
+        void Clear_Depth(T depth, SetDataParams optionalParams = { })
+        {
+            BPAssert(format.IsDepthOnly(),
+                     "Trying to clear depth value in a color, stencil, or depth-stencil texture");
+            ClearData(&depth, GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
+                      optionalParams);
+        }
+
+        //Clears part or all of this stencil texture to the given value.
+        void Clear_Stencil(uint8_t stencil, SetDataParams optionalParams = { })
+        {
+            BPAssert(format.IsStencilOnly(),
+                     "Trying to clear the stencil value in a color, depth, or depth-stencil texture");
+            ClearData(&stencil,
+                      GL_STENCIL_INDEX, GetOglInputFormat<decltype(stencil)>(),
+                      optionalParams);
+        }
+
+        //Clears part or all of this depth/stencil hybrid texture.
+        //Must use the format Depth24U_Stencil8.
+        void Clear_DepthStencil(Unpacked_Depth24uStencil8u value,
+                                SetDataParams optionalParams = { })
+        {
+            BPAssert(format == +DepthStencilFormats::Depth24U_Stencil8,
+                     "Trying to clear depth/stencil texture with 24U depth, but it doesn't have 24U depth");
+            
+            auto packed = Pack_DepthStencil(value);
+            ClearData(&packed,
+                      GL_STENCIL_INDEX, GL_UNSIGNED_INT_24_8,
+                      optionalParams);
+        }
+        //Clears part of all of this depth/stencil hybrid texture.
+        //Must use the format Depth32F_Stencil8.
+        void Clear_DepthStencil(float depth, uint8_t stencil,
+                                SetDataParams optionalParams = { })
+        {
+            BPAssert(format == +DepthStencilFormats::Depth32F_Stencil8,
+                     "Trying to clear depth/stencil texture with 32F depth, but it doesn't have 32F depth");
+
+            auto packed = Pack_DepthStencil(Unpacked_Depth32fStencil8u{ depth, stencil });
+            ClearData(&packed,
+                      GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV,
+                      optionalParams);
+        }
 
         //Note that pixel data in OpenGL is ordered from left to right,
         //    then from bottom to top, then from back to front.
@@ -246,26 +292,24 @@ namespace Bplus::GL::Textures
                      "Block range goes beyond the texture's size");
 
             //Upload.
+            auto byteSize = (GLsizei)(format.GetByteSize(GetSize(mipLevel)) * destPixelRange.GetVolume());
             if constexpr (D == 1) {
                 glCompressedTextureSubImage1D(glPtr.Get(), mipLevel,
                                               destPixelRange.MinCorner.x, destPixelRange.Size.x,
                                               format.GetOglEnum(),
-                                              (GLsizei)format.GetByteSize(GetSize(mipLevel)),
-                                              compressedData);
+                                              byteSize, compressedData);
             } else if constexpr (D == 2) {
                 glCompressedTextureSubImage2D(glPtr.Get(), mipLevel,
                                               destPixelRange.MinCorner.x, destPixelRange.MinCorner.y,
                                               destPixelRange.Size.x, destPixelRange.Size.y,
                                               format.GetOglEnum(),
-                                              (GLsizei)format.GetByteSize(GetSize(mipLevel)),
-                                              compressedData);
+                                              byteSize, compressedData);
             } else if constexpr (D == 3) {
                 glCompressedTextureSubImage3D(glPtr.Get(), mipLevel,
                                               destPixelRange.MinCorner.x, destPixelRange.MinCorner.y, destPixelRange.MinCorner.z,
                                               destPixelRange.Size.x, destPixelRange.Size.y, destPixelRange.Size.z,
                                               format.GetOglEnum(),
-                                              (GLsizei)format.GetByteSize(GetSize(mipLevel)),
-                                              compressedData);
+                                              byteSize, compressedData);
             } else {
                 static_assert(false, "TextureD<> should only be 1-, 2-, or 3-dimensional");
             }
@@ -292,6 +336,14 @@ namespace Bplus::GL::Textures
             GetDataParams(const uBox_t& range,
                           uint_mipLevel_t mipLevel)
                 : Range(range), MipLevel(mipLevel) { }
+
+            uBox_t GetRange(const uVec_t& fullSize) const
+            {
+                if (glm::all(glm::equal(Range.Size, uVec_t{ 0 })))
+                    return uBox_t::MakeMinSize(uVec_t{ 0 }, fullSize);
+                else
+                    return Range;
+            }
         };
 
         template<typename T>
@@ -342,7 +394,7 @@ namespace Bplus::GL::Textures
             glGetCompressedTextureSubImage(glPtr.Get(), mipLevel,
                                            range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
                                            range3D.Size.x, pixelRange.Size.y, range3D.Size.z,
-                                           format.GetByteSize(GetSize(mipLevel)),
+                                           (GLsizei)(format.GetByteSize(GetSize(mipLevel)) * range3D.GetVolume()),
                                            compressedData);
         }
 
@@ -356,50 +408,91 @@ namespace Bplus::GL::Textures
         
 
         void SetData(const void* data,
-                     GLenum dataFormat, GLenum dataType,
+                     GLenum dataChannels, GLenum dataType,
                      const SetDataParams& params)
         {
-            //Process default arguments.
-            auto destRange = params.DestRange;
-            if (glm::all(glm::equal(destRange.Size, uVec_t{ 0 })))
-                destRange = uBox_t::MakeMinSize(uVec_t{ 0 }, size);
+            auto range = params.GetRange(GetSize(params.MipLevel));
 
             //Upload.
             if constexpr (D == 1) {
                 glTextureSubImage1D(glPtr.Get(), params.MipLevel,
-                                    destRange.MinCorner.x, destRange.Size.x,
-                                    dataFormat, dataType, data);
+                                    range.MinCorner.x, range.Size.x,
+                                    dataChannels, dataType, data);
             } else if constexpr (D == 2) {
                 glTextureSubImage2D(glPtr.Get(), params.MipLevel,
-                                    destRange.MinCorner.x, destRange.MinCorner.y,
-                                    destRange.Size.x, destRange.Size.y,
-                                    dataFormat, dataType, data);
+                                    range.MinCorner.x, range.MinCorner.y,
+                                    range.Size.x, range.Size.y,
+                                    dataChannels, dataType, data);
             } else if constexpr (D == 3) {
                 glTextureSubImage3D(glPtr.Get(), params.MipLevel,
-                                    destRange.MinCorner.x, destRange.MinCorner.y, destRange.MinCorner.z,
-                                    destRange.Size.x, destRange.Size.y, destRange.Size.z,
-                                    dataFormat, dataType, data);
+                                    range.MinCorner.x, range.MinCorner.y, range.MinCorner.z,
+                                    range.Size.x, range.Size.y, range.Size.z,
+                                    dataChannels, dataType, data);
             } else {
                 static_assert(false, "TextureD<> should only be 1-, 2-, or 3-dimensional");
             }
+
+            //Recompute mips if requested.
+            if (params.RecomputeMips)
+                RecomputeMips();
         }
         void GetData(void* data,
-                     GLenum dataFormat, GLenum dataType,
+                     GLenum dataChannels, GLenum dataType,
                      const GetDataParams& params) const
         {
-            //Process default arguments.
-            auto range = params.Range;
-            if (glm::all(glm::equal(range.Size, uVec_t{ 0 })))
-                range = uBox_t::MakeMinSize(uVec_t{ 0 }, size);
+            auto range3D = params.GetRange(GetSize(params.MipLevel))
+                                 .ChangeDimensions<3>();
 
-            //Download.
-            auto range3D = range.ChangeDimensions<3>();
             glGetTextureSubImage(glPtr.Get(), params.MipLevel,
                                  range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
                                  range3D.Size.x, range3D.Size.y, range3D.Size.z,
-                                 dataFormat, dataType,
-                                 (GLsizei)GetByteSize(params.MipLevel),
+                                 dataChannels, dataType,
+                                 (GLsizei)(GetByteSize(params.MipLevel) * range3D.GetVolume()),
                                  data);
+        }
+        void ClearData(void* clearValue, GLenum valueFormat, GLenum valueType,
+                       const SetDataParams& params)
+        {
+            auto fullSize = GetSize(params.MipLevel);
+            auto range = params.GetRange(size);
+            auto range3D = range.ChangeDimensions<3>();
+
+            glClearTexSubImage(glPtr.Get(), params.MipLevel,
+                               range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
+                               range3D.Size.x, range3D.Size.y, range3D.Size.z,
+                               valueFormat, valueType, clearValue);
+
+            if (params.RecomputeMips)
+            {
+                //If we've cleared the entire texture, skip mipmap generation
+                //    and just clear all smaller mips.
+                if (range.Size == fullSize)
+                {
+                    for (uint_mipLevel_t mipI = params.MipLevel + 1; mipI < GetNMipLevels(); ++mipI)
+                    {
+                        auto mipFullSize = GetSize(mipI);
+                        glm::uvec3 mipFullSize3D;
+                        if constexpr (D == 1) {
+                            mipFullSize3D = { mipFullSize.x, 1, 1 };
+                        } else if constexpr (D == 2) {
+                            mipFullSize3D = { mipFullSize, 1 };
+                        } else if constexpr (D == 3) {
+                            mipFullSize3D = mipFullSize;
+                        } else {
+                            static_assert(false, "Only supports 1D-3D textures in ClearData()");
+                        }
+
+                        glClearTexSubImage(glPtr.Get(), mipI, 0, 0, 0,
+                                           mipFullSize3D.x, mipFullSize3D.y, mipFullSize3D.z,
+                                           valueFormat, valueType, clearValue);
+                    }
+                }
+                //Otherwise, do the usual mipmap update.
+                else
+                {
+                    RecomputeMips();
+                }
+            }
         }
     };
 

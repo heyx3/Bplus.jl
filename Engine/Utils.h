@@ -2,6 +2,8 @@
 
 #include "Platform.h"
 
+#include <vector>
+
 
 //The BETTER_ENUM() macro, to define an enum
 //    with added string conversions and iteration.
@@ -40,6 +42,17 @@ constexpr bool IsPlatformLittleEndian()
 }
 
 
+//How does C++ not have a modern "itoa" already?
+template<typename Int_t>
+std::string ToStringInBase(Int_t value, int base,
+                           const char* prefix = nullptr)
+{
+    char buffer[32];
+    itoa(value, buffer, base);
+    return buffer;
+}
+
+
 //Safe type-punning: reinterprets input A's byte-data as an instance of B.
 template<typename A, typename B>
 B Reinterpret(const A& a)
@@ -53,6 +66,39 @@ B Reinterpret(const A& a)
     return b;
 }
 
+template<typename T>
+void SwapByteOrder(const T* src, std::byte* dest)
+{
+    if constexpr (sizeof(T) == 1)
+    {
+        std::memcpy(dest, src, 1);
+    }
+    else if constexpr (sizeof(T) == 2)
+    {
+        auto asInt = Reinterpret<T, uint16_t>(*src);
+        asInt = ((asInt << 8) & 0xff00) |
+                ((asInt >> 8) & 0x00ff);
+        std::memcpy(dest, &asInt, 2);
+    }
+    else if constexpr (sizeof(T) == 4)
+    {
+        auto asInt = Reinterpret<T, uint32_t>(*src);
+        asInt = (((asInt & 0x000000FF) << 24) |
+                 ((asInt & 0x0000FF00) << 8)  |
+                 ((asInt & 0x00FF0000) >> 8)  |
+                 ((asInt & 0xFF000000) >> 24));
+        std::memcpy(dest, &asInt, 4);
+    }
+    else
+    {
+        const std::byte* srcBytes = (const std::byte*)src;
+        for (uint_fast32_t i = 0; i < sizeof(T); ++i)
+            dest[i] = srcBytes[sizeof(T) - i - 1];
+    }
+}
+
+
+//TODO: StackTrace utility? Then add it to the default BPAssert function.
 
 //Custom assert macro that can be configured by users of this engine.
 //Doesn't do anything in release builds.

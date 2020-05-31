@@ -311,7 +311,7 @@ bool Format::IsInteger() const
             SWITCH_DEFAULT(CompressedFormats, AsCompressed());
                 return false;
         }
-    else if (IsDepthAndStencil())
+    else if (IsDepthStencil())
         switch (AsDepthStencil())
         {
             case DepthStencilFormats::Depth_16U:

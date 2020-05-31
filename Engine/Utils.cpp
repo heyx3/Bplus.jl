@@ -20,7 +20,13 @@ Bplus::AssertFuncSignature Bplus::GetAssertFunc()
 void Bplus::DefaultAssertFunc(bool expr, const char* msg)
 {
     if (!expr)
+    {
         std::cout << "BPAssert failed: " << msg << "\n";
-
-    assert(expr);
+        assert(false);
+    }
+    else
+    {
+        //Just for completeness:
+        assert(true);
+    }
 }

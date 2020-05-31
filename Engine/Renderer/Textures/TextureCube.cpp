@@ -96,7 +96,7 @@ void TextureCube::SetData_Compressed(CubeFaces face, const std::byte* compressed
                                   destPixelRange.MinCorner.x, destPixelRange.MinCorner.y, (GLsizei)face._to_index(),
                                   destPixelRange.Size.x, destPixelRange.Size.y, 1,
                                   format.GetOglEnum(),
-                                  (GLsizei)format.GetByteSize(GetSize(mipLevel)),
+                                  (GLsizei)(format.GetByteSize(GetSize(mipLevel)) * destPixelRange.GetVolume()),
                                   compressedData);
 }
 void TextureCube::GetData_Compressed(CubeFaces face, std::byte* compressedData,
@@ -119,7 +119,7 @@ void TextureCube::GetData_Compressed(CubeFaces face, std::byte* compressedData,
     glGetCompressedTextureSubImage(glPtr.Get(), mipLevel,
                                    pixelRange.MinCorner.x, pixelRange.MinCorner.y, (GLint)face._to_index(),
                                    pixelRange.Size.x, pixelRange.Size.y, 1,
-                                   format.GetByteSize(GetSize(mipLevel)),
+                                   (GLsizei)(format.GetByteSize(GetSize(mipLevel)) * pixelRange.GetVolume()),
                                    compressedData);
 }
 
@@ -157,6 +157,6 @@ void TextureCube::GetData(void* data, CubeFaces face,
                          range.MinCorner.x, range.MinCorner.y, (GLint)face._to_index(),
                          range.Size.x, range.Size.y, 1,
                          dataFormat, dataType,
-                         (GLsizei)GetByteSize(params.MipLevel),
+                         (GLsizei)(GetByteSize(params.MipLevel) * range.GetVolume()),
                          data);
 }

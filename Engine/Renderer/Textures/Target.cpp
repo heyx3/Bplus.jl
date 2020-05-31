@@ -314,15 +314,15 @@ void Target::AttachAt(GLenum attachment, const TargetOutput& output)
 {
     if (output.IsLayered())
     {
-        glNamedFramebufferTexture(glPtr.Get(), attachment,
-                                  output.GetTex()->GetOglPtr().Get(),
-                                  output.MipLevel);
-    }
-    else
-    {
         glNamedFramebufferTextureLayer(glPtr.Get(), attachment,
                                        output.GetTex()->GetOglPtr().Get(),
                                        output.MipLevel, (GLint)output.GetLayer());
+    }
+    else
+    {
+        glNamedFramebufferTexture(glPtr.Get(), attachment,
+                                  output.GetTex()->GetOglPtr().Get(),
+                                  output.MipLevel);
     }
 }
 void Target::RemoveAt(GLenum attachment)
