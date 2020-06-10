@@ -46,6 +46,10 @@ namespace Bplus::Math
         {
             return { minCorner, size };
         }
+        static Box<N, T> MakeSize(const vec_t& size)
+        {
+            return { { 0 }, size };
+        }
 
         //Constructs a bounding box for the given iterator of vec_t.
         template<typename IterT>
@@ -144,6 +148,14 @@ namespace Bplus::Math
 
             return newBox;
         }
+
+
+        bool operator==(const Box<N, T>& other) const
+        {
+            return (MinCorner == other.MinCorner) &
+                   (Size == other.Size);
+        }
+        bool operator!=(const Box<N, T>& other) const { return !operator==(other); }
     };
 
 
@@ -175,6 +187,7 @@ namespace Bplus::Math
     using Interval = Box<1, T>;
 
     using IntervalF = Interval<float>;
-    using IntervalU = Interval<glm::u32>;
     using IntervalI = Interval<glm::i32>;
+    using IntervalU = Interval<glm::u32>;
+    using IntervalUL = Interval<glm::u64>;
 }

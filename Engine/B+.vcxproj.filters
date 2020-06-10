@@ -61,9 +61,6 @@
     <ClInclude Include="Renderer\Materials\MaterialData.h">
       <Filter>Renderer\Materials</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\Buffer.h">
-      <Filter>Renderer</Filter>
-    </ClInclude>
     <ClInclude Include="Renderer\Textures\Texture.h">
       <Filter>Renderer\Textures</Filter>
     </ClInclude>
@@ -99,6 +96,12 @@
     </ClInclude>
     <ClInclude Include="Renderer\Textures\TargetBuffer.h">
       <Filter>Renderer\Textures</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Buffers\Map.h">
+      <Filter>Renderer\Buffers</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Buffers\Buffer.h">
+      <Filter>Renderer\Buffers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -145,9 +148,6 @@
     <ClCompile Include="Renderer\Materials\MaterialData.cpp">
       <Filter>Renderer\Materials</Filter>
     </ClCompile>
-    <ClCompile Include="Renderer\Buffer.cpp">
-      <Filter>Renderer</Filter>
-    </ClCompile>
     <ClCompile Include="Renderer\Textures\Texture.cpp">
       <Filter>Renderer\Textures</Filter>
     </ClCompile>
@@ -162,6 +162,9 @@
     </ClCompile>
     <ClCompile Include="Renderer\Textures\TargetBuffer.cpp">
       <Filter>Renderer\Textures</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Buffers\Buffer.cpp">
+      <Filter>Renderer\Buffers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -182,6 +185,9 @@
     </Filter>
     <Filter Include="Math">
       <UniqueIdentifier>{6f80ac6e-5965-493c-b49c-1bcb7cc51280}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer\Buffers">
+      <UniqueIdentifier>{03ee6afa-e9bc-44b3-9227-cfa1be60ae05}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
