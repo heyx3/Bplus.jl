@@ -80,6 +80,7 @@ void TextureCube::SetData_Compressed(CubeFaces face, const std::byte* compressed
                                      Math::Box2Du destBlockRange)
 {
     //Convert block range to pixel size.
+    auto texSize = GetSize)
     auto blockSize = GetBlockSize(format.AsCompressed());
     auto destPixelRange = Math::Box2Du::MakeMinSize(destBlockRange.MinCorner * blockSize,
                                                     destBlockRange.Size * blockSize);
@@ -126,15 +127,15 @@ void TextureCube::GetData_Compressed(CubeFaces face, std::byte* compressedData,
 
 void TextureCube::SetData(const void* data, CubeFaces face,
                           GLenum dataFormat, GLenum dataType,
-                          const SetDataParams& params)
+                          const SetDataParams<2>& params)
 {
     //Process default arguments.
     auto destRange = params.DestRange;
     if (glm::all(glm::equal(destRange.Size, glm::uvec2{ 0 })))
         destRange = Math::Box2Du::MakeMinSize(glm::uvec2{ 0 }, size);
 
-    //Note that for modern OpenGL Direct State Access,
-    //    cubemaps are thought of as a cubemap array with length 1.
+    //Note that for modern OpenGL (i.e. Direct State Access),
+    //    cubemaps are treated as a cubemap array of length 1.
     //So we use the 3D functions to set data, and the Z offset of the texture
     //    is based on the face being set.
 
@@ -145,7 +146,7 @@ void TextureCube::SetData(const void* data, CubeFaces face,
 }
 void TextureCube::GetData(void* data, CubeFaces face,
                           GLenum dataFormat, GLenum dataType,
-                          const GetDataParams& params) const
+                          const GetDataParams<2>& params) const
 {
     //Process default arguments.
     auto range = params.Range;

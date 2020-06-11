@@ -87,6 +87,7 @@ namespace Bplus::GL::Textures
         static constexpr Types GetClassType() { return Types::Cubemap; }
 
 
+
         //Creates a new cube-map.
         //Pass "1" for nMipLevels to not use mip-maps.
         //Pass "0" for nMipLevels to generate full mip-maps down to a single pixel.
@@ -117,185 +118,418 @@ namespace Bplus::GL::Textures
         void SetMinFilter(TextureMinFilters filter) const;
         void SetMagFilter(TextureMagFilters filter) const;
 
-        
-        #pragma region Setting data
 
-        //Optional parameters when uploading texture data.
-        struct SetDataParams
+        //TODO: Move the implementations into the .cpp file.
+
+        #pragma region Clearing data
+
+        //Clears part or all of this color texture to the given value.
+        //Not allowed for compressed-format textures.
+        template<glm::length_t L, typename T>
+        void Clear_Color(const glm::vec<L, T>& value,
+                         SetDataCubeParams optionalParams = { },
+                         bool bgrOrdering = false)
         {
-            //The subset of the texture to set.
-            //A size-0 box represents the full texture.
-            Math::Box2Du DestRange = Math::Box2Du::MakeCenterSize(glm::uvec2{ 0 }, glm::uvec2{ 0 });
-            //The mip level. 0 is the original texture, higher values are smaller mips.
-            uint_mipLevel_t MipLevel = 0;
+            BPAssert(!format.IsCompressed(), "Can't clear a compressed texture!");
+            BPAssert(!format.IsDepthStencil(), "Can't clear a depth/stencil texture with `Clear_Color()`!");
+            if constexpr (!std::is_integral_v<T>)
+                BPAssert(!format.IsInteger(), "Can't clear an integer texture to a non-integer value");
 
-            //If true, all mip-levels will be automatically recomputed after this operation.
-            bool RecomputeMips;
+            ClearData(glm::value_ptr(value),
+                      GetOglChannels(GetComponents<L>(bgrOrdering)),
+                      GetOglInputFormat<T>(),
+                      optionalParams);
+        }
 
-            SetDataParams(bool recomputeMips = true)
-                : RecomputeMips(recomputeMips) { }
-            SetDataParams(const Math::Box2Du& destRange,
-                          bool recomputeMips = true)
-                : DestRange(destRange), RecomputeMips(recomputeMips) { }
-            SetDataParams(uint_mipLevel_t mipLevel,
-                          bool recomputeMips = false)
-                : MipLevel(mipLevel), RecomputeMips(recomputeMips) { }
-            SetDataParams(const Math::Box2Du& destRange,
-                          uint_mipLevel_t mipLevel,
-                          bool recomputeMips = false)
-                : DestRange(destRange), MipLevel(mipLevel), RecomputeMips(recomputeMips) { }
+        //Note that you can't clear compressed textures, though you can set their pixels with Set_Compressed.
 
-            Math::Box2Du GetRange(const glm::uvec2& fullSize) const
+        //Clears part or all of this depth texture to the given value.
+        template<typename T>
+        void Clear_Depth(T depth, SetDataCubeParams optionalParams = { })
+        {
+            BPAssert(format.IsDepthOnly(),
+                     "Trying to clear depth value in a color, stencil, or depth-stencil texture");
+
+            ClearData(&depth, GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
+                      optionalParams);
+        }
+
+        //Clears part or all of this stencil texture to the given value.
+        void Clear_Stencil(uint8_t stencil, SetDataCubeParams optionalParams = { })
+        {
+            BPAssert(format.IsStencilOnly(),
+                     "Trying to clear the stencil value in a color, depth, or depth-stencil texture");
+
+            ClearData(&stencil,
+                      GL_STENCIL_INDEX, GetOglInputFormat<decltype(stencil)>(),
+                      optionalParams);
+        }
+
+        //Clears part or all of this depth/stencil hybrid texture.
+        //Must use the format Depth24U_Stencil8.
+        void Clear_DepthStencil(Unpacked_Depth24uStencil8u value,
+                                SetDataCubeParams optionalParams = { })
+        {
+            BPAssert(format == +DepthStencilFormats::Depth24U_Stencil8,
+                     "Trying to clear depth/stencil texture with 24U depth, but it doesn't have 24U depth");
+            
+            auto packed = Pack_DepthStencil(value);
+            ClearData(&packed,
+                      GL_STENCIL_INDEX, GL_UNSIGNED_INT_24_8,
+                      optionalParams);
+        }
+        //Clears part of all of this depth/stencil hybrid texture.
+        //Must use the format Depth32F_Stencil8.
+        void Clear_DepthStencil(float depth, uint8_t stencil,
+                                SetDataCubeParams optionalParams = { })
+        {
+            BPAssert(format == +DepthStencilFormats::Depth32F_Stencil8,
+                     "Trying to clear depth/stencil texture with 32F depth, but it doesn't have 32F depth");
+
+            auto packed = Pack_DepthStencil(Unpacked_Depth32fStencil8u{ depth, stencil });
+            ClearData(&packed,
+                      GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV,
+                      optionalParams);
+        }
+
+        //The implementation for clearing any kind of data:
+    private:
+        void ClearData(void* clearValue, GLenum valueFormat, GLenum valueType,
+                       const SetDataCubeParams& params)
+        {
+            auto fullSize = GetSize(params.MipLevel);
+            auto range = params.GetRange(fullSize);
+            auto range3D = params.ToRange3D(range);
+
+            glClearTexSubImage(glPtr.Get(), params.MipLevel,
+                               range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
+                               range3D.Size.x, range3D.Size.y, range3D.Size.z,
+                               valueFormat, valueType, clearValue);
+
+            //Update mips.
+            if (params.RecomputeMips)
             {
-                if (glm::all(glm::equal(DestRange.Size, glm::uvec2{ 0 })))
-                    return Math::Box2Du::MakeMinSize(glm::uvec2{ 0 }, fullSize);
+                //If we've cleared the entire texture, skip mipmap generation
+                //    and just clear all smaller mips.
+                if (range.Size == fullSize)
+                {
+                    for (uint_mipLevel_t mipI = params.MipLevel + 1; mipI < GetNMipLevels(); ++mipI)
+                    {
+                        auto mipFullSize = GetSize(mipI);
+
+                        glClearTexSubImage(glPtr.Get(), mipI,
+                                           0, 0, range3D.MinCorner.z,
+                                           mipFullSize.x, mipFullSize.y, range3D.Size.z,
+                                           valueFormat, valueType, clearValue);
+                    }
+                }
+                //Otherwise, do the usual mipmap update.
                 else
-                    return DestRange;
+                {
+                    RecomputeMips();
+                }
             }
-        };
-
-
-        //Clears part or all of this texture to the given value,
-        //    on all 6 faces.
-        //Not allowed for compressed-format textures.
-        template<glm::length_t L, typename T>
-        void Clear(const glm::vec<L, T> value,
-                   SetDataParams optionalParams = { },
-                   bool bgrOrdering = false)
-        {
-            BPAssert(!format.IsCompressed(), "Can't clear a compressed texture!");
-
-            auto range = optionalParams.GetRange(size);
-            glClearTexSubImage(glPtr.Get(), optionalParams.MipLevel,
-                               range.MinCorner.x, range.MinCorner.y, 0,
-                               range.Size.x, range.Size.y, 6,
-                               GetOglInputFormat<T>(),
-                               GetOglChannels(GetComponents<L>(bgrOrdering)),
-                               glm::value_ptr(value));
         }
+    public:
 
-        //Clears part of all of the given face on this texture to the given value.
-        //Not allowed for compressed-format textures.
-        template<glm::length_t L, typename T>
-        void Clear(CubeFaces face, const glm::vec<L, T> value,
-                   SetDataParams optionalParams = { },
-                   bool bgrOrdering = false)
-        {
-            BPAssert(!format.IsCompressed(), "Can't clear a compressed texture!");
-
-            auto range = optionalParams.GetRange(size);
-            glClearTexSubImage(glPtr.Get(), optionalParams.MipLevel,
-                               range.MinCorner.x, range.MinCorner.y, face._to_index(),
-                               range.Size.x, range.Size.y, 1,
-                               GetOglInputFormat<T>(),
-                               GetOglChannels(GetComponents<L>(bgrOrdering)),
-                               glm::value_ptr(value));
-        }
+        #pragma endregion
 
 
         //Note that pixel data in OpenGL is ordered from left to right,
         //    then from bottom to top, then from back to front.
         //In other words, rows are contiguous and then grouped vertically.
 
-        //Sets the given face to use the given data.
+        #pragma region Setting data
+
+        //Sets this color texture with the given data.
+        //Not allowed for compressed-format textures.
+        //If the texture's format is an Integer-type, then the input data must be as well.
         //Note that the upload to the GPU will be slower if
         //    the data doesn't exactly match the texture's pixel format.
-        //It's also not recommended to use this to upload to a compressed texture format,
-        //    because GPU drivers may not have good-quality compression algorithms.
         template<typename T>
-        void SetData(CubeFaces face, const T* data, ComponentData components,
-                     SetDataParams optionalParams = { })
+        void Set_Color(const T* data, ComponentData components,
+                       SetDataCubeParams optionalParams = { })
         {
-            SetData((const void*)data, face,
+            BPAssert(!format.IsCompressed(),
+                     "Can't set a compressed texture with Set_Color()! Use Set_Compressed()");
+            BPAssert(!format.IsDepthStencil(),
+                     "Can't set a depth/stencil texture with Set_Color()!");
+            if constexpr (!std::is_integral_v<T>)
+                BPAssert(!format.IsInteger(), "Can't set an integer texture with non-integer data");
+
+            SetData((const void*)data,
                     GetOglChannels(components), GetOglInputFormat<T>(),
                     optionalParams);
         }
 
-        //Sets the given face to use the given data.
+        //Sets any kind of color texture with the given data.
+        //Not allowed for compressed-format textures.
+        //If the texture's format is an Integer-type, then the input data must be as well.
         //The number of components is determined by the size of the vector type --
         //    1D is Red/Depth, 2D is Red-Green, 3D is RGB, 4D is RGBA.
         //If "bgrOrdering" is true, then the incoming RGB(A) data is actually in BGR(A) order.
         //BGR order is often more efficient to give to the GPU.
         template<glm::length_t L, typename T>
-        void SetData(CubeFaces face, const glm::vec<L, T>* data,
-                     bool bgrOrdering = false,
-                     SetDataParams optionalParams = { })
+        void Set_Color(const glm::vec<L, T>* pixels,
+                       bool bgrOrdering = false,
+                       SetDataCubeParams optionalParams = { })
         {
-            SetData(glm::value_ptr(*data), face,
-                    GetOglChannels(GetComponents<L>(bgrOrdering)),
-                    GetOglInputFormat<T>(),
-                    optionalParams);
+            Set_Color<T>(glm::value_ptr(*pixels),
+                         GetComponents<L>(bgrOrdering),
+                         optionalParams);
         }
 
-        //Directly sets block-compressed data for the texture,
+        //Directly sets block-compressed data for the texture, on one or all faces,
         //    based on its current format.
-        //The input data should be "GetByteCount()/6" bytes large.
-        //This is highly recommended over the other "SetData()" forms for compressed textures;
-        //    while the GPU driver should support doing the compression under the hood for you,
-        //    the results vary widely and are often bad.
+        //The input data should have as many bytes as "GetFormat().GetByteSize(pixelsRange)"
+        //    times the number of faces affected (either 1 or 6).
         //Note that, because Block-Compression works in square "blocks" of pixels,
         //    the destination rectangle is in units of blocks, not individual pixels.
         //Additionally, mipmaps cannot be regenerated automatically.
-        void SetData_Compressed(CubeFaces face, const std::byte* compressedData,
-                                uint_mipLevel_t mipLevel = 0,
-                                Math::Box2Du destBlockRange = { });
+        void Set_Compressed(const std::byte* compressedData,
+                            std::optional<CubeFaces> face = std::nullopt,
+                            Math::Box2Du destBlockRange = { },
+                            uint_mipLevel_t mipLevel = 0)
+        {
+            //Convert block range to pixel size.
+            auto texSize = GetSize(mipLevel);
+            auto blockSize = GetBlockSize(format.AsCompressed());
+            auto destPixelRange = Math::Box2Du::MakeMinSize(destBlockRange.MinCorner * blockSize,
+                                                            destBlockRange.Size * blockSize);
+
+            //Process default arguments.
+            if (glm::all(glm::equal(destPixelRange.Size, glm::uvec2{ 0 })))
+                destPixelRange = Math::Box2Du::MakeMinSize(glm::uvec2{ 0 }, texSize);
+            BPAssert(glm::all(glm::lessThan(destPixelRange.GetMaxCornerInclusive(), texSize)),
+                     "Block range goes beyond the texture's size");
+
+
+            //Upload.
+            auto range3D = SetDataCubeParams(face, destPixelRange, mipLevel).ToRange3D(destPixelRange);
+            auto byteSize = (GLsizei)format.GetByteSize(range3D.Size);
+            glCompressedTextureSubImage3D(glPtr.Get(), mipLevel,
+                                          range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
+                                          range3D.Size.x, range3D.Size.y, range3D.Size.z,
+                                          format.GetOglEnum(),
+                                          byteSize, compressedData);
+        }
+
+        //Sets part or all of this depth texture to the given value.
+        template<typename T>
+        void Set_Depth(const T* pixels, SetDataCubeParams optionalParams = { })
+        {
+            BPAssert(format.IsDepthOnly(),
+                     "Trying to set depth data for a non-depth texture");
+
+            SetData(&pixels, GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
+                    optionalParams);
+        }
+
+        //Sets part or all of this stencil texture to the given value.
+        void Set_Stencil(const uint8_t* pixels, SetDataCubeParams optionalParams = { })
+        {
+            BPAssert(format.IsStencilOnly(),
+                     "Trying to set the stencil values in a color, depth, or depth-stencil texture");
+
+            SetData(&pixels,
+                    GL_STENCIL_INDEX, GetOglInputFormat<decltype(pixels)>(),
+                    optionalParams);
+        }
+
+        
+        //Sets part or all of this depth/stencil hybrid texture.
+        //Must be using the format Depth24U_Stencil8.
+        void Set_DepthStencil(const uint32_t* packedPixels_Depth24uStencil8u,
+                              SetDataCubeParams optionalParams = { })
+        {
+            BPAssert(format == +DepthStencilFormats::Depth24U_Stencil8,
+                     "Trying to set depth/stencil texture with a 24U depth, but it doesn't use 24U depth");
+            
+            SetData(&packedPixels_Depth24uStencil8u,
+                    GL_STENCIL_INDEX, GL_UNSIGNED_INT_24_8,
+                    optionalParams);
+        }
+        //Sets part of all of this depth/stencil hybrid texture.
+        //Must be using the format Depth32F_Stencil8.
+        void Set_DepthStencil(const uint64_t* packedPixels_Depth32fStencil8u,
+                              SetDataCubeParams optionalParams = { })
+        {
+            BPAssert(format == +DepthStencilFormats::Depth32F_Stencil8,
+                     "Trying to set depth/stencil texture with a 32F depth, but it doesn't use 32F depth");
+
+            SetData(&packedPixels_Depth32fStencil8u,
+                    GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV,
+                    optionalParams);
+        }
+
+
+        //The implementation for setting any kind of data:
+    private:
+        void SetData(const void* data,
+                     GLenum dataChannels, GLenum dataType,
+                     const SetDataCubeParams& params)
+        {
+            auto sizeAtMip = GetSize(params.MipLevel);
+            auto range = params.GetRange(sizeAtMip);
+
+            for (glm::length_t d = 0; d < 2; ++d)
+                BPAssert(range.GetMaxCornerInclusive()[d] < sizeAtMip[d],
+                         "GetData() call would go past the texture bounds");
+
+            auto range3D = params.ToRange3D(range);
+            glTextureSubImage3D(glPtr.Get(), params.MipLevel,
+                                range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
+                                range3D.Size.x, range3D.Size.y, range3D.Size.z,
+                                dataChannels, dataType, data);
+
+            //Recompute mips if requested.
+            if (params.RecomputeMips)
+                RecomputeMips();
+        }
+    public:
 
         #pragma endregion
         
         #pragma region Getting data
 
-        //Optional parameters when downloading texture data.
-        struct GetDataParams
-        {
-            //The subset of the texture to set.
-            //A size-0 box represents the full texture.
-            Math::Box2Du Range = Math::Box2Du::MakeCenterSize(glm::uvec2{ 0 }, glm::uvec2{ 0 });
-            //The mip level. 0 is the original texture, higher values are smaller mips.
-            uint_mipLevel_t MipLevel = 0;
-
-            GetDataParams() { }
-            GetDataParams(const Math::Box2Du& range)
-                : Range(range) { }
-            GetDataParams(uint_mipLevel_t mipLevel)
-                : MipLevel(mipLevel) { }
-            GetDataParams(const Math::Box2Du& range,
-                          uint_mipLevel_t mipLevel)
-                : Range(range), MipLevel(mipLevel) { }
-        };
-
+        //Gets any kind of color texture data, writing it into the given buffer.
+        //Not allowed for compressed-format textures.
+        //If the texture's format is an Integer-type, then the data buffer must be as well.
+        //Note that the download from the GPU will be slower if
+        //    the data type doesn't exactly match the texture's pixel format.
         template<typename T>
-        void GetData(CubeFaces face, T* data, ComponentData components,
-                     GetDataParams optionalParams = { }) const
+        void Get_Color(T* data, ComponentData components,
+                       GetDataCubeParams optionalParams = { }) const
         {
-            GetData((void*)data, face,
+            BPAssert(!format.IsDepthStencil(),
+                     "Can't read a depth/stencil texture with Get_Color()!");
+            if constexpr (!std::is_integral_v<T>)
+                BPAssert(!format.IsInteger(), "Can't read an integer texture as non-integer data");
+
+            GetData((void*)data,
                     GetOglChannels(components), GetOglInputFormat<T>(),
                     optionalParams);
         }
 
-        //Gets the given face's pixels and writes them into the given buffer.
-        //1D data is interpreted as R channel (or depth values),
-        //    2D as RG, 3D as RGB, and 4D as RGBA.
-        //If "bgrOrdering" is true, then the incoming RGB(A) data
-        //    is actually written out in BGR(A) order, which is faster on most platforms
-        //    because the GPU natively stores it that way.
+        //Gets any kind of color texture data, writing it into the given buffer.
+        //Not allowed for compressed-format textures.
+        //If the texture's format is an Integer-type, then the input data must be as well.
+        //The number of components is determined by the size of the vector type --
+        //    1D is Red/Depth, 2D is Red-Green, 3D is RGB, 4D is RGBA.
+        //If "bgrOrdering" is true, then the incoming RGB(A) data is actually in BGR(A) order.
+        //BGR order is often more efficient to give to the GPU.
         template<glm::length_t L, typename T>
-        void GetData(CubeFaces face,
-                     glm::vec<L, T>* data, bool bgrOrdering = false,
-                     GetDataParams optionalParams = { }) const
+        void Get_Color(glm::vec<L, T>* pixels, bool bgrOrdering = false,
+                       GetDataCubeParams optionalParams = { }) const
         {
-            GetData<T>(glm::value_ptr(*data), face,
-                       GetComponents<L>(bgrOrdering),
-                       optionalParams);
+            Get_Color<T>(glm::value_ptr(*pixels),
+                         GetComponents<L>(bgrOrdering),
+                         optionalParams);
         }
 
-        //Directly reads block-compressed data from the texture,
+        //Directly reads block-compressed data from the texture, on one or all faces,
         //    based on its current format.
         //This is a fast, direct copy of the byte data stored in the texture.
+        //The input data should have as many bytes as "GetFormat().GetByteSize(pixelsRange)"
         //Note that, because Block-Compression works in square groups of pixels,
         //    the "range" rectangle is in units of blocks, not individual pixels.
-        void GetData_Compressed(CubeFaces face, std::byte* compressedData,
-                                Math::Box2Du blockRange = { },
-                                uint_mipLevel_t mipLevel = 0) const;
+        void Get_Compressed(std::byte* compressedData,
+                            std::optional<CubeFaces> face = std::nullopt,
+                            Math::Box2Du blockRange = { },
+                            uint_mipLevel_t mipLevel = 0) const
+        {
+            //Convert block range to pixel size.
+            auto texSize = GetSize(mipLevel);
+            auto blockSize = GetBlockSize(format.AsCompressed());
+            auto pixelRange = Math::Box2Du::MakeMinSize(blockRange.MinCorner * blockSize,
+                                                        blockRange.Size * blockSize);
+
+            //Process default arguments.
+            if (glm::all(glm::equal(pixelRange.Size, glm::uvec2{ 0 })))
+                pixelRange = Math::Box2Du::MakeMinSize(glm::uvec2{ 0 }, texSize);
+            BPAssert(glm::all(glm::lessThan(pixelRange.GetMaxCornerInclusive(), texSize)),
+                     "Block range goes beyond the texture's size");
+
+            //Download.
+            auto range3D = SetDataCubeParams(face, pixelRange, mipLevel).ToRange3D(pixelRange);
+            auto byteSize = (GLsizei)format.GetByteSize(range3D.Size);
+            glGetCompressedTextureSubImage(glPtr.Get(), mipLevel,
+                                           range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
+                                           range3D.Size.x, pixelRange.Size.y, range3D.Size.z,
+                                           byteSize, compressedData);
+        }
+        
+        //Gets part or all of this depth texture, writing it into the given buffer.
+        template<typename T>
+        void Get_Depth(T* pixels, GetDataCubeParams optionalParams = { })
+        {
+            BPAssert(format.IsDepthOnly(),
+                     "Trying to get depth data for a non-depth texture");
+
+            GetData(&pixels, GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
+                    optionalParams);
+        }
+
+        //Gets part or all of this stencil texture to the given value.
+        void Get_Stencil(uint8_t* pixels, GetDataCubeParams optionalParams = { })
+        {
+            BPAssert(format.IsStencilOnly(),
+                     "Trying to get the stencil values in a color, depth, or depth-stencil texture");
+
+            GetData(&pixels,
+                    GL_STENCIL_INDEX, GetOglInputFormat<decltype(pixels)>(),
+                    optionalParams);
+        }
+
+        
+        //Gets part or all of this depth/stencil hybrid texture, writing it into the given buffer.
+        //Must be using the format Depth24U_Stencil8.
+        void Get_DepthStencil(uint32_t* packedPixels_Depth24uStencil8u,
+                              GetDataCubeParams optionalParams = { })
+        {
+            BPAssert(format == +DepthStencilFormats::Depth24U_Stencil8,
+                     "Trying to set depth/stencil texture with a 24U depth, but it doesn't use 24U depth");
+            
+            GetData(&packedPixels_Depth24uStencil8u,
+                    GL_STENCIL_INDEX, GL_UNSIGNED_INT_24_8,
+                    optionalParams);
+        }
+        //Sets part of all of this depth/stencil hybrid texture, writing it into the given buffer.
+        //Must be using the format Depth32F_Stencil8.
+        void Get_DepthStencil(uint64_t* packedPixels_Depth32fStencil8u,
+                              GetDataCubeParams optionalParams = { })
+        {
+            BPAssert(format == +DepthStencilFormats::Depth32F_Stencil8,
+                     "Trying to get depth/stencil texture with a 32F depth, but it doesn't use 32F depth");
+
+            GetData(&packedPixels_Depth32fStencil8u,
+                    GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV,
+                    optionalParams);
+        }
+
+
+        //The implementation for getting any kind of data:
+    private:
+        void GetData(void* data,
+                     GLenum dataChannels, GLenum dataType,
+                     const GetDataCubeParams& params) const
+        {
+            auto sizeAtMip = GetSize(params.MipLevel);
+            auto range = params.GetRange(sizeAtMip);
+
+            for (glm::length_t d = 0; d < 2; ++d)
+                BPAssert(range.GetMaxCornerInclusive()[d] < sizeAtMip[d],
+                         "GetData() call would go past the texture bounds");
+
+            auto range3D = params.ToRange3D(range);
+            auto byteSize = (GLsizei)format.GetByteSize(range3D.Size);
+            glGetTextureSubImage(glPtr.Get(), params.MipLevel,
+                                 range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
+                                 range3D.Size.x, range3D.Size.y, range3D.Size.z,
+                                 dataChannels, dataType,
+                                 byteSize, data);
+        }
+    public:
 
         #pragma endregion
 
@@ -305,13 +539,5 @@ namespace Bplus::GL::Textures
         TextureMagFilters magFilter;
 
         glm::uvec2 size;
-
-        
-        void SetData(const void* data, CubeFaces face,
-                     GLenum dataFormat, GLenum dataType,
-                     const SetDataParams& params);
-        void GetData(void* data, CubeFaces face,
-                     GLenum dataFormat, GLenum dataType,
-                     const GetDataParams& params) const;
     };
 }

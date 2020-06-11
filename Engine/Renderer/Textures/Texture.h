@@ -100,6 +100,162 @@ namespace Bplus::GL::Textures
     //TODO: Copying from one texture to another (and from framebuffer into texture? it's redundant though).
     //TODO: Memory Barriers. https://www.khronos.org/opengl/wiki/Memory_Model#Texture_barrier
 
+    #pragma region SetDataParams and GetDataParams, for texture data IO
+    
+    template<glm::length_t N>
+    //Optional parameters when uploading texture data.
+    struct SetDataParams
+    {
+        using uBox_t = Math::Box<N, glm::u32>;
+        using uVec_t = glm::vec<N, glm::u32>;
+
+
+        //The subset of the texture to set.
+        //A size-0 box represents the full texture.
+        uBox_t DestRange = uBox_t::MakeCenterSize(uVec_t{ 0 }, uVec_t{ 0 });
+
+        //The mip level. 0 is the original texture, higher values are smaller mips.
+        uint_mipLevel_t MipLevel = 0;
+
+        //If true, all mip-levels will be automatically recomputed after this operation.
+        bool RecomputeMips;
+
+
+        SetDataParams(bool recomputeMips = true)
+            : RecomputeMips(recomputeMips) { }
+        SetDataParams(const uBox_t& destRange,
+                        bool recomputeMips = true)
+            : DestRange(destRange), RecomputeMips(recomputeMips) { }
+        SetDataParams(uint_mipLevel_t mipLevel,
+                        bool recomputeMips = false)
+            : MipLevel(mipLevel), RecomputeMips(recomputeMips) { }
+        SetDataParams(const uBox_t& destRange,
+                        uint_mipLevel_t mipLevel,
+                        bool recomputeMips = false)
+            : DestRange(destRange), MipLevel(mipLevel), RecomputeMips(recomputeMips) { }
+
+
+        uBox_t GetRange(const uVec_t& fullSize) const
+        {
+            if (glm::all(glm::equal(DestRange.Size, uVec_t{ 0 })))
+                return uBox_t::MakeMinSize(uVec_t{ 0 }, fullSize);
+            else
+                return DestRange;
+        }
+    };
+    using SetData1DParams = SetDataParams<1>;
+    using SetData2DParams = SetDataParams<2>;
+    using SetData3DParams = SetDataParams<3>;
+    
+    struct SetDataCubeParams : public SetData2DParams
+    {
+        //No value means all faces will be changed.
+        std::optional<CubeFaces> Face = std::nullopt;
+
+        SetDataCubeParams(std::optional<CubeFaces> face = std::nullopt,
+                          bool recomputeMips = true)
+            : SetData2DParams(recomputeMips), Face(face) { }
+        SetDataCubeParams(std::optional<CubeFaces> face,
+                          const uBox_t& destRange,
+                          bool recomputeMips = true)
+            : SetData2DParams(destRange, recomputeMips), Face(face) { }
+        SetDataCubeParams(std::optional<CubeFaces> face,
+                          uint_mipLevel_t mipLevel,
+                          bool recomputeMips = false)
+            : SetData2DParams(mipLevel, recomputeMips), Face(face) { }
+        SetDataCubeParams(std::optional<CubeFaces> face,
+                          const uBox_t& destRange,
+                          uint_mipLevel_t mipLevel,
+                          bool recomputeMips = false)
+            : SetData2DParams(destRange, mipLevel, recomputeMips), Face(face) { }
+
+        //OpenGL often treats cube-maps as 3D textures, where each Z-slice is a separate face.
+        //This function adds the Z position/size to a 2D range, based on the Face field.
+        Math::Box3Du ToRange3D(const Math::Box2Du& range2D) const
+        {
+            auto range = range2D.ChangeDimensions<3>();
+
+            //If changing a specific face, set the start Z to that face and leave the Z size at 1.
+            //Otherwise, if changing all faces, leave the start Z at 0 and set the Z size to 6.
+            if (Face.has_value())
+                range.MinCorner.z = (glm::u32)Face.value()._to_index();
+            else
+                range.Size.z = CubeFaces::_size_constant;
+
+            return range;
+        }
+    };
+
+
+    template<glm::length_t N>
+    //Optional parameters when downloading texture data.
+    struct GetDataParams
+    {
+        using uBox_t = Math::Box<N, glm::u32>;
+        using uVec_t = glm::vec<N, glm::u32>;
+
+
+        //The subset of the texture to set.
+        //A size-0 box represents the full texture.
+        uBox_t Range = uBox_t::MakeCenterSize(uVec_t{ 0 }, uVec_t{ 0 });
+        //The mip level. 0 is the original texture, higher values are smaller mips.
+        uint_mipLevel_t MipLevel = 0;
+
+        GetDataParams() { }
+        GetDataParams(const uBox_t& range)
+            : Range(range) { }
+        GetDataParams(uint_mipLevel_t mipLevel)
+            : MipLevel(mipLevel) { }
+        GetDataParams(const uBox_t& range,
+                        uint_mipLevel_t mipLevel)
+            : Range(range), MipLevel(mipLevel) { }
+
+        uBox_t GetRange(const uVec_t& fullSize) const
+        {
+            if (glm::all(glm::equal(Range.Size, uVec_t{ 0 })))
+                return uBox_t::MakeMinSize(uVec_t{ 0 }, fullSize);
+            else
+                return Range;
+        }
+    };
+    using GetData1DParams = GetDataParams<1>;
+    using GetData2DParams = GetDataParams<2>;
+    using GetData3DParams = GetDataParams<3>;
+    
+    struct GetDataCubeParams : public GetData2DParams
+    {
+        //No value means all faces will be gotten, in order.
+        std::optional<CubeFaces> Face = std::nullopt;
+        
+        GetDataCubeParams(std::optional<CubeFaces> face = std::nullopt) : Face(face) { }
+        GetDataCubeParams(std::optional<CubeFaces> face, const uBox_t& range)
+            : GetData2DParams(range), Face(face) { }
+        GetDataCubeParams(std::optional<CubeFaces> face, uint_mipLevel_t mipLevel)
+            : GetData2DParams(mipLevel), Face(face) { }
+        GetDataCubeParams(std::optional<CubeFaces> face,
+                          const uBox_t& range, uint_mipLevel_t mipLevel)
+            : GetData2DParams(range, mipLevel), Face(face) { }
+
+        //OpenGL often treats cube-maps as 3D textures, where each Z-slice is a separate face.
+        //This function adds the Z position/size to a 2D range, based on the Face field.
+        Math::Box3Du ToRange3D(const Math::Box2Du& range2D) const
+        {
+            auto range = range2D.ChangeDimensions<3>();
+
+            //If reading a specific face, set the start Z to that face and leave the Z size at 1.
+            //Otherwise, if reading all faces, leave the start Z at 0 and set the Z size to 6.
+            if (Face.has_value())
+                range.MinCorner.z = (glm::u32)Face.value()._to_index();
+            else
+                range.Size.z = CubeFaces::_size_constant;
+
+            return range;
+        }
+    };
+
+    #pragma endregion
+
+
     //An extremely basic wrapper around OpenGL textures.
     //More full-featured wrappers are defined below and inherit from this one.
     class BP_API Texture
