@@ -131,26 +131,6 @@ namespace Bplus::GL
         Max = GL_MAX
     );
 
-    //The different "slots" a buffer can be used in,
-    //    corresponding to the different OpenGL buffer targets.
-    //TODO: Do I ever actually need to bind buffers in OpenGL 4.5?
-    BETTER_ENUM(BufferModes, GLenum,
-        MeshVertices = GL_ARRAY_BUFFER,
-        MeshIndices = GL_ELEMENT_ARRAY_BUFFER,
-        UniformBuffer = GL_UNIFORM_BUFFER,
-        DynamicBuffer = GL_SHADER_STORAGE_BUFFER,
-        IndirectDrawCommand = GL_DRAW_INDIRECT_BUFFER,
-        IndirectComputeCommand = GL_DISPATCH_INDIRECT_BUFFER,
-        QueryResult = GL_QUERY_BUFFER,
-        
-        //"Custom" modes do not have any special inherent meaning;
-        //    they exist to allow you to do general buffer work without disturbing
-        //    the other buffers activated for the "important" work above.
-        Custom1 = GL_COPY_READ_BUFFER,
-        Custom2 = GL_COPY_WRITE_BUFFER,
-        Custom3 = GL_TEXTURE_BUFFER
-    );
-
     #pragma endregion
 
     #pragma region Structures
