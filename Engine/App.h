@@ -4,6 +4,7 @@
 #include "Renderer/Context.h"
 
 //TODO: Detect when a graphics device reset has occurred and handle it gracefully: https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glGetGraphicsResetStatus.xhtml
+//TODO: Move more code to the cpp.
 
 namespace Bplus
 {
@@ -107,6 +108,9 @@ namespace Bplus
         //Asks this app to quit running. If "force" is false,
         //    the app has the choice of ignoring/postponing it.
         void Quit(bool force) { if (isRunning) OnQuit(force); }
+
+        //Gets whether this app is currently running.
+        bool IsRunning() const { return isRunning; }
         //Gets whether the app has already successfully quit.
         bool DidQuit() const { return !isRunning; }
 

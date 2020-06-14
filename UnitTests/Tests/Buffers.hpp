@@ -19,23 +19,19 @@ void BufferBasic()
     {
         //Buffer 1 contains a single 4D vector of doubles.
         
-        TEST_CASE("Buffer1");
+        TEST_CASE("Create immutable Buffer1 with no data");
         BP_Buffer buffer1(sizeof(glm::dvec4), false);
 
-        TEST_CASE("Write Buffer1");
+        TEST_CASE("Try to write Buffer1");
         glm::dvec4 buffer1DataIn = { 5.0, 4.0, 3.0, 1.0 };
-        TEST_CASE("Read Buffer1");
-        glm::dvec4 buffer1DataOut = { -1, -1, -1, -1 };
-        buffer1.Get<glm::dvec4>(&buffer1DataOut);
-        TEST_CHECK_(buffer1DataIn == buffer1DataOut,
-                    "Expected: %s    Got: %s",
-                    glm::to_string(buffer1DataIn).c_str(),
-                    glm::to_string(buffer1DataOut).c_str());
+        TEST_EXCEPTION_(buffer1.Set<glm::dvec4>(&buffer1DataIn),
+                        std::exception,
+                        "Expected error when writing a buffer");
 
 
         //Buffer 2 contains 5 arbitrary bytes.
 
-        TEST_CASE("Buffer2");
+        TEST_CASE("Create mutable Buffer2 with 1-5 data");
         std::byte data5[5];
         for (int i = 0; i < 5; ++i)
             data5[i] = (std::byte)(i + 1);
@@ -48,7 +44,8 @@ void BufferBasic()
         for (int i = 0; i < 5; ++i)
         {
             TEST_CHECK_((int)data5[i] == (i + 1),
-                        "data5[%i] == %i", (int)data5[i], (int)data5[i] + 1);
+                        "data5[%i] (%i) == %i",
+                        i, (int)data5[i], i + 1);
         }
     });
 }

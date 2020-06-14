@@ -204,19 +204,30 @@ namespace Simple
         auto oldAssertFunc = Bplus::GetAssertFunc();
         Bplus::SetAssertFunc([](bool condition, const char* msg)
         {
-            TEST_CHECK_(condition, "BPAssert: %s", msg);
+            //Originally I put a TEST_CHECK_ here, but
+            //    sometimes we want to test that something fails as expected,
+            //    so instead we'll go with the more flexible exception.
+            //Acutest can catch exceptions.
 
-            //If the test failed, stop running the app.
-            if (!condition && App.get() != nullptr)
-                App->Quit(true);
+            if (!condition)
+                throw std::exception("Assert failed");
         });
 
 
         //For unit-testing apps, don't write to the config file.
         //TODO: DO write to the config file, and add a final unit test that checks that config exists and has the expected values.
         Config = std::make_unique<SimpleConfigFile>(fs::current_path() / "Config.toml", true);
+
         App = std::make_unique<SimpleApp>(onUpdate, onRender, onQuit);
-        App->Run();
+        try
+        {
+            App->Run();
+        }
+        catch (std::exception e)
+        {
+            if (App->IsRunning())
+                App->Quit(true);
+        }
 
         //Restore the previous assertion function.
         Bplus::SetAssertFunc(oldAssertFunc);
