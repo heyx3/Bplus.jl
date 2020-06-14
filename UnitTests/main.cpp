@@ -19,8 +19,8 @@ TEST_LIST = {
 
     { "Simple Apps", SimpleApps },
 
-    { "Bplus::GL::Buffer creation",     BufferCreation   },
-    { "Bplus::GL::Buffer get/set data", BufferGetSetData },
+    { "Bplus::GL::Buffers::Buffer basic",     BufferBasic   },
+    { "Bplus::GL::Buffers::Buffer get/set data", BufferGetSetData },
 
     { "Bplus::GL::Texture creation", TextureCreation },
     { "Bplus::GL::Texture get/set data", TextureSimpleGetSetData },

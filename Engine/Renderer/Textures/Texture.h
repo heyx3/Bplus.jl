@@ -48,14 +48,16 @@ namespace Bplus::GL::Textures
     {
         float   Depth;
         uint8_t Stencil;
+        Unpacked_Depth32fStencil8u(float depth, uint8_t stencil)
+            : Depth(depth), Stencil(stencil) { }
     };
 
-    uint32_t Pack_DepthStencil(Unpacked_Depth24uStencil8u depthStencilValues)
+    inline uint32_t Pack_DepthStencil(Unpacked_Depth24uStencil8u depthStencilValues)
     {
         return (((uint32_t)depthStencilValues.Depth) << 8) |
                depthStencilValues.Stencil;
     }
-    uint64_t Pack_DepthStencil(Unpacked_Depth32fStencil8u depthStencilValues)
+    inline uint64_t Pack_DepthStencil(Unpacked_Depth32fStencil8u depthStencilValues)
     {
         uint32_t depthAsInt = Reinterpret<float, uint32_t>(depthStencilValues.Depth),
                  stencil = (uint32_t)depthStencilValues.Stencil;
@@ -68,14 +70,14 @@ namespace Bplus::GL::Textures
         return result;
     }
     
-    Unpacked_Depth24uStencil8u Unpack_DepthStencil(uint32_t packed)
+    inline Unpacked_Depth24uStencil8u Unpack_DepthStencil(uint32_t packed)
     {
         return {
                  ((packed & 0xffffff00) >> 8),
                  (packed & 0x000000ff)
                };
     }
-    Unpacked_Depth32fStencil8u Unpack_DepthStencil(uint64_t packed)
+    inline Unpacked_Depth32fStencil8u Unpack_DepthStencil(uint64_t packed)
     {
         uint32_t depthAsInt = (uint32_t)((packed & 0xffffffff00000000) >> 32);
         uint8_t stencil = (uint8_t)(packed & 0x00000000000000ff);
@@ -147,45 +149,6 @@ namespace Bplus::GL::Textures
     using SetData2DParams = SetDataParams<2>;
     using SetData3DParams = SetDataParams<3>;
     
-    struct SetDataCubeParams : public SetData2DParams
-    {
-        //No value means all faces will be changed.
-        std::optional<CubeFaces> Face = std::nullopt;
-
-        SetDataCubeParams(std::optional<CubeFaces> face = std::nullopt,
-                          bool recomputeMips = true)
-            : SetData2DParams(recomputeMips), Face(face) { }
-        SetDataCubeParams(std::optional<CubeFaces> face,
-                          const uBox_t& destRange,
-                          bool recomputeMips = true)
-            : SetData2DParams(destRange, recomputeMips), Face(face) { }
-        SetDataCubeParams(std::optional<CubeFaces> face,
-                          uint_mipLevel_t mipLevel,
-                          bool recomputeMips = false)
-            : SetData2DParams(mipLevel, recomputeMips), Face(face) { }
-        SetDataCubeParams(std::optional<CubeFaces> face,
-                          const uBox_t& destRange,
-                          uint_mipLevel_t mipLevel,
-                          bool recomputeMips = false)
-            : SetData2DParams(destRange, mipLevel, recomputeMips), Face(face) { }
-
-        //OpenGL often treats cube-maps as 3D textures, where each Z-slice is a separate face.
-        //This function adds the Z position/size to a 2D range, based on the Face field.
-        Math::Box3Du ToRange3D(const Math::Box2Du& range2D) const
-        {
-            auto range = range2D.ChangeDimensions<3>();
-
-            //If changing a specific face, set the start Z to that face and leave the Z size at 1.
-            //Otherwise, if changing all faces, leave the start Z at 0 and set the Z size to 6.
-            if (Face.has_value())
-                range.MinCorner.z = (glm::u32)Face.value()._to_index();
-            else
-                range.Size.z = CubeFaces::_size_constant;
-
-            return range;
-        }
-    };
-
 
     template<glm::length_t N>
     //Optional parameters when downloading texture data.
@@ -222,37 +185,6 @@ namespace Bplus::GL::Textures
     using GetData2DParams = GetDataParams<2>;
     using GetData3DParams = GetDataParams<3>;
     
-    struct GetDataCubeParams : public GetData2DParams
-    {
-        //No value means all faces will be gotten, in order.
-        std::optional<CubeFaces> Face = std::nullopt;
-        
-        GetDataCubeParams(std::optional<CubeFaces> face = std::nullopt) : Face(face) { }
-        GetDataCubeParams(std::optional<CubeFaces> face, const uBox_t& range)
-            : GetData2DParams(range), Face(face) { }
-        GetDataCubeParams(std::optional<CubeFaces> face, uint_mipLevel_t mipLevel)
-            : GetData2DParams(mipLevel), Face(face) { }
-        GetDataCubeParams(std::optional<CubeFaces> face,
-                          const uBox_t& range, uint_mipLevel_t mipLevel)
-            : GetData2DParams(range, mipLevel), Face(face) { }
-
-        //OpenGL often treats cube-maps as 3D textures, where each Z-slice is a separate face.
-        //This function adds the Z position/size to a 2D range, based on the Face field.
-        Math::Box3Du ToRange3D(const Math::Box2Du& range2D) const
-        {
-            auto range = range2D.ChangeDimensions<3>();
-
-            //If reading a specific face, set the start Z to that face and leave the Z size at 1.
-            //Otherwise, if reading all faces, leave the start Z at 0 and set the Z size to 6.
-            if (Face.has_value())
-                range.MinCorner.z = (glm::u32)Face.value()._to_index();
-            else
-                range.Size.z = CubeFaces::_size_constant;
-
-            return range;
-        }
-    };
-
     #pragma endregion
 
 
@@ -329,8 +261,7 @@ namespace Bplus::GL::Textures
             //Deduce the "type" argument for OpenGL, representing
             //    the size of each channel being sent in.
             GLenum type = GL_NONE;
-            if constexpr (std::is_same_v<T, bool>)
-            {
+            if constexpr (std::is_same_v<T, bool>) {
                 if constexpr (sizeof(bool) == 1) {
                     type = GL_UNSIGNED_BYTE;
                 } else if constexpr (sizeof(bool) == 2) {
@@ -340,8 +271,7 @@ namespace Bplus::GL::Textures
                 } else {
                     static_assert(false, "Unexpected value for sizeof(bool)");
                 }
-            }
-            else if constexpr (std::is_same_v<T, glm::u8>) {
+            } else if constexpr (std::is_same_v<T, glm::u8>) {
                 type = GL_UNSIGNED_BYTE;
             } else if constexpr (std::is_same_v<T, glm::u16>) {
                 type = GL_UNSIGNED_SHORT;
@@ -356,6 +286,8 @@ namespace Bplus::GL::Textures
             } else if constexpr (std::is_same_v<T, glm::f32>) {
                 type = GL_FLOAT;
             } else {
+                T ta;
+                ta.aslflskjflsjf4444 = 4;
                 static_assert(false, "T is an unexpected type");
             }
 

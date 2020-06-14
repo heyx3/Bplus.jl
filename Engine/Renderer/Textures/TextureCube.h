@@ -79,6 +79,81 @@ namespace Bplus::GL::Textures
         }
     };
 
+    
+    #pragma region Get- and SetDataCubeParams
+
+    struct SetDataCubeParams : public SetData2DParams
+    {
+        //No value means all faces will be changed.
+        std::optional<CubeFaces> Face = std::nullopt;
+
+        SetDataCubeParams(std::optional<CubeFaces> face = std::nullopt,
+                          bool recomputeMips = true)
+            : SetData2DParams(recomputeMips), Face(face) { }
+        SetDataCubeParams(std::optional<CubeFaces> face,
+                          const uBox_t& destRange,
+                          bool recomputeMips = true)
+            : SetData2DParams(destRange, recomputeMips), Face(face) { }
+        SetDataCubeParams(std::optional<CubeFaces> face,
+                          uint_mipLevel_t mipLevel,
+                          bool recomputeMips = false)
+            : SetData2DParams(mipLevel, recomputeMips), Face(face) { }
+        SetDataCubeParams(std::optional<CubeFaces> face,
+                          const uBox_t& destRange,
+                          uint_mipLevel_t mipLevel,
+                          bool recomputeMips = false)
+            : SetData2DParams(destRange, mipLevel, recomputeMips), Face(face) { }
+
+        //OpenGL often treats cube-maps as 3D textures, where each Z-slice is a separate face.
+        //This function adds the Z position/size to a 2D range, based on the Face field.
+        Math::Box3Du ToRange3D(const Math::Box2Du& range2D) const
+        {
+            auto range = range2D.ChangeDimensions<3>();
+
+            //If changing a specific face, set the start Z to that face and leave the Z size at 1.
+            //Otherwise, if changing all faces, leave the start Z at 0 and set the Z size to 6.
+            if (Face.has_value())
+                range.MinCorner.z = (glm::u32)Face.value()._to_index();
+            else
+                range.Size.z = CubeFaces::_size_constant;
+
+            return range;
+        }
+    };
+
+    struct GetDataCubeParams : public GetData2DParams
+    {
+        //No value means all faces will be gotten, in order.
+        std::optional<CubeFaces> Face = std::nullopt;
+        
+        GetDataCubeParams(std::optional<CubeFaces> face = std::nullopt) : Face(face) { }
+        GetDataCubeParams(std::optional<CubeFaces> face, const uBox_t& range)
+            : GetData2DParams(range), Face(face) { }
+        GetDataCubeParams(std::optional<CubeFaces> face, uint_mipLevel_t mipLevel)
+            : GetData2DParams(mipLevel), Face(face) { }
+        GetDataCubeParams(std::optional<CubeFaces> face,
+                          const uBox_t& range, uint_mipLevel_t mipLevel)
+            : GetData2DParams(range, mipLevel), Face(face) { }
+
+        //OpenGL often treats cube-maps as 3D textures, where each Z-slice is a separate face.
+        //This function adds the Z position/size to a 2D range, based on the Face field.
+        Math::Box3Du ToRange3D(const Math::Box2Du& range2D) const
+        {
+            auto range = range2D.ChangeDimensions<3>();
+
+            //If reading a specific face, set the start Z to that face and leave the Z size at 1.
+            //Otherwise, if reading all faces, leave the start Z at 0 and set the Z size to 6.
+            if (Face.has_value())
+                range.MinCorner.z = (glm::u32)Face.value()._to_index();
+            else
+                range.Size.z = CubeFaces::_size_constant;
+
+            return range;
+        }
+    };
+
+    #pragma endregion
+
 
     //A "Cubemap" texture, which has 6 2D textures for faces.
     class BP_API TextureCube : public Texture
@@ -115,11 +190,9 @@ namespace Bplus::GL::Textures
         TextureMagFilters GetMagFilter() const { return magFilter; }
         Sampler<2> GetSampler() const { return { minFilter, magFilter, TextureWrapping::Clamp }; }
 
-        void SetMinFilter(TextureMinFilters filter) const;
-        void SetMagFilter(TextureMagFilters filter) const;
+        void SetMinFilter(TextureMinFilters filter);
+        void SetMagFilter(TextureMagFilters filter);
 
-
-        //TODO: Move the implementations into the .cpp file.
 
         #pragma region Clearing data
 
@@ -161,7 +234,7 @@ namespace Bplus::GL::Textures
                      "Trying to clear the stencil value in a color, depth, or depth-stencil texture");
 
             ClearData(&stencil,
-                      GL_STENCIL_INDEX, GetOglInputFormat<decltype(stencil)>(),
+                      GL_STENCIL_INDEX, GetOglInputFormat<uint8_t>(),
                       optionalParams);
         }
 
@@ -195,41 +268,7 @@ namespace Bplus::GL::Textures
         //The implementation for clearing any kind of data:
     private:
         void ClearData(void* clearValue, GLenum valueFormat, GLenum valueType,
-                       const SetDataCubeParams& params)
-        {
-            auto fullSize = GetSize(params.MipLevel);
-            auto range = params.GetRange(fullSize);
-            auto range3D = params.ToRange3D(range);
-
-            glClearTexSubImage(glPtr.Get(), params.MipLevel,
-                               range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
-                               range3D.Size.x, range3D.Size.y, range3D.Size.z,
-                               valueFormat, valueType, clearValue);
-
-            //Update mips.
-            if (params.RecomputeMips)
-            {
-                //If we've cleared the entire texture, skip mipmap generation
-                //    and just clear all smaller mips.
-                if (range.Size == fullSize)
-                {
-                    for (uint_mipLevel_t mipI = params.MipLevel + 1; mipI < GetNMipLevels(); ++mipI)
-                    {
-                        auto mipFullSize = GetSize(mipI);
-
-                        glClearTexSubImage(glPtr.Get(), mipI,
-                                           0, 0, range3D.MinCorner.z,
-                                           mipFullSize.x, mipFullSize.y, range3D.Size.z,
-                                           valueFormat, valueType, clearValue);
-                    }
-                }
-                //Otherwise, do the usual mipmap update.
-                else
-                {
-                    RecomputeMips();
-                }
-            }
-        }
+                       const SetDataCubeParams& params);
     public:
 
         #pragma endregion
@@ -289,30 +328,7 @@ namespace Bplus::GL::Textures
         void Set_Compressed(const std::byte* compressedData,
                             std::optional<CubeFaces> face = std::nullopt,
                             Math::Box2Du destBlockRange = { },
-                            uint_mipLevel_t mipLevel = 0)
-        {
-            //Convert block range to pixel size.
-            auto texSize = GetSize(mipLevel);
-            auto blockSize = GetBlockSize(format.AsCompressed());
-            auto destPixelRange = Math::Box2Du::MakeMinSize(destBlockRange.MinCorner * blockSize,
-                                                            destBlockRange.Size * blockSize);
-
-            //Process default arguments.
-            if (glm::all(glm::equal(destPixelRange.Size, glm::uvec2{ 0 })))
-                destPixelRange = Math::Box2Du::MakeMinSize(glm::uvec2{ 0 }, texSize);
-            BPAssert(glm::all(glm::lessThan(destPixelRange.GetMaxCornerInclusive(), texSize)),
-                     "Block range goes beyond the texture's size");
-
-
-            //Upload.
-            auto range3D = SetDataCubeParams(face, destPixelRange, mipLevel).ToRange3D(destPixelRange);
-            auto byteSize = (GLsizei)format.GetByteSize(range3D.Size);
-            glCompressedTextureSubImage3D(glPtr.Get(), mipLevel,
-                                          range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
-                                          range3D.Size.x, range3D.Size.y, range3D.Size.z,
-                                          format.GetOglEnum(),
-                                          byteSize, compressedData);
-        }
+                            uint_mipLevel_t mipLevel = 0);
 
         //Sets part or all of this depth texture to the given value.
         template<typename T>
@@ -332,7 +348,7 @@ namespace Bplus::GL::Textures
                      "Trying to set the stencil values in a color, depth, or depth-stencil texture");
 
             SetData(&pixels,
-                    GL_STENCIL_INDEX, GetOglInputFormat<decltype(pixels)>(),
+                    GL_STENCIL_INDEX, GetOglInputFormat<uint8_t>(),
                     optionalParams);
         }
 
@@ -367,25 +383,7 @@ namespace Bplus::GL::Textures
     private:
         void SetData(const void* data,
                      GLenum dataChannels, GLenum dataType,
-                     const SetDataCubeParams& params)
-        {
-            auto sizeAtMip = GetSize(params.MipLevel);
-            auto range = params.GetRange(sizeAtMip);
-
-            for (glm::length_t d = 0; d < 2; ++d)
-                BPAssert(range.GetMaxCornerInclusive()[d] < sizeAtMip[d],
-                         "GetData() call would go past the texture bounds");
-
-            auto range3D = params.ToRange3D(range);
-            glTextureSubImage3D(glPtr.Get(), params.MipLevel,
-                                range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
-                                range3D.Size.x, range3D.Size.y, range3D.Size.z,
-                                dataChannels, dataType, data);
-
-            //Recompute mips if requested.
-            if (params.RecomputeMips)
-                RecomputeMips();
-        }
+                     const SetDataCubeParams& params);
     public:
 
         #pragma endregion
@@ -436,28 +434,7 @@ namespace Bplus::GL::Textures
         void Get_Compressed(std::byte* compressedData,
                             std::optional<CubeFaces> face = std::nullopt,
                             Math::Box2Du blockRange = { },
-                            uint_mipLevel_t mipLevel = 0) const
-        {
-            //Convert block range to pixel size.
-            auto texSize = GetSize(mipLevel);
-            auto blockSize = GetBlockSize(format.AsCompressed());
-            auto pixelRange = Math::Box2Du::MakeMinSize(blockRange.MinCorner * blockSize,
-                                                        blockRange.Size * blockSize);
-
-            //Process default arguments.
-            if (glm::all(glm::equal(pixelRange.Size, glm::uvec2{ 0 })))
-                pixelRange = Math::Box2Du::MakeMinSize(glm::uvec2{ 0 }, texSize);
-            BPAssert(glm::all(glm::lessThan(pixelRange.GetMaxCornerInclusive(), texSize)),
-                     "Block range goes beyond the texture's size");
-
-            //Download.
-            auto range3D = SetDataCubeParams(face, pixelRange, mipLevel).ToRange3D(pixelRange);
-            auto byteSize = (GLsizei)format.GetByteSize(range3D.Size);
-            glGetCompressedTextureSubImage(glPtr.Get(), mipLevel,
-                                           range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
-                                           range3D.Size.x, pixelRange.Size.y, range3D.Size.z,
-                                           byteSize, compressedData);
-        }
+                            uint_mipLevel_t mipLevel = 0) const;
         
         //Gets part or all of this depth texture, writing it into the given buffer.
         template<typename T>
@@ -477,7 +454,7 @@ namespace Bplus::GL::Textures
                      "Trying to get the stencil values in a color, depth, or depth-stencil texture");
 
             GetData(&pixels,
-                    GL_STENCIL_INDEX, GetOglInputFormat<decltype(pixels)>(),
+                    GL_STENCIL_INDEX, GetOglInputFormat<uint8_t>(),
                     optionalParams);
         }
 
@@ -512,23 +489,7 @@ namespace Bplus::GL::Textures
     private:
         void GetData(void* data,
                      GLenum dataChannels, GLenum dataType,
-                     const GetDataCubeParams& params) const
-        {
-            auto sizeAtMip = GetSize(params.MipLevel);
-            auto range = params.GetRange(sizeAtMip);
-
-            for (glm::length_t d = 0; d < 2; ++d)
-                BPAssert(range.GetMaxCornerInclusive()[d] < sizeAtMip[d],
-                         "GetData() call would go past the texture bounds");
-
-            auto range3D = params.ToRange3D(range);
-            auto byteSize = (GLsizei)format.GetByteSize(range3D.Size);
-            glGetTextureSubImage(glPtr.Get(), params.MipLevel,
-                                 range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
-                                 range3D.Size.x, range3D.Size.y, range3D.Size.z,
-                                 dataChannels, dataType,
-                                 byteSize, data);
-        }
+                     const GetDataCubeParams& params) const;
     public:
 
         #pragma endregion

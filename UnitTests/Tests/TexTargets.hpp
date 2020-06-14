@@ -36,10 +36,9 @@ void TestTargetBasic()
 
         TEST_CASE("Reading cleared color value");
         glm::vec4 colorPixel{ -9999.0f };
-        tColor.GetData_Color(&colorPixel, false,
-                             Texture2D::GetDataParams(Bplus::Math::Box2Du::MakeMinSize(
-                                                          glm::uvec2{ 0, 0 },
-                                                          glm::uvec2{ 1 })));
+        tColor.Get_Color(&colorPixel, false,
+                         Bplus::GL::Textures::GetData2DParams(
+                             Bplus::Math::Box2Du::MakeSize(glm::uvec2{ 1 })));
         const float colorEpsilon = 0.001f;
         TEST_CHECK_(glm::all(glm::equal(colorPixel, clearColor, colorEpsilon)),
                     "Actual color %s doesn't match expected color %s within epsilon %f",
@@ -49,10 +48,9 @@ void TestTargetBasic()
 
         TEST_CASE("Reading cleared depth value");
         float depthPixel = -999.0f;
-        tDepth.GetData_Color(&depthPixel, ComponentData::Red,
-                             Texture2D::GetDataParams(Bplus::Math::Box2Du::MakeMinSize(
-                                                          glm::uvec2{ 0, 0 },
-                                                          glm::uvec2{ 1 })));
+        tDepth.Get_Color(&depthPixel, ComponentData::Red,
+                         Bplus::GL::Textures::GetData2DParams(
+                             Bplus::Math::Box2Du::MakeSize(glm::uvec2{ 1 })));
         TEST_CHECK_(depthPixel == clearDepth,
                     "Actual depth %f doesn't exactly match expected depth %f",
                     depthPixel, clearDepth);
@@ -62,3 +60,5 @@ void TestTargetBasic()
 //TODO: Test layered Targets
 //TODO: Test cubemap Targets
 //TODO: Test 3D texture Targets
+
+//TODO: Test rendering to targets

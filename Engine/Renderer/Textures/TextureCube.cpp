@@ -64,100 +64,149 @@ size_t TextureCube::GetTotalByteSize() const
     return sum;
 }
 
-void TextureCube::SetMinFilter(TextureMinFilters filter) const
+void TextureCube::SetMinFilter(TextureMinFilters filter)
 {
+    minFilter = filter;
     auto val = (GLint)filter._to_integral();
     glTextureParameteriv(glPtr.Get(), GL_TEXTURE_MIN_FILTER, &val);
 }
-void TextureCube::SetMagFilter(TextureMagFilters filter) const
+void TextureCube::SetMagFilter(TextureMagFilters filter)
 {
+    magFilter = filter;
     auto val = (GLint)filter._to_integral();
     glTextureParameteriv(glPtr.Get(), GL_TEXTURE_MAG_FILTER, &val);
 }
 
-void TextureCube::SetData_Compressed(CubeFaces face, const std::byte* compressedData,
-                                     uint_mipLevel_t mipLevel,
-                                     Math::Box2Du destBlockRange)
+void TextureCube::ClearData(void* clearValue,
+                            GLenum valueFormat, GLenum valueType,
+                            const SetDataCubeParams& params)
+{
+    auto fullSize = GetSize(params.MipLevel);
+    auto range = params.GetRange(fullSize);
+    auto range3D = params.ToRange3D(range);
+
+    glClearTexSubImage(glPtr.Get(), params.MipLevel,
+                       range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
+                       range3D.Size.x, range3D.Size.y, range3D.Size.z,
+                       valueFormat, valueType, clearValue);
+
+    //Update mips.
+    if (params.RecomputeMips)
+    {
+        //If we've cleared the entire texture, skip mipmap generation
+        //    and just clear all smaller mips.
+        if (range.Size == fullSize)
+        {
+            for (uint_mipLevel_t mipI = params.MipLevel + 1; mipI < GetNMipLevels(); ++mipI)
+            {
+                auto mipFullSize = GetSize(mipI);
+
+                glClearTexSubImage(glPtr.Get(), mipI,
+                                   0, 0, range3D.MinCorner.z,
+                                   mipFullSize.x, mipFullSize.y, range3D.Size.z,
+                                   valueFormat, valueType, clearValue);
+            }
+        }
+        //Otherwise, do the usual mipmap update.
+        else
+        {
+            RecomputeMips();
+        }
+    }
+}
+void TextureCube::SetData(const void* data,
+                          GLenum dataChannels, GLenum dataType,
+                          const SetDataCubeParams& params)
+{
+    auto sizeAtMip = GetSize(params.MipLevel);
+    auto range = params.GetRange(sizeAtMip);
+
+    for (glm::length_t d = 0; d < 2; ++d)
+        BPAssert(range.GetMaxCornerInclusive()[d] < sizeAtMip[d],
+                 "GetData() call would go past the texture bounds");
+
+    auto range3D = params.ToRange3D(range);
+    glTextureSubImage3D(glPtr.Get(), params.MipLevel,
+                        range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
+                        range3D.Size.x, range3D.Size.y, range3D.Size.z,
+                        dataChannels, dataType, data);
+
+    //Recompute mips if requested.
+    if (params.RecomputeMips)
+        RecomputeMips();
+}
+void TextureCube::GetData(void* data,
+                          GLenum dataChannels, GLenum dataType,
+                          const GetDataCubeParams& params) const
+{
+    auto sizeAtMip = GetSize(params.MipLevel);
+    auto range = params.GetRange(sizeAtMip);
+
+    for (glm::length_t d = 0; d < 2; ++d)
+    {
+        BPAssert(range.GetMaxCornerInclusive()[d] < sizeAtMip[d],
+                 "GetData() call would go past the texture bounds");
+    }
+
+    auto range3D = params.ToRange3D(range);
+    auto byteSize = (GLsizei)format.GetByteSize(range3D.Size);
+    glGetTextureSubImage(glPtr.Get(), params.MipLevel,
+                         range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
+                         range3D.Size.x, range3D.Size.y, range3D.Size.z,
+                         dataChannels, dataType,
+                         byteSize, data);
+}
+
+
+void TextureCube::Set_Compressed(const std::byte* compressedData,
+                                 std::optional<CubeFaces> face,
+                                 Math::Box2Du destBlockRange,
+                                 uint_mipLevel_t mipLevel)
 {
     //Convert block range to pixel size.
-    auto texSize = GetSize)
+    auto texSize = GetSize(mipLevel);
     auto blockSize = GetBlockSize(format.AsCompressed());
     auto destPixelRange = Math::Box2Du::MakeMinSize(destBlockRange.MinCorner * blockSize,
                                                     destBlockRange.Size * blockSize);
 
     //Process default arguments.
     if (glm::all(glm::equal(destPixelRange.Size, glm::uvec2{ 0 })))
-        destPixelRange = Math::Box2Du::MakeMinSize(glm::uvec2{ 0 }, size);
-
-    BPAssert(glm::all(glm::lessThan(destPixelRange.GetMaxCorner(), size)),
+        destPixelRange = Math::Box2Du::MakeSize(texSize);
+    BPAssert(glm::all(glm::lessThan(destPixelRange.GetMaxCornerInclusive(), texSize)),
              "Block range goes beyond the texture's size");
 
+
     //Upload.
+    auto range3D = SetDataCubeParams(face, destPixelRange, mipLevel).ToRange3D(destPixelRange);
+    auto byteSize = (GLsizei)format.GetByteSize(range3D.Size);
     glCompressedTextureSubImage3D(glPtr.Get(), mipLevel,
-                                  destPixelRange.MinCorner.x, destPixelRange.MinCorner.y, (GLsizei)face._to_index(),
-                                  destPixelRange.Size.x, destPixelRange.Size.y, 1,
+                                  range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
+                                  range3D.Size.x, range3D.Size.y, range3D.Size.z,
                                   format.GetOglEnum(),
-                                  (GLsizei)(format.GetByteSize(GetSize(mipLevel)) * destPixelRange.GetVolume()),
-                                  compressedData);
+                                  byteSize, compressedData);
 }
-void TextureCube::GetData_Compressed(CubeFaces face, std::byte* compressedData,
-                                     Math::Box2Du blockRange,
-                                     uint_mipLevel_t mipLevel) const
+void TextureCube::Get_Compressed(std::byte* compressedData,
+                                 std::optional<CubeFaces> face,
+                                 Math::Box2Du blockRange,
+                                 uint_mipLevel_t mipLevel) const
 {
     //Convert block range to pixel size.
+    auto texSize = GetSize(mipLevel);
     auto blockSize = GetBlockSize(format.AsCompressed());
     auto pixelRange = Math::Box2Du::MakeMinSize(blockRange.MinCorner * blockSize,
                                                 blockRange.Size * blockSize);
 
     //Process default arguments.
     if (glm::all(glm::equal(pixelRange.Size, glm::uvec2{ 0 })))
-        pixelRange = Math::Box2Du::MakeMinSize(glm::uvec2{ 0 }, size);
-
-    BPAssert(glm::all(glm::lessThan(pixelRange.GetMaxCorner(), size)),
+        pixelRange = Math::Box2Du::MakeSize(texSize);
+    BPAssert(glm::all(glm::lessThan(pixelRange.GetMaxCornerInclusive(), texSize)),
              "Block range goes beyond the texture's size");
 
     //Download.
+    auto range3D = SetDataCubeParams(face, pixelRange, mipLevel).ToRange3D(pixelRange);
+    auto byteSize = (GLsizei)format.GetByteSize(range3D.Size);
     glGetCompressedTextureSubImage(glPtr.Get(), mipLevel,
-                                   pixelRange.MinCorner.x, pixelRange.MinCorner.y, (GLint)face._to_index(),
-                                   pixelRange.Size.x, pixelRange.Size.y, 1,
-                                   (GLsizei)(format.GetByteSize(GetSize(mipLevel)) * pixelRange.GetVolume()),
-                                   compressedData);
-}
-
-
-void TextureCube::SetData(const void* data, CubeFaces face,
-                          GLenum dataFormat, GLenum dataType,
-                          const SetDataParams<2>& params)
-{
-    //Process default arguments.
-    auto destRange = params.DestRange;
-    if (glm::all(glm::equal(destRange.Size, glm::uvec2{ 0 })))
-        destRange = Math::Box2Du::MakeMinSize(glm::uvec2{ 0 }, size);
-
-    //Note that for modern OpenGL (i.e. Direct State Access),
-    //    cubemaps are treated as a cubemap array of length 1.
-    //So we use the 3D functions to set data, and the Z offset of the texture
-    //    is based on the face being set.
-
-    glTextureSubImage3D(glPtr.Get(), params.MipLevel,
-                        destRange.MinCorner.x, destRange.MinCorner.y, (GLint)face._to_index(),
-                        destRange.Size.x, destRange.Size.y, 1,
-                        dataFormat, dataType, data);
-}
-void TextureCube::GetData(void* data, CubeFaces face,
-                          GLenum dataFormat, GLenum dataType,
-                          const GetDataParams<2>& params) const
-{
-    //Process default arguments.
-    auto range = params.Range;
-    if (glm::all(glm::equal(range.Size, glm::uvec2{ 0 })))
-        range = Math::Box2Du::MakeMinSize(glm::uvec2{ 0 }, size);
-
-    //Download.
-    glGetTextureSubImage(glPtr.Get(), params.MipLevel,
-                         range.MinCorner.x, range.MinCorner.y, (GLint)face._to_index(),
-                         range.Size.x, range.Size.y, 1,
-                         dataFormat, dataType,
-                         (GLsizei)(GetByteSize(params.MipLevel) * range.GetVolume()),
-                         data);
+                                   range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
+                                   range3D.Size.x, pixelRange.Size.y, range3D.Size.z,
+                                   byteSize, compressedData);
 }

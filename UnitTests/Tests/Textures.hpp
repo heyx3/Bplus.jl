@@ -88,10 +88,10 @@ void TestTextureGetSetSingle(SimpleFormat texFormat, T testVal)
         TEST_CASE(testCaseName.c_str());
 
         Texture2D tex(glm::uvec2{ 1, 1 }, texFormat);
-        tex.SetData_Color(&testVal, components);
+        tex.Set_Color(&testVal, components);
 
         T outputTestVal;
-        tex.GetData_Color(&outputTestVal, components);
+        tex.Get_Color(&outputTestVal, components);
 
         std::string errMsg = "Expected ";
         errMsg += std::to_string(testVal);
@@ -112,11 +112,11 @@ void TestTextureGetSetExactMulti(Format texFormat, ComponentData dataFormat,
     TEST_CASE(testCaseName.c_str());
 
     Texture2D tex(glm::uvec2{ 1, 1 }, texFormat);
-    tex.SetData_Color(testData, dataFormat);
+    tex.Set_Color(testData, dataFormat);
     
     std::vector<T> outputTestVal;
     outputTestVal.resize(testDataCount);
-    tex.GetData_Color(outputTestVal.data(), dataFormat);
+    tex.Get_Color(outputTestVal.data(), dataFormat);
 
     for (size_t i = 0; i < outputTestVal.size(); ++i)
         TEST_CHECK(outputTestVal[i] == testData[i]);

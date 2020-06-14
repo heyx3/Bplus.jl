@@ -169,7 +169,7 @@ namespace Bplus::GL::Textures
                      "Trying to clear the stencil value in a color, depth, or depth-stencil texture");
 
             ClearData(&stencil,
-                      GL_STENCIL_INDEX, GetOglInputFormat<decltype(stencil)>(),
+                      GL_STENCIL_INDEX, GetOglInputFormat<uint8_t>(),
                       optionalParams);
         }
 
@@ -194,7 +194,7 @@ namespace Bplus::GL::Textures
             BPAssert(format == +DepthStencilFormats::Depth32F_Stencil8,
                      "Trying to clear depth/stencil texture with 32F depth, but it doesn't have 32F depth");
 
-            auto packed = Pack_DepthStencil(Unpacked_Depth32fStencil8u{ depth, stencil });
+            auto packed = Pack_DepthStencil(Unpacked_Depth32fStencil8u(depth, stencil));
             ClearData(&packed,
                       GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV,
                       optionalParams);
@@ -364,7 +364,7 @@ namespace Bplus::GL::Textures
                      "Trying to set the stencil values in a color, depth, or depth-stencil texture");
 
             SetData(&pixels,
-                    GL_STENCIL_INDEX, GetOglInputFormat<decltype(pixels)>(),
+                    GL_STENCIL_INDEX, GetOglInputFormat<uint8_t>(),
                     optionalParams);
         }
 
@@ -515,7 +515,7 @@ namespace Bplus::GL::Textures
                      "Trying to get the stencil values in a color, depth, or depth-stencil texture");
 
             GetData(&pixels,
-                    GL_STENCIL_INDEX, GetOglInputFormat<decltype(pixels)>(),
+                    GL_STENCIL_INDEX, GetOglInputFormat<uint8_t>(),
                     optionalParams);
         }
 

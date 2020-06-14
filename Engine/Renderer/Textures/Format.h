@@ -63,6 +63,14 @@ namespace Bplus::GL::Textures
         FormatTypes Type;
         FormatComponents Components;
         BitDepths ChannelBitSize;
+
+        bool operator==(const SimpleFormat& other) const
+        {
+            return Type == other.Type &&
+                   Components == other.Components &&
+                   ChannelBitSize == other.ChannelBitSize;
+        }
+        bool operator!=(const SimpleFormat& other) const { return !operator==(other); }
     };
 
     //Converts the given simple texture format to a human-readable string.
@@ -275,6 +283,7 @@ namespace Bplus::GL::Textures
         GLenum GetOglEnum() const;
 
         bool operator==(const Format& other) const { return data == other.data; }
+        bool operator!=(const Format& other) const { return !operator==(other); }
 
 
     private:
