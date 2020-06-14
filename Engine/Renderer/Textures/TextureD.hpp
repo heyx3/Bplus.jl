@@ -129,77 +129,45 @@ namespace Bplus::GL::Textures
         }
 
 
-        //TODO: Pull SetDataParams into a template class above Texture.
-        //TODO: Move Clear functions into their own region.
-        //TODO: Move the private Clear/Set/Get functions into their respective pragma regions.
-        //TODO: Finish Get and Set based on the changes made to Clear.
-
-        #pragma region Setting data
-
-        //Optional parameters when uploading texture data.
-        struct SetDataParams
-        {
-            //The subset of the texture to set.
-            //A size-0 box represents the full texture.
-            uBox_t DestRange = uBox_t::MakeCenterSize(uVec_t{ 0 }, uVec_t{ 0 });
-            //The mip level. 0 is the original texture, higher values are smaller mips.
-            uint_mipLevel_t MipLevel = 0;
-
-            //If true, all mip-levels will be automatically recomputed after this operation.
-            bool RecomputeMips;
-
-            SetDataParams(bool recomputeMips = true)
-                : RecomputeMips(recomputeMips) { }
-            SetDataParams(const uBox_t& destRange,
-                          bool recomputeMips = true)
-                : DestRange(destRange), RecomputeMips(recomputeMips) { }
-            SetDataParams(uint_mipLevel_t mipLevel,
-                          bool recomputeMips = false)
-                : MipLevel(mipLevel), RecomputeMips(recomputeMips) { }
-            SetDataParams(const uBox_t& destRange,
-                          uint_mipLevel_t mipLevel,
-                          bool recomputeMips = false)
-                : DestRange(destRange), MipLevel(mipLevel), RecomputeMips(recomputeMips) { }
-
-            uBox_t GetRange(const uVec_t& fullSize) const
-            {
-                if (glm::all(glm::equal(DestRange.Size, uVec_t{ 0 })))
-                    return uBox_t::MakeMinSize(uVec_t{ 0 }, fullSize);
-                else
-                    return DestRange;
-            }
-        };
+        #pragma region Clearing data
 
         //Clears part or all of this color texture to the given value.
         //Not allowed for compressed-format textures.
         template<glm::length_t L, typename T>
         void Clear_Color(const glm::vec<L, T>& value,
-                         SetDataParams optionalParams = { },
+                         SetDataParams<D> optionalParams = { },
                          bool bgrOrdering = false)
         {
             BPAssert(!format.IsCompressed(), "Can't clear a compressed texture!");
             BPAssert(!format.IsDepthStencil(), "Can't clear a depth/stencil texture with `Clear_Color()`!");
+            if constexpr (!std::is_integral_v<T>)
+                BPAssert(!format.IsInteger(), "Can't clear an integer texture to a non-integer value");
+
             ClearData(glm::value_ptr(value),
                       GetOglChannels(GetComponents<L>(bgrOrdering)),
                       GetOglInputFormat<T>(),
                       optionalParams);
         }
 
+        //Note that you can't clear compressed textures, though you can set their pixels with Set_Compressed.
+
         //Clears part or all of this depth texture to the given value.
         template<typename T>
-        void Clear_Depth(T depth, SetDataParams optionalParams = { })
+        void Clear_Depth(T depth, SetDataParams<D> optionalParams = { })
         {
             BPAssert(format.IsDepthOnly(),
                      "Trying to clear depth value in a color, stencil, or depth-stencil texture");
+
             ClearData(&depth, GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
                       optionalParams);
         }
 
         //Clears part or all of this stencil texture to the given value.
-        void Clear_Stencil(uint8_t stencil, SetDataParams optionalParams = { })
+        void Clear_Stencil(uint8_t stencil, SetDataParams<D> optionalParams = { })
         {
             BPAssert(format.IsStencilOnly(),
                      "Trying to clear the stencil value in a color, depth, or depth-stencil texture");
+
             ClearData(&stencil,
                       GL_STENCIL_INDEX, GetOglInputFormat<decltype(stencil)>(),
                       optionalParams);
@@ -208,7 +176,7 @@ namespace Bplus::GL::Textures
         //Clears part or all of this depth/stencil hybrid texture.
         //Must use the format Depth24U_Stencil8.
         void Clear_DepthStencil(Unpacked_Depth24uStencil8u value,
-                                SetDataParams optionalParams = { })
+                                SetDataParams<D> optionalParams = { })
         {
             BPAssert(format == +DepthStencilFormats::Depth24U_Stencil8,
                      "Trying to clear depth/stencil texture with 24U depth, but it doesn't have 24U depth");
@@ -221,7 +189,7 @@ namespace Bplus::GL::Textures
         //Clears part of all of this depth/stencil hybrid texture.
         //Must use the format Depth32F_Stencil8.
         void Clear_DepthStencil(float depth, uint8_t stencil,
-                                SetDataParams optionalParams = { })
+                                SetDataParams<D> optionalParams = { })
         {
             BPAssert(format == +DepthStencilFormats::Depth32F_Stencil8,
                      "Trying to clear depth/stencil texture with 32F depth, but it doesn't have 32F depth");
@@ -232,229 +200,14 @@ namespace Bplus::GL::Textures
                       optionalParams);
         }
 
-        //Note that pixel data in OpenGL is ordered from left to right,
-        //    then from bottom to top, then from back to front.
-        //In other words, rows are contiguous and then grouped vertically.
 
-        //Sets a color or depth texture with the given data.
-        //Note that the upload to the GPU will be slower if
-        //    the data doesn't exactly match the texture's pixel format.
-        //It's also not recommended to use this to upload to a compressed texture format,
-        //    because GPU drivers may not have good-quality compression algorithms.
-        template<typename T>
-        void SetData(const T* data, ComponentData components,
-                     SetDataParams optionalParams = { })
-        {
-            SetData((const void*)data,
-                    GetOglChannels(components), GetOglInputFormat<T>(),
-                    optionalParams);
-        }
-
-        //Sets any kind of color or depth texture with the given data.
-        //The number of components is determined by the size of the vector type --
-        //    1D is Red/Depth, 2D is Red-Green, 3D is RGB, 4D is RGBA.
-        //If "bgrOrdering" is true, then the incoming RGB(A) data is actually in BGR(A) order.
-        //BGR order is often more efficient to give to the GPU.
-        template<glm::length_t L, typename T>
-        void SetData(const glm::vec<L, T>* data,
-                     bool bgrOrdering = false,
-                     SetDataParams optionalParams = { })
-        {
-            SetData(glm::value_ptr(*data),
-                    GetOglChannels(GetComponents<L>(bgrOrdering)),
-                    GetOglInputFormat<T>(),
-                    optionalParams);
-        }
-
-        //Directly sets block-compressed data for the texture,
-        //    based on its current format.
-        //The input data should be "GetByteCount()" bytes large.
-        //This is highly recommended over the other "SetData()" forms for compressed textures;
-        //    while the GPU driver should support doing the compression under the hood for you,
-        //    the results vary widely and are often bad.
-        //Note that, because Block-Compression works in square "blocks" of pixels,
-        //    the destination rectangle is in units of blocks, not individual pixels.
-        //Additionally, mipmaps cannot be regenerated automatically.
-        void SetData_Compressed(const std::byte* compressedData,
-                                uint_mipLevel_t mipLevel = 0,
-                                uBox_t destBlockRange = { })
-        {
-            //Convert block range to pixel size.
-            auto blockSize = GetBlockSize(format.AsCompressed());
-            auto destPixelRange = uBox_t::MakeMinSize(destBlockRange.MinCorner * blockSize,
-                                                      destBlockRange.Size * blockSize);
-
-            //Process default arguments.
-            if (glm::all(glm::equal(destPixelRange.Size, uVec_t{ 0 })))
-                destPixelRange = uBox_t::MakeMinSize(uVec_t{ 0 }, size);
-
-            BPAssert(glm::all(glm::lessThan(destPixelRange.GetMaxCorner(), size)),
-                     "Block range goes beyond the texture's size");
-
-            //Upload.
-            auto byteSize = (GLsizei)(format.GetByteSize(GetSize(mipLevel)) * destPixelRange.GetVolume());
-            if constexpr (D == 1) {
-                glCompressedTextureSubImage1D(glPtr.Get(), mipLevel,
-                                              destPixelRange.MinCorner.x, destPixelRange.Size.x,
-                                              format.GetOglEnum(),
-                                              byteSize, compressedData);
-            } else if constexpr (D == 2) {
-                glCompressedTextureSubImage2D(glPtr.Get(), mipLevel,
-                                              destPixelRange.MinCorner.x, destPixelRange.MinCorner.y,
-                                              destPixelRange.Size.x, destPixelRange.Size.y,
-                                              format.GetOglEnum(),
-                                              byteSize, compressedData);
-            } else if constexpr (D == 3) {
-                glCompressedTextureSubImage3D(glPtr.Get(), mipLevel,
-                                              destPixelRange.MinCorner.x, destPixelRange.MinCorner.y, destPixelRange.MinCorner.z,
-                                              destPixelRange.Size.x, destPixelRange.Size.y, destPixelRange.Size.z,
-                                              format.GetOglEnum(),
-                                              byteSize, compressedData);
-            } else {
-                static_assert(false, "TextureD<> should only be 1-, 2-, or 3-dimensional");
-            }
-        }
-
-        #pragma endregion
-        
-        #pragma region Getting data
-
-        //Optional parameters when downloading texture data.
-        struct GetDataParams
-        {
-            //The subset of the texture to set.
-            //A size-0 box represents the full texture.
-            uBox_t Range = uBox_t::MakeCenterSize(uVec_t{ 0 }, uVec_t{ 0 });
-            //The mip level. 0 is the original texture, higher values are smaller mips.
-            uint_mipLevel_t MipLevel = 0;
-
-            GetDataParams() { }
-            GetDataParams(const uBox_t& range)
-                : Range(range) { }
-            GetDataParams(uint_mipLevel_t mipLevel)
-                : MipLevel(mipLevel) { }
-            GetDataParams(const uBox_t& range,
-                          uint_mipLevel_t mipLevel)
-                : Range(range), MipLevel(mipLevel) { }
-
-            uBox_t GetRange(const uVec_t& fullSize) const
-            {
-                if (glm::all(glm::equal(Range.Size, uVec_t{ 0 })))
-                    return uBox_t::MakeMinSize(uVec_t{ 0 }, fullSize);
-                else
-                    return Range;
-            }
-        };
-
-        template<typename T>
-        void GetData(T* data, ComponentData components,
-                     GetDataParams optionalParams = { }) const
-        {
-            GetData((void*)data,
-                    GetOglChannels(components), GetOglInputFormat<T>(),
-                    optionalParams);
-        }
-
-        //Gets any kind of color or depth texture data and writes it to the given buffer.
-        //1D data is interpreted as R channel (or depth values),
-        //    2D as RG, 3D as RGB, and 4D as RGBA.
-        //If "bgrOrdering" is true, then the incoming RGB(A) data is actually in BGR(A) order.
-        template<glm::length_t L, typename T>
-        void GetData(glm::vec<L, T>* data, bool bgrOrdering = false,
-                     GetDataParams optionalParams = { }) const
-        {
-            GetData<T>(glm::value_ptr(*data),
-                       GetComponents<L>(bgrOrdering),
-                       optionalParams);
-        }
-
-        //Directly reads block-compressed data from the texture,
-        //    based on its current format.
-        //This is a fast, direct copy of the byte data stored in the texture.
-        //Note that, because Block-Compression works in square groups of pixels,
-        //    the "range" rectangle is in units of blocks, not individual pixels.
-        void GetData_Compressed(std::byte* compressedData,
-                                uBox_t blockRange = { },
-                                uint_mipLevel_t mipLevel = 0) const
-        {
-            //Convert block range to pixel size.
-            auto blockSize = GetBlockSize(format.AsCompressed());
-            auto pixelRange = uBox_t::MakeMinSize(blockRange.MinCorner * blockSize,
-                                                  blockRange.Size * blockSize);
-
-            //Process default arguments.
-            if (glm::all(glm::equal(pixelRange.Size, uVec_t{ 0 })))
-                pixelRange = uBox_t::MakeMinSize(uVec_t{ 0 }, size);
-
-            BPAssert(glm::all(glm::lessThan(pixelRange.GetMaxCorner(), size)),
-                     "Block range goes beyond the texture's size");
-
-            //Download.
-            auto range3D = pixelRange.ChangeDimensions<3>();
-            glGetCompressedTextureSubImage(glPtr.Get(), mipLevel,
-                                           range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
-                                           range3D.Size.x, pixelRange.Size.y, range3D.Size.z,
-                                           (GLsizei)(format.GetByteSize(GetSize(mipLevel)) * range3D.GetVolume()),
-                                           compressedData);
-        }
-
-        #pragma endregion
-
-
-    protected:
-
-        Sampler<D> sampler;
-        uVec_t size;
-        
-
-        void SetData(const void* data,
-                     GLenum dataChannels, GLenum dataType,
-                     const SetDataParams& params)
-        {
-            auto range = params.GetRange(GetSize(params.MipLevel));
-
-            //Upload.
-            if constexpr (D == 1) {
-                glTextureSubImage1D(glPtr.Get(), params.MipLevel,
-                                    range.MinCorner.x, range.Size.x,
-                                    dataChannels, dataType, data);
-            } else if constexpr (D == 2) {
-                glTextureSubImage2D(glPtr.Get(), params.MipLevel,
-                                    range.MinCorner.x, range.MinCorner.y,
-                                    range.Size.x, range.Size.y,
-                                    dataChannels, dataType, data);
-            } else if constexpr (D == 3) {
-                glTextureSubImage3D(glPtr.Get(), params.MipLevel,
-                                    range.MinCorner.x, range.MinCorner.y, range.MinCorner.z,
-                                    range.Size.x, range.Size.y, range.Size.z,
-                                    dataChannels, dataType, data);
-            } else {
-                static_assert(false, "TextureD<> should only be 1-, 2-, or 3-dimensional");
-            }
-
-            //Recompute mips if requested.
-            if (params.RecomputeMips)
-                RecomputeMips();
-        }
-        void GetData(void* data,
-                     GLenum dataChannels, GLenum dataType,
-                     const GetDataParams& params) const
-        {
-            auto range3D = params.GetRange(GetSize(params.MipLevel))
-                                 .ChangeDimensions<3>();
-
-            glGetTextureSubImage(glPtr.Get(), params.MipLevel,
-                                 range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
-                                 range3D.Size.x, range3D.Size.y, range3D.Size.z,
-                                 dataChannels, dataType,
-                                 (GLsizei)(GetByteSize(params.MipLevel) * range3D.GetVolume()),
-                                 data);
-        }
+        //The implementation for clearing any kind of data:
+    private:
         void ClearData(void* clearValue, GLenum valueFormat, GLenum valueType,
-                       const SetDataParams& params)
+                       const SetDataParams<D>& params)
         {
             auto fullSize = GetSize(params.MipLevel);
-            auto range = params.GetRange(size);
+            auto range = params.GetRange(fullSize);
             auto range3D = range.ChangeDimensions<3>();
 
             glClearTexSubImage(glPtr.Get(), params.MipLevel,
@@ -494,6 +247,335 @@ namespace Bplus::GL::Textures
                 }
             }
         }
+    public:
+
+        #pragma endregion
+
+        //Note that pixel data in OpenGL is ordered from left to right,
+        //    then from bottom to top, then from back to front.
+        //In other words, rows are contiguous and then grouped vertically.
+
+        #pragma region Setting data
+
+        //Sets this color texture with the given data.
+        //Not allowed for compressed-format textures.
+        //If the texture's format is an Integer-type, then the input data must be as well.
+        //Note that the upload to the GPU will be slower if
+        //    the data doesn't exactly match the texture's pixel format.
+        template<typename T>
+        void Set_Color(const T* data, ComponentData components,
+                       SetDataParams<D> optionalParams = { })
+        {
+            //Note that the OpenGL standard does allow you to set compressed textures
+            //    with normal RGBA values, but the implementation qualities vary widely
+            //    so we choose not to allow it.
+            BPAssert(!format.IsCompressed(),
+                     "Can't set a compressed texture with Set_Color()! Use Set_Compressed()");
+
+            BPAssert(!format.IsDepthStencil(),
+                     "Can't set a depth/stencil texture with Set_Color()!");
+            if constexpr (!std::is_integral_v<T>)
+                BPAssert(!format.IsInteger(), "Can't set an integer texture with non-integer data");
+
+            SetData((const void*)data,
+                    GetOglChannels(components), GetOglInputFormat<T>(),
+                    optionalParams);
+        }
+
+        //Sets any kind of color texture with the given data.
+        //Not allowed for compressed-format textures.
+        //If the texture's format is an Integer-type, then the input data must be as well.
+        //The number of components is determined by the size of the vector type --
+        //    1D is Red/Depth, 2D is Red-Green, 3D is RGB, 4D is RGBA.
+        //If "bgrOrdering" is true, then the incoming RGB(A) data is actually in BGR(A) order.
+        //BGR order is often more efficient to give to the GPU.
+        template<glm::length_t L, typename T>
+        void Set_Color(const glm::vec<L, T>* pixels,
+                       bool bgrOrdering = false,
+                       SetDataParams<D> optionalParams = { })
+        {
+            Set_Color<T>(glm::value_ptr(*pixels),
+                         GetComponents<L>(bgrOrdering),
+                         optionalParams);
+        }
+
+        //Directly sets block-compressed data for the texture,
+        //    based on its current format.
+        //The input data should have as many bytes as "GetFormat().GetByteSize(pixelsRange)".
+        //Note that, because Block-Compression works in square "blocks" of pixels,
+        //    the destination rectangle is in units of blocks, not individual pixels.
+        //Additionally, mipmaps cannot be regenerated automatically.
+        void Set_Compressed(const std::byte* compressedData,
+                            uint_mipLevel_t mipLevel = 0,
+                            uBox_t destBlockRange = { })
+        {
+            //Convert block range to pixel size.
+            auto texSize = GetSize(mipLevel);
+            auto blockSize = GetBlockSize(format.AsCompressed());
+            auto destPixelRange = uBox_t::MakeMinSize(destBlockRange.MinCorner * blockSize,
+                                                      destBlockRange.Size * blockSize);
+
+            //Process default arguments.
+            if (glm::all(glm::equal(destPixelRange.Size, uVec_t{ 0 })))
+                destPixelRange = uBox_t::MakeMinSize(uVec_t{ 0 }, texSize);
+
+            BPAssert(glm::all(glm::lessThanEqual(destPixelRange.GetMaxCorner(), texSize)),
+                     "Block range goes beyond the texture's size");
+
+            //Upload.
+            auto byteSize = (GLsizei)format.GetByteSize(destPixelRange.Size);
+            if constexpr (D == 1) {
+                glCompressedTextureSubImage1D(glPtr.Get(), mipLevel,
+                                              destPixelRange.MinCorner.x, destPixelRange.Size.x,
+                                              format.GetOglEnum(),
+                                              byteSize, compressedData);
+            } else if constexpr (D == 2) {
+                glCompressedTextureSubImage2D(glPtr.Get(), mipLevel,
+                                              destPixelRange.MinCorner.x, destPixelRange.MinCorner.y,
+                                              destPixelRange.Size.x, destPixelRange.Size.y,
+                                              format.GetOglEnum(),
+                                              byteSize, compressedData);
+            } else if constexpr (D == 3) {
+                glCompressedTextureSubImage3D(glPtr.Get(), mipLevel,
+                                              destPixelRange.MinCorner.x, destPixelRange.MinCorner.y, destPixelRange.MinCorner.z,
+                                              destPixelRange.Size.x, destPixelRange.Size.y, destPixelRange.Size.z,
+                                              format.GetOglEnum(),
+                                              byteSize, compressedData);
+            } else {
+                static_assert(false, "TextureD<> should only be 1-, 2-, or 3-dimensional");
+            }
+        }
+
+        //Sets part or all of this depth texture to the given value.
+        template<typename T>
+        void Set_Depth(const T* pixels, SetDataParams<D> optionalParams = { })
+        {
+            BPAssert(format.IsDepthOnly(),
+                     "Trying to set depth data for a non-depth texture");
+
+            SetData(&pixels, GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
+                    optionalParams);
+        }
+
+        //Sets part or all of this stencil texture to the given value.
+        void Set_Stencil(const uint8_t* pixels, SetDataParams<D> optionalParams = { })
+        {
+            BPAssert(format.IsStencilOnly(),
+                     "Trying to set the stencil values in a color, depth, or depth-stencil texture");
+
+            SetData(&pixels,
+                    GL_STENCIL_INDEX, GetOglInputFormat<decltype(pixels)>(),
+                    optionalParams);
+        }
+
+        
+        //Sets part or all of this depth/stencil hybrid texture.
+        //Must be using the format Depth24U_Stencil8.
+        void Set_DepthStencil(const uint32_t* packedPixels_Depth24uStencil8u,
+                              SetDataParams<D> optionalParams = { })
+        {
+            BPAssert(format == +DepthStencilFormats::Depth24U_Stencil8,
+                     "Trying to set depth/stencil texture with a 24U depth, but it doesn't use 24U depth");
+            
+            SetData(&packedPixels_Depth24uStencil8u,
+                    GL_STENCIL_INDEX, GL_UNSIGNED_INT_24_8,
+                    optionalParams);
+        }
+        //Sets part of all of this depth/stencil hybrid texture.
+        //Must be using the format Depth32F_Stencil8.
+        void Set_DepthStencil(const uint64_t* packedPixels_Depth32fStencil8u,
+                              SetDataParams<D> optionalParams = { })
+        {
+            BPAssert(format == +DepthStencilFormats::Depth32F_Stencil8,
+                     "Trying to set depth/stencil texture with a 32F depth, but it doesn't use 32F depth");
+
+            SetData(&packedPixels_Depth32fStencil8u,
+                    GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV,
+                    optionalParams);
+        }
+
+
+        //The implementation for setting any kind of data:
+    private:
+        void SetData(const void* data,
+                     GLenum dataChannels, GLenum dataType,
+                     const SetDataParams<D>& params)
+        {
+            auto sizeAtMip = GetSize(params.MipLevel);
+            auto range = params.GetRange(sizeAtMip);
+
+            for (glm::length_t d = 0; d < D; ++d)
+                BPAssert(range.GetMaxCornerInclusive()[d] < sizeAtMip[d],
+                         "GetData() call would go past the texture bounds");
+
+            //Upload.
+            if constexpr (D == 1) {
+                glTextureSubImage1D(glPtr.Get(), params.MipLevel,
+                                    range.MinCorner.x, range.Size.x,
+                                    dataChannels, dataType, data);
+            } else if constexpr (D == 2) {
+                glTextureSubImage2D(glPtr.Get(), params.MipLevel,
+                                    range.MinCorner.x, range.MinCorner.y,
+                                    range.Size.x, range.Size.y,
+                                    dataChannels, dataType, data);
+            } else if constexpr (D == 3) {
+                glTextureSubImage3D(glPtr.Get(), params.MipLevel,
+                                    range.MinCorner.x, range.MinCorner.y, range.MinCorner.z,
+                                    range.Size.x, range.Size.y, range.Size.z,
+                                    dataChannels, dataType, data);
+            } else {
+                static_assert(false, "TextureD<> should only be 1-, 2-, or 3-dimensional");
+            }
+
+            //Recompute mips if requested.
+            if (params.RecomputeMips)
+                RecomputeMips();
+        }
+    public:
+
+        #pragma endregion
+        
+        #pragma region Getting data
+
+        //Gets any kind of color texture data, writing it into the given buffer.
+        template<typename T>
+        void Get_Color(T* data, ComponentData components,
+                       GetDataParams<D> optionalParams = { }) const
+        {
+            BPAssert(!format.IsDepthStencil(),
+                     "Can't read a depth/stencil texture with Get_Color()!");
+            if constexpr (!std::is_integral_v<T>)
+                BPAssert(!format.IsInteger(), "Can't read an integer texture as non-integer data");
+
+            GetData((void*)data,
+                    GetOglChannels(components), GetOglInputFormat<T>(),
+                    optionalParams);
+        }
+
+        //Gets any kind of color texture data, writing it into the given buffer.
+        //1D data is interpreted as R channel (or depth values),
+        //    2D as RG, 3D as RGB, and 4D as RGBA.
+        //If "bgrOrdering" is true, then the incoming RGB(A) data is actually in BGR(A) order.
+        template<glm::length_t L, typename T>
+        void Get_Color(glm::vec<L, T>* pixels, bool bgrOrdering = false,
+                       GetDataParams<D> optionalParams = { }) const
+        {
+            Get_Color<T>(glm::value_ptr(*pixels),
+                         GetComponents<L>(bgrOrdering),
+                         optionalParams);
+        }
+
+        //Directly reads block-compressed data from the texture,
+        //    based on its current format.
+        //This is a fast, direct copy of the byte data stored in the texture.
+        //The output data should have as many bytes as "GetFormat().GetByteSize(pixelsRange)".
+        //Note that, because Block-Compression works in square groups of pixels,
+        //    the "range" rectangle is in units of blocks, not individual pixels.
+        void Get_Compressed(std::byte* compressedData,
+                            uBox_t blockRange = { },
+                            uint_mipLevel_t mipLevel = 0) const
+        {
+            //Convert block range to pixel size.
+            auto texSize = GetSize(mipLevel);
+            auto blockSize = GetBlockSize(format.AsCompressed());
+            auto pixelRange = uBox_t::MakeMinSize(blockRange.MinCorner * blockSize,
+                                                  blockRange.Size * blockSize);
+
+            //Process default arguments.
+            if (glm::all(glm::equal(pixelRange.Size, uVec_t{ 0 })))
+                pixelRange = uBox_t::MakeMinSize(uVec_t{ 0 }, texSize);
+
+            BPAssert(glm::all(glm::lessThan(pixelRange.GetMaxCornerInclusive(), texSize)),
+                     "Block range goes beyond the texture's size");
+
+            //Download.
+            auto range3D = pixelRange.ChangeDimensions<3>();
+            auto byteSize = (GLsizei)format.GetByteSize(pixelRange.Size);
+            glGetCompressedTextureSubImage(glPtr.Get(), mipLevel,
+                                           range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
+                                           range3D.Size.x, pixelRange.Size.y, range3D.Size.z,
+                                           byteSize, compressedData);
+        }
+        
+        //Gets part or all of this depth texture, writing it into the given buffer.
+        template<typename T>
+        void Get_Depth(T* pixels, GetDataParams<D> optionalParams = { })
+        {
+            BPAssert(format.IsDepthOnly(),
+                     "Trying to get depth data for a non-depth texture");
+
+            GetData(&pixels, GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
+                    optionalParams);
+        }
+
+        //Gets part or all of this stencil texture to the given value.
+        void Get_Stencil(uint8_t* pixels, GetDataParams<D> optionalParams = { })
+        {
+            BPAssert(format.IsStencilOnly(),
+                     "Trying to get the stencil values in a color, depth, or depth-stencil texture");
+
+            GetData(&pixels,
+                    GL_STENCIL_INDEX, GetOglInputFormat<decltype(pixels)>(),
+                    optionalParams);
+        }
+
+        
+        //Gets part or all of this depth/stencil hybrid texture, writing it into the given buffer.
+        //Must be using the format Depth24U_Stencil8.
+        void Get_DepthStencil(uint32_t* packedPixels_Depth24uStencil8u,
+                              GetDataParams<D> optionalParams = { })
+        {
+            BPAssert(format == +DepthStencilFormats::Depth24U_Stencil8,
+                     "Trying to set depth/stencil texture with a 24U depth, but it doesn't use 24U depth");
+            
+            GetData(&packedPixels_Depth24uStencil8u,
+                    GL_STENCIL_INDEX, GL_UNSIGNED_INT_24_8,
+                    optionalParams);
+        }
+        //Sets part of all of this depth/stencil hybrid texture, writing it into the given buffer.
+        //Must be using the format Depth32F_Stencil8.
+        void Get_DepthStencil(uint64_t* packedPixels_Depth32fStencil8u,
+                              GetDataParams<D> optionalParams = { })
+        {
+            BPAssert(format == +DepthStencilFormats::Depth32F_Stencil8,
+                     "Trying to get depth/stencil texture with a 32F depth, but it doesn't use 32F depth");
+
+            GetData(&packedPixels_Depth32fStencil8u,
+                    GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV,
+                    optionalParams);
+        }
+
+
+        //The implementation for getting any kind of data:
+    private:
+        void GetData(void* data,
+                     GLenum dataChannels, GLenum dataType,
+                     const GetDataParams<D>& params) const
+        {
+            auto sizeAtMip = GetSize(params.MipLevel);
+            auto range = params.GetRange(sizeAtMip);
+
+            for (glm::length_t d = 0; d < D; ++d)
+                BPAssert(range.GetMaxCornerInclusive()[d] < sizeAtMip[d],
+                         "GetData() call would go past the texture bounds");
+
+            auto range3D = range.ChangeDimensions<3>();
+            glGetTextureSubImage(glPtr.Get(), params.MipLevel,
+                                 range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
+                                 range3D.Size.x, range3D.Size.y, range3D.Size.z,
+                                 dataChannels, dataType,
+                                 (GLsizei)(GetByteSize(params.MipLevel) * range3D.GetVolume()),
+                                 data);
+        }
+    public:
+
+        #pragma endregion
+
+
+    protected:
+
+        Sampler<D> sampler;
+        uVec_t size;
     };
 
     using Texture1D = TextureD<1>;
