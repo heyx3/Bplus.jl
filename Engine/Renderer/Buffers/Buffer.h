@@ -69,14 +69,14 @@ namespace Bplus::GL::Buffers
 
 
         //Sets this buffer's data, or optionally just a subset of it.
-        void SetBytes(const std::byte* bytes,
+        void SetBytes(const std::byte* newBytes,
                       Math::IntervalUL byteRange = { });
         //Sets this buffer's data, or optionally just a subset of it.
         template<typename T>
-        void Set(const T* data,
+        void Set(const T* newData,
                  Math::IntervalUL elementRange = { })
         {
-            SetBytes((const std::byte*)data,
+            SetBytes((const std::byte*)newData,
                      Math::IntervalUL::MakeMinSize(elementRange.MinCorner * sizeof(T),
                                                    elementRange.Size * sizeof(T)));
         }

@@ -48,7 +48,7 @@ namespace Bplus::Math
         }
         static Box<N, T> MakeSize(const vec_t& size)
         {
-            return { { 0 }, size };
+            return { vec_t{ 0 }, size };
         }
 
         //Constructs a bounding box for the given iterator of vec_t.

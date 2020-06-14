@@ -25,5 +25,9 @@
 #include <DevIL/ilu.h>
 #include <DevIL/ilut.h>
 
+//TODO: Libraries for Block-Compression of textures (see below):
+//        * https://github.com/richgel999/bc7enc16
+//        * https://github.com/GameTechDev/ISPCTextureCompressor
+
 //AssImp, the model file saving/loading library.
 #include <assimp/scene.h>

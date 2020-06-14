@@ -47,7 +47,7 @@ namespace
                                          uint64_t fullSize)
     {
         if (rangeParam == Math::IntervalUL{ })
-            rangeParam = Math::IntervalUL::MakeSize({ fullSize });
+            rangeParam = Math::IntervalUL::MakeSize(glm::u64vec1{ fullSize });
 
         return rangeParam;
     }
@@ -133,9 +133,9 @@ void Buffer::CopyBytes(Buffer& dest,
 {
     srcRange = ProcessDefaultRange(srcRange, byteSize);
     BPAssert(srcRange.GetMaxCornerInclusive().x < byteSize,
-             "Trying to copy data from past the end of the source buffer");
+             "Trying to copy data past the end of the source buffer");
     BPAssert(destOffset + srcRange.Size.x < dest.byteSize,
-             "Trying to copy data to past the end of the destination buffer");
+             "Trying to copy data past the end of the destination buffer");
 
     glCopyNamedBufferSubData(glPtr.Get(), dest.glPtr.Get(),
                              (GLintptr)srcRange.MinCorner.x,

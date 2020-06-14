@@ -6,9 +6,6 @@
 
 namespace Bplus::GL
 {
-    class CompiledShader;
-    
-    //TODO: Move applicable settings into Target.
     //TODO: Changing viewport Y axis and depth (how can GLM support this depth mode?): https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glClipControl.xhtml
     //TODO: Give various object names with glObjectLabel
 
@@ -199,7 +196,5 @@ namespace Bplus::GL
         glm::ivec4 viewport;
         Lazy<glm::ivec4> scissor;
         VsyncModes vsync;
-
-        CompiledShader* activeShader = nullptr;
     };
 }
