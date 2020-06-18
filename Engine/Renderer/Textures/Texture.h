@@ -1,6 +1,7 @@
 #pragma once
 
 #include <numeric>
+#include <array>
 
 #include "Sampler.h"
 #include "../../Math/Box.hpp"
@@ -188,16 +189,14 @@ namespace Bplus::GL::Textures
     #pragma endregion
 
 
-    //An extremely basic wrapper around OpenGL textures.
-    //More full-featured wrappers are defined below and inherit from this one.
+    //The base class for all OpenGL textures.
+    //Designed to be used with OpenGL's Bindless Textures extension.
     class BP_API Texture
     {
     public:
-        //Creates a new texture.
-        //Pass "1" for nMipLevels to not use mip-maps.
-        //Pass "0" for nMipLevels to generate full mip-maps down to a single pixel.
-        //Pass anything else to generate a fixed amount of mip levels.
-        Texture(Types type, Format format, uint_mipLevel_t nMipLevels);
+        Texture(Types type, Format format, uint_mipLevel_t nMipLevels,
+                const Sampler<3>& sampler3D);
+
         virtual ~Texture();
         
         //No copying.
@@ -211,9 +210,11 @@ namespace Bplus::GL::Textures
         uint_mipLevel_t GetNMipLevels() const { return nMipLevels; }
         OglPtr::Texture GetOglPtr() const { return glPtr; }
 
+
         //Updates mipmaps for this texture.
         //Not allowed for compressed-format textures.
         void RecomputeMips();
+
 
     protected:
 
@@ -222,8 +223,16 @@ namespace Bplus::GL::Textures
         uint_mipLevel_t nMipLevels;
 
         Format format;
+        Sampler<3> sampler3D;
 
+        //TODO: Track handles.
+
+
+        //Child classes have access to the move constructor.
+        Texture(Texture&& src);
+        Texture& operator=(Texture&& src) = delete;
         
+
         //Given a set of components for texture uploading/downloading,
         //    and the data type of this texture's pixels,
         //    finds the corresponding OpenGL enum value.
@@ -317,17 +326,5 @@ namespace Bplus::GL::Textures
                 return ComponentData::Greyscale;
             }
         }
-
-
-        //Child classes have access to the move operator.
-        Texture(Texture&& src);
-        Texture& operator=(Texture&& src);
     };
-
-    //A great reference for getting/setting texture data in OpenGL:
-    //    https://www.khronos.org/opengl/wiki/Pixel_Transfer
-
-
-    //TODO: 'Handle' class.
-
 }

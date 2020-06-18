@@ -44,14 +44,27 @@ namespace
 
 
 
-OglPtr::ShaderProgram CompiledShader::Compile(const char* vertShader, const char* fragShader,
+OglPtr::ShaderProgram CompiledShader::Compile(std::string vertShader, std::string fragShader,
                                               std::string& outErrMsg)
 {
+    //Generate the OpenGL/extensions declarations for the top of the shader files.
+    std::string shaderPrefix = Context::GLSLVersion();
+    shaderPrefix += "\n";
+    for (int i = 0; i < Context::GLSLExtensions().size(); ++i)
+    {
+        shaderPrefix += Context::GLSLExtensions()[i];
+        shaderPrefix += "\n";
+    }
+    vertShader.insert(0, shaderPrefix);
+    fragShader.insert(0, shaderPrefix);
+
     GLuint vertShaderObj = glCreateShader(GL_VERTEX_SHADER),
            fragShaderObj = glCreateShader(GL_FRAGMENT_SHADER);
 
-    glShaderSource(vertShaderObj, 1, &vertShader, nullptr);
-    glShaderSource(fragShaderObj, 1, &fragShader, nullptr);
+    auto* shaderPtr = vertShader.c_str();
+    glShaderSource(vertShaderObj, 1, &shaderPtr, nullptr);
+    shaderPtr = fragShader.c_str();
+    glShaderSource(fragShaderObj, 1, &shaderPtr, nullptr);
 
     auto errorMsg = TryCompile(vertShaderObj);
     if (errorMsg.size() > 0)
@@ -103,18 +116,33 @@ OglPtr::ShaderProgram CompiledShader::Compile(const char* vertShader, const char
     return OglPtr::ShaderProgram(programObj);
 }
 
-OglPtr::ShaderProgram CompiledShader::Compile(const char* vertShader,
-                                              const char* geomShader,
-                                              const char* fragShader,
+OglPtr::ShaderProgram CompiledShader::Compile(std::string vertShader,
+                                              std::string geomShader,
+                                              std::string fragShader,
                                               std::string& outErrMsg)
 {
+    //Generate the OpenGL/extensions declarations for the top of the shader files.
+    std::string shaderPrefix = Context::GLSLVersion();
+    shaderPrefix += "\n";
+    for (int i = 0; i < Context::GLSLExtensions().size(); ++i)
+    {
+        shaderPrefix += Context::GLSLExtensions()[i];
+        shaderPrefix += "\n";
+    }
+    vertShader.insert(0, shaderPrefix);
+    fragShader.insert(0, shaderPrefix);
+    geomShader.insert(0, shaderPrefix);
+
     GLuint vertShaderObj = glCreateShader(GL_VERTEX_SHADER),
            geomShaderObj = glCreateShader(GL_GEOMETRY_SHADER),
            fragShaderObj = glCreateShader(GL_FRAGMENT_SHADER);
 
-    glShaderSource(vertShaderObj, 1, &vertShader, nullptr);
-    glShaderSource(geomShaderObj, 1, &geomShader, nullptr);
-    glShaderSource(fragShaderObj, 1, &fragShader, nullptr);
+    auto* shaderPtr = vertShader.c_str();
+    glShaderSource(vertShaderObj, 1, &shaderPtr, nullptr);
+    shaderPtr = geomShader.c_str();
+    glShaderSource(geomShaderObj, 1, &shaderPtr, nullptr);
+    shaderPtr = fragShader.c_str();
+    glShaderSource(fragShaderObj, 1, &shaderPtr, nullptr);
 
     auto errorMsg = TryCompile(vertShaderObj);
     if (errorMsg.size() > 0)
@@ -284,19 +312,18 @@ void CompiledShader::Activate()
     threadData.currentShader = this;
 }
 
-std::tuple<CompiledShader::UniformStates, OglPtr::ShaderUniform>
-    CompiledShader::CheckUniform(const std::string& name) const
+CompiledShader::UniformAndStatus CompiledShader::CheckUniform(const std::string& name) const
 {
     //Check whether the name exists.
     auto foundPtr = uniformPtrs.find(name);
     if (foundPtr == uniformPtrs.end())
-        return std::make_tuple(UniformStates::Missing, OglPtr::ShaderUniform());
+        return { OglPtr::ShaderUniform::Null(), UniformStates::Missing };
     
-    //Check whether the name corresponds to a real uniform.
+    //Check whether the uniform actually exists in the shader program.
     auto ptr = foundPtr->second;
     if (ptr.IsNull())
-        return std::make_tuple(UniformStates::OptimizedOut, ptr);
+        return { ptr, UniformStates::OptimizedOut };
 
     //Everything checks out!
-    return std::make_tuple(UniformStates::Exists, ptr);
+    return { ptr, UniformStates::Exists };
 }

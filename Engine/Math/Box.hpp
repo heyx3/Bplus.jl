@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 #include <glm/fwd.hpp>
 #include <glm/gtx/component_wise.hpp>
+#include <glm/gtx/hash.hpp>
 
 #include "../Utils.h"
 
@@ -190,4 +191,16 @@ namespace Bplus::Math
     using IntervalI = Interval<glm::i32>;
     using IntervalU = Interval<glm::u32>;
     using IntervalUL = Interval<glm::u64>;
+}
+
+
+//Allow Box<> to be hashed, for use in STL collections.
+namespace std
+{
+    template<glm::length_t N, typename T>
+    struct hash<Bplus::Math::Box<N, T>> {
+        size_t operator()(const Bplus::Math::Box<N, T>& value) {
+            return MultiHash(value.MinCorner, value.Size);
+        }
+    };
 }

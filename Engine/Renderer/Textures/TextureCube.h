@@ -156,7 +156,8 @@ namespace Bplus::GL::Textures
 
 
     //A "Cubemap" texture, which has 6 2D textures for faces.
-    class BP_API TextureCube : public Texture
+    class BP_API TextureCube : public Texture,
+                                      TextureWrappingHelper<2>
     {
     public:
         static constexpr Types GetClassType() { return Types::Cubemap; }
@@ -168,7 +169,9 @@ namespace Bplus::GL::Textures
         //Pass "0" for nMipLevels to generate full mip-maps down to a single pixel.
         //Pass anything else to generate a fixed amount of mip levels.
         TextureCube(const glm::uvec2& size, Format format,
-                    uint_mipLevel_t nMipLevels = 0);
+                    uint_mipLevel_t nMipLevels = 0,
+                    TextureMinFilters minFilter = TextureMinFilters::Smooth,
+                    TextureMagFilters magFilter = TextureMagFilters::Smooth);
         virtual ~TextureCube();
 
         //Note that the copy constructor/operator is automatically deleted via the parent class.
@@ -184,14 +187,6 @@ namespace Bplus::GL::Textures
         size_t GetByteSize(uint_mipLevel_t mipLevel = 0) const { return 6 * format.GetByteSize(GetSize(mipLevel)); }
         //Gets the total byte-size of this texture, across all mip levels.
         size_t GetTotalByteSize() const;
-
-
-        TextureMinFilters GetMinFilter() const { return minFilter; }
-        TextureMagFilters GetMagFilter() const { return magFilter; }
-        Sampler<2> GetSampler() const { return { minFilter, magFilter, TextureWrapping::Clamp }; }
-
-        void SetMinFilter(TextureMinFilters filter);
-        void SetMagFilter(TextureMagFilters filter);
 
 
         #pragma region Clearing data
@@ -495,9 +490,6 @@ namespace Bplus::GL::Textures
         #pragma endregion
 
     protected:
-
-        TextureMinFilters minFilter;
-        TextureMagFilters magFilter;
 
         glm::uvec2 size;
     };

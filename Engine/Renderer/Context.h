@@ -42,9 +42,14 @@ namespace Bplus::GL
     class BP_API Context
     {
     public:
+        //The GLSL declaration of which OpenGL version is required for BPlus.
         static const char* GLSLVersion() { return "#version 450"; }
+        //The GLSL declarations of which extensions are required for BPlus.
+        static const std::array<const char*, 1> GLSLExtensions() { return { "#extension GL_ARB_bindless_texture : require" }; }
+
         static uint8_t GLVersion_Major() { return 4; }
         static uint8_t GLVersion_Minor() { return 5; }
+        //TODO: Some enumeration and check that all used extensions exist.
 
         //May be null if no context exists right now.
         //Note that each thread has its own singleton instance.

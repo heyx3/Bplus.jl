@@ -4,6 +4,8 @@
 
 #include <vector>
 
+//TODO: The functions should probably be moved into the Bplus namespace.
+
 
 //The BETTER_ENUM() macro, to define an enum
 //    with added string conversions and iteration.
@@ -95,6 +97,33 @@ void SwapByteOrder(const T* src, std::byte* dest)
         for (uint_fast32_t i = 0; i < sizeof(T); ++i)
             dest[i] = srcBytes[sizeof(T) - i - 1];
     }
+}
+
+template<typename T, size_t Size>
+std::array<T, Size> MakeArray(const T& fillValue)
+{
+    std::array<T, Size> arr;
+    arr.fill(fillValue);
+    return arr;
+}
+
+
+//A modern C++17 way to hash any number of hashable types together.
+//The types must specialize std::hash<T>().
+template<typename... Items>
+size_t MultiHash(const Items&... items)
+{
+    size_t seed = 0;
+    MultiHash_(seed, items);
+}
+
+//Helper function for MultiHash().
+template<typename T, typename... Rest>
+void MultiHash_(std::size_t& seed, const T& v, const Rest&... rest)
+{
+    //Taken from: https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
+    seed ^= std::hash<T>{}(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    (MultiHash(seed, rest), ...);
 }
 
 
@@ -193,8 +222,9 @@ namespace std
 //Adds a "Null" value, given its actual value as an integer.
 //NOTE that this MUST be placed between 'strong_typedef_start' and 'strong_typedef_end'!
 #define strong_typedef_null(intValue) \
-    static const Data_t Null = intValue; \
-    bool IsNull() const { return Get() == Null; }
+    static const Data_t null = intValue; \
+    static const Me_t Null() { return Me_t{null}; } \
+    bool IsNull() const { return Get() == null; }
 
 //Defines a default hash implementation for the type,
 //    assuming the underlying type has a default hash implementation.

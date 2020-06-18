@@ -6,8 +6,10 @@ using namespace Bplus::GL::Textures;
 
 
 TextureCube::TextureCube(const glm::uvec2& _size, Format format,
-                         uint_mipLevel_t nMips)
-    : Texture(Types::Cubemap, format, nMips),
+                         uint_mipLevel_t nMips,
+                         TextureMinFilters minFilter, TextureMagFilters magFilter)
+    : Texture(Types::Cubemap, format, nMips, minFilter, magFilter),
+      TextureWrappingHelper<2>(GetOglPtr()),
       size(_size)
 {
     //Allocate GPU storage.
@@ -22,10 +24,10 @@ TextureCube::TextureCube(const glm::uvec2& _size, Format format,
     magFilter = TextureMagFilters::_from_integral(p);
 
     //Cubemaps should always use clamping, and should sample nicely around edges.
-    glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-    p = (GLenum)TextureWrapping::Clamp;
+    p = (GLenum)WrapModes::Clamp;
     glTextureParameteriv(glPtr.Get(), GL_TEXTURE_WRAP_S, &p);
     glTextureParameteriv(glPtr.Get(), GL_TEXTURE_WRAP_T, &p);
+    glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 }
 TextureCube::~TextureCube()
 {
@@ -34,8 +36,9 @@ TextureCube::~TextureCube()
 }
 
 TextureCube::TextureCube(TextureCube&& src)
-    : Texture(std::move(src)), size(src.size),
-      minFilter(src.minFilter), magFilter(src.magFilter)
+    : Texture(std::move(src)),
+      TextureWrappingHelper(std::move(src)),
+      size(src.size)
 {
 }
 TextureCube& TextureCube::operator=(TextureCube&& src)
@@ -46,6 +49,7 @@ TextureCube& TextureCube::operator=(TextureCube&& src)
 
     return *this;
 }
+
 
 glm::uvec2 TextureCube::GetSize(uint_mipLevel_t mipLevel) const
 {
@@ -64,18 +68,6 @@ size_t TextureCube::GetTotalByteSize() const
     return sum;
 }
 
-void TextureCube::SetMinFilter(TextureMinFilters filter)
-{
-    minFilter = filter;
-    auto val = (GLint)filter._to_integral();
-    glTextureParameteriv(glPtr.Get(), GL_TEXTURE_MIN_FILTER, &val);
-}
-void TextureCube::SetMagFilter(TextureMagFilters filter)
-{
-    magFilter = filter;
-    auto val = (GLint)filter._to_integral();
-    glTextureParameteriv(glPtr.Get(), GL_TEXTURE_MAG_FILTER, &val);
-}
 
 void TextureCube::ClearData(void* clearValue,
                             GLenum valueFormat, GLenum valueType,
@@ -156,7 +148,6 @@ void TextureCube::GetData(void* data,
                          dataChannels, dataType,
                          byteSize, data);
 }
-
 
 void TextureCube::Set_Compressed(const std::byte* compressedData,
                                  std::optional<CubeFaces> face,

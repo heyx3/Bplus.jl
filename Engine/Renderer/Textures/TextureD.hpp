@@ -37,10 +37,12 @@ namespace Bplus::GL::Textures
         //Pass "0" for nMipLevels to generate full mip-maps down to a single pixel.
         //Pass anything else to generate a fixed amount of mip levels.
         TextureD(const uVec_t& _size, Format _format,
-                 uint_mipLevel_t _nMipLevels = 0)
+                 uint_mipLevel_t _nMipLevels = 0,
+                 Sampler<D> sampler = new Sampler<D>())
             : size(_size),
               Texture(GetClassType(), _format,
-                      (_nMipLevels < 1) ? GetMaxNumbMipmaps(_size) : _nMipLevels)
+                      (_nMipLevels < 1) ? GetMaxNumbMipmaps(size) : _nMipLevels,
+                      sampler.ChangeDimensions<3>())
         {
             //Allocate GPU storage.
             if constexpr (D == 1) {
@@ -52,33 +54,19 @@ namespace Bplus::GL::Textures
             } else {
                 static_assert(false, "TextureD<> should only be 1-, 2-, or 3-dimensional");
             }
-
-            //Load the initial sampler data.
-            GLint p;
-            glGetTextureParameteriv(glPtr.Get(), GL_TEXTURE_MIN_FILTER, &p);
-            sampler.MinFilter = TextureMinFilters::_from_integral(p);
-            glGetTextureParameteriv(glPtr.Get(), GL_TEXTURE_MAG_FILTER, &p);
-            sampler.MagFilter = TextureMagFilters::_from_integral(p);
-            const std::array<GLenum, 3> wrapEnums = {
-                GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TEXTURE_WRAP_R
-            };
-            for (glm::length_t d = 0; d < D; ++d)
-            {
-                glGetTextureParameteriv(glPtr.Get(), wrapEnums[d], &p);
-                sampler.Wrapping[d] = TextureWrapping::_from_integral(p);
-            }
         }
         virtual ~TextureD()
         {
-            if (glPtr != OglPtr::Texture::Null)
+            if (glPtr != OglPtr::Texture::Null())
                 glDeleteTextures(1, &glPtr.Get());
         }
 
         //Note that the copy constructor/operator is automatically deleted via the parent class.
 
-        TextureD(TextureD&& src)
-            : Texture(std::move(src)), size(src.size), sampler(src.sampler) { }
-        TextureD& operator=(TextureD&& src)
+        TextureD(TextureD<D>&& src)
+            : Texture(std::move(src)),
+              size(src.size) { }
+        TextureD& operator=(TextureD<D>&& src)
         {
             //Destruct this instance, then move-construct it.
             this->~TextureD<D>();
@@ -109,23 +97,6 @@ namespace Bplus::GL::Textures
             for (uint_mipLevel_t mip = 0; mip < nMipLevels; ++mip)
                 sum += GetByteSize(mip);
             return sum;
-        }
-
-        Sampler<D> GetSampler() const { return sampler; }
-        void SetSampler(const Sampler<D>& s)
-        {
-            sampler = s;
-
-            glTextureParameteri(glPtr.Get(), GL_TEXTURE_MIN_FILTER,
-                                (GLint)sampler.MinFilter);
-            glTextureParameteri(glPtr.Get(), GL_TEXTURE_MAG_FILTER,
-                                (GLint)sampler.MagFilter);
-
-            const std::array<GLenum, 3> wrapEnums = {
-                GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TEXTURE_WRAP_R
-            };
-            for (glm::length_t d = 0; d < D; ++d)
-                glTextureParameteri(glPtr.Get(), wrapEnums[d], (GLint)sampler.Wrapping[d]);
         }
 
 
@@ -250,6 +221,7 @@ namespace Bplus::GL::Textures
     public:
 
         #pragma endregion
+
 
         //Note that pixel data in OpenGL is ordered from left to right,
         //    then from bottom to top, then from back to front.
@@ -574,7 +546,6 @@ namespace Bplus::GL::Textures
 
     protected:
 
-        Sampler<D> sampler;
         uVec_t size;
     };
 

@@ -91,7 +91,7 @@ Buffer::Buffer(Buffer&& src)
       byteSize(src.byteSize),
       canChangeData(src.canChangeData)
 {
-    src.glPtr.Get() = OglPtr::Buffer::Null;
+    src.glPtr = OglPtr::Buffer::Null();
 }
 Buffer& Buffer::operator=(Buffer&& src)
 {

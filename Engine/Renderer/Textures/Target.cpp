@@ -246,7 +246,7 @@ Target::Target(Target&& from)
     depthBuffer = std::move(from.depthBuffer);
     managedTextures = std::move(from.managedTextures);
 
-    from.glPtr.Get() = OglPtr::Target::Null;
+    from.glPtr = OglPtr::Target::Null();
 }
 
 TargetStates Target::Validate() const

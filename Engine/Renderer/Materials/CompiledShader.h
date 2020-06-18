@@ -23,18 +23,22 @@ namespace Bplus::GL
         static CompiledShader* GetCurrentActive();
 
         
-        //Compiles and returns an OpenGL shader program with a vertex and fragment shader.
+        //Compiles and returns an OpenGL shader program with the given vertex and fragment shader.
+        //The declaration of OpenGL version and any extensions is pre-pended automatically.
         //If compilation failed, 0 is returned and an error message is written.
         //Otherwise, the result should eventually be cleaned up with glDeleteProgram().
-        static OglPtr::ShaderProgram Compile(const char* vertexShader, const char* fragmentShader,
+        static OglPtr::ShaderProgram Compile(std::string vertexShader, std::string fragmentShader,
                                              std::string& outErrMsg);
         //Compiles and returns an OpenGL shader program with a vertex, geometry,
         //    and fragment shader.
+        //The declaration of OpenGL version and any extensions is pre-pended automatically.
         //If compilation failed, 0 is returned and an error message is written.
         //Otherwise, the result should be cleaned up with glDeleteProgram().
-        static OglPtr::ShaderProgram Compile(const char* vertexShader, const char* geometryShader,
-                                             const char* fragmentShader,
+        static OglPtr::ShaderProgram Compile(std::string vertexShader, std::string geometryShader,
+                                             std::string fragmentShader,
                                              std::string& outErrMsg);
+
+        //TODO: Ability to store pre-compiled shaders, plus a Compile() overload that takes them
 
 
         //The render state this shader will use.
@@ -71,7 +75,7 @@ namespace Bplus::GL
         {
             auto found = uniformPtrs.find(uniformName);
             return (found != uniformPtrs.end()) &&
-                   (found->second == OglPtr::ShaderUniform::Null);
+                   (found->second == OglPtr::ShaderUniform::null);
         }
 
 
@@ -81,22 +85,20 @@ namespace Bplus::GL
         //Valid types are the primitives (int32_t, uint32_t, float, double, and bool),
         //    GLM vectors of the primitives,
         //    GLM matrices of float and double,
-        //    OglPtr::Image, and OglPtr::Sampler.
+        //    Bplus::GL::OglPtr::Texture and ::Buffer.
         //Returns std::nullopt if a uniform with the given name doesn't exist.
-        //If the shader optimized out the uniform, its "set" value is unknown and
+        //If the shader optimized out the uniform, its current value is undefined and
         //    the given default value will be returned.
         template<typename Value_t>
         std::optional<Value_t> GetUniform(const std::string& name,
-                                          std::optional<Value_t> defaultIfOptimizedOut = Value_t())
+                                          std::optional<Value_t> defaultIfOptimizedOut = Value_t()) const
         {
-            UniformStates state;
-            OglPtr::ShaderUniform ptr;
-            std::tie(state, ptr) = CheckUniform(name);
-            switch (state)
+            auto uniformStatus = CheckUniform(name);
+            switch (uniformStatus.Status)
             {
-                case UniformStates::Missing: return std::nullopt;
+                case UniformStates::Missing:      return std::nullopt;
                 case UniformStates::OptimizedOut: return defaultIfOptimizedOut;
-                case UniformStates::Exists: return GetUniform(ptr);
+                case UniformStates::Exists:       return GetUniform<Value_t>(uniformStatus.Uniform);
 
                 default:
                     BPAssert(false, "Unknown uniform ptr state");
@@ -115,7 +117,7 @@ namespace Bplus::GL
         template<typename Value_t>
         std::optional<Value_t> GetUniformArrayElement(const std::string& name,
                                                       OglPtr::ShaderProgram::Data_t index,
-                                                      std::optional<Value_t> defaultIfOptimizedOut = Value_t())
+                                                      std::optional<Value_t> defaultIfOptimizedOut = Value_t()) const
         {
             UniformStates state;
             OglPtr::ShaderUniform ptr;
@@ -145,7 +147,7 @@ namespace Bplus::GL
         template<typename Value_t>
         bool GetUniformArray(const std::string& name,
                              OglPtr::ShaderUniform::Data_t count,
-                             Value_t* outData)
+                             Value_t* outData) const
         {
             UniformStates state;
             OglPtr::ShaderUniform ptr;
@@ -276,16 +278,17 @@ namespace Bplus::GL
 
     private:
 
-        OglPtr::ShaderProgram programHandle{ OglPtr::ShaderProgram::Null };
+        OglPtr::ShaderProgram programHandle = OglPtr::ShaderProgram::Null();
 
         std::unordered_map<std::string, OglPtr::ShaderUniform> uniformPtrs;
 
 
         enum class UniformStates { Missing, OptimizedOut, Exists };
-        std::tuple<UniformStates, OglPtr::ShaderUniform> CheckUniform(const std::string& name) const;
+        struct UniformAndStatus {   OglPtr::ShaderUniform Uniform;    UniformStates Status;    };
+        UniformAndStatus CheckUniform(const std::string& name) const;
         
         template<typename Value_t>
-        Value_t GetUniform(OglPtr::ShaderUniform ptr)
+        Value_t GetUniform(OglPtr::ShaderUniform ptr) const
         {
             BPAssert(!ptr.IsNull(), "Given a null ptr!");
 
@@ -302,7 +305,7 @@ namespace Bplus::GL
             #pragma region Vector/primitive types
 
             //Bools are a special case because they go through the OpenGL API
-            //    as integers or floats.
+            //    as 32-bit integers or floats.
             #pragma region Bool types
             
             CASE(bool)
@@ -317,7 +320,7 @@ namespace Bplus::GL
         #define CASE_BOOLVEC(n) \
             CASE(glm::bvec##n) \
                 glm::uvec##n result; \
-                auto* inputPtr = glm::value_ptr(result); \
+                auto* inputPtr = &result[0]; \
                 glGetUniformuiv(programHandle.Get(), ptr.Get(), inputPtr); \
                 glm::bvec##n returnVal; \
                 for (glm::length_t i = 0; i < n; ++i) \
@@ -342,11 +345,11 @@ namespace Bplus::GL
                 return result
 
         #define CASE_PRIMITIVES(primitive, glmPrefix, oglLetters) \
-            CASE_PRIMITIVE(primitive,         oglLetters, &result               ); \
-            CASE_PRIMITIVE(glm::glmPrefix##1, oglLetters, glm::value_ptr(result)); \
-            CASE_PRIMITIVE(glm::glmPrefix##2, oglLetters, glm::value_ptr(result)); \
-            CASE_PRIMITIVE(glm::glmPrefix##3, oglLetters, glm::value_ptr(result)); \
-            CASE_PRIMITIVE(glm::glmPrefix##4, oglLetters, glm::value_ptr(result))
+            CASE_PRIMITIVE(primitive,         oglLetters, &result   ); \
+            CASE_PRIMITIVE(glm::glmPrefix##1, oglLetters, &result[0]); \
+            CASE_PRIMITIVE(glm::glmPrefix##2, oglLetters, &result[0]); \
+            CASE_PRIMITIVE(glm::glmPrefix##3, oglLetters, &result[0]); \
+            CASE_PRIMITIVE(glm::glmPrefix##4, oglLetters, &result[0])
 
             CASE_PRIMITIVES(uint32_t, uvec, ui);
             CASE_PRIMITIVES(int32_t, ivec, i);
@@ -386,6 +389,8 @@ namespace Bplus::GL
 
             #pragma region Textures
 
+            CASE(OglPtr::Texture)
+
             //TODO: Figure out how to use bindless textures.
             //CASE(OglPtr::Sampler)
 
@@ -403,7 +408,7 @@ namespace Bplus::GL
         template<typename Value_t>
         Value_t _SetUniform(OglPtr::ShaderUniform ptr, const Value_t& value)
         {
-            BPAssert(ptr != OglPtr::ShaderUniform::Null, "Given a null ptr!");
+            BPAssert(ptr != OglPtr::ShaderUniform::null, "Given a null ptr!");
 
             //This "if" statement only exists so that all subsequent lines
             //    must start with "} else", to simplify the macros.
