@@ -88,6 +88,10 @@ namespace Bplus
         //If the frame is faster than this, the program will sleep for a bit.
         //A zero or negative value means "no cap".
         float MinDeltaT = -1;
+        //A maximum cap on frame time.
+        //If the frame is slower than this, the program will just run in slow motion
+        //    instead of making severe jumps in time.
+        float MaxDeltaT = 0.2f;
 
 
         App(ConfigFile& configFile, ErrorCallback onError);

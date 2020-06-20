@@ -156,12 +156,10 @@ namespace Bplus::GL::Textures
 
 
     //A "Cubemap" texture, which has 6 2D textures for faces.
-    class BP_API TextureCube : public Texture,
-                                      TextureWrappingHelper<2>
+    class BP_API TextureCube : public Texture
     {
     public:
         static constexpr Types GetClassType() { return Types::Cubemap; }
-
 
 
         //Creates a new cube-map.
@@ -169,9 +167,8 @@ namespace Bplus::GL::Textures
         //Pass "0" for nMipLevels to generate full mip-maps down to a single pixel.
         //Pass anything else to generate a fixed amount of mip levels.
         TextureCube(const glm::uvec2& size, Format format,
-                    uint_mipLevel_t nMipLevels = 0,
-                    TextureMinFilters minFilter = TextureMinFilters::Smooth,
-                    TextureMagFilters magFilter = TextureMagFilters::Smooth);
+                    const Sampler<2>& sampling,
+                    uint_mipLevel_t nMipLevels = 0);
         virtual ~TextureCube();
 
         //Note that the copy constructor/operator is automatically deleted via the parent class.
@@ -187,6 +184,8 @@ namespace Bplus::GL::Textures
         size_t GetByteSize(uint_mipLevel_t mipLevel = 0) const { return 6 * format.GetByteSize(GetSize(mipLevel)); }
         //Gets the total byte-size of this texture, across all mip levels.
         size_t GetTotalByteSize() const;
+
+        const Sampler<2>& GetSampler() const { return sampler3D.ChangeDimensions<2>(); }
 
 
         #pragma region Clearing data

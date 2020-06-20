@@ -120,6 +120,7 @@ public:
     virtual void ResetToDefaults() override
     {
         Bplus::ConfigFile::ResetToDefaults();
+        WindowSize = { 1000, 1000 };
     }
 
 protected:
@@ -210,7 +211,11 @@ namespace Simple
             //Acutest can catch exceptions.
 
             if (!condition)
-                throw std::exception("Assert failed");
+            {
+                std::string errorMsg = "Assert failed: ";
+                errorMsg += msg;
+                throw std::exception(errorMsg.c_str());
+            }
         });
 
 

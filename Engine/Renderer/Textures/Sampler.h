@@ -136,6 +136,20 @@ namespace Bplus::GL::Textures
         void Apply(OglPtr::Texture tex) const { Apply(tex.Get(), glTextureParameteri, glTextureParameterf); }
         void Apply(OglPtr::Sampler samp) const { Apply(samp.Get(), glSamplerParameteri, glSamplerParameterf); }
 
+        void AssertFormatIsAllowed(Format texFormat) const
+        {
+            BPAssert(DataSource != DepthStencilSources::Depth ||
+                         texFormat.IsDepthAndStencil() || texFormat.IsDepthOnly(),
+                     "Trying to sample depth from a non-depth texture");
+            BPAssert(DataSource != DepthStencilSources::Stencil ||
+                         texFormat.IsDepthAndStencil() || texFormat.IsStencilOnly(),
+                     "Trying to sample stencil from a non-stencil texture");
+            
+            BPAssert(!DataSource.IsDepthComparison() ||
+                         texFormat.IsDepthAndStencil() || texFormat.IsDepthOnly(),
+                     "Trying to use a Depth Comparison sampler for a non-depth texture");
+        }
+
 
         //A helper function to convert the per-axis part of this sampler's data.
         //Some code doesn't want to be templated, so they store all sampler data

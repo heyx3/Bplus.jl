@@ -289,24 +289,27 @@ namespace Bplus::GL
 //MUST be invoked in the global namespace!
 #define MAKE_GL_STRONG_TYPEDEF(NewName, glName, nullValue) \
     namespace Bplus::GL::OglPtr { \
-        strong_typedef_start(NewName, glName, BP_API); \
-            strong_typedef_null(nullValue); \
-            strong_typedef_defaultConstructor(NewName, Null); \
-            strong_typedef_equatable(); \
-        strong_typedef_end; \
+        strong_typedef_start(NewName, glName, BP_API) \
+            strong_typedef_null(nullValue) \
+            strong_typedef_defaultConstructor(NewName, null) \
+            strong_typedef_equatable() \
+        strong_typedef_end \
     } \
     strong_typedef_hashable(Bplus::GL::OglPtr::NewName, BP_API);
 
 MAKE_GL_STRONG_TYPEDEF(ShaderProgram, GLuint, 0);
 MAKE_GL_STRONG_TYPEDEF(ShaderUniform, GLint, -1);
+
 MAKE_GL_STRONG_TYPEDEF(Texture, GLuint, 0);
 MAKE_GL_STRONG_TYPEDEF(Image, GLuint, 0);
 MAKE_GL_STRONG_TYPEDEF(View, GLuint64, 0);
 MAKE_GL_STRONG_TYPEDEF(Sampler, GLuint, 0);
+
 MAKE_GL_STRONG_TYPEDEF(Target, GLuint, 0); //Called a "Framebuffer" in OpenGL
 MAKE_GL_STRONG_TYPEDEF(TargetBuffer, GLuint, 0); //Called a "RenderBuffer" in OpenGL
+
 MAKE_GL_STRONG_TYPEDEF(Buffer, GLuint, 0);
-MAKE_GL_STRONG_TYPEDEF(VertexArrayObject, GLuint, 0);
+MAKE_GL_STRONG_TYPEDEF(Mesh, GLuint, 0);
 
 #undef MAKE_GL_STRONG_TYPEDEF
 

@@ -414,6 +414,7 @@ exit 0</Command>
     <ClInclude Include="Renderer\Materials\MaterialData.h" />
     <ClInclude Include="Renderer\Materials\Material_Basic.h" />
     <ClInclude Include="Renderer\Materials\CompiledShader.h" />
+    <ClInclude Include="Renderer\Textures\Data.h" />
     <ClInclude Include="Renderer\Textures\Format.h" />
     <ClInclude Include="Renderer\Textures\Sampler.h" />
     <ClInclude Include="Renderer\Textures\SamplerDataSource.h" />

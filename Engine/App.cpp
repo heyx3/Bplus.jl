@@ -90,7 +90,7 @@ void ConfigFile::ToToml(toml::Value& document) const
 void ConfigFile::ResetToDefaults()
 {
     IsWindowMaximized = false;
-    WindowSize = { 300, 300 };
+    WindowSize = { 800, 600 };
 }
 
 

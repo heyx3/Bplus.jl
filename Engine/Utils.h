@@ -108,6 +108,16 @@ std::array<T, Size> MakeArray(const T& fillValue)
 }
 
 
+//A helper function that turns the "glCreateX()" functions into a simple expression.
+template<typename GL_t>
+GL_t GlCreate(void(glFunc*)(GLsizei, GL_t*))
+{
+    GL_t ptr;
+    glFunc(1, &ptr);
+    return ptr;
+}
+
+
 //A modern C++17 way to hash any number of hashable types together.
 //The types must specialize std::hash<T>().
 template<typename... Items>
@@ -127,21 +137,48 @@ void MultiHash_(std::size_t& seed, const T& v, const Rest&... rest)
 }
 
 
-//TODO: StackTrace utility? Then add it to the default BPAssert function.
+//TODO: StackTrace utility? Then integrate it with BPAssert.
+
+
+//This helper macro escapes commas inside other macro calls.
+#define BP_COMMA ,
+
+#pragma region BPDebug, BPRelease, BPIsDebug
+
+//This boolean is true if in debug mode, and false if in release mode.
+constexpr inline bool BPIsDebug =
+        #ifdef NDEBUG
+            false
+        #else
+            true
+        #endif
+    
+//BPDebug passes through the input if in debug mode,
+//    or replaces it with nothing in release mode.
+#ifdef NDEBUG
+    #define BPDebug(...)
+#else
+    #define BPDebug(...) __VA_ARGS__
+#endif
+
+//BPRelease passes through the input if in release mode,
+//    or replaces it with nothing in debug mode.
+#ifdef NDEBUG
+    #define BPRelease(...) __VA_ARGS__
+#else
+    #define BPRelease(...)
+#endif
+
+#pragma endregion
 
 //Custom assert macro that can be configured by users of this engine.
 //Doesn't do anything in release builds.
 //TODO: Switch from plain C-style string to a std::string.
-#pragma region BPAssert
-#ifdef NDEBUG
-    #define BPAssert(expr, msg) ((void)0)
-#else
-    #define BPAssert(expr, msg) Bplus::GetAssertFunc()(expr, msg)
-#endif
-
+#define BPAssert(expr, msg) \
+    BPRelease((void)0) \
+    BPDebug(Bplus::GetAssertFunc()(expr BP_COMMA msg))
 namespace Bplus
 {
-    //The function used for asserts.
     using AssertFuncSignature = void(*)(bool, const char*);
     void BP_API SetAssertFunc(AssertFuncSignature f);
     AssertFuncSignature BP_API GetAssertFunc();
@@ -179,12 +216,9 @@ private:
 };
 
 //Provide hashing for Bool.
-namespace std
-{
-    template<> struct BP_API hash<Bool>
-    {
-        std::size_t operator()(Bool key) const
-        {
+namespace std {
+    template<> struct BP_API hash<Bool> {
+        std::size_t operator()(Bool key) const {
             using std::hash;
             return hash<bool>()(key);
         }
@@ -203,7 +237,7 @@ namespace std
         using Me_t = Tag; \
         using _strong_typedef::_strong_typedef; /* Make the constructors available */
 #define strong_typedef_end \
-    }
+    };
 
 //Defines '==' and '!=' operators for the type,
 //    assuming the underlying type has them too.
@@ -219,7 +253,7 @@ namespace std
 #define strong_typedef_defaultConstructor(Tag, defaultVal) \
     Tag() : Tag(defaultVal) { }
 
-//Adds a "Null" value, given its actual value as an integer.
+//Adds a "Null" value, given its actual integer value.
 //NOTE that this MUST be placed between 'strong_typedef_start' and 'strong_typedef_end'!
 #define strong_typedef_null(intValue) \
     static const Data_t null = intValue; \
@@ -238,9 +272,6 @@ namespace std
         } }; }
 
 #pragma endregion
-
-//This helper macro escapes commas inside other macro calls.
-#define BP_COMMA ,
 
 #pragma region Lazy<> struct, for lazy instantiation of a class
 namespace Bplus

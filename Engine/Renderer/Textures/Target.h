@@ -84,7 +84,7 @@ namespace Bplus::GL::Textures
         CompressedFormat,
         //Some attachments are "layered" (e.x. full 3D textures or cubemaps), and some aren't.
         LayerMixup,
-        //The graphics driver on your machine doesn't support this particular combination
+        //Your graphics driver doesn't support this particular combination
         //    of texture formats; try simpler ones.
         DriverUnsupported,
         //Some other unknown error has occurred. Run in Debug mode to see an assert fail.

@@ -6,27 +6,21 @@ using namespace Bplus::GL::Textures;
 
 
 TextureCube::TextureCube(const glm::uvec2& _size, Format format,
-                         uint_mipLevel_t nMips,
-                         TextureMinFilters minFilter, TextureMagFilters magFilter)
-    : Texture(Types::Cubemap, format, nMips, minFilter, magFilter),
-      TextureWrappingHelper<2>(GetOglPtr()),
+                         const Sampler<2>& sampler,
+                         uint_mipLevel_t nMips)
+    : Texture(Types::Cubemap, format,
+              (nMips < 1) ? GetMaxNumbMipmaps(_size) : nMips,
+              sampler.ChangeDimensions<3>()),
       size(_size)
 {
     //Allocate GPU storage.
     glTextureStorage2D(glPtr.Get(), nMipLevels, format.GetOglEnum(),
                        size.x, size.y);
 
-    //Load the initial sampler data.
-    GLint p;
-    glGetTextureParameteriv(glPtr.Get(), GL_TEXTURE_MIN_FILTER, &p);
-    minFilter = TextureMinFilters::_from_integral(p);
-    glGetTextureParameteriv(glPtr.Get(), GL_TEXTURE_MAG_FILTER, &p);
-    magFilter = TextureMagFilters::_from_integral(p);
-
-    //Cubemaps should always use clamping, and should sample nicely around edges.
-    p = (GLenum)WrapModes::Clamp;
-    glTextureParameteriv(glPtr.Get(), GL_TEXTURE_WRAP_S, &p);
-    glTextureParameteriv(glPtr.Get(), GL_TEXTURE_WRAP_T, &p);
+    //Cubemaps should always use clamping.
+    BPAssert(GetSampler().GetWrapping() == +WrapModes::Clamp,
+             "Only Clamp wrapping is supported for cubemap textures");
+    //Make sure all cubemaps sample nicely around the edges.
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 }
 TextureCube::~TextureCube()
@@ -37,7 +31,6 @@ TextureCube::~TextureCube()
 
 TextureCube::TextureCube(TextureCube&& src)
     : Texture(std::move(src)),
-      TextureWrappingHelper(std::move(src)),
       size(src.size)
 {
 }

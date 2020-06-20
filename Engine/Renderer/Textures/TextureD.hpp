@@ -99,6 +99,8 @@ namespace Bplus::GL::Textures
             return sum;
         }
 
+        const Sampler<D>& GetSampler() const { return sampler3D.ChangeDimensions<D>(); }
+
 
         #pragma region Clearing data
 

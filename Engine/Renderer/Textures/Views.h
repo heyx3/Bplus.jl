@@ -16,36 +16,19 @@ namespace Bplus::GL::Textures
     {
     private:
 
-        friend class Bplus::GL::Textures::Texture;
-
         TextureView(const Texture* src);
-        TextureView(const Texture* src,
-                    TextureMinFilters minFilter, TextureMagFilters magFilter,
-                    WrapModes* wrappingPerAxis, glm::length_t samplerDimensions);
-        TextureView(const Texture* src,
-                    TextureMinFilters minFilter, TextureMagFilters magFilter,
-                    WrapModes* wrappingPerAxis, glm::length_t samplerDimensions,
-                    Math::IntervalF mipClampRange, float mipOffset);
-        //TODO: Add overload for Comparison functions.
+        TextureView(const Texture* src, const Sampler<3>& sampler3D);
+
+        template<glm::length_t D>
+        TextureView(const Texture* src, const Sampler<D>& sampler)
+            : TextureView(SRCAND, sampler.ChangeDimensions<3>()) { }
 
         ~TextureView();
 
 
     public:
 
-        //The per-axis texture wrapping.
-        //May not use all 3 dimensions, depending on what kind of texture
-        //    it was created with.
-        const std::array<WrapModes, 3> WrapParams3D;
-
-        const TextureMinFilters MinFilter;
-        const TextureMagFilters MagFilter;
-        
-        const Math::IntervalF MipClampRange;
-        const float MipOffset;
-
-        
-
+        Sampler<3> sampler3D;
 
 
         //Marks a new source that wants this view to stay active.
