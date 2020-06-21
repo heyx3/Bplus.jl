@@ -8,8 +8,6 @@
 
 namespace Bplus::GL::Textures
 {
-    TODO: make hanles stored as unique_ptr so that they always stay at the same pointer.
-
     class Texture;
     class TexView;
     class ImgView;
@@ -139,11 +137,13 @@ namespace Bplus::GL::Textures
     };
 
 
+
     //The base class for all OpenGL textures.
     //Designed to be used with OpenGL's Bindless Textures extension.
     class BP_API Texture
     {
     public:
+
         Texture(Types type, Format format, uint_mipLevel_t nMipLevels,
                 const Sampler<3>& sampler3D);
 
@@ -168,6 +168,18 @@ namespace Bplus::GL::Textures
         //Updates mipmaps for this texture.
         //Not allowed for compressed-format textures.
         void RecomputeMips();
+        
+        //Gets (or creates) an "image" view of this texture,
+        //    allowing simple reads/writes but no sampling.
+        ImgView GetView(ImageAccessModes access,
+                        std::optional<uint_fast32_t> singleLayer = std::nullopt,
+                        uint_mipLevel_t mipLevel = 0) const;
+
+        //Gets (or creates) a view of this texture with the given sampler.
+        //Child classes should provide a public "GeteView() with
+        //    the correct-dimensional sampler.
+        TexView GetViewFull(std::optional<Sampler<3>> customSampler = std::nullopt) const;
+
 
     protected:
 
@@ -270,13 +282,7 @@ namespace Bplus::GL::Textures
             }
         }
 
-        //Gets (or creates) a view of this texture with the given sampler.
-        TexView GetViewFull(std::optional<Sampler<3>> customSampler = std::nullopt) const;
-        ImgView GetViewFull(ImageAccessModes access,
-                            std::optional<uint_fast32_t> singleLayer = std::nullopt,
-                            uint_mipLevel_t mipLevel = 0) const;
 
-        
     private:
 
         OglPtr::Texture glPtr;
@@ -303,11 +309,14 @@ namespace Bplus::GL::Textures
         };
         friend struct std::hash<ImgHandleData>;
 
-        //Texture views are just different ways of sampling from this texture.
+        //Texture views represent different ways of sampling from this texture in a shader.
         //This field is a cache of the views that have already been created.
-        mutable std::unordered_map<Sampler<3>, TexHandle> texHandles;
-        //Texture views are just different ways of sampling from this texture.
+        //They are stored as unique_ptr so that their pointer doesn't change.
+        mutable std::unordered_map<Sampler<3>, std::unique_ptr<TexHandle>> texHandles;
+
+        //Image views represent different parts of this texture for shaders to read/write.
         //This field is a cache of the views that have already been created.
+        //They are stored as unique_ptr so that their pointer doesn't change.
         mutable std::unordered_map<ImgHandleData, ImgHandle> imgHandles;
     };
 }
@@ -318,8 +327,7 @@ namespace std
     //Texture::ImgHandleData:
     struct hash<Bplus::GL::Textures::Texture::ImgHandleData> {
         size_t operator()(const Bplus::GL::Textures::Texture::ImgHandleData& value) {
-            return MultiHash(value.Access,
-                             value.MipLevel, value.SingleLayer);
+            return MultiHash(value.Access, value.MipLevel, value.SingleLayer);
         }
     };
 }

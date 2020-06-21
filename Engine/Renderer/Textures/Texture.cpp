@@ -126,11 +126,13 @@ TexView::~TexView()
 }
 TexView& TexView::operator=(const TexView& cpy)
 {
+    //Only bother changing things if they represent different handles.
     if (&Handle != &cpy.Handle)
     {
         this->~TexView();
         new (this) TexView(cpy);
     }
+    //Otherwise, just assert that they are exactly equal.
     else
     {
         BPAssert(GlPtr == cpy.GlPtr, "GlPtr fields don't match up in TexView");
@@ -150,11 +152,13 @@ ImgView::~ImgView()
 }
 ImgView& ImgView::operator=(const ImgView& cpy)
 {
+    //Only bother changing things if they represent different handles.
     if (&Handle != &cpy.Handle)
     {
         this->~ImgView();
         new (this) ImgView(cpy);
     }
+    //Otherwise, just assert that they are exactly equal.
     else
     {
         BPAssert(GlPtr == cpy.GlPtr, "GlPtr fields don't match up in ImgView");
@@ -185,6 +189,10 @@ Texture::Texture(Types _type, Format _format, uint_mipLevel_t nMips,
 }
 Texture::~Texture()
 {
+    //Destroy the handles first.
+    texHandles.clear();
+    imgHandles.clear();
+
     if (!glPtr.IsNull())
         glDeleteTextures(1, &glPtr.Get());
 }
@@ -211,11 +219,11 @@ TexView Texture::GetViewFull(std::optional<Sampler<3>> customSampler) const
     auto found = texHandles.find(sampler);
     if (found == texHandles.end())
         if (customSampler.has_value())
-            texHandles.emplace(sampler, TexHandle(this, sampler));
+            texHandles.emplace(sampler, std::make_unique<TexHandle>(this, sampler));
         else
-            texHandles.emplace(sampler, TexHandle(this));
+            texHandles.emplace(sampler, std::make_unique<TexHandle>(this));
 
-    return TexView(*this, texHandles[sampler]);
+    return TexView(*this, *texHandles[sampler]);
 }
 ImgView Texture::GetViewFull(ImageAccessModes access,
                              std::optional<uint_fast32_t> singleLayer,
@@ -224,7 +232,7 @@ ImgView Texture::GetViewFull(ImageAccessModes access,
     ImgHandleData data{ mipLevel, singleLayer, access }; 
     auto found = imgHandles.find(sampler);
     if (found == imgHandles.end())
-        texHandles.emplace(data, ImgHandle(this, data.MipLevel, data.SingleLayer, data.Access);
+        texHandles.emplace(data, std::make_unique<ImgHandle>(this, data.MipLevel, data.SingleLayer, data.Access);
     
     return ImgView(*this, imgHandles[sampler]);
 }

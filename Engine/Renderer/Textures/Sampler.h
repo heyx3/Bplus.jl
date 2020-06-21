@@ -64,6 +64,7 @@ namespace Bplus::GL::Textures
 
 
     //Information about a sampler for a D-dimensional texture.
+    //TODO: Have this class actually manage the sampler objects for texture handles, with staic OglPtrs under the hood.
     template<uint8_t D>
     struct Sampler
     {

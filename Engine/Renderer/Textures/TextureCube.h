@@ -181,11 +181,19 @@ namespace Bplus::GL::Textures
 
         //Gets the number of bytes needed to store this texture in its native format.
         //This includes all six faces; divide the result by 6 to get the byte-size per face.
-        size_t GetByteSize(uint_mipLevel_t mipLevel = 0) const { return 6 * format.GetByteSize(GetSize(mipLevel)); }
+        size_t GetByteSize(uint_mipLevel_t mipLevel = 0) const { return 6 * GetFormat().GetByteSize(GetSize(mipLevel)); }
         //Gets the total byte-size of this texture, across all mip levels.
         size_t GetTotalByteSize() const;
 
-        const Sampler<2>& GetSampler() const { return sampler3D.ChangeDimensions<2>(); }
+        //Gets (or creates) a view of this texture with the given sampler.
+        TexView GetView(std::optional<Sampler<2>> customSampler = std::nullopt) const
+        {
+            return GetViewFull(customSampler.has_value() ?
+                                  std::make_optional(customSampler.value().ChangeDimensions<3>()) :
+                                  std::nullopt);
+        }
+        
+        const Sampler<2>& GetSampler() const { return GetSamplerFull().ChangeDimensions<2>(); }
 
 
         #pragma region Clearing data

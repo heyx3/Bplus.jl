@@ -99,7 +99,16 @@ namespace Bplus::GL::Textures
             return sum;
         }
 
-        const Sampler<D>& GetSampler() const { return sampler3D.ChangeDimensions<D>(); }
+
+        //Gets (or creates) a view of this texture with the given sampler.
+        TexView GetView(std::optional<Sampler<D>> customSampler = std::nullopt) const
+        {
+            return GetViewFull(customSampler.has_value() ?
+                               std::make_optional(customSampler.value().ChangeDimensions<3>()) :
+                               std::nullopt);
+        }
+
+        const Sampler<D>& GetSampler() const { return GetSamplerFull().ChangeDimensions<D>(); }
 
 
         #pragma region Clearing data
