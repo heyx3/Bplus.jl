@@ -46,7 +46,7 @@ namespace Bplus::GL::Textures
 
         friend class Texture;
         friend struct TexView;
-        friend class std::default_delete<TexHandle>;
+        friend struct std::default_delete<TexHandle>;
 
         TexHandle(const Texture* src);
         TexHandle(const Texture* src, const Sampler<3>& sampler3D);
