@@ -118,16 +118,7 @@ GL_t GlCreate(void (*glFunc)(int, GL_t*))
 }
 
 
-//A modern C++17 way to hash any number of hashable types together.
-//The types must specialize std::hash<T>().
-template<typename... Items>
-size_t MultiHash(const Items&... items)
-{
-    size_t seed = 0;
-    MultiHash_(seed, items);
-}
-
-//Helper function for MultiHash().
+#pragma region Helper function for MultiHash(), "MultiHash_()"
 template<typename T, typename... Rest>
 void MultiHash_(std::size_t& seed, const T& v, const Rest&... rest)
 {
@@ -135,7 +126,18 @@ void MultiHash_(std::size_t& seed, const T& v, const Rest&... rest)
 
     //Taken from: https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
     seed ^= hash<T>{}(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    (MultiHash(seed, rest), ...);
+    MultiHash_(seed, rest...);
+}
+#pragma endregion
+
+//A modern C++17 way to hash any number of hashable types together.
+//The types must specialize std::hash<T>().
+template<typename... Items>
+size_t MultiHash(const Items&... items)
+{
+    size_t seed = 0;
+    MultiHash_(seed, items);
+    return seed;
 }
 
 

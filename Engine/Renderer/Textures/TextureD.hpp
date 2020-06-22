@@ -81,19 +81,10 @@ namespace Bplus::GL::Textures
         }
 
         //Gets the number of bytes needed to store this texture in its native format.
-        size_t GetByteSize(uint_mipLevel_t mipLevel = 0) const
+        size_t GetByteSize(uint_mipLevel_t mipLevel = 0) const override
         {
             return GetFormat().GetByteSize(GetSize(mipLevel));
         }
-        //Gets the total byte-size of this texture, across all mip levels.
-        size_t GetTotalByteSize() const
-        {
-            size_t sum = 0;
-            for (uint_mipLevel_t mip = 0; mip < nMipLevels; ++mip)
-                sum += GetByteSize(mip);
-            return sum;
-        }
-
 
         //Gets (or creates) a view of this texture with the given sampler.
         TexView GetView(std::optional<Sampler<D>> customSampler = std::nullopt) const

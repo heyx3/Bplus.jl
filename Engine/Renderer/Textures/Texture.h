@@ -11,7 +11,7 @@ namespace Bplus::GL::Textures
     class Texture;
     struct TexView;
     struct ImgView;
-   
+
 
     #pragma region TexHandle and ImgHandle
 
@@ -20,17 +20,8 @@ namespace Bplus::GL::Textures
     //    but it can't be nested in Texture due to forward-declaration problems.
     struct BP_API TexHandle
     {
-    private:
-
-        friend class Texture;
-        friend struct TexView;
-
         const OglPtr::View ViewGlPtr;
         const OglPtr::Sampler SamplerGlPtr = OglPtr::Sampler::Null();
-
-        TexHandle(const Texture* src);
-        TexHandle(const Texture* src, const Sampler<3>& sampler3D);
-        ~TexHandle();
 
         //No copying, but moves are fine.
         TexHandle(const TexHandle& cpy) = delete;
@@ -51,10 +42,20 @@ namespace Bplus::GL::Textures
         bool IsActive() const { return activeCount > 0; }
 
 
+    private:
+
+        friend class Texture;
+        friend struct TexView;
+        friend class std::default_delete<TexHandle>;
+
+        TexHandle(const Texture* src);
+        TexHandle(const Texture* src, const Sampler<3>& sampler3D);
+        ~TexHandle();
+
         uint_fast32_t activeCount = 0;
         bool skipDestructor = false;
     };
-    
+
 
     //Represents the parameters that come with an "ImgView".
     struct BP_API ImgHandleData
@@ -71,8 +72,8 @@ namespace Bplus::GL::Textures
         bool operator==(const ImgHandleData& other) const
         {
             return (SingleLayer == other.SingleLayer) &
-                   (Access == other.Access) &
-                   (MipLevel == other.MipLevel);
+                (Access == other.Access) &
+                (MipLevel == other.MipLevel);
         }
         bool operator!=(const ImgHandleData& other) const { return !operator==(other); }
     };
@@ -82,16 +83,8 @@ namespace Bplus::GL::Textures
     //    but it can't be nested in Texture due to forward-declaration problems.
     struct BP_API ImgHandle
     {
-    private:
-
-        friend class Texture;
-        friend struct ImgView;
-
         const OglPtr::View ViewGlPtr;
         const ImgHandleData Params;
-
-        ImgHandle(const Texture* src, const ImgHandleData& params);
-        ~ImgHandle();
 
         //No copying, but moves are fine.
         ImgHandle(const ImgHandle& cpy) = delete;
@@ -110,6 +103,16 @@ namespace Bplus::GL::Textures
         void Deactivate();
 
         bool IsActive() const { return activeCount > 0; }
+
+
+    private:
+
+        friend class Texture;
+        friend struct ImgView;
+        friend struct std::default_delete<ImgHandle>;
+
+        ImgHandle(const Texture* src, const ImgHandleData& params);
+        ~ImgHandle();
 
 
         uint_fast32_t activeCount = 0;
@@ -153,8 +156,18 @@ namespace Bplus::GL::Textures
         ImgView(ImgView&& from) : ImgView(from) { }
         ImgView& operator=(ImgView&& from) { return operator=(from); }
     };
+}
+//Provide a hash for texture::ImgHandleData:
+namespace std {
+    template<> struct hash<Bplus::GL::Textures::ImgHandleData> {
+        size_t operator()(const Bplus::GL::Textures::ImgHandleData& value) {
+            return MultiHash(value.Access, value.MipLevel, value.SingleLayer);
+        }
+    };
+}
 
-
+namespace Bplus::GL::Textures
+{
     //The base class for all OpenGL textures.
     //Designed to be used with OpenGL's Bindless Textures extension.
     class BP_API Texture
@@ -180,6 +193,13 @@ namespace Bplus::GL::Textures
         Types GetType() const { return type; }
         uint_mipLevel_t GetNMipLevels() const { return nMipLevels; }
         OglPtr::Texture GetOglPtr() const { return glPtr; }
+
+
+        //Gets the number of bytes needed to store one mip leve of this texture
+        //    in its native format.
+        virtual size_t GetByteSize(uint_mipLevel_t mipLevel = 0) const = 0;
+        //Gets the total byte-size of this texture's data, across all mip levels.
+        virtual size_t GetTotalByteSize() const;
 
 
         //Updates mipmaps for this texture.
@@ -317,17 +337,5 @@ namespace Bplus::GL::Textures
         //This field is a cache of the views that have already been created.
         //They are stored as unique_ptr so that their pointer doesn't change.
         mutable std::unordered_map<ImgHandleData, ImgHandle> imgHandles;
-    };
-}
-
-//Allow enums and structs in this file to be hashed, for use in STL collections.
-namespace std
-{
-    //Texture::ImgHandleData:
-    template<>
-    struct hash<Bplus::GL::Textures::ImgHandleData> {
-        size_t operator()(const Bplus::GL::Textures::ImgHandleData& value) {
-            return MultiHash(value.Access, value.MipLevel, value.SingleLayer);
-        }
     };
 }

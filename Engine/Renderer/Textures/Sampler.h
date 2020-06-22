@@ -221,7 +221,7 @@ namespace Bplus::GL::Textures
                            (GLint)GL_COMPARE_REF_TO_TEXTURE);
 
                 glSetFuncI(targetPtr, GL_TEXTURE_COMPARE_FUNC,
-                           (GLint)DataSource.AsDepthComparison);
+                           (GLint)DataSource.AsDepthComparison());
             }
             else
             {

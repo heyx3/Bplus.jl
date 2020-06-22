@@ -48,14 +48,6 @@ glm::uvec2 TextureCube::GetSize(uint_mipLevel_t mipLevel) const
     return _size;
 }
 
-size_t TextureCube::GetTotalByteSize() const
-{
-    size_t sum = 0;
-    for (uint_mipLevel_t mip = 0; mip < GetNMipLevels(); ++mip)
-        sum += GetByteSize(mip);
-    return sum;
-}
-
 
 void TextureCube::ClearData(void* clearValue,
                             GLenum valueFormat, GLenum valueType,

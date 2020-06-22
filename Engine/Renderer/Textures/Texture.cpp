@@ -209,6 +209,14 @@ void Texture::RecomputeMips()
     glGenerateTextureMipmap(glPtr.Get());
 }
 
+size_t Texture::GetTotalByteSize() const
+{
+    size_t sum = 0;
+    for (uint_mipLevel_t mip = 0; mip < GetByteSize(); ++mip)
+        sum += GetByteSize(mip);
+    return sum;
+}
+
 TexView Texture::GetViewFull(std::optional<Sampler<3>> customSampler) const
 {
     auto sampler = customSampler.value_or(sampler3D);
