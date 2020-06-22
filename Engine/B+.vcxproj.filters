@@ -103,9 +103,6 @@
     <ClInclude Include="Renderer\Buffers\Buffer.h">
       <Filter>Renderer\Buffers</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\Textures\Views.h">
-      <Filter>Renderer\Textures</Filter>
-    </ClInclude>
     <ClInclude Include="Renderer\Textures\SamplerDataSource.h">
       <Filter>Renderer\Textures</Filter>
     </ClInclude>
@@ -174,9 +171,6 @@
     </ClCompile>
     <ClCompile Include="Renderer\Buffers\Buffer.cpp">
       <Filter>Renderer\Buffers</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\Textures\Views.cpp">
-      <Filter>Renderer\Textures</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

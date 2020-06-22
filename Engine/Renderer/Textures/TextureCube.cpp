@@ -14,7 +14,7 @@ TextureCube::TextureCube(const glm::uvec2& _size, Format format,
       size(_size)
 {
     //Allocate GPU storage.
-    glTextureStorage2D(glPtr.Get(), nMipLevels, format.GetOglEnum(),
+    glTextureStorage2D(GetOglPtr().Get(), GetNMipLevels(), GetFormat().GetOglEnum(),
                        size.x, size.y);
 
     //Cubemaps should always use clamping.
@@ -22,11 +22,6 @@ TextureCube::TextureCube(const glm::uvec2& _size, Format format,
              "Only Clamp wrapping is supported for cubemap textures");
     //Make sure all cubemaps sample nicely around the edges.
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-}
-TextureCube::~TextureCube()
-{
-    if (!glPtr.IsNull())
-        glDeleteTextures(1, &glPtr.Get());
 }
 
 TextureCube::TextureCube(TextureCube&& src)
@@ -56,7 +51,7 @@ glm::uvec2 TextureCube::GetSize(uint_mipLevel_t mipLevel) const
 size_t TextureCube::GetTotalByteSize() const
 {
     size_t sum = 0;
-    for (uint_mipLevel_t mip = 0; mip < nMipLevels; ++mip)
+    for (uint_mipLevel_t mip = 0; mip < GetNMipLevels(); ++mip)
         sum += GetByteSize(mip);
     return sum;
 }
@@ -70,7 +65,7 @@ void TextureCube::ClearData(void* clearValue,
     auto range = params.GetRange(fullSize);
     auto range3D = params.ToRange3D(range);
 
-    glClearTexSubImage(glPtr.Get(), params.MipLevel,
+    glClearTexSubImage(GetOglPtr().Get(), params.MipLevel,
                        range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
                        range3D.Size.x, range3D.Size.y, range3D.Size.z,
                        valueFormat, valueType, clearValue);
@@ -86,7 +81,7 @@ void TextureCube::ClearData(void* clearValue,
             {
                 auto mipFullSize = GetSize(mipI);
 
-                glClearTexSubImage(glPtr.Get(), mipI,
+                glClearTexSubImage(GetOglPtr().Get(), mipI,
                                    0, 0, range3D.MinCorner.z,
                                    mipFullSize.x, mipFullSize.y, range3D.Size.z,
                                    valueFormat, valueType, clearValue);
@@ -111,7 +106,7 @@ void TextureCube::SetData(const void* data,
                  "GetData() call would go past the texture bounds");
 
     auto range3D = params.ToRange3D(range);
-    glTextureSubImage3D(glPtr.Get(), params.MipLevel,
+    glTextureSubImage3D(GetOglPtr().Get(), params.MipLevel,
                         range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
                         range3D.Size.x, range3D.Size.y, range3D.Size.z,
                         dataChannels, dataType, data);
@@ -134,8 +129,8 @@ void TextureCube::GetData(void* data,
     }
 
     auto range3D = params.ToRange3D(range);
-    auto byteSize = (GLsizei)format.GetByteSize(range3D.Size);
-    glGetTextureSubImage(glPtr.Get(), params.MipLevel,
+    auto byteSize = (GLsizei)GetFormat().GetByteSize(range3D.Size);
+    glGetTextureSubImage(GetOglPtr().Get(), params.MipLevel,
                          range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
                          range3D.Size.x, range3D.Size.y, range3D.Size.z,
                          dataChannels, dataType,
@@ -149,7 +144,7 @@ void TextureCube::Set_Compressed(const std::byte* compressedData,
 {
     //Convert block range to pixel size.
     auto texSize = GetSize(mipLevel);
-    auto blockSize = GetBlockSize(format.AsCompressed());
+    auto blockSize = GetBlockSize(GetFormat().AsCompressed());
     auto destPixelRange = Math::Box2Du::MakeMinSize(destBlockRange.MinCorner * blockSize,
                                                     destBlockRange.Size * blockSize);
 
@@ -162,11 +157,11 @@ void TextureCube::Set_Compressed(const std::byte* compressedData,
 
     //Upload.
     auto range3D = SetDataCubeParams(face, destPixelRange, mipLevel).ToRange3D(destPixelRange);
-    auto byteSize = (GLsizei)format.GetByteSize(range3D.Size);
-    glCompressedTextureSubImage3D(glPtr.Get(), mipLevel,
+    auto byteSize = (GLsizei)GetFormat().GetByteSize(range3D.Size);
+    glCompressedTextureSubImage3D(GetOglPtr().Get(), mipLevel,
                                   range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
                                   range3D.Size.x, range3D.Size.y, range3D.Size.z,
-                                  format.GetOglEnum(),
+                                  GetFormat().GetOglEnum(),
                                   byteSize, compressedData);
 }
 void TextureCube::Get_Compressed(std::byte* compressedData,
@@ -176,7 +171,7 @@ void TextureCube::Get_Compressed(std::byte* compressedData,
 {
     //Convert block range to pixel size.
     auto texSize = GetSize(mipLevel);
-    auto blockSize = GetBlockSize(format.AsCompressed());
+    auto blockSize = GetBlockSize(GetFormat().AsCompressed());
     auto pixelRange = Math::Box2Du::MakeMinSize(blockRange.MinCorner * blockSize,
                                                 blockRange.Size * blockSize);
 
@@ -188,8 +183,8 @@ void TextureCube::Get_Compressed(std::byte* compressedData,
 
     //Download.
     auto range3D = SetDataCubeParams(face, pixelRange, mipLevel).ToRange3D(pixelRange);
-    auto byteSize = (GLsizei)format.GetByteSize(range3D.Size);
-    glGetCompressedTextureSubImage(glPtr.Get(), mipLevel,
+    auto byteSize = (GLsizei)GetFormat().GetByteSize(range3D.Size);
+    glGetCompressedTextureSubImage(GetOglPtr().Get(), mipLevel,
                                    range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
                                    range3D.Size.x, pixelRange.Size.y, range3D.Size.z,
                                    byteSize, compressedData);

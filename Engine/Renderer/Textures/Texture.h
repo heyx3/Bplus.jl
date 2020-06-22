@@ -9,8 +9,8 @@
 namespace Bplus::GL::Textures
 {
     class Texture;
-    class TexView;
-    class ImgView;
+    struct TexView;
+    struct ImgView;
    
 
     #pragma region TexHandle and ImgHandle
@@ -23,7 +23,7 @@ namespace Bplus::GL::Textures
     private:
 
         friend class Texture;
-        friend class TexView;
+        friend struct TexView;
 
         const OglPtr::View ViewGlPtr;
         const OglPtr::Sampler SamplerGlPtr = OglPtr::Sampler::Null();
@@ -55,6 +55,28 @@ namespace Bplus::GL::Textures
         bool skipDestructor = false;
     };
     
+
+    //Represents the parameters that come with an "ImgView".
+    struct BP_API ImgHandleData
+    {
+        uint_mipLevel_t MipLevel;
+        std::optional<uint_fast32_t> SingleLayer;
+        ImageAccessModes Access;
+
+        ImgHandleData(ImageAccessModes access = ImageAccessModes::ReadWrite,
+                      std::optional<uint_fast32_t> singleLayer = std::nullopt,
+                      uint_mipLevel_t mipLevel = 0)
+            : MipLevel(mipLevel), SingleLayer(singleLayer), Access(access) { }
+
+        bool operator==(const ImgHandleData& other) const
+        {
+            return (SingleLayer == other.SingleLayer) &
+                   (Access == other.Access) &
+                   (MipLevel == other.MipLevel);
+        }
+        bool operator!=(const ImgHandleData& other) const { return !operator==(other); }
+    };
+
     //A helper class for Texture, representing a bindless handle.
     //Should not and cannot be used outside of that class,
     //    but it can't be nested in Texture due to forward-declaration problems.
@@ -63,16 +85,12 @@ namespace Bplus::GL::Textures
     private:
 
         friend class Texture;
-        friend class ImgView;
+        friend struct ImgView;
 
         const OglPtr::View ViewGlPtr;
-        const uint_mipLevel_t MipLevel;
-        const std::optional<uint_fast32_t> SingleLayer;
-        const ImageAccessModes Mode;
+        const ImgHandleData Params;
 
-        ImgHandle(const Texture* src, uint_mipLevel_t mipLevel,
-                  std::optional<uint_fast32_t> singleLayer,
-                  ImageAccessModes mode);
+        ImgHandle(const Texture* src, const ImgHandleData& params);
         ~ImgHandle();
 
         //No copying, but moves are fine.
@@ -137,7 +155,6 @@ namespace Bplus::GL::Textures
     };
 
 
-
     //The base class for all OpenGL textures.
     //Designed to be used with OpenGL's Bindless Textures extension.
     class BP_API Texture
@@ -171,9 +188,7 @@ namespace Bplus::GL::Textures
         
         //Gets (or creates) an "image" view of this texture,
         //    allowing simple reads/writes but no sampling.
-        ImgView GetView(ImageAccessModes access,
-                        std::optional<uint_fast32_t> singleLayer = std::nullopt,
-                        uint_mipLevel_t mipLevel = 0) const;
+        ImgView GetView(ImgHandleData params) const;
 
         //Gets (or creates) a view of this texture with the given sampler.
         //Child classes should provide a public "GeteView() with
@@ -293,22 +308,6 @@ namespace Bplus::GL::Textures
         Sampler<3> sampler3D;
 
 
-        struct ImgHandleData
-        {
-            uint_mipLevel_t MipLevel;
-            std::optional<uint_fast32_t> SingleLayer;
-            ImageAccessModes Access;
-
-            bool operator==(const ImgHandleData& other) const
-            {
-                return (SingleLayer == other.SingleLayer) &
-                       (Access == other.Access) &
-                       (MipLevel == other.MipLevel);
-            }
-            bool operator!=(const ImgHandleData& other) const { return !operator==(other); }
-        };
-        friend struct std::hash<ImgHandleData>;
-
         //Texture views represent different ways of sampling from this texture in a shader.
         //This field is a cache of the views that have already been created.
         //They are stored as unique_ptr so that their pointer doesn't change.
@@ -325,8 +324,9 @@ namespace Bplus::GL::Textures
 namespace std
 {
     //Texture::ImgHandleData:
-    struct hash<Bplus::GL::Textures::Texture::ImgHandleData> {
-        size_t operator()(const Bplus::GL::Textures::Texture::ImgHandleData& value) {
+    template<>
+    struct hash<Bplus::GL::Textures::ImgHandleData> {
+        size_t operator()(const Bplus::GL::Textures::ImgHandleData& value) {
             return MultiHash(value.Access, value.MipLevel, value.SingleLayer);
         }
     };

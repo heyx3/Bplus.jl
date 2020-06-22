@@ -169,7 +169,6 @@ namespace Bplus::GL::Textures
         TextureCube(const glm::uvec2& size, Format format,
                     const Sampler<2>& sampling,
                     uint_mipLevel_t nMipLevels = 0);
-        virtual ~TextureCube();
 
         //Note that the copy constructor/operator is automatically deleted via the parent class.
 
@@ -205,10 +204,10 @@ namespace Bplus::GL::Textures
                          SetDataCubeParams optionalParams = { },
                          bool bgrOrdering = false)
         {
-            BPAssert(!format.IsCompressed(), "Can't clear a compressed texture!");
-            BPAssert(!format.IsDepthStencil(), "Can't clear a depth/stencil texture with `Clear_Color()`!");
+            BPAssert(!GetFormat().IsCompressed(), "Can't clear a compressed texture!");
+            BPAssert(!GetFormat().IsDepthStencil(), "Can't clear a depth/stencil texture with `Clear_Color()`!");
             if constexpr (!std::is_integral_v<T>)
-                BPAssert(!format.IsInteger(), "Can't clear an integer texture to a non-integer value");
+                BPAssert(!GetFormat().IsInteger(), "Can't clear an integer texture to a non-integer value");
 
             ClearData(glm::value_ptr(value),
                       GetOglChannels(GetComponents<L>(bgrOrdering)),
@@ -222,7 +221,7 @@ namespace Bplus::GL::Textures
         template<typename T>
         void Clear_Depth(T depth, SetDataCubeParams optionalParams = { })
         {
-            BPAssert(format.IsDepthOnly(),
+            BPAssert(GetFormat().IsDepthOnly(),
                      "Trying to clear depth value in a color, stencil, or depth-stencil texture");
 
             ClearData(&depth, GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
@@ -232,7 +231,7 @@ namespace Bplus::GL::Textures
         //Clears part or all of this stencil texture to the given value.
         void Clear_Stencil(uint8_t stencil, SetDataCubeParams optionalParams = { })
         {
-            BPAssert(format.IsStencilOnly(),
+            BPAssert(GetFormat().IsStencilOnly(),
                      "Trying to clear the stencil value in a color, depth, or depth-stencil texture");
 
             ClearData(&stencil,
@@ -245,7 +244,7 @@ namespace Bplus::GL::Textures
         void Clear_DepthStencil(Unpacked_Depth24uStencil8u value,
                                 SetDataCubeParams optionalParams = { })
         {
-            BPAssert(format == +DepthStencilFormats::Depth24U_Stencil8,
+            BPAssert(GetFormat() == +DepthStencilFormats::Depth24U_Stencil8,
                      "Trying to clear depth/stencil texture with 24U depth, but it doesn't have 24U depth");
             
             auto packed = Pack_DepthStencil(value);
@@ -258,7 +257,7 @@ namespace Bplus::GL::Textures
         void Clear_DepthStencil(float depth, uint8_t stencil,
                                 SetDataCubeParams optionalParams = { })
         {
-            BPAssert(format == +DepthStencilFormats::Depth32F_Stencil8,
+            BPAssert(GetFormat() == +DepthStencilFormats::Depth32F_Stencil8,
                      "Trying to clear depth/stencil texture with 32F depth, but it doesn't have 32F depth");
 
             auto packed = Pack_DepthStencil(Unpacked_Depth32fStencil8u{ depth, stencil });
@@ -291,12 +290,12 @@ namespace Bplus::GL::Textures
         void Set_Color(const T* data, ComponentData components,
                        SetDataCubeParams optionalParams = { })
         {
-            BPAssert(!format.IsCompressed(),
+            BPAssert(!GetFormat().IsCompressed(),
                      "Can't set a compressed texture with Set_Color()! Use Set_Compressed()");
-            BPAssert(!format.IsDepthStencil(),
+            BPAssert(!GetFormat().IsDepthStencil(),
                      "Can't set a depth/stencil texture with Set_Color()!");
             if constexpr (!std::is_integral_v<T>)
-                BPAssert(!format.IsInteger(), "Can't set an integer texture with non-integer data");
+                BPAssert(!GetFormat().IsInteger(), "Can't set an integer texture with non-integer data");
 
             SetData((const void*)data,
                     GetOglChannels(components), GetOglInputFormat<T>(),
@@ -336,7 +335,7 @@ namespace Bplus::GL::Textures
         template<typename T>
         void Set_Depth(const T* pixels, SetDataCubeParams optionalParams = { })
         {
-            BPAssert(format.IsDepthOnly(),
+            BPAssert(GetFormat().IsDepthOnly(),
                      "Trying to set depth data for a non-depth texture");
 
             SetData(&pixels, GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
@@ -346,7 +345,7 @@ namespace Bplus::GL::Textures
         //Sets part or all of this stencil texture to the given value.
         void Set_Stencil(const uint8_t* pixels, SetDataCubeParams optionalParams = { })
         {
-            BPAssert(format.IsStencilOnly(),
+            BPAssert(GetFormat().IsStencilOnly(),
                      "Trying to set the stencil values in a color, depth, or depth-stencil texture");
 
             SetData(&pixels,
@@ -360,7 +359,7 @@ namespace Bplus::GL::Textures
         void Set_DepthStencil(const uint32_t* packedPixels_Depth24uStencil8u,
                               SetDataCubeParams optionalParams = { })
         {
-            BPAssert(format == +DepthStencilFormats::Depth24U_Stencil8,
+            BPAssert(GetFormat() == +DepthStencilFormats::Depth24U_Stencil8,
                      "Trying to set depth/stencil texture with a 24U depth, but it doesn't use 24U depth");
             
             SetData(&packedPixels_Depth24uStencil8u,
@@ -372,7 +371,7 @@ namespace Bplus::GL::Textures
         void Set_DepthStencil(const uint64_t* packedPixels_Depth32fStencil8u,
                               SetDataCubeParams optionalParams = { })
         {
-            BPAssert(format == +DepthStencilFormats::Depth32F_Stencil8,
+            BPAssert(GetFormat() == +DepthStencilFormats::Depth32F_Stencil8,
                      "Trying to set depth/stencil texture with a 32F depth, but it doesn't use 32F depth");
 
             SetData(&packedPixels_Depth32fStencil8u,
@@ -401,10 +400,10 @@ namespace Bplus::GL::Textures
         void Get_Color(T* data, ComponentData components,
                        GetDataCubeParams optionalParams = { }) const
         {
-            BPAssert(!format.IsDepthStencil(),
+            BPAssert(!GetFormat().IsDepthStencil(),
                      "Can't read a depth/stencil texture with Get_Color()!");
             if constexpr (!std::is_integral_v<T>)
-                BPAssert(!format.IsInteger(), "Can't read an integer texture as non-integer data");
+                BPAssert(!GetFormat().IsInteger(), "Can't read an integer texture as non-integer data");
 
             GetData((void*)data,
                     GetOglChannels(components), GetOglInputFormat<T>(),
@@ -442,7 +441,7 @@ namespace Bplus::GL::Textures
         template<typename T>
         void Get_Depth(T* pixels, GetDataCubeParams optionalParams = { })
         {
-            BPAssert(format.IsDepthOnly(),
+            BPAssert(GetFormat().IsDepthOnly(),
                      "Trying to get depth data for a non-depth texture");
 
             GetData(&pixels, GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
@@ -452,7 +451,7 @@ namespace Bplus::GL::Textures
         //Gets part or all of this stencil texture to the given value.
         void Get_Stencil(uint8_t* pixels, GetDataCubeParams optionalParams = { })
         {
-            BPAssert(format.IsStencilOnly(),
+            BPAssert(GetFormat().IsStencilOnly(),
                      "Trying to get the stencil values in a color, depth, or depth-stencil texture");
 
             GetData(&pixels,
@@ -466,7 +465,7 @@ namespace Bplus::GL::Textures
         void Get_DepthStencil(uint32_t* packedPixels_Depth24uStencil8u,
                               GetDataCubeParams optionalParams = { })
         {
-            BPAssert(format == +DepthStencilFormats::Depth24U_Stencil8,
+            BPAssert(GetFormat() == +DepthStencilFormats::Depth24U_Stencil8,
                      "Trying to set depth/stencil texture with a 24U depth, but it doesn't use 24U depth");
             
             GetData(&packedPixels_Depth24uStencil8u,
@@ -478,7 +477,7 @@ namespace Bplus::GL::Textures
         void Get_DepthStencil(uint64_t* packedPixels_Depth32fStencil8u,
                               GetDataCubeParams optionalParams = { })
         {
-            BPAssert(format == +DepthStencilFormats::Depth32F_Stencil8,
+            BPAssert(GetFormat() == +DepthStencilFormats::Depth32F_Stencil8,
                      "Trying to get depth/stencil texture with a 32F depth, but it doesn't use 32F depth");
 
             GetData(&packedPixels_Depth32fStencil8u,

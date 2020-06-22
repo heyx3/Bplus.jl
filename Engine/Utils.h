@@ -110,10 +110,10 @@ std::array<T, Size> MakeArray(const T& fillValue)
 
 //A helper function that turns the "glCreateX()" functions into a simple expression.
 template<typename GL_t>
-GL_t GlCreate(void(glFunc*)(GLsizei, GL_t*))
+GL_t GlCreate(void (*glFunc)(int, GL_t*))
 {
     GL_t ptr;
-    glFunc(1, &ptr);
+    (*glFunc)(1, &ptr);
     return ptr;
 }
 
@@ -131,8 +131,10 @@ size_t MultiHash(const Items&... items)
 template<typename T, typename... Rest>
 void MultiHash_(std::size_t& seed, const T& v, const Rest&... rest)
 {
+    using std::hash;
+
     //Taken from: https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
-    seed ^= std::hash<T>{}(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    seed ^= hash<T>{}(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     (MultiHash(seed, rest), ...);
 }
 
@@ -152,6 +154,7 @@ constexpr inline bool BPIsDebug =
         #else
             true
         #endif
+    ;
     
 //BPDebug passes through the input if in debug mode,
 //    or replaces it with nothing in release mode.

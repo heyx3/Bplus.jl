@@ -38,7 +38,7 @@ namespace Bplus::GL::Textures
         //Pass anything else to generate a fixed amount of mip levels.
         TextureD(const uVec_t& _size, Format _format,
                  uint_mipLevel_t _nMipLevels = 0,
-                 Sampler<D> sampler = new Sampler<D>())
+                 Sampler<D> sampler = { })
             : size(_size),
               Texture(GetClassType(), _format,
                       (_nMipLevels < 1) ? GetMaxNumbMipmaps(size) : _nMipLevels,
@@ -46,19 +46,14 @@ namespace Bplus::GL::Textures
         {
             //Allocate GPU storage.
             if constexpr (D == 1) {
-                glTextureStorage1D(glPtr.Get(), nMipLevels, format.GetOglEnum(), size.x);
+                glTextureStorage1D(GetOglPtr().Get(), GetNMipLevels(), GetFormat().GetOglEnum(), size.x);
             } else if constexpr (D == 2) {
-                glTextureStorage2D(glPtr.Get(), nMipLevels, format.GetOglEnum(), size.x, size.y);
+                glTextureStorage2D(GetOglPtr().Get(), GetNMipLevels(), GetFormat().GetOglEnum(), size.x, size.y);
             } else if constexpr (D == 3) {
-                glTextureStorage3D(glPtr.Get(), nMipLevels, format.GetOglEnum(), size.x, size.y, size.z);
+                glTextureStorage3D(GetOglPtr().Get(), GetNMipLevels(), GetFormat().GetOglEnum(), size.x, size.y, size.z);
             } else {
                 static_assert(false, "TextureD<> should only be 1-, 2-, or 3-dimensional");
             }
-        }
-        virtual ~TextureD()
-        {
-            if (glPtr != OglPtr::Texture::Null())
-                glDeleteTextures(1, &glPtr.Get());
         }
 
         //Note that the copy constructor/operator is automatically deleted via the parent class.
@@ -88,7 +83,7 @@ namespace Bplus::GL::Textures
         //Gets the number of bytes needed to store this texture in its native format.
         size_t GetByteSize(uint_mipLevel_t mipLevel = 0) const
         {
-            return format.GetByteSize(GetSize(mipLevel));
+            return GetFormat().GetByteSize(GetSize(mipLevel));
         }
         //Gets the total byte-size of this texture, across all mip levels.
         size_t GetTotalByteSize() const
@@ -120,10 +115,11 @@ namespace Bplus::GL::Textures
                          SetDataParams<D> optionalParams = { },
                          bool bgrOrdering = false)
         {
-            BPAssert(!format.IsCompressed(), "Can't clear a compressed texture!");
-            BPAssert(!format.IsDepthStencil(), "Can't clear a depth/stencil texture with `Clear_Color()`!");
+            BPAssert(!GetFormat().IsCompressed(), "Can't clear a compressed texture!");
+            BPAssert(!GetFormat().IsDepthStencil(),
+                     "Can't clear a depth/stencil texture with `Clear_Color()`!");
             if constexpr (!std::is_integral_v<T>)
-                BPAssert(!format.IsInteger(), "Can't clear an integer texture to a non-integer value");
+                BPAssert(!GetFormat().IsInteger(), "Can't clear an integer texture to a non-integer value");
 
             ClearData(glm::value_ptr(value),
                       GetOglChannels(GetComponents<L>(bgrOrdering)),
@@ -137,7 +133,7 @@ namespace Bplus::GL::Textures
         template<typename T>
         void Clear_Depth(T depth, SetDataParams<D> optionalParams = { })
         {
-            BPAssert(format.IsDepthOnly(),
+            BPAssert(GetFormat().IsDepthOnly(),
                      "Trying to clear depth value in a color, stencil, or depth-stencil texture");
 
             ClearData(&depth, GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
@@ -147,7 +143,7 @@ namespace Bplus::GL::Textures
         //Clears part or all of this stencil texture to the given value.
         void Clear_Stencil(uint8_t stencil, SetDataParams<D> optionalParams = { })
         {
-            BPAssert(format.IsStencilOnly(),
+            BPAssert(GetFormat().IsStencilOnly(),
                      "Trying to clear the stencil value in a color, depth, or depth-stencil texture");
 
             ClearData(&stencil,
@@ -160,7 +156,7 @@ namespace Bplus::GL::Textures
         void Clear_DepthStencil(Unpacked_Depth24uStencil8u value,
                                 SetDataParams<D> optionalParams = { })
         {
-            BPAssert(format == +DepthStencilFormats::Depth24U_Stencil8,
+            BPAssert(GetFormat() == +DepthStencilFormats::Depth24U_Stencil8,
                      "Trying to clear depth/stencil texture with 24U depth, but it doesn't have 24U depth");
             
             auto packed = Pack_DepthStencil(value);
@@ -173,7 +169,7 @@ namespace Bplus::GL::Textures
         void Clear_DepthStencil(float depth, uint8_t stencil,
                                 SetDataParams<D> optionalParams = { })
         {
-            BPAssert(format == +DepthStencilFormats::Depth32F_Stencil8,
+            BPAssert(GetFormat() == +DepthStencilFormats::Depth32F_Stencil8,
                      "Trying to clear depth/stencil texture with 32F depth, but it doesn't have 32F depth");
 
             auto packed = Pack_DepthStencil(Unpacked_Depth32fStencil8u(depth, stencil));
@@ -192,7 +188,7 @@ namespace Bplus::GL::Textures
             auto range = params.GetRange(fullSize);
             auto range3D = range.ChangeDimensions<3>();
 
-            glClearTexSubImage(glPtr.Get(), params.MipLevel,
+            glClearTexSubImage(GetOglPtr().Get(), params.MipLevel,
                                range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
                                range3D.Size.x, range3D.Size.y, range3D.Size.z,
                                valueFormat, valueType, clearValue);
@@ -217,7 +213,7 @@ namespace Bplus::GL::Textures
                             static_assert(false, "Only supports 1D-3D textures in ClearData()");
                         }
 
-                        glClearTexSubImage(glPtr.Get(), mipI, 0, 0, 0,
+                        glClearTexSubImage(GetOglPtr().Get(), mipI, 0, 0, 0,
                                            mipFullSize3D.x, mipFullSize3D.y, mipFullSize3D.z,
                                            valueFormat, valueType, clearValue);
                     }
@@ -252,13 +248,13 @@ namespace Bplus::GL::Textures
             //Note that the OpenGL standard does allow you to set compressed textures
             //    with normal RGBA values, but the implementation qualities vary widely
             //    so we choose not to allow it.
-            BPAssert(!format.IsCompressed(),
+            BPAssert(!GetFormat().IsCompressed(),
                      "Can't set a compressed texture with Set_Color()! Use Set_Compressed()");
 
-            BPAssert(!format.IsDepthStencil(),
+            BPAssert(!GetFormat().IsDepthStencil(),
                      "Can't set a depth/stencil texture with Set_Color()!");
             if constexpr (!std::is_integral_v<T>)
-                BPAssert(!format.IsInteger(), "Can't set an integer texture with non-integer data");
+                BPAssert(!GetFormat().IsInteger(), "Can't set an integer texture with non-integer data");
 
             SetData((const void*)data,
                     GetOglChannels(components), GetOglInputFormat<T>(),
@@ -294,7 +290,7 @@ namespace Bplus::GL::Textures
         {
             //Convert block range to pixel size.
             auto texSize = GetSize(mipLevel);
-            auto blockSize = GetBlockSize(format.AsCompressed());
+            auto blockSize = GetBlockSize(GetFormat().AsCompressed());
             auto destPixelRange = uBox_t::MakeMinSize(destBlockRange.MinCorner * blockSize,
                                                       destBlockRange.Size * blockSize);
 
@@ -306,23 +302,23 @@ namespace Bplus::GL::Textures
                      "Block range goes beyond the texture's size");
 
             //Upload.
-            auto byteSize = (GLsizei)format.GetByteSize(destPixelRange.Size);
+            auto byteSize = (GLsizei)GetFormat().GetByteSize(destPixelRange.Size);
             if constexpr (D == 1) {
-                glCompressedTextureSubImage1D(glPtr.Get(), mipLevel,
+                glCompressedTextureSubImage1D(GetOglPtr().Get(), mipLevel,
                                               destPixelRange.MinCorner.x, destPixelRange.Size.x,
-                                              format.GetOglEnum(),
+                                              GetFormat().GetOglEnum(),
                                               byteSize, compressedData);
             } else if constexpr (D == 2) {
-                glCompressedTextureSubImage2D(glPtr.Get(), mipLevel,
+                glCompressedTextureSubImage2D(GetOglPtr().Get(), mipLevel,
                                               destPixelRange.MinCorner.x, destPixelRange.MinCorner.y,
                                               destPixelRange.Size.x, destPixelRange.Size.y,
-                                              format.GetOglEnum(),
+                                              GetFormat().GetOglEnum(),
                                               byteSize, compressedData);
             } else if constexpr (D == 3) {
-                glCompressedTextureSubImage3D(glPtr.Get(), mipLevel,
+                glCompressedTextureSubImage3D(GetOglPtr().Get(), mipLevel,
                                               destPixelRange.MinCorner.x, destPixelRange.MinCorner.y, destPixelRange.MinCorner.z,
                                               destPixelRange.Size.x, destPixelRange.Size.y, destPixelRange.Size.z,
-                                              format.GetOglEnum(),
+                                              GetFormat().GetOglEnum(),
                                               byteSize, compressedData);
             } else {
                 static_assert(false, "TextureD<> should only be 1-, 2-, or 3-dimensional");
@@ -333,7 +329,7 @@ namespace Bplus::GL::Textures
         template<typename T>
         void Set_Depth(const T* pixels, SetDataParams<D> optionalParams = { })
         {
-            BPAssert(format.IsDepthOnly(),
+            BPAssert(GetFormat().IsDepthOnly(),
                      "Trying to set depth data for a non-depth texture");
 
             SetData(&pixels, GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
@@ -343,7 +339,7 @@ namespace Bplus::GL::Textures
         //Sets part or all of this stencil texture to the given value.
         void Set_Stencil(const uint8_t* pixels, SetDataParams<D> optionalParams = { })
         {
-            BPAssert(format.IsStencilOnly(),
+            BPAssert(GetFormat().IsStencilOnly(),
                      "Trying to set the stencil values in a color, depth, or depth-stencil texture");
 
             SetData(&pixels,
@@ -357,7 +353,7 @@ namespace Bplus::GL::Textures
         void Set_DepthStencil(const uint32_t* packedPixels_Depth24uStencil8u,
                               SetDataParams<D> optionalParams = { })
         {
-            BPAssert(format == +DepthStencilFormats::Depth24U_Stencil8,
+            BPAssert(GetFormat() == +DepthStencilFormats::Depth24U_Stencil8,
                      "Trying to set depth/stencil texture with a 24U depth, but it doesn't use 24U depth");
             
             SetData(&packedPixels_Depth24uStencil8u,
@@ -369,7 +365,7 @@ namespace Bplus::GL::Textures
         void Set_DepthStencil(const uint64_t* packedPixels_Depth32fStencil8u,
                               SetDataParams<D> optionalParams = { })
         {
-            BPAssert(format == +DepthStencilFormats::Depth32F_Stencil8,
+            BPAssert(GetFormat() == +DepthStencilFormats::Depth32F_Stencil8,
                      "Trying to set depth/stencil texture with a 32F depth, but it doesn't use 32F depth");
 
             SetData(&packedPixels_Depth32fStencil8u,
@@ -393,16 +389,16 @@ namespace Bplus::GL::Textures
 
             //Upload.
             if constexpr (D == 1) {
-                glTextureSubImage1D(glPtr.Get(), params.MipLevel,
+                glTextureSubImage1D(GetOglPtr().Get(), params.MipLevel,
                                     range.MinCorner.x, range.Size.x,
                                     dataChannels, dataType, data);
             } else if constexpr (D == 2) {
-                glTextureSubImage2D(glPtr.Get(), params.MipLevel,
+                glTextureSubImage2D(GetOglPtr().Get(), params.MipLevel,
                                     range.MinCorner.x, range.MinCorner.y,
                                     range.Size.x, range.Size.y,
                                     dataChannels, dataType, data);
             } else if constexpr (D == 3) {
-                glTextureSubImage3D(glPtr.Get(), params.MipLevel,
+                glTextureSubImage3D(GetOglPtr().Get(), params.MipLevel,
                                     range.MinCorner.x, range.MinCorner.y, range.MinCorner.z,
                                     range.Size.x, range.Size.y, range.Size.z,
                                     dataChannels, dataType, data);
@@ -425,10 +421,10 @@ namespace Bplus::GL::Textures
         void Get_Color(T* data, ComponentData components,
                        GetDataParams<D> optionalParams = { }) const
         {
-            BPAssert(!format.IsDepthStencil(),
+            BPAssert(!GetFormat().IsDepthStencil(),
                      "Can't read a depth/stencil texture with Get_Color()!");
             if constexpr (!std::is_integral_v<T>)
-                BPAssert(!format.IsInteger(), "Can't read an integer texture as non-integer data");
+                BPAssert(!GetFormat().IsInteger(), "Can't read an integer texture as non-integer data");
 
             GetData((void*)data,
                     GetOglChannels(components), GetOglInputFormat<T>(),
@@ -460,7 +456,7 @@ namespace Bplus::GL::Textures
         {
             //Convert block range to pixel size.
             auto texSize = GetSize(mipLevel);
-            auto blockSize = GetBlockSize(format.AsCompressed());
+            auto blockSize = GetBlockSize(GetFormat().AsCompressed());
             auto pixelRange = uBox_t::MakeMinSize(blockRange.MinCorner * blockSize,
                                                   blockRange.Size * blockSize);
 
@@ -473,8 +469,8 @@ namespace Bplus::GL::Textures
 
             //Download.
             auto range3D = pixelRange.ChangeDimensions<3>();
-            auto byteSize = (GLsizei)format.GetByteSize(pixelRange.Size);
-            glGetCompressedTextureSubImage(glPtr.Get(), mipLevel,
+            auto byteSize = (GLsizei)GetFormat().GetByteSize(pixelRange.Size);
+            glGetCompressedTextureSubImage(GetOglPtr().Get(), mipLevel,
                                            range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
                                            range3D.Size.x, pixelRange.Size.y, range3D.Size.z,
                                            byteSize, compressedData);
@@ -484,7 +480,7 @@ namespace Bplus::GL::Textures
         template<typename T>
         void Get_Depth(T* pixels, GetDataParams<D> optionalParams = { })
         {
-            BPAssert(format.IsDepthOnly(),
+            BPAssert(GetFormat().IsDepthOnly(),
                      "Trying to get depth data for a non-depth texture");
 
             GetData(&pixels, GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
@@ -494,7 +490,7 @@ namespace Bplus::GL::Textures
         //Gets part or all of this stencil texture to the given value.
         void Get_Stencil(uint8_t* pixels, GetDataParams<D> optionalParams = { })
         {
-            BPAssert(format.IsStencilOnly(),
+            BPAssert(GetFormat().IsStencilOnly(),
                      "Trying to get the stencil values in a color, depth, or depth-stencil texture");
 
             GetData(&pixels,
@@ -508,7 +504,7 @@ namespace Bplus::GL::Textures
         void Get_DepthStencil(uint32_t* packedPixels_Depth24uStencil8u,
                               GetDataParams<D> optionalParams = { })
         {
-            BPAssert(format == +DepthStencilFormats::Depth24U_Stencil8,
+            BPAssert(GetFormat() == +DepthStencilFormats::Depth24U_Stencil8,
                      "Trying to set depth/stencil texture with a 24U depth, but it doesn't use 24U depth");
             
             GetData(&packedPixels_Depth24uStencil8u,
@@ -520,7 +516,7 @@ namespace Bplus::GL::Textures
         void Get_DepthStencil(uint64_t* packedPixels_Depth32fStencil8u,
                               GetDataParams<D> optionalParams = { })
         {
-            BPAssert(format == +DepthStencilFormats::Depth32F_Stencil8,
+            BPAssert(GetFormat() == +DepthStencilFormats::Depth32F_Stencil8,
                      "Trying to get depth/stencil texture with a 32F depth, but it doesn't use 32F depth");
 
             GetData(&packedPixels_Depth32fStencil8u,
@@ -543,7 +539,7 @@ namespace Bplus::GL::Textures
                          "GetData() call would go past the texture bounds");
 
             auto range3D = range.ChangeDimensions<3>();
-            glGetTextureSubImage(glPtr.Get(), params.MipLevel,
+            glGetTextureSubImage(GetOglPtr().Get(), params.MipLevel,
                                  range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
                                  range3D.Size.x, range3D.Size.y, range3D.Size.z,
                                  dataChannels, dataType,

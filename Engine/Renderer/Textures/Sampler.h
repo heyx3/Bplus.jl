@@ -134,7 +134,7 @@ namespace Bplus::GL::Textures
             return Wrapping[0];
         }
 
-        void Apply(OglPtr::Texture tex) const { Apply(tex.Get(), glTextureParameteri, glTextureParameterf); }
+        void Apply(OglPtr::Texture tex)  const { Apply( tex.Get(), glTextureParameteri, glTextureParameterf); }
         void Apply(OglPtr::Sampler samp) const { Apply(samp.Get(), glSamplerParameteri, glSamplerParameterf); }
 
         void AssertFormatIsAllowed(Format texFormat) const
@@ -197,9 +197,9 @@ namespace Bplus::GL::Textures
         {
             //Set filtering.
             glSetFuncI(targetPtr, GL_TEXTURE_MIN_FILTER,
-                       ToMinFilter(PixelFilter, MipFilter));
+                       (GLint)ToMinFilter(PixelFilter, MipFilter));
             glSetFuncI(targetPtr, GL_TEXTURE_MAG_FILTER,
-                       ToMagFilter(PixelFilter));
+                       (GLint)ToMagFilter(PixelFilter));
 
             //Set mip bias.
             glSetFuncF(targetPtr, GL_TEXTURE_MIN_LOD, MipClampRange.MinCorner.x);
@@ -218,7 +218,7 @@ namespace Bplus::GL::Textures
                 glSetFuncI(targetPtr, GL_DEPTH_STENCIL_TEXTURE_MODE,
                            (GLint)DepthStencilSources::Depth);
                 glSetFuncI(targetPtr, GL_TEXTURE_COMPARE_MODE,
-                           GL_COMPARE_REF_TO_TEXTURE);
+                           (GLint)GL_COMPARE_REF_TO_TEXTURE);
 
                 glSetFuncI(targetPtr, GL_TEXTURE_COMPARE_FUNC,
                            (GLint)DataSource.AsDepthComparison);
@@ -226,7 +226,7 @@ namespace Bplus::GL::Textures
             else
             {
                 //No depth comparison.
-                glSetFuncI(targetPtr, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+                glSetFuncI(targetPtr, GL_TEXTURE_COMPARE_MODE, (GLint)GL_NONE);
 
                 //If setting depth vs stencil explicitly, do that.
                 if (DataSource.IsDepthOrStencil())

@@ -16,16 +16,13 @@ TexHandle::TexHandle(const Texture* src)
     : ViewGlPtr(glGetTextureHandleARB(src->GetOglPtr().Get()))
 {
 }
-ImgHandle::ImgHandle(const Texture* src,
-                     uint_mipLevel_t mip,
-                     std::optional<uint_fast32_t> singleLayer,
-                     ImageAccessModes mode)
-    : MipLevel(mip), Mode(mode), SingleLayer(singleLayer),
+ImgHandle::ImgHandle(const Texture* src, const ImgHandleData& params)
+    : Params(params),
       ViewGlPtr(glGetImageHandleARB(src->GetOglPtr().Get(),
-                                    (GLint)MipLevel,
-                                    singleLayer.has_value(),
-                                    singleLayer.value_or(0),
-                                    mode._to_integral()))
+                                    (GLint)Params.MipLevel,
+                                    Params.SingleLayer.has_value(),
+                                    Params.SingleLayer.value_or(0),
+                                    Params.Access._to_integral()))
 {
 
 }
@@ -72,8 +69,7 @@ TexHandle::TexHandle(TexHandle&& src)
     src.skipDestructor = true;
 }
 ImgHandle::ImgHandle(ImgHandle&& src)
-    : ViewGlPtr(src.ViewGlPtr),
-      MipLevel(src.MipLevel), SingleLayer(src.SingleLayer), Mode(src.Mode),
+    : ViewGlPtr(src.ViewGlPtr), Params(src.Params),
       activeCount(src.activeCount), skipDestructor(src.skipDestructor)
 {
     src.skipDestructor = true;
@@ -89,7 +85,7 @@ void ImgHandle::Activate()
 {
     activeCount += 1;
     if (activeCount == 1)
-        glMakeImageHandleResidentARB(ViewGlPtr.Get());
+        glMakeImageHandleResidentARB(ViewGlPtr.Get(), (GLenum)Params.Access);
 }
 
 void TexHandle::Deactivate()
@@ -225,16 +221,17 @@ TexView Texture::GetViewFull(std::optional<Sampler<3>> customSampler) const
 
     return TexView(*this, *texHandles[sampler]);
 }
-ImgView Texture::GetViewFull(ImageAccessModes access,
-                             std::optional<uint_fast32_t> singleLayer,
-                             uint_mipLevel_t mipLevel) const
+ImgView Texture::GetView(ImgHandleData params) const
 {
-    ImgHandleData data{ mipLevel, singleLayer, access }; 
-    auto found = imgHandles.find(sampler);
+    auto found = imgHandles.find(params);
     if (found == imgHandles.end())
-        texHandles.emplace(data, std::make_unique<ImgHandle>(this, data.MipLevel, data.SingleLayer, data.Access);
+    {
+        texHandles.emplace(params,
+                           std::make_unique<ImgHandle>(this, params.MipLevel,
+                                                       params.SingleLayer, params.Access));
+    }
     
-    return ImgView(*this, imgHandles[sampler]);
+    return ImgView(*this, imgHandles[params]);
 }
 
 #pragma endregion
