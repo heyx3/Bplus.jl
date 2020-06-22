@@ -190,7 +190,7 @@ namespace Bplus::GL::Textures
                                   std::nullopt);
         }
         
-        const Sampler<2>& GetSampler() const { return GetSamplerFull().ChangeDimensions<2>(); }
+        Sampler<2> GetSampler() const { return GetSamplerFull().ChangeDimensions<2>(); }
 
 
         #pragma region Clearing data

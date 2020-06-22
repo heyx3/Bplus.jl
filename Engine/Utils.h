@@ -118,27 +118,40 @@ GL_t GlCreate(void (*glFunc)(int, GL_t*))
 }
 
 
-#pragma region Helper function for MultiHash(), "MultiHash_()"
-template<typename T, typename... Rest>
-void MultiHash_(std::size_t& seed, const T& v, const Rest&... rest)
+template<typename... Items>
+size_t MultiHash(const Items&... items);
+
+#pragma region Helper functions for MultiHash()
+
+inline size_t CombineHash(size_t in1, size_t in2)
+{
+    //Taken from: https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
+    return in1 ^ (in2 + 0x9e3779b9 + (in1 << 6) + (in1 >> 2));
+}
+
+
+//Recursive function with no parameters (an edge-case):
+size_t MultiHash() { return 0; }
+
+//Recursive function with one parameter:
+template<typename LastItem>
+size_t MultiHash(const LastItem& item)
 {
     using std::hash;
-
-    //Taken from: https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
-    seed ^= hash<T>{}(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    MultiHash_(seed, rest...);
+    return hash<LastItem>{}(item);
 }
-#pragma endregion
 
-//A modern C++17 way to hash any number of hashable types together.
-//The types must specialize std::hash<T>().
-template<typename... Items>
-size_t MultiHash(const Items&... items)
+//Recursive function with multiple parameters:
+template<typename T, typename... Rest>
+size_t MultiHash(const T& v, const Rest&... rest)
 {
-    size_t seed = 0;
-    MultiHash_(seed, items);
-    return seed;
+    using std::hash;
+    return CombineHash(hash<T>{}(v),
+                       MultiHash(rest...));
 }
+
+
+#pragma endregion
 
 
 //TODO: StackTrace utility? Then integrate it with BPAssert.

@@ -47,6 +47,7 @@ namespace Bplus::GL::Textures
         friend class Texture;
         friend struct TexView;
         friend struct std::default_delete<TexHandle>;
+        friend class std::unique_ptr<TexHandle>;
 
         TexHandle(const Texture* src);
         TexHandle(const Texture* src, const Sampler<3>& sampler3D);
@@ -110,6 +111,7 @@ namespace Bplus::GL::Textures
         friend class Texture;
         friend struct ImgView;
         friend struct std::default_delete<ImgHandle>;
+        friend class std::unique_ptr<ImgHandle>;
 
         ImgHandle(const Texture* src, const ImgHandleData& params);
         ~ImgHandle();
@@ -160,7 +162,7 @@ namespace Bplus::GL::Textures
 //Provide a hash for texture::ImgHandleData:
 namespace std {
     template<> struct hash<Bplus::GL::Textures::ImgHandleData> {
-        size_t operator()(const Bplus::GL::Textures::ImgHandleData& value) {
+        size_t operator()(const Bplus::GL::Textures::ImgHandleData& value) const {
             return MultiHash(value.Access, value.MipLevel, value.SingleLayer);
         }
     };
@@ -336,6 +338,6 @@ namespace Bplus::GL::Textures
         //Image views represent different parts of this texture for shaders to read/write.
         //This field is a cache of the views that have already been created.
         //They are stored as unique_ptr so that their pointer doesn't change.
-        mutable std::unordered_map<ImgHandleData, ImgHandle> imgHandles;
+        mutable std::unordered_map<ImgHandleData, std::unique_ptr<ImgHandle>> imgHandles;
     };
 }

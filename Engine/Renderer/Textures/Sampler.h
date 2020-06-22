@@ -263,7 +263,7 @@ namespace std
     //Sampler<D>:
     template<glm::length_t D>
     struct hash<Bplus::GL::Textures::Sampler<D>> {
-        size_t operator()(const Bplus::GL::Textures::Sampler<D>& value) {
+        size_t operator()(const Bplus::GL::Textures::Sampler<D>& value) const {
             return MultiHash(value.Wrapping, value.PixelFilter, value.MipFilter,
                              value.MipOffset, value.MipClampRange,
                              value.DataSource, value.DataSwizzle);

@@ -199,7 +199,7 @@ namespace std
 {
     template<glm::length_t N, typename T>
     struct hash<Bplus::Math::Box<N, T>> {
-        size_t operator()(const Bplus::Math::Box<N, T>& value) {
+        size_t operator()(const Bplus::Math::Box<N, T>& value) const {
             return MultiHash(value.MinCorner, value.Size);
         }
     };

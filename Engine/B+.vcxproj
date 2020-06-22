@@ -108,6 +108,7 @@
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessKeepComments>false</PreprocessKeepComments>
+      <TreatSpecificWarningsAsErrors>4715;4172</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -173,6 +174,7 @@ exit 0</Command>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessKeepComments>false</PreprocessKeepComments>
+      <TreatSpecificWarningsAsErrors>4715;4172</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -239,6 +241,7 @@ exit 0</Command>
       <DisableSpecificWarnings>4996;4251</DisableSpecificWarnings>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessKeepComments>false</PreprocessKeepComments>
+      <TreatSpecificWarningsAsErrors>4715;4172</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -307,6 +310,7 @@ exit 0</Command>
       <DisableSpecificWarnings>4996;4251</DisableSpecificWarnings>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessKeepComments>false</PreprocessKeepComments>
+      <TreatSpecificWarningsAsErrors>4715;4172</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

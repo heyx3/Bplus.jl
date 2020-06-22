@@ -84,7 +84,7 @@ namespace std
     //SamplerDataSource:
     template<>
     struct hash<Bplus::GL::Textures::SamplerDataSource> {
-        size_t operator()(const Bplus::GL::Textures::SamplerDataSource& value) {
+        size_t operator()(const Bplus::GL::Textures::SamplerDataSource& value) const {
             if (value.IsUnmodified())
                 return 0;
             else if (value.IsDepthOrStencil())

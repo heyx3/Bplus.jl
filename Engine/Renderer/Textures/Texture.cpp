@@ -223,9 +223,9 @@ TexView Texture::GetViewFull(std::optional<Sampler<3>> customSampler) const
     auto found = texHandles.find(sampler);
     if (found == texHandles.end())
         if (customSampler.has_value())
-            texHandles.emplace(sampler, std::make_unique<TexHandle>(this, sampler));
+            texHandles.emplace(sampler, new TexHandle(this, sampler));
         else
-            texHandles.emplace(sampler, std::make_unique<TexHandle>(this));
+            texHandles.emplace(sampler, new TexHandle(this));
 
     return TexView(*this, *texHandles[sampler]);
 }
@@ -234,12 +234,10 @@ ImgView Texture::GetView(ImgHandleData params) const
     auto found = imgHandles.find(params);
     if (found == imgHandles.end())
     {
-        texHandles.emplace(params,
-                           std::make_unique<ImgHandle>(this, params.MipLevel,
-                                                       params.SingleLayer, params.Access));
+        texHandles.emplace(params, new ImgHandle(this, params));
     }
     
-    return ImgView(*this, imgHandles[params]);
+    return ImgView(*this, *imgHandles[params]);
 }
 
 #pragma endregion
