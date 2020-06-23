@@ -5,24 +5,6 @@
 
 namespace Bplus::GL::Textures
 {
-    //The different sources a color texture sampler can pull from.
-    BETTER_ENUM(SwizzleSources, GLenum,
-        //The texture's Red component.
-        Red = GL_RED,
-        //The texture's Green component.
-        Green = GL_GREEN,
-        //The texture's Blue component.
-        Blue = GL_BLUE,
-        //The texture's Alpha component.
-        Alpha = GL_ALPHA,
-        //A constant value of 0.
-        Zero = GL_ZERO,
-        //A constant value of 1.
-        One = GL_ONE
-    );
-    using SwizzleRGBA = std::array<SwizzleSources, 4>;
-
-
     //The different ways a depth/stencil hybrid texture can be sampled.
     BETTER_ENUM(DepthStencilSources, GLenum,
         //The texture will sample its depth and output floats (generally between 0-1).
@@ -77,7 +59,6 @@ namespace Bplus::GL::Textures
 }
 
 //Allow enums and structs in this file to be hashed, for use in STL collections.
-BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::SwizzleSources);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::DepthStencilSources);
 namespace std
 {

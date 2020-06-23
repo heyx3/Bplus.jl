@@ -233,9 +233,7 @@ ImgView Texture::GetView(ImgHandleData params) const
 {
     auto found = imgHandles.find(params);
     if (found == imgHandles.end())
-    {
-        texHandles.emplace(params, new ImgHandle(this, params));
-    }
+        imgHandles.emplace(params, new ImgHandle(this, params));
     
     return ImgView(*this, *imgHandles[params]);
 }

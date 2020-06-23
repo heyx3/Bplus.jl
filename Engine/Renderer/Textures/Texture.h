@@ -153,13 +153,13 @@ namespace Bplus::GL::Textures
         ImgView(const Texture& owner, ImgHandle& handle);
         ~ImgView();
 
-        ImgView(const ImgView& cpy);
+        ImgView(const ImgView& cpy) : ImgView(cpy.Owner, cpy.Handle) { }
         ImgView& operator=(const ImgView& cpy);
         ImgView(ImgView&& from) : ImgView(from) { }
         ImgView& operator=(ImgView&& from) { return operator=(from); }
     };
 }
-//Provide a hash for texture::ImgHandleData:
+//Provide a hash for Textures::ImgHandleData:
 namespace std {
     template<> struct hash<Bplus::GL::Textures::ImgHandleData> {
         size_t operator()(const Bplus::GL::Textures::ImgHandleData& value) const {

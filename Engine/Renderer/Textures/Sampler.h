@@ -61,6 +61,25 @@ namespace Bplus::GL::Textures
             default: BPAssert(false, "Unknown pixel filter mode"); return GL_NONE;
         }
     }
+    
+
+    //The different sources a color texture sampler can pull from.
+    BETTER_ENUM(SwizzleSources, GLenum,
+        //The texture's Red component.
+        Red = GL_RED,
+        //The texture's Green component.
+        Green = GL_GREEN,
+        //The texture's Blue component.
+        Blue = GL_BLUE,
+        //The texture's Alpha component.
+        Alpha = GL_ALPHA,
+        //A constant value of 0.
+        Zero = GL_ZERO,
+        //A constant value of 1.
+        One = GL_ONE
+    );
+    using SwizzleRGBA = std::array<SwizzleSources, 4>;
+
 
 
     //Information about a sampler for a D-dimensional texture.
@@ -258,12 +277,13 @@ namespace Bplus::GL::Textures
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::WrapModes);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::PixelFilters);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::MipFilters);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::SwizzleSources);
 namespace std
 {
     //Sampler<D>:
-    template<glm::length_t D>
+    template<size_t D>
     struct hash<Bplus::GL::Textures::Sampler<D>> {
-        size_t operator()(const Bplus::GL::Textures::Sampler<D>& value) const {
+        size_t operator()(const Bplus::GL::Textures::Sampler<3>& value) const {
             return MultiHash(value.Wrapping, value.PixelFilter, value.MipFilter,
                              value.MipOffset, value.MipClampRange,
                              value.DataSource, value.DataSwizzle);

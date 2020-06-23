@@ -3,6 +3,8 @@
 #include "Platform.h"
 
 #include <vector>
+#include <cstddef>
+#include <functional>
 
 //TODO: The functions should probably be moved into the Bplus namespace.
 
@@ -117,11 +119,23 @@ GL_t GlCreate(void (*glFunc)(int, GL_t*))
     return ptr;
 }
 
+#pragma region is_std_hashable
 
-template<typename... Items>
-size_t MultiHash(const Items&... items);
+//Taken from https://stackoverflow.com/questions/12753997/check-if-type-is-hashable
 
-#pragma region Helper functions for MultiHash()
+template<typename T, typename = std::void_t<>>
+struct is_std_hashable : std::false_type { };
+
+template<typename T>
+struct is_std_hashable<T, std::void_t<decltype(std::declval<std::hash<T>>()(std::declval<T>()))>> : std::true_type { };
+
+template<typename T>
+constexpr bool is_std_hashable_v = is_std_hashable<T>::value;
+
+#pragma endregion
+
+
+#pragma region MultiHash(...)
 
 inline size_t CombineHash(size_t in1, size_t in2)
 {
@@ -130,13 +144,12 @@ inline size_t CombineHash(size_t in1, size_t in2)
 }
 
 
-//Recursive function with no parameters (an edge-case):
-size_t MultiHash() { return 0; }
-
 //Recursive function with one parameter:
 template<typename LastItem>
 size_t MultiHash(const LastItem& item)
 {
+    static_assert(is_std_hashable_v<LastItem>, "Data type isn't hashable");
+
     using std::hash;
     return hash<LastItem>{}(item);
 }
@@ -145,11 +158,31 @@ size_t MultiHash(const LastItem& item)
 template<typename T, typename... Rest>
 size_t MultiHash(const T& v, const Rest&... rest)
 {
+    static_assert(is_std_hashable_v<T>, "Data type isn't hashable");
+
     using std::hash;
     return CombineHash(hash<T>{}(v),
                        MultiHash(rest...));
 }
 
+#pragma endregion
+
+#pragma region std::hash for std::array
+
+namespace std {
+    template<typename T, size_t N>
+    struct hash<std::array<T, N>> {
+        size_t operator()(const std::array<T, N>& a) const {
+            using std::hash;
+            hash<T> hasher;
+
+            size_t h = 0;
+            for (size_t i = 0; i < N; ++i)
+                h = CombineHash(h, hasher(a[i]));
+            return h;
+        }
+    };
+}
 
 #pragma endregion
 

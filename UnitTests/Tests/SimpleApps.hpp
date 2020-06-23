@@ -47,7 +47,7 @@ indicating that not all ImGUI labels were visible.");
             auto backCol = glm::mix((glm::fvec4)backCol1,
                                     (glm::fvec4)backCol2,
                                     colorT);
-            backCol /= 255;
+            backCol /= 255.0f;
 
             auto* context = Bplus::GL::Context::GetCurrentContext();
             context->Clear(backCol);
