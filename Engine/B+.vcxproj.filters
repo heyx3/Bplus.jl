@@ -109,6 +109,24 @@
     <ClInclude Include="Renderer\Textures\Data.h">
       <Filter>Renderer\Textures</Filter>
     </ClInclude>
+    <ClInclude Include="Utils\Functions.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\StrongTypedef.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Lazy.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Bool.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\BPAssert.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Hashing.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
@@ -141,7 +159,6 @@
       <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="TomlIO.cpp" />
-    <ClCompile Include="Utils.cpp" />
     <ClCompile Include="Renderer\Materials\CompiledShader.cpp">
       <Filter>Renderer\Programs</Filter>
     </ClCompile>
@@ -172,6 +189,9 @@
     <ClCompile Include="Renderer\Buffers\Buffer.cpp">
       <Filter>Renderer\Buffers</Filter>
     </ClCompile>
+    <ClCompile Include="Utils\BPAssert.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Native File Dialog">
@@ -194,6 +214,9 @@
     </Filter>
     <Filter Include="Renderer\Programs">
       <UniqueIdentifier>{1383e33b-f4af-4e68-ba5f-841a1bd915b8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils">
+      <UniqueIdentifier>{d2c9364c-6669-43fd-9f8f-eb57f6b6c469}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

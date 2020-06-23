@@ -163,7 +163,7 @@ namespace Bplus::GL::Textures
 namespace std {
     template<> struct hash<Bplus::GL::Textures::ImgHandleData> {
         size_t operator()(const Bplus::GL::Textures::ImgHandleData& value) const {
-            return MultiHash(value.Access, value.MipLevel, value.SingleLayer);
+            return Bplus::MultiHash(value.Access, value.MipLevel, value.SingleLayer);
         }
     };
 }

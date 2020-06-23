@@ -284,9 +284,9 @@ namespace std
     template<size_t D>
     struct hash<Bplus::GL::Textures::Sampler<D>> {
         size_t operator()(const Bplus::GL::Textures::Sampler<3>& value) const {
-            return MultiHash(value.Wrapping, value.PixelFilter, value.MipFilter,
-                             value.MipOffset, value.MipClampRange,
-                             value.DataSource, value.DataSwizzle);
+            return Bplus::MultiHash(value.Wrapping, value.PixelFilter, value.MipFilter,
+                                    value.MipOffset, value.MipClampRange,
+                                    value.DataSource, value.DataSwizzle);
         }
     };
 }

@@ -244,7 +244,7 @@ TOML_MAKE_PARSEABLE(uint64_t, , uint64_t, V.type() == Value::INT_TYPE, V.int_, "
 
 TOML_MAKE_PARSEABLE(float, , float, V.type() == Value::DOUBLE_TYPE, V.double_, "float", value)
 
-TOML_MAKE_PARSEABLE(Bool, , Bool, V.type() == Value::BOOL_TYPE, V.bool_, "Bool", value)
+TOML_MAKE_PARSEABLE(Bplus::Bool, , Bplus::Bool, V.type() == Value::BOOL_TYPE, V.bool_, "Bool", value)
 
 #pragma endregion
 

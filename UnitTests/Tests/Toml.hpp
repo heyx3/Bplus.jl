@@ -96,7 +96,7 @@ void TomlWrapping()
     _TomlWrapping(12345);
     _TomlWrapping((int8_t)-50);
     _TomlWrapping(false);
-    _TomlWrapping(Bool{ false });
+    _TomlWrapping(Bplus::Bool{ false });
 
     //Test wrapping of TOML tables.
     //Note that TOML uses std::map for its tables,
@@ -172,12 +172,12 @@ void TomlPrimitives()
     //Finally, run the test for booleans and the Bool struct.
     TOML_TEST(false, bool, bool);
     TOML_TEST(true,  bool, bool);
-    TOML_TEST(false, bool, Bool);
-    TOML_TEST(true,  bool, Bool);
-    TOML_TEST(false, Bool, bool);
-    TOML_TEST(true,  Bool, bool);
-    TOML_TEST(false, Bool, Bool);
-    TOML_TEST(true,  Bool, Bool);
+    TOML_TEST(false, bool, Bplus::Bool);
+    TOML_TEST(true,  bool, Bplus::Bool);
+    TOML_TEST(false, Bplus::Bool, bool);
+    TOML_TEST(true,  Bplus::Bool, bool);
+    TOML_TEST(false, Bplus::Bool, Bplus::Bool);
+    TOML_TEST(true,  Bplus::Bool, Bplus::Bool);
 
 #undef TOML_TEST
 }

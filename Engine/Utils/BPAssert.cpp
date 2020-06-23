@@ -1,7 +1,8 @@
-#include "Utils.h"
+#include "BPAssert.h"
 
-#include <iostream>
 #include <assert.h>
+#include <cstdio>
+
 
 namespace
 {
@@ -17,16 +18,20 @@ Bplus::AssertFuncSignature Bplus::GetAssertFunc()
     return currentAssertFunc;
 }
 
+
 void Bplus::DefaultAssertFunc(bool expr, const char* msg)
 {
     if (!expr)
     {
-        std::cout << "BPAssert failed: " << msg << "\n";
+        printf("BPAssert failed: ");
+        printf(msg);
+        printf("\n");
+
         assert(false);
     }
     else
     {
-        //Just for completeness:
+        //For completeness:
         assert(true);
     }
 }
