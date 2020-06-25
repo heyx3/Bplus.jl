@@ -4,6 +4,7 @@
 #include <tuple>
 
 #include "../Context.h"
+#include "../Textures/Texture.h"
 
 //Provides a way to access a matrix/vector as an array of floats.
 #include <glm/gtc/type_ptr.hpp>
@@ -11,8 +12,20 @@
 //TODO: Integrate this project: https://github.com/dfranx/ShaderDebugger
 
 
+//The valid "uniform" parameters for a shader are as follows:
+//    * Primitive types int32_t, uint32_t, float, double, and bool/Bool
+//    * A GLM vector of the above primitive types (1-4 dimensions)
+//    * A GLM matrix of floats or doubles
+//    * Textures (i.e. Bplus::GL::Texture::TexView and ::ImgView)
+//    * Buffers (i.e. a pointer or reference to Bplus::GL::Buffers::Buffer)
+//Any functions that are templated on a type of uniform will accept any of these.
+
+
 namespace Bplus::GL
 {
+    namespace Buffers { class Buffer; }
+
+
     //A specific compiled shader, plus its "uniforms" (a.k.a. parameters).
     class BP_API CompiledShader
     {
@@ -82,10 +95,6 @@ namespace Bplus::GL
         #pragma region Uniform getting
 
         //Gets a uniform of the given templated type.
-        //Valid types are the primitives (int32_t, uint32_t, float, double, and bool),
-        //    GLM vectors of the primitives,
-        //    GLM matrices of float and double,
-        //    Bplus::GL::OglPtr::Texture and ::Buffer.
         //Returns std::nullopt if a uniform with the given name doesn't exist.
         //If the shader optimized out the uniform, its current value is undefined and
         //    the given default value will be returned.
@@ -107,10 +116,6 @@ namespace Bplus::GL
         }
 
         //Gets a uniform of the given templated type.
-        //Valid types are the primitives (32-bit int, 32-bit uint, float, double, and bool),
-        //    GLM vectors of the primitives,
-        //    GLM matrices of float and double,
-        //    OglPtr::Image, and OglPtr::Sampler.
         //Returns std::nullopt if a uniform with the given name doesn't exist.
         //If the shader optimized out the uniform, its "set" value is unknown and
         //    the given default value will be returned.
@@ -137,10 +142,6 @@ namespace Bplus::GL
         }
 
         //Gets a uniform of the given templated type.
-        //Valid types are the primitives (32-bit int, 32-bit uint, float, double, and bool),
-        //    GLM vectors of the primitives,
-        //    GLM matrices of float and double,
-        //    OglPtr::Image, and OglPtr::Sampler.
         //Returns false if the uniform doesn't exist.
         //If the shader optimized out the uniform,
         //    nothing is done and "true" will be returned as if it exists.
@@ -179,10 +180,6 @@ namespace Bplus::GL
         #pragma region Uniform setting
         
         //Sets a uniform of the given templated type.
-        //Valid types are the primitives (int32_t, uint32_t, float, double, and bool/Bool),
-        //    GLM vectors of the primitives,
-        //    GLM matrices of float and double,
-        //    OglPtr::Image, and OglPtr::Sampler.
         //Returns false if the uniform doesn't exist.
         //If the shader optimized out the uniform,
         //    nothing is done and "true" will be returned as if it exists.
@@ -208,10 +205,6 @@ namespace Bplus::GL
         }
 
         //Sets a uniform of the given templated type.
-        //Valid types are the primitives (32-bit int, 32-bit uint, float, double, and bool/Bool),
-        //    GLM vectors of the primitives,
-        //    GLM matrices of float and double,
-        //    OglPtr::Image, and OglPtr::Sampler.
         //Returns false if the uniform doesn't exist.
         //If the shader optimized out the uniform,
         //    nothing is done and "true" will be returned as if it exists.
@@ -239,10 +232,6 @@ namespace Bplus::GL
         }
 
         //Sets a uniform of the given templated type.
-        //Valid types are the primitives (32-bit int, 32-bit uint, float, double, and bool/Bool),
-        //    GLM vectors of the primitives,
-        //    GLM matrices of float and double,
-        //    OglPtr::Image, and OglPtr::Sampler.
         //Returns false if the uniform doesn't exist.
         //If the shader optimized out the uniform,
         //    nothing is done and "true" will be returned as if it exists.
@@ -290,8 +279,88 @@ namespace Bplus::GL
         template<typename Value_t>
         Value_t GetUniform(OglPtr::ShaderUniform ptr) const
         {
-            BPAssert(!ptr.IsNull(), "Given a null ptr!");
+            BPAssert(!ptr.IsNull(), "Given an null uniform location!");
+            return _GetUniform<Value_t>(ptr);
+        }
+        #pragma region _GetUniform() specializations
 
+        //The non-specialized version gives you a compile error
+        //    about using an incorrect template type.
+        template<typename Value_t>
+        Value_t _GetUniform(OglPtr::ShaderUniform ptr) const
+        {
+            if constexpr (std::is_same_v<Value_t, Buffers::Buffer*>) {
+                static_assert(false, "Can't get a non-const pointer to a Buffer through GetUniform()");
+            } else if constexpr (std::is_same_v<Value_t, Buffers::Buffer&>) {
+                static_assert(false, "Can't get a non-const reference to a Buffer through GetUniform()");
+            } else {
+                static_assert(false, "Invalid type used for GetUniform()");
+            }
+        }
+
+
+        //Use macros to more easily define the specializations.
+
+        //TODO: Implement _GetUniform() specializations. Make sure to store TexViews and ImgViews to preserve the handle activation.
+
+    #define GET_UNIFORM_FOR(Type) \
+        template<> Type _GetUniform<Type>(OglPtr::ShaderUniform ptr) const
+
+        #pragma region Primitives and vectors
+
+    #define GET_UNIFORM_FOR_PRIMITIVE(Type) \
+        GET_UNIFORM_FOR(Type); \
+        GET_UNIFORM_FOR(glm::vec<1 BP_COMMA Type>); \
+        GET_UNIFORM_FOR(glm::vec<2 BP_COMMA Type>); \
+        GET_UNIFORM_FOR(glm::vec<3 BP_COMMA Type>); \
+        GET_UNIFORM_FOR(glm::vec<4 BP_COMMA Type>)
+
+        GET_UNIFORM_FOR_PRIMITIVE(uint32_t);
+        GET_UNIFORM_FOR_PRIMITIVE(int32_t);
+        GET_UNIFORM_FOR_PRIMITIVE(float);
+        GET_UNIFORM_FOR_PRIMITIVE(double);
+        GET_UNIFORM_FOR_PRIMITIVE(bool);
+        GET_UNIFORM_FOR_PRIMITIVE(Bool);
+
+    #undef GET_UNIFORM_FOR_PRIMITIVE
+
+        #pragma endregion
+
+        #pragma region Matrices
+
+    #define GET_UNIFORM_FOR_MATS(NCols, NRows) \
+        GET_UNIFORM_FOR(glm::mat<NCols BP_COMMA NRows BP_COMMA float>); \
+        GET_UNIFORM_FOR(glm::mat<NCols BP_COMMA NRows BP_COMMA double>)
+    #define GET_UNIFORM_FOR_MATS_ROWS(NCols) \
+        GET_UNIFORM_FOR_MATS(NCols, 2); \
+        GET_UNIFORM_FOR_MATS(NCols, 3); \
+        GET_UNIFORM_FOR_MATS(NCols, 4)
+
+        GET_UNIFORM_FOR_MATS_ROWS(2);
+        GET_UNIFORM_FOR_MATS_ROWS(3);
+        GET_UNIFORM_FOR_MATS_ROWS(4);
+
+    #undef GET_UNIFORM_FOR_MATS_ROWS
+    #undef GET_UNIFORM_FOR_MATS
+
+        #pragma endregion
+
+        #pragma region Textures and Buffers
+
+        GET_UNIFORM_FOR(Textures::TexView);
+        GET_UNIFORM_FOR(Textures::ImgView);
+
+        GET_UNIFORM_FOR(const Buffers::Buffer*);
+        GET_UNIFORM_FOR(const Buffers::Buffer&);
+
+        #pragma endregion
+
+        #undef GET_UNIFORM_FOR
+
+        #pragma endregion
+
+            /*
+        {
             //This "if" statement only exists so that all subsequent lines
             //    can start with "} else", to simplify the macros.
             if constexpr (false) { return (void*)nullptr;
@@ -404,6 +473,10 @@ namespace Bplus::GL
             //If none of the previous cases apply, then an invalid type was passed.
             } else { static_assert(false); return (void*)nullptr; }
         }
+        */
+
+
+        //TODO: Update _SetUniform() below to match what we did for _GetUniform().
 
         template<typename Value_t>
         Value_t _SetUniform(OglPtr::ShaderUniform ptr, const Value_t& value)

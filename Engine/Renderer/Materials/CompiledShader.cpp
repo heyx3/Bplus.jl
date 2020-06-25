@@ -1,6 +1,10 @@
 #include "CompiledShader.h"
 
+#include "../Buffers/Buffer.h"
+
+
 using namespace Bplus::GL;
+
 
 //Hook into the thread rendering context's "RefreshState()" function
 //    to refresh the currently-active shader.
@@ -326,4 +330,10 @@ CompiledShader::UniformAndStatus CompiledShader::CheckUniform(const std::string&
 
     //Everything checks out!
     return { ptr, UniformStates::Exists };
+}
+
+
+template<> uint32_t CompiledShader::_GetUniform<uint32_t>(OglPtr::ShaderUniform ptr) const
+{
+    return 0;
 }
