@@ -12,21 +12,21 @@
 //This is often more efficient than setting the buffer data the usual way,
 //    e.x. you could read the mesh data from disk directly into this mapped memory.
 
+
 namespace Bplus::GL::Buffers
 {
     //A chunk of OpenGL data that can be used for all sorts of things --
     //    mesh vertices/indices, shader uniforms, compute buffers, etc.
     class BP_API Buffer
     {
+    public:
         //TODO: Offer double- and triple-buffering to speed up synchronization between CPU and GPU.
         //TODO: Offer a persistent-mapped buffer as an alternative to glBufferSubData(). Maybe make Buffer an abstract base class.
-
-    public:
 
         //Gets the Buffer with the given OpenGL handle.
         //Only works on the thread that OpenGL runs on.
         //Returns null if it can't be found.
-        static const Buffer* GetBuffer(OglPtr::Buffer ptr);
+        static const Buffer* Find(OglPtr::Buffer ptr);
 
 
         //Creates a buffer of the given byte-size,

@@ -271,6 +271,9 @@ namespace Bplus::GL
 
         std::unordered_map<std::string, OglPtr::ShaderUniform> uniformPtrs;
 
+        std::unordered_map<OglPtr::View, Textures::TexView> texViews;
+        std::unordered_map<OglPtr::View, Textures::ImgView> imgViews;
+
 
         enum class UniformStates { Missing, OptimizedOut, Exists };
         struct UniformAndStatus {   OglPtr::ShaderUniform Uniform;    UniformStates Status;    };
@@ -282,7 +285,7 @@ namespace Bplus::GL
             BPAssert(!ptr.IsNull(), "Given an null uniform location!");
             return _GetUniform<Value_t>(ptr);
         }
-        #pragma region _GetUniform() specializations
+        #pragma region _GetUniform()
 
         //The non-specialized version gives you a compile error
         //    about using an incorrect template type.
@@ -300,46 +303,72 @@ namespace Bplus::GL
 
 
         //Use macros to more easily define the specializations.
-
-        //TODO: Implement _GetUniform() specializations. Make sure to store TexViews and ImgViews to preserve the handle activation.
-
+        
     #define GET_UNIFORM_FOR(Type) \
         template<> Type _GetUniform<Type>(OglPtr::ShaderUniform ptr) const
 
         #pragma region Primitives and vectors
+        
+        //Handle all the non-bool primitives/vectors.
+        //Bools are special because the OpenGL API requires you to treat them as numbers.
+    #define GET_UNIFORM_FOR_PRIM_VECTOR(Type, Count, glLetters) \
+        GET_UNIFORM_FOR(glm::vec<Count BP_COMMA Type>) { \
+            glm::vec<Count, Type> val; \
+            glGetnUniform##glLetters##v(programHandle.Get(), ptr.Get(), \
+                                        sizeof(glm::vec<Count, Type>), \
+                                        &val[0]); \
+            return val; }
+    #define GET_UNIFORM_FOR_PRIMITIVE(Type, glLetters) \
+        GET_UNIFORM_FOR(Type){ Type val; \
+                               glGetnUniform##glLetters##v(programHandle.Get(), ptr.Get(), \
+                                                           sizeof(decltype(val)), &val); \
+                               return val; } \
+        GET_UNIFORM_FOR_PRIM_VECTOR(Type, 1, glLetters) \
+        GET_UNIFORM_FOR_PRIM_VECTOR(Type, 2, glLetters) \
+        GET_UNIFORM_FOR_PRIM_VECTOR(Type, 3, glLetters) \
+        GET_UNIFORM_FOR_PRIM_VECTOR(Type, 4, glLetters)
 
-    #define GET_UNIFORM_FOR_PRIMITIVE(Type) \
-        GET_UNIFORM_FOR(Type); \
-        GET_UNIFORM_FOR(glm::vec<1 BP_COMMA Type>); \
-        GET_UNIFORM_FOR(glm::vec<2 BP_COMMA Type>); \
-        GET_UNIFORM_FOR(glm::vec<3 BP_COMMA Type>); \
-        GET_UNIFORM_FOR(glm::vec<4 BP_COMMA Type>)
-
-        GET_UNIFORM_FOR_PRIMITIVE(uint32_t);
-        GET_UNIFORM_FOR_PRIMITIVE(int32_t);
-        GET_UNIFORM_FOR_PRIMITIVE(float);
-        GET_UNIFORM_FOR_PRIMITIVE(double);
-        GET_UNIFORM_FOR_PRIMITIVE(bool);
-        GET_UNIFORM_FOR_PRIMITIVE(Bool);
-
+        GET_UNIFORM_FOR_PRIMITIVE(uint32_t, ui)
+        GET_UNIFORM_FOR_PRIMITIVE(int32_t, i)
+        GET_UNIFORM_FOR_PRIMITIVE(float, f)
+        GET_UNIFORM_FOR_PRIMITIVE(double, d)
     #undef GET_UNIFORM_FOR_PRIMITIVE
+    #undef GET_UNIFORM_FOR_PRIM_VECTOR
+
+        //Handle bool, bool vectors, and Bool for good measure.
+        GET_UNIFORM_FOR(Bool) { return _GetUniform<bool>(ptr); }
+        GET_UNIFORM_FOR(bool) { return _GetUniform<uint32_t>(ptr) != 0; }
+        GET_UNIFORM_FOR(glm::bvec2) { return glm::notEqual(_GetUniform<glm::uvec2>(ptr),
+                                                           glm::uvec2{}); }
+        GET_UNIFORM_FOR(glm::bvec3) { return glm::notEqual(_GetUniform<glm::uvec3>(ptr),
+                                                           glm::uvec3{}); }
+        GET_UNIFORM_FOR(glm::bvec4) { return glm::notEqual(_GetUniform<glm::uvec4>(ptr),
+                                                           glm::uvec4{}); }
 
         #pragma endregion
 
         #pragma region Matrices
 
+    #define GET_UNIFORM_FOR_MAT(NCols, NRows, Type, GLType) \
+        GET_UNIFORM_FOR(glm::mat<NCols BP_COMMA NRows BP_COMMA Type>) { \
+            using mat_t = glm::GLType##mat##NCols##x##NRows; \
+            mat_t result; \
+            Type* dataPtr = &result[0][0]; \
+            glGetnUniform##GLType##v( \
+                programHandle.Get(), ptr.Get(), \
+                sizeof(mat_t), dataPtr); \
+            return result; }
     #define GET_UNIFORM_FOR_MATS(NCols, NRows) \
-        GET_UNIFORM_FOR(glm::mat<NCols BP_COMMA NRows BP_COMMA float>); \
-        GET_UNIFORM_FOR(glm::mat<NCols BP_COMMA NRows BP_COMMA double>)
+        GET_UNIFORM_FOR_MAT(NCols, NRows, float, f) \
+        GET_UNIFORM_FOR_MAT(NCols, NRows, double, d)
     #define GET_UNIFORM_FOR_MATS_ROWS(NCols) \
-        GET_UNIFORM_FOR_MATS(NCols, 2); \
-        GET_UNIFORM_FOR_MATS(NCols, 3); \
+        GET_UNIFORM_FOR_MATS(NCols, 2) \
+        GET_UNIFORM_FOR_MATS(NCols, 3) \
         GET_UNIFORM_FOR_MATS(NCols, 4)
 
-        GET_UNIFORM_FOR_MATS_ROWS(2);
-        GET_UNIFORM_FOR_MATS_ROWS(3);
-        GET_UNIFORM_FOR_MATS_ROWS(4);
-
+        GET_UNIFORM_FOR_MATS_ROWS(2)
+        GET_UNIFORM_FOR_MATS_ROWS(3)
+        GET_UNIFORM_FOR_MATS_ROWS(4)
     #undef GET_UNIFORM_FOR_MATS_ROWS
     #undef GET_UNIFORM_FOR_MATS
 
@@ -347,210 +376,144 @@ namespace Bplus::GL
 
         #pragma region Textures and Buffers
 
-        GET_UNIFORM_FOR(Textures::TexView);
-        GET_UNIFORM_FOR(Textures::ImgView);
-
-        GET_UNIFORM_FOR(const Buffers::Buffer*);
-        GET_UNIFORM_FOR(const Buffers::Buffer&);
-
-        #pragma endregion
-
-        #undef GET_UNIFORM_FOR
-
-        #pragma endregion
-
-            /*
+        GET_UNIFORM_FOR(Textures::TexView)
         {
-            //This "if" statement only exists so that all subsequent lines
-            //    can start with "} else", to simplify the macros.
-            if constexpr (false) { return (void*)nullptr;
+            OglPtr::View viewPtr;
+            glGetnUniformui64vARB(programHandle.Get(), ptr.Get(),
+                                  1, &viewPtr.Get());
 
-            //Each CASE is a new scope, for getting the given type.
-            //The last closing brace comes after all this macro stuff.
-        #define CASE(T) \
-            } else if constexpr (std::is_same_v<T, Value_t>) {
-
-
-            #pragma region Vector/primitive types
-
-            //Bools are a special case because they go through the OpenGL API
-            //    as 32-bit integers or floats.
-            #pragma region Bool types
-            
-            CASE(bool)
-                GLuint result;
-                glGetUniformuiv(programHandle.Get(), ptr.Get(), &result);
-                return (bool)result;
-            CASE(Bool)
-                GLuint result;
-                glGetUniformuiv(programHandle.Get(), ptr.Get(), &result);
-                return (bool)result;
-
-        #define CASE_BOOLVEC(n) \
-            CASE(glm::bvec##n) \
-                glm::uvec##n result; \
-                auto* inputPtr = &result[0]; \
-                glGetUniformuiv(programHandle.Get(), ptr.Get(), inputPtr); \
-                glm::bvec##n returnVal; \
-                for (glm::length_t i = 0; i < n; ++i) \
-                    returnVal[i] = (bool)result[i]; \
-                return returnVal
-
-            CASE_BOOLVEC(1);
-            CASE_BOOLVEC(2);
-            CASE_BOOLVEC(3);
-            CASE_BOOLVEC(4);
-
-        #undef CASE_BOOLVEC
-
-            #pragma endregion
-
-
-        #define CASE_PRIMITIVE(type, oglLetters, inputExpr) \
-            CASE(type) \
-                type result; \
-                auto* dataPtr = inputExpr; \
-                glGetUniform##oglLetters##v(programHandle.Get(), ptr.Get(), dataPtr); \
-                return result
-
-        #define CASE_PRIMITIVES(primitive, glmPrefix, oglLetters) \
-            CASE_PRIMITIVE(primitive,         oglLetters, &result   ); \
-            CASE_PRIMITIVE(glm::glmPrefix##1, oglLetters, &result[0]); \
-            CASE_PRIMITIVE(glm::glmPrefix##2, oglLetters, &result[0]); \
-            CASE_PRIMITIVE(glm::glmPrefix##3, oglLetters, &result[0]); \
-            CASE_PRIMITIVE(glm::glmPrefix##4, oglLetters, &result[0])
-
-            CASE_PRIMITIVES(uint32_t, uvec, ui);
-            CASE_PRIMITIVES(int32_t, ivec, i);
-            CASE_PRIMITIVES(float, fvec, f);
-            CASE_PRIMITIVES(double, dvec, d);
-
-        #undef CASE_PRIMITIVES
-        #undef CASE_PRIMITIVE
-
-            #pragma endregion
-
-            #pragma region Matrices
-
-        #define CASE_MATRIX(glmType, oglLetter) \
-            CASE(glm::glmType) \
-                glm::glmType result; \
-                glGetUniform##oglLetter##v(programHandle.Get(), ptr.Get(), \
-                                           glm::value_ptr(result)); \
-                return result
-        #define CASE_MATRIX_DUAL(size) \
-            CASE_MATRIX(fmat##size, f); \
-            CASE_MATRIX(dmat##size, d)
-        #define CASE_MATRICES(nRows) \
-            CASE_MATRIX_DUAL(2x##nRows); \
-            CASE_MATRIX_DUAL(3x##nRows); \
-            CASE_MATRIX_DUAL(4x##nRows)
-
-            CASE_MATRICES(2);
-            CASE_MATRICES(3);
-            CASE_MATRICES(4);
-
-        #undef CASE_MATRICES
-        #undef CASE_MATRIX_DUAL
-        #undef CASE_MATRIX
-
-            #pragma endregion
-
-            #pragma region Textures
-
-            CASE(OglPtr::Texture)
-
-            //TODO: Figure out how to use bindless textures.
-            //CASE(OglPtr::Sampler)
-
-            //TODO: Figure out how to use images.
-            //CASE(OglPtr::Image)
-
-            #pragma endregion
-
-        #undef CASE
-
-            //If none of the previous cases apply, then an invalid type was passed.
-            } else { static_assert(false); return (void*)nullptr; }
+            auto found = texViews.find(viewPtr);
+            BPAssert(found != texViews.end(),
+                     "Can't find TexView uniform value");
+            return found->second;
         }
-        */
+        GET_UNIFORM_FOR(Textures::ImgView)
+        {
+            OglPtr::View viewPtr;
+            glGetnUniformui64vARB(programHandle.Get(), ptr.Get(),
+                                  1, &viewPtr.Get());
 
+            auto found = imgViews.find(viewPtr);
+            BPAssert(found != imgViews.end(),
+                     "Can't find ImgView uniform value");
+            return found->second;
+        }
 
-        //TODO: Update _SetUniform() below to match what we did for _GetUniform().
+        //TODO: Figure out how to support UBO and SSBO
+        //GET_UNIFORM_FOR(const Buffers::Buffer*);
+        //GET_UNIFORM_FOR(const Buffers::Buffer&);
+
+        #pragma endregion
+
+    #undef GET_UNIFORM_FOR
+
+        #pragma endregion
 
         template<typename Value_t>
-        Value_t _SetUniform(OglPtr::ShaderUniform ptr, const Value_t& value)
+        void SetUniform(OglPtr::ShaderUniform ptr, const Value_t& value)
         {
-            BPAssert(ptr != OglPtr::ShaderUniform::null, "Given a null ptr!");
-
-            //This "if" statement only exists so that all subsequent lines
-            //    must start with "} else", to simplify the macros.
-            if constexpr (false) { return (void*)nullptr;
-
-            //Each CASE is a new scope, for getting the given type.
-            //The last closing brace comes after all this macro stuff.
-        #define CASE(T) \
-            } else if constexpr (std::is_same_v<T, Value_t>) {
-                
-
-            #pragma region Vector/primitive types
-
-            //Treat Bool values like regular bools.
-            CASE(Bool)
-                glUniform1ui(ptr.Get(), (GLuint)((bool)value));
-
-            #define CASE_VECTORS(primitiveType, glType, glSuffix) \
-                CASE(primitiveType) \
-                    glUniform1##glSuffix(ptr.Get(), (primitiveType)value); \
-                CASE(glm::vec<1 BP_COMMA primitiveType>) \
-                    glUniform1##glSuffix(ptr.Get(), (primitiveType)value.x); \
-                CASE(glm::vec<2 BP_COMMA primitiveType>) \
-                    glUniform2##glSuffix(ptr.Get(), (primitiveType)value.x, (primitiveType)value.y); \
-                CASE(glm::vec<3 BP_COMMA primitiveType>) \
-                    glUniform3##glSuffix(ptr.Get(), (primitiveType)value.x, (primitiveType)value.y, (primitiveType)value.z); \
-                CASE(glm::vec<4 BP_COMMA primitiveType>) \
-                    glUniform4##glSuffix(ptr.Get(), (primitiveType)value.x, (primitiveType)value.y, (primitiveType)value.z, (primitiveType)value.w)
-
-                CASE_VECTORS(bool, GLuint, ui);
-                CASE_VECTORS(uint32_t, GLuint, ui);
-                CASE_VECTORS(int32_t, GLint, i);
-                CASE_VECTORS(float, GLfloat, f);
-                CASE_VECTORS(double, GLdouble, d);
-
-            #undef CASE_VECTORS
-
-            #pragma endregion
-
-            #pragma region Matrix types
-
-            #define CASE_MATRIX(C, R, glSize) \
-                CASE(glm::mat<C BP_COMMA R BP_COMMA float>) \
-                    glUniformMatrix##glSize##fv(ptr.Get(), 1, GL_FALSE, glm::value_ptr(value)); \
-                CASE(glm::mat<C BP_COMMA R BP_COMMA double>) \
-                    glUniformMatrix##glSize##dv(ptr.Get(), 1, GL_FALSE, glm::value_ptr(value))
-
-                CASE_MATRIX(2, 2, 2); CASE_MATRIX(2, 3, 2x3); CASE_MATRIX(2, 4, 2x4);
-                CASE_MATRIX(3, 2, 3x2); CASE_MATRIX(3, 3, 3); CASE_MATRIX(3, 4, 3x4);
-                CASE_MATRIX(4, 2, 4x2); CASE_MATRIX(4, 3, 4x3); CASE_MATRIX(4, 4, 4);
-
-            #undef CASE_MATRIX
-
-            #pragma endregion
-
-            #pragma region Textures
-
-                //TODO: Figure out how to use bindless textures.
-                //CASE(OglPtr::Sampler)
-
-                //TODO: Figure out how to use images.
-                //CASE(OglPtr::Image)
-
-            #pragma endregion
-
-        #undef CASE
-
-            //If none of the previous cases apply, then an invalid type was passed.
-            } else { static_assert(false); return (void*)nullptr; }
+            BPAssert(ptr != OglPtr::ShaderUniform::null, "Given a null uniform location!");
+            _SetUniform<Value_t>(ptr, value);
         }
+        #pragma region _SetUniform()
+        
+        //The non-specialized version gives you a compile error
+        //    about using an incorrect template type.
+        template<typename Value_t>
+        void _SetUniform(OglPtr::ShaderUniform ptr, const Value_t& value)
+        {
+            static_assert(false, "Invalid type used for SetUniform()");
+        }
+
+
+        //Use macros to more easily define the specializations.
+
+    #define SET_UNIFORM_FOR(Type) \
+        template<> void _SetUniform<Type>(OglPtr::ShaderUniform ptr, const Type& value)
+
+        #pragma region Primitives and Vectors
+
+    #define SET_UNIFORM_VECTORS(PrimitiveType, glFuncLetters) \
+        SET_UNIFORM_FOR(PrimitiveType) { glUniform1##glFuncLetters(ptr.Get(), value); } \
+        SET_UNIFORM_FOR(glm::vec<1 BP_COMMA PrimitiveType>) { glUniform1##glFuncLetters(ptr.Get(), value.x); } \
+        SET_UNIFORM_FOR(glm::vec<2 BP_COMMA PrimitiveType>) { \
+            glProgramUniform2##glFuncLetters(programHandle.Get(), ptr.Get(), value.x, value.y); \
+        } \
+        SET_UNIFORM_FOR(glm::vec<3 BP_COMMA PrimitiveType>) { \
+            glProgramUniform3##glFuncLetters(programHandle.Get(), ptr.Get(), value.x, value.y, value.z); \
+        } \
+        SET_UNIFORM_FOR(glm::vec<4 BP_COMMA PrimitiveType>) { \
+            glProgramUniform4##glFuncLetters(programHandle.Get(), ptr.Get(), value.x, value.y, value.z, value.w); \
+        }
+
+        SET_UNIFORM_VECTORS(uint32_t, ui);
+        SET_UNIFORM_VECTORS(int32_t, i);
+        SET_UNIFORM_VECTORS(float, f);
+        SET_UNIFORM_VECTORS(double, d);
+        //Booleans need special handling, done below.
+    #undef SET_UNIFORM_VECTORS
+
+        //Bool, bool, and vectors of those:
+        SET_UNIFORM_FOR(bool) { _SetUniform<uint32_t>(ptr, value ? 1 : 0); }
+        SET_UNIFORM_FOR(Bool) { _SetUniform<uint32_t>(ptr, value ? 1 : 0); }
+        SET_UNIFORM_FOR(glm::bvec2) { _SetUniform<glm::uvec2>(ptr, glm::uvec2{ value[0] ? 1 : 0,
+                                                                               value[1] ? 1 : 0 }); }
+        SET_UNIFORM_FOR(glm::bvec3) { _SetUniform<glm::uvec3>(ptr, glm::uvec3{ value[0] ? 1 : 0,
+                                                                               value[1] ? 1 : 0,
+                                                                               value[2] ? 1 : 0 }); }
+        SET_UNIFORM_FOR(glm::bvec4) { _SetUniform<glm::uvec4>(ptr, glm::uvec4{ value[0] ? 1 : 0,
+                                                                               value[1] ? 1 : 0,
+                                                                               value[2] ? 1 : 0,
+                                                                               value[3] ? 1 : 0 }); }
+        #pragma endregion
+
+        #pragma region Matrices
+
+    #define SET_UNIFORM_MATRICES(NCols, NRows, glRowCol) \
+        SET_UNIFORM_FOR(glm::mat<NCols BP_COMMA NRows BP_COMMA float>) { \
+            glProgramUniformMatrix##glRowCol##fv(programHandle.Get(), ptr.Get(), \
+                                                 1, GL_FALSE, glm::value_ptr(value)); \
+        } \
+        SET_UNIFORM_FOR(glm::mat<NCols BP_COMMA NRows BP_COMMA double>) { \
+            glProgramUniformMatrix##glRowCol##dv(programHandle.Get(), ptr.Get(), \
+                                                 1, GL_FALSE, glm::value_ptr(value)); \
+        }
+        
+        SET_UNIFORM_MATRICES(2, 2, 2)
+        SET_UNIFORM_MATRICES(2, 3, 2x3)
+        SET_UNIFORM_MATRICES(2, 4, 2x4)
+        SET_UNIFORM_MATRICES(3, 2, 3x2)
+        SET_UNIFORM_MATRICES(3, 3, 3)
+        SET_UNIFORM_MATRICES(3, 4, 3x4)
+        SET_UNIFORM_MATRICES(4, 2, 4x2)
+        SET_UNIFORM_MATRICES(4, 3, 4x3)
+        SET_UNIFORM_MATRICES(4, 4, 4)
+    #undef SET_UNIFORM_MATRICES
+
+        #pragma endregion
+
+        #pragma region Textures/Images and Buffers
+
+        SET_UNIFORM_FOR(Textures::TexView)
+        {
+            texViews.emplace(value.GlPtr, value);
+            glProgramUniform1ui64ARB(programHandle.Get(), ptr.Get(),
+                                     value.GlPtr.Get());
+        }
+        //TexView:
+        SET_UNIFORM_FOR(Textures::ImgView)
+        {
+            imgViews.emplace(value.GlPtr, value);
+            glProgramUniform1ui64ARB(programHandle.Get(), ptr.Get(),
+                                     value.GlPtr.Get());
+        }
+
+        //TODO: Buffers.
+
+        #pragma endregion
+
+    #undef SET_UNIFORM_FOR
+
+        #pragma endregion
     };
 }

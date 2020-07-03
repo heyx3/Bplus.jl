@@ -41,6 +41,3 @@
 
 //This helper macro escapes commas inside other macro calls.
 #define BP_COMMA ,
-
-
-//TODO: StackTrace utility? Then integrate it with BPAssert.

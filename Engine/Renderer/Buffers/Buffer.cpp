@@ -54,7 +54,7 @@ namespace
 }
 
 
-const Buffer* Buffer::GetBuffer(OglPtr::Buffer ptr)
+const Buffer* Buffer::Find(OglPtr::Buffer ptr)
 {
     auto found = threadData.buffersByOglPtr.find(ptr);
     return (found == threadData.buffersByOglPtr.end()) ?
@@ -65,9 +65,10 @@ const Buffer* Buffer::GetBuffer(OglPtr::Buffer ptr)
 Buffer::Buffer(uint64_t byteSize, bool _canChangeData,
                const std::byte* initialData,
                bool storeOnCPUSide)
-    : byteSize(byteSize), canChangeData(_canChangeData)
+    : byteSize(byteSize), canChangeData(_canChangeData),
+      glPtr(GlCreate(glCreateBuffers))
 {
-    glCreateBuffers(1, &glPtr.Get());
+    threadData.buffersByOglPtr[glPtr] = this;
 
     GLbitfield flags = 0;
     if (storeOnCPUSide)
@@ -82,6 +83,7 @@ Buffer::~Buffer()
 {
     if (!glPtr.IsNull())
     {
+        threadData.buffersByOglPtr.erase(glPtr);
         glDeleteBuffers(1, &glPtr.Get());
     }
 }
@@ -92,6 +94,12 @@ Buffer::Buffer(Buffer&& src)
       canChangeData(src.canChangeData)
 {
     src.glPtr = OglPtr::Buffer::Null();
+
+    //Update the static reference to this buffer.
+    auto found = threadData.buffersByOglPtr.find(glPtr);
+    BPAssert(found != threadData.buffersByOglPtr.end(),
+             "Un-indexed Buffer detected");
+    found->second = this;
 }
 Buffer& Buffer::operator=(Buffer&& src)
 {

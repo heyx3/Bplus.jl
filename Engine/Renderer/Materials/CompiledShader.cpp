@@ -331,9 +331,3 @@ CompiledShader::UniformAndStatus CompiledShader::CheckUniform(const std::string&
     //Everything checks out!
     return { ptr, UniformStates::Exists };
 }
-
-
-template<> uint32_t CompiledShader::_GetUniform<uint32_t>(OglPtr::ShaderUniform ptr) const
-{
-    return 0;
-}
