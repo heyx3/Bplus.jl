@@ -50,7 +50,7 @@ namespace Bplus::GL
 
         static uint8_t GLVersion_Major() { return 4; }
         static uint8_t GLVersion_Minor() { return 5; }
-        //TODO: Some enumeration and check that all used extensions exist.
+        //TODO: Enumerate all the extensions, and check that they are supported.
 
         //May be null if no context exists right now.
         //Note that each thread has its own singleton instance.

@@ -67,6 +67,8 @@ namespace Bplus::GL::Buffers
             return byteSize / sizeof(T);
         }
 
+        OglPtr::Buffer GetOglPtr() const { return glPtr; }
+
 
         //Sets this buffer's data, or optionally just a subset of it.
         void SetBytes(const std::byte* newBytes,

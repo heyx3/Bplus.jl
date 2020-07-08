@@ -127,6 +127,9 @@
     <ClInclude Include="Utils\Hashing.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\Buffers\MeshData.h">
+      <Filter>Renderer\Buffers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
@@ -191,6 +194,9 @@
     </ClCompile>
     <ClCompile Include="Utils\BPAssert.cpp">
       <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Buffers\MeshData.cpp">
+      <Filter>Renderer\Buffers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

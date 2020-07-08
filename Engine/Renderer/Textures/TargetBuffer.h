@@ -19,12 +19,16 @@ namespace Bplus::GL::Textures
         //No copying, but moves are allowed.
         TargetBuffer(const TargetBuffer& cpy) = delete;
         TargetBuffer& operator=(const TargetBuffer& cpy) = delete;
-        TargetBuffer(TargetBuffer&& from);
-        TargetBuffer& operator=(TargetBuffer&& from)
+        TargetBuffer(TargetBuffer&& src);
+        TargetBuffer& operator=(TargetBuffer&& src)
         {
-            //Destruct this instance, then reconstruct it in place.
-            this->~TargetBuffer();
-            new (this) TargetBuffer(std::move(from));
+            //Call deconstructor, then move constructor.
+            //Only bother changing things if they represent different handles.
+            if (this != &src)
+            {
+                this->~TargetBuffer();
+                new (this) TargetBuffer(std::move(src));
+            }
 
             return *this;
         }

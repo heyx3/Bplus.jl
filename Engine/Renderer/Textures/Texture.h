@@ -30,8 +30,12 @@ namespace Bplus::GL::Textures
         TexHandle& operator=(TexHandle&& src)
         {
             //Call deconstructor, then move constructor.
-            this->~TexHandle();
-            new (this) TexHandle(std::move(src));
+            //Only bother changing things if they represent different handles.
+            if (this != &src)
+            {
+                this->~TexHandle();
+                new (this) TexHandle(std::move(src));
+            }
 
             return *this;
         }
@@ -94,8 +98,12 @@ namespace Bplus::GL::Textures
         ImgHandle& operator=(ImgHandle&& src)
         {
             //Call deconstructor, then move constructor.
-            this->~ImgHandle();
-            new (this) ImgHandle(std::move(src));
+            //Only bother changing things if they represent different handles.
+            if (this != &src)
+            {
+                this->~ImgHandle();
+                new (this) ImgHandle(std::move(src));
+            }
 
             return *this;
         }

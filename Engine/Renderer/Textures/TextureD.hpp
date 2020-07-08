@@ -63,9 +63,13 @@ namespace Bplus::GL::Textures
               size(src.size) { }
         TextureD& operator=(TextureD<D>&& src)
         {
-            //Destruct this instance, then move-construct it.
-            this->~TextureD<D>();
-            new (this) TextureD<D>(std::move(src));
+            //Call deconstructor, then move constructor.
+            //Only bother changing things if they represent different handles.
+            if (this != &src)
+            {
+                this->~TextureD<D>();
+                new (this) TextureD<D>(std::move(src));
+            }
 
             return *this;
         }

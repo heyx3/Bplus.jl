@@ -25,15 +25,18 @@ TextureCube::TextureCube(const glm::uvec2& _size, Format format,
 }
 
 TextureCube::TextureCube(TextureCube&& src)
-    : Texture(std::move(src)),
-      size(src.size)
+    : Texture(std::move(src)), size(src.size)
 {
 }
 TextureCube& TextureCube::operator=(TextureCube&& src)
 {
-    //Destruct this instance, then move-construct it.
-    this->~TextureCube();
-    new (this) TextureCube(std::move(src));
+    //Call deconstructor, then move constructor.
+    //Only bother changing things if they represent different handles.
+    if (this != &src)
+    {
+        this->~TextureCube();
+        new (this) TextureCube(std::move(src));
+    }
 
     return *this;
 }

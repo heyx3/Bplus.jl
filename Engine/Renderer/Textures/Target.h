@@ -133,9 +133,13 @@ namespace Bplus::GL::Textures
         Target(Target&& from);
         Target& operator=(Target&& from)
         {
-            //Deconstruct then move-construct in place.
-            this->~Target();
-            new (this) Target(std::move(from));
+            //Call deconstructor, then move constructor.
+            //Only bother changing things if they represent different handles.
+            if (this != &from)
+            {
+                this->~Target();
+                new (this) Target(std::move(from));
+            }
 
             return *this;
         }

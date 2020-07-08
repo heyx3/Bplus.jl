@@ -104,8 +104,12 @@ Buffer::Buffer(Buffer&& src)
 Buffer& Buffer::operator=(Buffer&& src)
 {
     //Call deconstructor, then move constructor.
-    this->~Buffer();
-    new (this) Buffer(std::move(src));
+    //Only bother changing things if they represent different handles.
+    if (this != &src)
+    {
+        this->~Buffer();
+        new (this) Buffer(std::move(src));
+    }
 
     return *this;
 }
