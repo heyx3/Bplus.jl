@@ -167,8 +167,8 @@ namespace Bplus::GL::Textures
         //Pass "0" for nMipLevels to generate full mip-maps down to a single pixel.
         //Pass anything else to generate a fixed amount of mip levels.
         TextureCube(const glm::uvec2& size, Format format,
-                    const Sampler<2>& sampling,
-                    uint_mipLevel_t nMipLevels = 0);
+                    uint_mipLevel_t nMipLevels = 0,
+                    Sampler<2> sampler = { });
 
         //Note that the copy constructor/operator is automatically deleted via the parent class.
 

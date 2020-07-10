@@ -7,6 +7,7 @@
 #include <functional>
 
 
+//TODO: Make these files ".inl" and simplify their includes.
 #include "Utils/Functions.h"
 #include "Utils/Hashing.h"
 #include "Utils/StrongTypedef.h"
@@ -37,7 +38,3 @@
 //The relative path to the engine's own content folder.
 //Apps should not put their own stuff in this folder.
 #define BPLUS_ENGINE_CONTENT_FOLDER (BPLUS_CONTENT_FOLDER "/engine")
-
-
-//This helper macro escapes commas inside other macro calls.
-#define BP_COMMA ,

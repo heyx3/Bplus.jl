@@ -6,6 +6,10 @@
 #include <unordered_map>
 
 
+//This helper macro escapes commas inside other macro calls.
+#define BP_COMMA ,
+
+
 namespace Bplus
 {
     //is_std_hashable_v : does a type T implement std::hash<T>?
@@ -53,18 +57,37 @@ namespace Bplus
 }
 
 
-//Provide hashing for std::array<>.
-namespace std {
-    template<typename T, size_t N>
-    struct hash<std::array<T, N>> {
-        size_t operator()(const std::array<T, N>& a) const {
-            using std::hash;
-            hash<T> hasher;
+#pragma region Helper macros for easy std::hash specialization
 
-            size_t h = 0;
-            for (size_t i = 0; i < N; ++i)
-                h = Bplus::CombineHash(h, hasher(a[i]));
-            return h;
-        }
-    };
-}
+//A helper macro for adding std::hash<> for some data type.
+//NOTE: this macro must be invoked in the global namespace!
+#define BP_HASHABLE_START_FULL(OuterTemplate, Type) \
+    namespace std { \
+        template<OuterTemplate> \
+        struct hash<Type> { \
+            size_t operator()(const Type& d) const {
+
+//A helper macro for adding hashes to some data type.
+//NOTE: this macro must be invoked in the global namespace!
+#define BP_HASHABLE_START(Type) BP_HASHABLE_START_FULL(, Type)
+
+#define BP_HASHABLE_END \
+            } \
+        }; \
+    }
+
+#pragma endregion
+
+
+//Provide hashing for std::array<>.
+BP_HASHABLE_START_FULL(typename T BP_COMMA size_t N,
+                       std::array<T BP_COMMA N>)
+    using std::hash;
+    hash<T> hasher;
+
+    size_t h = 0;
+    for (size_t i = 0; i < N; ++i)
+        h = Bplus::CombineHash(h, hasher(a[i]));
+
+    return h;
+BP_HASHABLE_END

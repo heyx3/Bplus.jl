@@ -51,32 +51,28 @@ namespace Bplus::GL::Textures
 
     private:
 
-        using TypeUnion = std::variant<std::byte,
+        using TypeUnion = std::variant<std::byte, //A dummy type that represents nothing,
+                                                  //    except that the texture is sampled normally.
                                        DepthStencilSources,
                                        ValueTests>;
         TypeUnion data;
     };
 }
 
-//Allow enums and structs in this file to be hashed, for use in STL collections.
+
+//Provide std::hash for the above types.
+
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::DepthStencilSources);
-namespace std
-{
-    //SamplerDataSource:
-    template<>
-    struct hash<Bplus::GL::Textures::SamplerDataSource> {
-        size_t operator()(const Bplus::GL::Textures::SamplerDataSource& value) const {
-            if (value.IsUnmodified())
-                return 0;
-            else if (value.IsDepthOrStencil())
-                return value.AsDepthOrStencil()._to_integral();
-            else if (value.IsDepthComparison())
-                return value.AsDepthComparison()._to_integral();
-            else
-            {
-                BPAssert(false, "Unknown state of SamplerDataSource");
-                return 0;
-            }
-        }
-    };
-}
+
+BP_HASHABLE_START(Bplus::GL::Textures::SamplerDataSource)
+    if (d.IsUnmodified())
+        return 0;
+    else if (d.IsDepthOrStencil())
+        return d.AsDepthOrStencil()._to_integral();
+    else if (d.IsDepthComparison())
+        return d.AsDepthComparison()._to_integral();
+    else {
+        BPAssert(false, "Unknown state of SamplerDataSource");
+        return 999999999;
+    }
+BP_HASHABLE_END

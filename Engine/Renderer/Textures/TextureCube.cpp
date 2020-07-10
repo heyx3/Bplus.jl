@@ -6,8 +6,8 @@ using namespace Bplus::GL::Textures;
 
 
 TextureCube::TextureCube(const glm::uvec2& _size, Format format,
-                         const Sampler<2>& sampler,
-                         uint_mipLevel_t nMips)
+                         uint_mipLevel_t nMips,
+                         Sampler<2> sampler)
     : Texture(Types::Cubemap, format,
               (nMips < 1) ? GetMaxNumbMipmaps(_size) : nMips,
               sampler.ChangeDimensions<3>()),

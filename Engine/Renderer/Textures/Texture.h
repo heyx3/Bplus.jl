@@ -167,14 +167,9 @@ namespace Bplus::GL::Textures
         ImgView& operator=(ImgView&& from) { return operator=(from); }
     };
 }
-//Provide a hash for Textures::ImgHandleData:
-namespace std {
-    template<> struct hash<Bplus::GL::Textures::ImgHandleData> {
-        size_t operator()(const Bplus::GL::Textures::ImgHandleData& value) const {
-            return Bplus::MultiHash(value.Access, value.MipLevel, value.SingleLayer);
-        }
-    };
-}
+BP_HASHABLE_START(Bplus::GL::Textures::ImgHandleData)
+    return Bplus::MultiHash(d.Access, d.MipLevel, d.SingleLayer);
+BP_HASHABLE_END
 
 namespace Bplus::GL::Textures
 {

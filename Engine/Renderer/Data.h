@@ -292,7 +292,7 @@ namespace Bplus::GL
         strong_typedef_start(NewName, glName, BP_API) \
             strong_typedef_null(nullValue) \
             strong_typedef_defaultConstructor(NewName, null) \
-            strong_typedef_equatable() \
+            strong_typedef_equatable \
         strong_typedef_end \
     } \
     strong_typedef_hashable(Bplus::GL::OglPtr::NewName, BP_API);

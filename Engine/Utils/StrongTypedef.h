@@ -19,7 +19,7 @@
 //Defines '==' and '!=' operators for the type,
 //    assuming the underlying type has them too.
 //NOTE that this MUST be placed between 'strong_typedef_start' and 'strong_typedef_end'!
-#define strong_typedef_equatable() \
+#define strong_typedef_equatable \
     bool operator==(const Me_t& t) const { return (Data_t)t == (Data_t)(*this); } \
     bool operator!=(const Me_t& t) const { return (Data_t)t != (Data_t)(*this); } \
     bool operator==(const Data_t& t) const { return t == (Data_t)(*this); } \

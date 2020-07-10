@@ -194,12 +194,7 @@ namespace Bplus::Math
 }
 
 
-//Allow Box<> to be hashed, for use in STL collections.
-namespace std {
-    template<glm::length_t N, typename T>
-    struct hash<Bplus::Math::Box<N, T>> {
-        size_t operator()(const Bplus::Math::Box<N, T>& value) const {
-            return Bplus::MultiHash(value.MinCorner, value.Size);
-        }
-    };
-}
+BP_HASHABLE_START_FULL(glm::length_t N BP_COMMA typename T,
+                       Bplus::Math::Box<N BP_COMMA T>)
+    return Bplus::MultiHash(d.MinCorner, d.Size);
+BP_HASHABLE_END

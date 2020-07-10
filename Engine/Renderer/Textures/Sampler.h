@@ -278,15 +278,9 @@ BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::WrapModes);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::PixelFilters);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::MipFilters);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::SwizzleSources);
-namespace std
-{
-    //Sampler<D>:
-    template<size_t D>
-    struct hash<Bplus::GL::Textures::Sampler<D>> {
-        size_t operator()(const Bplus::GL::Textures::Sampler<3>& value) const {
-            return Bplus::MultiHash(value.Wrapping, value.PixelFilter, value.MipFilter,
-                                    value.MipOffset, value.MipClampRange,
-                                    value.DataSource, value.DataSwizzle);
-        }
-    };
-}
+
+BP_HASHABLE_START_FULL(size_t D, Bplus::GL::Textures::Sampler<D>)
+    return Bplus::MultiHash(d.Wrapping, d.PixelFilter, d.MipFilter,
+                            d.MipOffset, d.MipClampRange,
+                            d.DataSource, d.DataSwizzle);
+BP_HASHABLE_END
