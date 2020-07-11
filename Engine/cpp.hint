@@ -1,0 +1,6 @@
+// Hint files help the Visual Studio IDE interpret Visual C++ identifiers
+// such as names of functions and macros.
+
+#define BP_HASHABLE_START(Type) namespace std { template<> struct hash<Type> { size_t operator()(const Type& d) const {
+#define BP_HASHABLE_START_FULL(OuterTemplate, Type) namespace std { template<OuterTemplate> struct hash<Type> { size_t operator()(const Type& d) const {
+#define BP_HASHABLE_END } }; }

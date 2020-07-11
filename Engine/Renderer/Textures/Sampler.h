@@ -279,8 +279,7 @@ BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::PixelFilters);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::MipFilters);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::SwizzleSources);
 
-BP_HASHABLE_START_FULL(size_t D, Bplus::GL::Textures::Sampler<D>)
-    return Bplus::MultiHash(d.Wrapping, d.PixelFilter, d.MipFilter,
-                            d.MipOffset, d.MipClampRange,
-                            d.DataSource, d.DataSwizzle);
-BP_HASHABLE_END
+BP_HASHABLE_SIMPLE_FULL(size_t D, Bplus::GL::Textures::Sampler<D>,
+                        d.Wrapping, d.PixelFilter, d.MipFilter,
+                        d.MipOffset, d.MipClampRange,
+                        d.DataSource, d.DataSwizzle)

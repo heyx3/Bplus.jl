@@ -167,9 +167,8 @@ namespace Bplus::GL::Textures
         ImgView& operator=(ImgView&& from) { return operator=(from); }
     };
 }
-BP_HASHABLE_START(Bplus::GL::Textures::ImgHandleData)
-    return Bplus::MultiHash(d.Access, d.MipLevel, d.SingleLayer);
-BP_HASHABLE_END
+BP_HASHABLE_SIMPLE(Bplus::GL::Textures::ImgHandleData,
+                   d.Access, d.MipLevel, d.SingleLayer)
 
 namespace Bplus::GL::Textures
 {

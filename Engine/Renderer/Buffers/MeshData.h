@@ -29,23 +29,37 @@ namespace Bplus::GL::Buffers
     //       : Coming directly from 64-bit double data, no conversion needed
     namespace VertexData
     {
-
-        //TODO: Vertex data that gets interpreted as 32-bit float matrices.
-        //TODO: Vertex data that gets interpreted as 64-bit double matrices.
-
         //The different possible sizes of incoming vertex data.
-        BETTER_ENUM(Components, uint8_t,
+        BETTER_ENUM(VectorSizes, uint8_t,
             X = 1,
             XY = 2,
             XYZ = 3,
             XYZW = 4
         );
 
+
+        //Vertex data that gets interpreted as float or double matrices.
+        template<typename TFloat>
+        struct MatrixType
+        {
+            VectorSizes RowSize, ColSize;
+
+            bool operator==(const MatrixType<TFloat>& other) const
+            {
+                return (RowSize == other.RowSize) &
+                       (ColSize == other.ColSize);
+            }
+            bool operator!=(const MatrixType<TFloat>& other) const { return !operator==(other); }
+        };
+        using FMatrixType = MatrixType<float>;
+        using DMatrixType = MatrixType<double>;
+
+
         #pragma region Vertex data that gets interpreted as 32-bit float vectors
 
         //The different possible types of float vertex data stored in a buffer,
         //    to be interpreted as 32-bit float vector components by a shader.
-        BETTER_ENUM(SimpleFloatTypes, GLenum,
+        BETTER_ENUM(SimpleFVectorTypes, GLenum,
             Float16 = GL_HALF_FLOAT,
             Float32 = GL_FLOAT,
                 
@@ -60,19 +74,20 @@ namespace Bplus::GL::Buffers
             //    since this data is getting converted into 32-bit floats anyway.
             Fixed32 = GL_FIXED
         );
-        struct SimpleFloatType {
-            Components Size;
-            SimpleFloatTypes ComponentType;
+        struct SimpleFVectorType
+        {
+            VectorSizes Size;
+            SimpleFVectorTypes ComponentType;
 
-            bool operator==(const SimpleFloatType& other) const {
+            bool operator==(const SimpleFVectorType& other) const {
                 return (Size == other.Size) & (ComponentType == other.ComponentType);
             }
-            bool operator!=(const SimpleFloatType& other) const { return !operator==(other); }
+            bool operator!=(const SimpleFVectorType& other) const { return !operator==(other); }
         };
 
         //The different possible types of integer vertex data stored in a buffer,
         //    to be interpreted as 32-bit float vector components by a shader.
-        BETTER_ENUM(ConvertedFloatTypes, GLenum,
+        BETTER_ENUM(ConvertedFVectorTypes, GLenum,
             UInt8 = GL_UNSIGNED_BYTE,
             UInt16 = GL_UNSIGNED_SHORT,
             UInt32 = GL_UNSIGNED_INT,
@@ -81,18 +96,19 @@ namespace Bplus::GL::Buffers
             Int16 = GL_SHORT,
             Int32 = GL_INT
         );
-        struct ConvertedFloatType {
-            Components Size;
-            ConvertedFloatTypes ComponentType;
+        struct ConvertedFVectorType
+        {
+            VectorSizes Size;
+            ConvertedFVectorTypes ComponentType;
             //If true, then the integer data is normalized to the range [0, 1] or [-1, 1].
             //If false, then the data is simply casted to a float.
             bool Normalize;
 
-            bool operator==(const ConvertedFloatType& other) const {
+            bool operator==(const ConvertedFVectorType& other) const {
                 return (Size == other.Size) & (Normalize == other.Normalize) &
                        (ComponentType == other.ComponentType);
             }
-            bool operator!=(const ConvertedFloatType& other) const { return !operator==(other); }
+            bool operator!=(const ConvertedFVectorType& other) const { return !operator==(other); }
         };
 
         //The different possible types of packed float vertex data stored in the buffer,
@@ -106,7 +122,7 @@ namespace Bplus::GL::Buffers
 
         //The different possible types of packed vertex data stored in the buffer,
         //    to be interpreted as vectors of 32-bit floats by a shader.
-        BETTER_ENUM(PackedConvertedFloatTypes, GLenum,
+        BETTER_ENUM(PackedConvertedFVectorTypes, GLenum,
             //A 4-byte uint reprsenting a vector of 4 unsigned integers
             //    where the most significant 2 bits are the Alpha/W component,
             //    the next 10 bits are Blue/Z, then Green/Y, then Red/X.
@@ -116,23 +132,24 @@ namespace Bplus::GL::Buffers
             //    the next 10 bits are Blue/Z, then Green/Y, then Red/X.
             Int_A2_BGR10 = GL_INT_2_10_10_10_REV
         );
-        struct PackedConvertedFloatType {
-            PackedConvertedFloatTypes VectorType;
+        struct PackedConvertedFVectorType
+        {
+            PackedConvertedFVectorTypes VectorType;
             //If true, then the integer data is normalized to the range [0, 1] or [-1, 1].
             //If false, then the data is simply casted to a float.
             bool Normalize;
 
-            bool operator==(const PackedConvertedFloatType& other) const {
+            bool operator==(const PackedConvertedFVectorType& other) const {
                 return (VectorType == other.VectorType) & (Normalize == other.Normalize);
             }
-            bool operator!=(const PackedConvertedFloatType& other) const { return !operator==(other); }
+            bool operator!=(const PackedConvertedFVectorType& other) const { return !operator==(other); }
         };
 
         #pragma endregion
 
         #pragma region Vertex data that gets interpreted as 32-bit int or uint vectors
 
-        BETTER_ENUM(IntegerTypes, GLenum,
+        BETTER_ENUM(IVectorTypes, GLenum,
             UInt8 = GL_UNSIGNED_BYTE,
             UInt16 = GL_UNSIGNED_SHORT,
             UInt32 = GL_UNSIGNED_INT,
@@ -142,23 +159,27 @@ namespace Bplus::GL::Buffers
             Int32 = GL_INT
         );
 
-        struct IntegerType {
-            Components Size;
-            IntegerTypes ComponentType;
+        struct IVectorType
+        {
+            VectorSizes Size;
+            IVectorTypes ComponentType;
 
-            bool operator==(const IntegerType& other) const {
+            bool operator==(const IVectorType& other) const {
                 return (Size == other.Size) & (ComponentType == other.ComponentType);
             }
-            bool operator!=(const IntegerType& other) const { return !operator==(other); }
+            bool operator!=(const IVectorType& other) const { return !operator==(other); }
         };
 
         #pragma endregion
 
         //Vertex data that gets interpreted as 64-bit double vectors:
-        //TODO: Replace with a simple struct.
-        strong_typedef_start(DoubleType, Components)
-            strong_typedef_equatable
-        strong_typedef_end;
+        struct DVectorType
+        {
+            VectorSizes Size;
+
+            bool operator==(const DVectorType& other) const { return Size == other.Size; }
+            bool operator!=(const DVectorType& other) const { return !operator==(other); }
+        };
 
 
         //Some kind of vertex data coming from a Buffer,
@@ -167,54 +188,78 @@ namespace Bplus::GL::Buffers
         {
             #pragma region Constructors and getters for each type in the union
 
-            Type(SimpleFloatType d) : data(d) { }
-            bool IsSimpleFloat() const { return std::holds_alternative<SimpleFloatType>(data); }
-            SimpleFloatType AsSimpleFloat() const { return std::get<SimpleFloatType>(data); }
+            Type(FMatrixType d) : data(d) { }
+            bool IsFMatrix() const { return std::holds_alternative<FMatrixType>(data); }
+            FMatrixType AsFMatrix() const { return std::get<FMatrixType>(data); }
 
-            Type(ConvertedFloatType d) : data(d) { }
-            bool IsConvertedFloat() const { return std::holds_alternative<ConvertedFloatType>(data); }
-            ConvertedFloatType AsConvertedFloat() const { return std::get<ConvertedFloatType>(data); }
+            Type(DMatrixType d) : data(d) { }
+            bool IsDMatrix() const { return std::holds_alternative<DMatrixType>(data); }
+            DMatrixType AsDMatrix() const { return std::get<DMatrixType>(data); }
+
+            Type(SimpleFVectorType d) : data(d) { }
+            bool IsSimpleFVector() const { return std::holds_alternative<SimpleFVectorType>(data); }
+            SimpleFVectorType AsSimpleFVector() const { return std::get<SimpleFVectorType>(data); }
+
+            Type(ConvertedFVectorType d) : data(d) { }
+            bool IsConvertedFVector() const { return std::holds_alternative<ConvertedFVectorType>(data); }
+            ConvertedFVectorType AsConvertedFVector() const { return std::get<ConvertedFVectorType>(data); }
 
             Type(PackedFloatTypes d) : data(d) { }
-            bool IsPackedFloat() const { return std::holds_alternative<PackedFloatTypes>(data); }
-            PackedFloatTypes AsPackedFloat() const { return std::get<PackedFloatTypes>(data); }
+            bool IsPackedFVector() const { return std::holds_alternative<PackedFloatTypes>(data); }
+            PackedFloatTypes AsPackedFVector() const { return std::get<PackedFloatTypes>(data); }
 
-            Type(PackedConvertedFloatType d) : data(d) { }
-            bool IsPackedConvertedFloat() const { return std::holds_alternative<PackedConvertedFloatType>(data); }
-            PackedConvertedFloatType AsPackedConvertedFloat() const { return std::get<PackedConvertedFloatType>(data); }
+            Type(PackedConvertedFVectorType d) : data(d) { }
+            bool IsPackedConvertedFVector() const { return std::holds_alternative<PackedConvertedFVectorType>(data); }
+            PackedConvertedFVectorType AsPackedConvertedFVector() const { return std::get<PackedConvertedFVectorType>(data); }
 
-            Type(IntegerType d) : data(d) { }
-            bool IsInteger() const { return std::holds_alternative<IntegerType>(data); }
-            IntegerType AsInteger() const { return std::get<IntegerType>(data); }
+            Type(IVectorType d) : data(d) { }
+            bool IsIVector() const { return std::holds_alternative<IVectorType>(data); }
+            IVectorType AsIVector() const { return std::get<IVectorType>(data); }
 
-            Type(DoubleType d) : data(d) { }
-            bool IsDouble() const { return std::holds_alternative<DoubleType>(data); }
-            Components AsDouble() const { return std::get<DoubleType>(data).Get(); }
+            Type(DVectorType d) : data(d) { }
+            bool IsDVector() const { return std::holds_alternative<DVectorType>(data); }
+            DVectorType AsDVector() const { return std::get<DVectorType>(data); }
 
             #pragma endregion
 
             //Gets whether this data will be seen in the shader as 32-bit floats/vectors,
             //    regardless of what format that data comes from.
-            bool IsFloat() const { return IsSimpleFloat() |
-                                          IsConvertedFloat() |
-                                          IsPackedFloat() |
-                                          IsPackedConvertedFloat(); }
+            bool IsFloatVector() const { return IsSimpleFVector() |
+                                                IsConvertedFVector() |
+                                                IsPackedFVector() |
+                                                IsPackedConvertedFVector(); }
+            //Gets whether this data will be seen in the shader as 32-bit floats/vectors/matrices.
+            bool IsFloatType() const { return IsFloatVector() | IsFMatrix(); }
+            //Gets whether this data will be seen in the shader as matrices
+            //    of floats or doubles
+            bool IsMatrix() const { return IsFMatrix() | IsDMatrix(); }
 
-            uint8_t GetNComponents() const;
+            //Gets the number of components in this type.
+            //For a vector, this is its size.
+            //For a matrix, this is the number of rows it has.
+            VectorSizes GetNComponents() const;
+            //Gets the number of individual vertex attributes that will be needed
+            //    to represent this type.
+            //For a vector, this is 1.
+            //For a matrix, this is the number of columns it has.
+            uint8_t GetNAttributes() const;
+            //Gets the OpenGL enum value representing this type.
             GLenum GetOglEnum() const;
 
 
             bool operator==(const Type& other) const { return data == other.data; }
             bool operator!=(const Type& other) const { return !operator==(other); }
-            size_t Hash() const { return std::hash<TypeUnion>()(data); }
+            size_t GetHash() const { return std::hash<TypeUnion>()(data); }
 
         private:
-            using TypeUnion = std::variant<SimpleFloatType,
-                                           ConvertedFloatType,
+            using TypeUnion = std::variant<FMatrixType,
+                                           DMatrixType,
+                                           SimpleFVectorType,
+                                           ConvertedFVectorType,
                                            PackedFloatTypes,
-                                           PackedConvertedFloatType,
-                                           IntegerType,
-                                           DoubleType>;
+                                           PackedConvertedFVectorType,
+                                           IVectorType,
+                                           DVectorType>;
             TypeUnion data;
         };
     }
@@ -328,34 +373,30 @@ namespace Bplus::GL::Buffers
 
 
 //Hashes for BETTER_ENUM() enums:
-BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::Components);
-BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::SimpleFloatTypes);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::VectorSizes);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::SimpleFVectorTypes);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::PackedFloatTypes);
-BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::ConvertedFloatTypes);
-BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::PackedConvertedFloatTypes);
-BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::IntegerTypes);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::ConvertedFVectorTypes);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::PackedConvertedFVectorTypes);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::IVectorTypes);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::IndexDataTypes);
 
-//Hashes for strong type-defs:
-strong_typedef_hashable(Bplus::GL::Buffers::VertexData::DoubleType)
-
 //Hashes for data structures:
-BP_HASHABLE_START(Bplus::GL::Buffers::VertexData::SimpleFloatType)
-    return Bplus::MultiHash(d.Size, d.ComponentType);
-BP_HASHABLE_END
-BP_HASHABLE_START(Bplus::GL::Buffers::VertexData::ConvertedFloatType)
-    return Bplus::MultiHash(d.Size, d.ComponentType, d.Normalize);
-BP_HASHABLE_END
-BP_HASHABLE_START(Bplus::GL::Buffers::VertexData::PackedConvertedFloatType)
-    return Bplus::MultiHash(d.VectorType, d.Normalize);
-BP_HASHABLE_END
-BP_HASHABLE_START(Bplus::GL::Buffers::VertexData::IntegerType)
-    return Bplus::MultiHash(d.Size, d.ComponentType);
-BP_HASHABLE_END
+BP_HASHABLE_SIMPLE_FULL(typename T, Bplus::GL::Buffers::VertexData::MatrixType<T>,
+                        d.RowSize, d.ColSize)
+BP_HASHABLE_SIMPLE(Bplus::GL::Buffers::VertexData::SimpleFVectorType,
+                   d.Size, d.ComponentType)
+BP_HASHABLE_SIMPLE(Bplus::GL::Buffers::VertexData::ConvertedFVectorType,
+                   d.Size, d.ComponentType, d.Normalize)
+BP_HASHABLE_SIMPLE(Bplus::GL::Buffers::VertexData::PackedConvertedFVectorType,
+                   d.VectorType, d.Normalize)
+BP_HASHABLE_SIMPLE(Bplus::GL::Buffers::VertexData::IVectorType,
+                   d.Size, d.ComponentType)
+BP_HASHABLE_SIMPLE(Bplus::GL::Buffers::VertexData::DVectorType,
+                   d.Size)
 BP_HASHABLE_START(Bplus::GL::Buffers::VertexData::Type)
-    return d.Hash();
+    return d.GetHash();
 BP_HASHABLE_END
-BP_HASHABLE_START(Bplus::GL::Buffers::VertexDataField)
-    return Bplus::MultiHash(d.MeshDataSourceIndex, d.InitialByteOffset,
-                            d.FieldByteSize, d.FieldByteOffset, d.Field);
-BP_HASHABLE_END
+BP_HASHABLE_SIMPLE(Bplus::GL::Buffers::VertexDataField,
+                   d.MeshDataSourceIndex, d.InitialByteOffset,
+                   d.FieldByteSize, d.FieldByteOffset, d.FieldType)

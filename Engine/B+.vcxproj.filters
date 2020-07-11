@@ -212,9 +212,6 @@
     <Filter Include="Renderer\Textures">
       <UniqueIdentifier>{01b36350-c27e-42ac-bc78-6c40259a208c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Math">
-      <UniqueIdentifier>{6f80ac6e-5965-493c-b49c-1bcb7cc51280}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Renderer\Buffers">
       <UniqueIdentifier>{03ee6afa-e9bc-44b3-9227-cfa1be60ae05}</UniqueIdentifier>
     </Filter>
@@ -224,5 +221,11 @@
     <Filter Include="Utils">
       <UniqueIdentifier>{d2c9364c-6669-43fd-9f8f-eb57f6b6c469}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Math">
+      <UniqueIdentifier>{6f80ac6e-5965-493c-b49c-1bcb7cc51280}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>

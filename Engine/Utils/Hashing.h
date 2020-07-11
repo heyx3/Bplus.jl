@@ -76,6 +76,17 @@ namespace Bplus
         }; \
     }
 
+//Wraps the hashing of a type into a simple MultiHash call
+//    enumerating the object's fields.
+#define BP_HASHABLE_SIMPLE_FULL(OuterTemplate, Type, ...) \
+    BP_HASHABLE_START_FULL(OuterTemplate, Type) \
+        return Bplus::MultiHash(__VA_ARGS__); \
+    BP_HASHABLE_END
+
+//Wraps the hashing of a type into a simple MultiHash call
+//    enumerating the object's fields.
+#define BP_HASHABLE_SIMPLE(Type, ...) BP_HASHABLE_SIMPLE_FULL(, Type, __VA_ARGS__)
+
 #pragma endregion
 
 

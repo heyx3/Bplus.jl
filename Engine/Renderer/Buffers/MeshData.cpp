@@ -6,60 +6,81 @@ using namespace Bplus::GL::Buffers;
 
 //TODO: Add Debug-mode code to ensure buffers aren't destroyed before the MeshData instance.
 
-uint8_t VertexData::Type::GetNComponents() const
+VertexData::VectorSizes VertexData::Type::GetNComponents() const
 {
-    if (IsSimpleFloat())
-        return AsSimpleFloat().Size._to_integral();
-    else if (IsConvertedFloat())
-        return AsConvertedFloat().Size._to_integral();
-    else if (IsPackedFloat())
-        switch (AsPackedFloat()) {
+    if (IsFMatrix())
+        return AsFMatrix().RowSize;
+    else if (IsDMatrix())
+        return AsDMatrix().RowSize;
+    else if (IsSimpleFVector())
+        return AsSimpleFVector().Size;
+    else if (IsConvertedFVector())
+        return AsConvertedFVector().Size;
+    else if (IsPackedFVector())
+        switch (AsPackedFVector()) {
             case PackedFloatTypes::UFloat_B10_GR11:
-                return 3;
+                return VectorSizes::XYZ;
             default: {
                 std::string errMsg = "Unexpected Bplus::GL::Buffers::VertexData::PackedFloatTypes ";
-                errMsg += AsPackedFloat()._to_string();
+                errMsg += AsPackedFVector()._to_string();
                 BPAssert(false, errMsg.c_str());
-                return 254;
+                return VectorSizes::X;
             }
         }
-    else if (IsPackedConvertedFloat())
-        switch (AsPackedConvertedFloat().VectorType) {
-            case PackedConvertedFloatTypes::UInt_A2_BGR10:
-            case PackedConvertedFloatTypes::Int_A2_BGR10:
-                return 4;
+    else if (IsPackedConvertedFVector())
+        switch (AsPackedConvertedFVector().VectorType) {
+            case PackedConvertedFVectorTypes::UInt_A2_BGR10:
+            case PackedConvertedFVectorTypes::Int_A2_BGR10:
+                return VectorSizes::XYZW;
             default: {
                 std::string errMsg = "Unexpected Bplus::GL::Buffers::VertexData::"
-                                        "PackedConvertedFloatTypes ";
-                errMsg += AsPackedConvertedFloat().VectorType._to_string();
+                                        "PackedConvertedFVectorTypes ";
+                errMsg += AsPackedConvertedFVector().VectorType._to_string();
                 BPAssert(false, errMsg.c_str());
-                return 253;
+                return VectorSizes::X;
             }
         }
-    else if (IsInteger())
-        return AsInteger().Size._to_integral();
-    else if (IsDouble())
-        return AsDouble()._to_integral();
+    else if (IsIVector())
+        return AsIVector().Size;
+    else if (IsDVector())
+        return AsDVector().Size;
+    else
+    {
+        BPAssert(false, "Unknown Bplus::GL::Buffers::VertexData::Type case");
+        return VectorSizes::X;
+    }
+}
+uint8_t VertexData::Type::GetNAttributes() const
+{
+    if (IsFMatrix())
+        return AsFMatrix().ColSize;
+    else if (IsDMatrix())
+        return AsDMatrix().ColSize;
+    else if (IsFloatVector() | IsIVector() | IsDVector())
+        return 1;
     else
     {
         BPAssert(false, "Unknown Bplus::GL::Buffers::VertexData::Type case");
         return 255;
     }
 }
-
 GLenum VertexData::Type::GetOglEnum() const
 {
-    if (IsSimpleFloat())
-        return AsSimpleFloat().ComponentType._to_integral();
-    else if (IsConvertedFloat())
-        return AsConvertedFloat().ComponentType._to_integral();
-    else if (IsPackedFloat())
-        return AsPackedFloat()._to_integral();
-    else if (IsPackedConvertedFloat())
-        return AsPackedConvertedFloat().VectorType._to_integral();
-    else if (IsInteger())
-        return AsInteger().ComponentType._to_integral();
-    else if (IsDouble())
+    if (IsFMatrix())
+        return GL_FLOAT;
+    else if (IsDMatrix())
+        return GL_DOUBLE;
+    else if (IsSimpleFVector())
+        return AsSimpleFVector().ComponentType._to_integral();
+    else if (IsConvertedFVector())
+        return AsConvertedFVector().ComponentType._to_integral();
+    else if (IsPackedFVector())
+        return AsPackedFVector()._to_integral();
+    else if (IsPackedConvertedFVector())
+        return AsPackedConvertedFVector().VectorType._to_integral();
+    else if (IsIVector())
+        return AsIVector().ComponentType._to_integral();
+    else if (IsDVector())
         return GL_DOUBLE;
     else
     {
@@ -103,19 +124,63 @@ MeshData::MeshData(IndexDataTypes _indexType,
                                   (ptrdiff_t)vertexDataSources[i].InitialByteOffset,
                                   (GLsizei)vertexDataSources[i].DataStructSize);
     }
-    //TODO: Can the below be done in one loop?
+    //TODO: Can the below be done in one loop instead of three?
     for (size_t i = 0; i < vertexData.size(); ++i)
         glEnableVertexArrayAttrib(glPtr.Get(), i);
+    size_t vertAttribI = 0;
     for (size_t i = 0; i < vertexData.size(); ++i)
     {
-        if (vertexData[i].FieldType.IsInteger)
+        GLuint relativeOffset = vertexData[i].; //TODO: How?
+
+        //TODO: Do double vectors/matrices take up twice as many attrib slots as floats? Currently we assume they don't.
+        auto fieldType = vertexData[i].FieldType;
+        if (fieldType.IsIVector())
         {
-            glVertexArrayAttribIFormat(glPtr.Get(), i,
-                                       vertexData[i].FieldType.GetNComponents(),
-                                       vertexData[i].FieldType.GetOglEnum(),
-                                       vertexData[i],);
+            glVertexArrayAttribIFormat(glPtr.Get(), vertAttribI,
+                                       fieldType.AsIVector().Size._to_integral(),
+                                       fieldType.GetOglEnum(),
+                                       relativeOffset);
         }
-        glVertexArrayAttribFormat(glPtr.Get(), i, vertexData[i].FieldType);
+        else if (fieldType.IsDVector())
+        {
+            glVertexArrayAttribLFormat(glPtr.Get(), vertAttribI,
+                                       fieldType.AsDVector().Size._to_integral(),
+                                       fieldType.GetOglEnum(),
+                                       relativeOffset);
+        }
+        else if (fieldType.IsFMatrix())
+        {
+            for (size_t attr = 0; attr < fieldType.GetNAttributes(); ++attr)
+            {
+                glVertexArrayAttribFormat(glPtr.Get(), vertAttribI,
+                                          fieldType.GetNComponents(), fieldType.GetOglEnum(),
+                                          GL_FALSE, relativeOffset);
+                vertAttribI += 1;
+            }
+        }
+        else if (fieldType.IsDMatrix())
+        {
+            for (size_t attr = 0; attr < fieldType.GetNAttributes(); ++attr)
+            {
+                glVertexArrayAttribLFormat(glPtr.Get(), vertAttribI,
+                                           fieldType.GetNComponents(), fieldType.GetOglEnum(),
+                                           relativeOffset);
+                vertAttribI += 1;
+            }
+        }
+        else //Must be an FVector.
+        {
+            BPAssert(fieldType.IsFloatVector(), "FieldType isn't known");
+            glVertexArrayAttribFormat(glPtr.Get(), vertAttribI,
+                                      fieldType.GetNComponents(), fieldType.GetOglEnum(),
+                                      (fieldType.IsConvertedFVector() &&
+                                           fieldType.AsConvertedFVector().Normalize) |
+                                        (fieldType.IsPackedConvertedFVector() &&
+                                         fieldType.AsPackedConvertedFVector().Normalize),
+                                      relativeOffset);
+        }
+
+        vertAttribI += 1;
     }
     for (size_t i = 0; i < vertexData.size(); ++i)
         glVertexArrayAttribBinding(glPtr.Get(), i, (GLuint)vertexData[i].MeshDataSourceIndex);
