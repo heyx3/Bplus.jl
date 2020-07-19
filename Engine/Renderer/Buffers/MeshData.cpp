@@ -6,89 +6,6 @@ using namespace Bplus::GL::Buffers;
 
 //TODO: Add Debug-mode code to ensure buffers aren't destroyed before the MeshData instance.
 
-VertexData::VectorSizes VertexData::Type::GetNComponents() const
-{
-    if (IsFMatrix())
-        return AsFMatrix().RowSize;
-    else if (IsDMatrix())
-        return AsDMatrix().RowSize;
-    else if (IsSimpleFVector())
-        return AsSimpleFVector().Size;
-    else if (IsConvertedFVector())
-        return AsConvertedFVector().Size;
-    else if (IsPackedFVector())
-        switch (AsPackedFVector()) {
-            case PackedFloatTypes::UFloat_B10_GR11:
-                return VectorSizes::XYZ;
-            default: {
-                std::string errMsg = "Unexpected Bplus::GL::Buffers::VertexData::PackedFloatTypes ";
-                errMsg += AsPackedFVector()._to_string();
-                BPAssert(false, errMsg.c_str());
-                return VectorSizes::X;
-            }
-        }
-    else if (IsPackedConvertedFVector())
-        switch (AsPackedConvertedFVector().VectorType) {
-            case PackedConvertedFVectorTypes::UInt_A2_BGR10:
-            case PackedConvertedFVectorTypes::Int_A2_BGR10:
-                return VectorSizes::XYZW;
-            default: {
-                std::string errMsg = "Unexpected Bplus::GL::Buffers::VertexData::"
-                                        "PackedConvertedFVectorTypes ";
-                errMsg += AsPackedConvertedFVector().VectorType._to_string();
-                BPAssert(false, errMsg.c_str());
-                return VectorSizes::X;
-            }
-        }
-    else if (IsIVector())
-        return AsIVector().Size;
-    else if (IsDVector())
-        return AsDVector().Size;
-    else
-    {
-        BPAssert(false, "Unknown Bplus::GL::Buffers::VertexData::Type case");
-        return VectorSizes::X;
-    }
-}
-uint8_t VertexData::Type::GetNAttributes() const
-{
-    if (IsFMatrix())
-        return AsFMatrix().ColSize;
-    else if (IsDMatrix())
-        return AsDMatrix().ColSize;
-    else if (IsFloatVector() | IsIVector() | IsDVector())
-        return 1;
-    else
-    {
-        BPAssert(false, "Unknown Bplus::GL::Buffers::VertexData::Type case");
-        return 255;
-    }
-}
-GLenum VertexData::Type::GetOglEnum() const
-{
-    if (IsFMatrix())
-        return GL_FLOAT;
-    else if (IsDMatrix())
-        return GL_DOUBLE;
-    else if (IsSimpleFVector())
-        return AsSimpleFVector().ComponentType._to_integral();
-    else if (IsConvertedFVector())
-        return AsConvertedFVector().ComponentType._to_integral();
-    else if (IsPackedFVector())
-        return AsPackedFVector()._to_integral();
-    else if (IsPackedConvertedFVector())
-        return AsPackedConvertedFVector().VectorType._to_integral();
-    else if (IsIVector())
-        return AsIVector().ComponentType._to_integral();
-    else if (IsDVector())
-        return GL_DOUBLE;
-    else
-    {
-        BPAssert(false, "Unknown Bplus::GL::Buffers::VertexData::Type case");
-        return GL_NONE;
-    }
-}
-
 
 MeshData::MeshData(IndexDataTypes _indexType,
                    const std::optional<MeshDataSource>& _indexData,
@@ -130,7 +47,7 @@ MeshData::MeshData(IndexDataTypes _indexType,
     size_t vertAttribI = 0;
     for (size_t i = 0; i < vertexData.size(); ++i)
     {
-        GLuint relativeOffset = vertexData[i].; //TODO: How?
+        GLuint fieldOffsetFromStruct = vertexData[i].FieldByteOffset;
 
         //TODO: Do double vectors/matrices take up twice as many attrib slots as floats? Currently we assume they don't.
         auto fieldType = vertexData[i].FieldType;
@@ -139,14 +56,14 @@ MeshData::MeshData(IndexDataTypes _indexType,
             glVertexArrayAttribIFormat(glPtr.Get(), vertAttribI,
                                        fieldType.AsIVector().Size._to_integral(),
                                        fieldType.GetOglEnum(),
-                                       relativeOffset);
+                                       fieldOffsetFromStruct);
         }
         else if (fieldType.IsDVector())
         {
             glVertexArrayAttribLFormat(glPtr.Get(), vertAttribI,
                                        fieldType.AsDVector().Size._to_integral(),
                                        fieldType.GetOglEnum(),
-                                       relativeOffset);
+                                       fieldOffsetFromStruct);
         }
         else if (fieldType.IsFMatrix())
         {
@@ -154,7 +71,7 @@ MeshData::MeshData(IndexDataTypes _indexType,
             {
                 glVertexArrayAttribFormat(glPtr.Get(), vertAttribI,
                                           fieldType.GetNComponents(), fieldType.GetOglEnum(),
-                                          GL_FALSE, relativeOffset);
+                                          GL_FALSE, fieldOffsetFromStruct);
                 vertAttribI += 1;
             }
         }
@@ -164,20 +81,24 @@ MeshData::MeshData(IndexDataTypes _indexType,
             {
                 glVertexArrayAttribLFormat(glPtr.Get(), vertAttribI,
                                            fieldType.GetNComponents(), fieldType.GetOglEnum(),
-                                           relativeOffset);
+                                           fieldOffsetFromStruct);
                 vertAttribI += 1;
             }
         }
         else //Must be an FVector.
         {
-            BPAssert(fieldType.IsFloatVector(), "FieldType isn't known");
+            BPAssert(fieldType.GetLogicalFormat() == +VertexData::LogicalFormats::Vector,
+                     "FieldType isn't known");
             glVertexArrayAttribFormat(glPtr.Get(), vertAttribI,
                                       fieldType.GetNComponents(), fieldType.GetOglEnum(),
-                                      (fieldType.IsConvertedFVector() &&
-                                           fieldType.AsConvertedFVector().Normalize) |
-                                        (fieldType.IsPackedConvertedFVector() &&
-                                         fieldType.AsPackedConvertedFVector().Normalize),
-                                      relativeOffset);
+                                      ( ( fieldType.IsConvertedFVector() &&
+                                          fieldType.AsConvertedFVector().Normalize
+                                        ) | (
+                                          fieldType.IsPackedConvertedFVector() &&
+                                          fieldType.AsPackedConvertedFVector().Normalize
+                                        )
+                                      ) ? GL_TRUE : GL_FALSE,
+                                      fieldOffsetFromStruct);
         }
 
         vertAttribI += 1;
@@ -192,4 +113,4 @@ MeshData::~MeshData()
         glDeleteVertexArrays(1, &glPtr.Get());
 }
 
-//TODO: Implement other methods.
+//TODO: Implement SetIndexData, RemoveIndexData.

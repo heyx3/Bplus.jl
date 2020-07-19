@@ -376,6 +376,7 @@ exit 0</Command>
     <ClCompile Include="NativeFileDialog\nfd_win.cpp" />
     <ClCompile Include="Renderer\Buffers\Buffer.cpp" />
     <ClCompile Include="Renderer\Buffers\MeshData.cpp" />
+    <ClCompile Include="Renderer\Buffers\MeshVertexData.cpp" />
     <ClCompile Include="Renderer\Context.cpp" />
     <ClCompile Include="Renderer\Data.cpp" />
     <ClCompile Include="Renderer\Device.cpp" />
@@ -413,6 +414,7 @@ exit 0</Command>
     <ClInclude Include="Renderer\Buffers\Buffer.h" />
     <ClInclude Include="Renderer\Buffers\Map.h" />
     <ClInclude Include="Renderer\Buffers\MeshData.h" />
+    <ClInclude Include="Renderer\Buffers\MeshVertexData.h" />
     <ClInclude Include="Renderer\Context.h" />
     <ClInclude Include="Renderer\Data.h" />
     <ClInclude Include="Renderer\Device.h" />
