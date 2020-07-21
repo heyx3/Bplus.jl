@@ -198,6 +198,9 @@
     <ClCompile Include="Renderer\Buffers\MeshData.cpp">
       <Filter>Renderer\Buffers</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer\Textures\Data.cpp">
+      <Filter>Renderer\Textures</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Native File Dialog">

@@ -7,8 +7,8 @@
 
 namespace Bplus::GL::Textures
 {
-    //Sort of like a texture, but only able to be used by a Target to render into.
-    //Cannot be sampled from like a real texture.
+    //Sort of like a texture, but only able to be rendered into by a Target;
+    //    it cannot be sampled from.
     class BP_API TargetBuffer
     {
     public:
