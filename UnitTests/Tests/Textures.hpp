@@ -12,6 +12,8 @@
 using namespace Bplus::GL::Textures;
 
 
+#pragma region TextureCreation() test
+
 template<typename Texture_t, typename Size_t>
 void RunTextureTypeCreationTest(std::string testName,
                                 Size_t size, Format format,
@@ -22,6 +24,7 @@ void RunTextureTypeCreationTest(std::string testName,
     Texture_t tex1{ size, format, nMips };
     Texture_t tex2{ std::move(tex1) };
 }
+
 void RunTextureCreationTest(const char* testName,
                             glm::uvec3 fullSize, Format format,
                             uint_mipLevel_t nMips = 0)
@@ -37,6 +40,7 @@ void RunTextureCreationTest(const char* testName,
                                                         glm::uvec2{ fullSize.x, fullSize.y },
                                                         format, nMips);
 }
+
 void TextureCreation()
 {
     Simple::RunTest([&]()
@@ -79,15 +83,23 @@ void TextureCreation()
     });
 }
 
+#pragma endregion
+
+#pragma region TextureSimpleGetSetData() test
+
 //Runs a test for getting/setting texture data with some kind of precise format.
 template<typename T>
-void TestTextureGetSetSingle(SimpleFormat texFormat, T testVal)
+void RunTextureSimpleGetSetTest(SimpleFormat texFormat, glm::vec<4, T> testValues)
 {
     std::string testCasePrefix = "{";
     testCasePrefix += ToString(texFormat);
     testCasePrefix += ": ";
+
+    //Run tests for getting and setting different channels in the texture, individually.
     for (uint8_t i = 0; i < std::min((uint8_t)3, texFormat.Components._to_integral()); ++i)
     {
+        //Pick some components to try.
+        //TODO: Pick more subsets like RG, RGBA, etc.
         ComponentData components;
         switch (i)
         {
@@ -99,107 +111,169 @@ void TestTextureGetSetSingle(SimpleFormat texFormat, T testVal)
                 return;
         }
 
+        //Log the test case's name.
         auto testCaseName = testCasePrefix + components._to_string();
         testCaseName += "}";
         TEST_CASE(testCaseName.c_str());
 
+        //Set the texture's color in the above components.
         Texture2D tex(glm::uvec2{ 1, 1 }, texFormat);
-        tex.Set_Color(&testVal, components);
+        tex.Set_Color(&testValues[0], components); //TODO: Does this overwrite the other components to 0 and/or 1, or does it leave them alone? We need to specify.
+        //Get the texture's color back into a separate variable.
+        glm::vec<4, T> outputTestVal;
+        tex.Get_Color(&outputTestVal[0], components);
 
-        T outputTestVal;
-        tex.Get_Color(&outputTestVal, components);
-
-        std::string errMsg = "Expected ";
-        errMsg += std::to_string(testVal);
-        errMsg += " but got ";
-        errMsg += std::to_string(outputTestVal);
-        TEST_CHECK_(outputTestVal == testVal, errMsg.c_str());
+        //Test that the two colors are equal in the components that were set.
+        for (uint8_t channelI = 0; channelI < 4; ++i)
+            if (UsesChannel(components, Bplus::GL::Textures::ColorChannels::_from_index(channelI)))
+            {
+                std::string errMsg = "Expected ";
+                errMsg += std::to_string(testValues[channelI]);
+                errMsg += " but got ";
+                errMsg += std::to_string(outputTestVal[channelI]);
+                TEST_CHECK_(outputTestVal == testValues, errMsg.c_str());
+            }
     }
 }
-template<typename T>
-void TestTextureGetSetExactMulti(Format texFormat, ComponentData dataFormat,
-                                 const T* testData, size_t testDataCount)
+
+template<typename T, glm::size_t L>
+void TestTextureGetSetSingle(Format texFormat, ComponentData dataComponentFormat,
+                             std::array<T, L> testDataComponents)
 {
     std::string testCaseName = "{";
     testCaseName += ToString(texFormat);
     testCaseName += ": ";
-    testCaseName += dataFormat._to_string();
+    testCaseName += dataComponentFormat._to_string();
     testCaseName += "}";
     TEST_CASE(testCaseName.c_str());
 
     Texture2D tex(glm::uvec2{ 1, 1 }, texFormat);
-    tex.Set_Color(testData, dataFormat);
+    tex.Set_Color(testDataComponents.data(), dataComponentFormat);
     
-    std::vector<T> outputTestVal;
-    outputTestVal.resize(testDataCount);
-    tex.Get_Color(outputTestVal.data(), dataFormat);
+    std::array<T, L> outputTestVal;
+    tex.Get_Color(outputTestVal.data(), dataComponentFormat);
 
     for (size_t i = 0; i < outputTestVal.size(); ++i)
-        TEST_CHECK(outputTestVal[i] == testData[i]);
+        TEST_CHECK(outputTestVal[i] == testDataComponents[i]);
+}
+template<typename T, glm::size_t L>
+void TestTextureGetSetSingleAllChannels(SimpleFormat texFormat,
+                                        std::array<T, L> testData)
+{
+    ComponentData dataComponentFormat;
+    switch (texFormat.Components)
+    {
+        case FormatComponents::R:    dataComponentFormat = ComponentData::Red ; break;
+        case FormatComponents::RG:   dataComponentFormat = ComponentData::RG  ; break;
+        case FormatComponents::RGB:  dataComponentFormat = ComponentData::RGB ; break;
+        case FormatComponents::RGBA: dataComponentFormat = ComponentData::RGBA; break;
+        default: BPAssert(false, "Unexpected Bplus::GL::Textures::FormatComponents"); break;
+    }
+    
+    glm::bvec4 usedChannels = { UsesChannel(dataComponentFormat, ColorChannels::Red),
+                                UsesChannel(dataComponentFormat, ColorChannels::Green),
+                                UsesChannel(dataComponentFormat, ColorChannels::Blue),
+                                UsesChannel(dataComponentFormat, ColorChannels::Alpha) };
+    if (usedChannels.r)
+    {
+        TestTextureGetSetSingle(texFormat, ComponentData::Red, testData);
+        if (usedChannels.g)
+        {
+            TestTextureGetSetSingle(texFormat, ComponentData::RG, testData);
+            if (usedChannels.b)
+            {
+                TestTextureGetSetSingle(texFormat, ComponentData::RGB, testData);
+                if (usedChannels.a)
+                    TestTextureGetSetSingle(texFormat, ComponentData::RGBA, testData);
+            }
+        }
+    }
+    if (usedChannels.g)
+        TestTextureGetSetSingle(texFormat, ComponentData::Green, testData);
+    if (usedChannels.b)
+        TestTextureGetSetSingle(texFormat, ComponentData::Blue, testData);
 }
 void TextureSimpleGetSetData()
 {
     Simple::RunTest([&]()
     {
-        //Test get/set of exact single-channel values:
-        TestTextureGetSetSingle(
-            SimpleFormat{FormatTypes::NormalizedUInt,
-                            FormatComponents::R,
-                            BitDepths::B8},
-            (glm::u8)203);
-        TestTextureGetSetSingle(
-            SimpleFormat{FormatTypes::NormalizedUInt,
-                                    FormatComponents::RG,
-                                    BitDepths::B8},
-            (glm::u8)203);
-        TestTextureGetSetSingle(
-            SimpleFormat{FormatTypes::NormalizedUInt,
-                            FormatComponents::RG,
-                            BitDepths::B8},
-            (glm::u8)203);
-        TestTextureGetSetSingle(
-            SimpleFormat{FormatTypes::NormalizedUInt,
-                            FormatComponents::RGBA,
-                            BitDepths::B8},
-            (glm::u8)203);
-        TestTextureGetSetSingle(
-            SimpleFormat{FormatTypes::NormalizedUInt,
-                            FormatComponents::RGB,
-                            BitDepths::B5},
-            (glm::u8)16);
-        TestTextureGetSetSingle(
-            SimpleFormat{FormatTypes::NormalizedInt,
-                            FormatComponents::RG,
-                            BitDepths::B8},
-            (glm::i8)67);
-        TestTextureGetSetSingle(
-            SimpleFormat{FormatTypes::NormalizedInt,
-                            FormatComponents::RG,
-                            BitDepths::B8},
-            (glm::i8)(-67));
-        TestTextureGetSetSingle(
-            SimpleFormat{FormatTypes::Float,
-                            FormatComponents::RGB,
-                            BitDepths::B32},
-            (glm::f32)123.456f);
+        TestTextureGetSetSingleAllChannels(
+            SimpleFormat{ FormatTypes::NormalizedUInt,
+                          FormatComponents::R,
+                          BitDepths::B8 },
+            std::array{ (glm::u8)203 });
+        TestTextureGetSetSingleAllChannels(
+            { FormatTypes::NormalizedUInt,
+              FormatComponents::RG,
+              BitDepths::B8 },
+            std::array{ (glm::u8)203, 204 });
+        TestTextureGetSetSingleAllChannels(
+            { FormatTypes::NormalizedUInt,
+              FormatComponents::RGBA,
+              BitDepths::B8 },
+            std::array{ (glm::u8)1, 128, 35, 206 });
+        TestTextureGetSetSingleAllChannels(
+            { FormatTypes::NormalizedUInt,
+              FormatComponents::RGB,
+              BitDepths::B5 },
+            std::array{ (glm::u8)16, 0, 3 });
+        TestTextureGetSetSingleAllChannels(
+            { FormatTypes::NormalizedUInt,
+              FormatComponents::RGB,
+              BitDepths::B10 },
+            std::array{ (glm::uint16_t)1023, 513, 0 });
 
-        /*TestTextureGetSetExact(
-            { SpecialFormats::RGB10_A2 },
-            +ComponentData::Green,
-            (glm::u8)32);*/
+        TestTextureGetSetSingleAllChannels(
+            { FormatTypes::NormalizedInt,
+              FormatComponents::RG,
+              BitDepths::B8 },
+            std::array{ (glm::u8)67, 127 });
+        TestTextureGetSetSingleAllChannels(
+            { FormatTypes::NormalizedInt,
+              FormatComponents::RG,
+              BitDepths::B8 },
+            std::array{ (glm::i8)-67, -127 });
 
+        TestTextureGetSetSingleAllChannels(
+            { FormatTypes::Float,
+              FormatComponents::RGB,
+              BitDepths::B32 },
+            std::array{ (glm::f32)123.456f, -123.456f, 0 });
+        TestTextureGetSetSingleAllChannels(
+            { FormatTypes::Float,
+              FormatComponents::RGBA,
+              BitDepths::B16 },
+            std::array{ (glm::f32)123, -123, 0, 1.5f });
+        
+        TestTextureGetSetSingleAllChannels(
+            { FormatTypes::UInt,
+              FormatComponents::RGB,
+              BitDepths::B16 },
+            std::array{ (glm::uint16_t)64001, 0, 20000 });
+        TestTextureGetSetSingleAllChannels(
+            { FormatTypes::UInt,
+              FormatComponents::RGB,
+              BitDepths::B32 },
+            std::array{ (glm::uint32_t)2647324001, 0, 567890123 });
+        TestTextureGetSetSingleAllChannels(
+            { FormatTypes::UInt,
+              FormatComponents::R,
+              BitDepths::B32 },
+            std::array{ (glm::uint32_t)2097152 });
+
+        TestTextureGetSetSingleAllChannels(
+            { FormatTypes::Int,
+              FormatComponents::RGB,
+              BitDepths::B16 },
+            std::array{ (glm::int16_t)14503, -999, -20000 });
+
+        //TODO: Special formats
+        //TODO: Compressed formats
         //TODO: Depth get/set
-
-        //Test get/set of exact multi-channel values.
-        glm::u8vec2 v2_u8{ 201, 203 };
-        TestTextureGetSetExactMulti(
-            Format{SimpleFormat{FormatTypes::UInt,
-                                FormatComponents::RGB,
-                                BitDepths::B16}},
-            +ComponentData::RG,
-            glm::value_ptr(v2_u8), 2);
     });
 }
+
+#pragma endregion
 
 //TODO: TextureSubRectData()
 //TODO: cubemap tests
