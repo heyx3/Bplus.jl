@@ -130,6 +130,9 @@
     <ClInclude Include="Renderer\Buffers\MeshData.h">
       <Filter>Renderer\Buffers</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\Buffers\MeshVertexData.h">
+      <Filter>Renderer\Buffers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
@@ -200,6 +203,9 @@
     </ClCompile>
     <ClCompile Include="Renderer\Textures\Data.cpp">
       <Filter>Renderer\Textures</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Buffers\MeshVertexData.cpp">
+      <Filter>Renderer\Buffers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
