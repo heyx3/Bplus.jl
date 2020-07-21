@@ -206,66 +206,66 @@ void TextureSimpleGetSetData()
             { FormatTypes::NormalizedUInt,
               FormatComponents::RG,
               BitDepths::B8 },
-            std::array{ (glm::u8)203, 204 });
+            std::array<glm::u8, 2>{ 203, 204 });
         TestTextureGetSetSingleAllChannels(
             { FormatTypes::NormalizedUInt,
               FormatComponents::RGBA,
               BitDepths::B8 },
-            std::array{ (glm::u8)1, 128, 35, 206 });
+            std::array<glm::u8, 4>{ 1, 128, 35, 206 });
         TestTextureGetSetSingleAllChannels(
             { FormatTypes::NormalizedUInt,
               FormatComponents::RGB,
               BitDepths::B5 },
-            std::array{ (glm::u8)16, 0, 3 });
+            std::array<glm::u8, 3>{ 16, 0, 3 });
         TestTextureGetSetSingleAllChannels(
             { FormatTypes::NormalizedUInt,
               FormatComponents::RGB,
               BitDepths::B10 },
-            std::array{ (glm::uint16_t)1023, 513, 0 });
+            std::array<glm::u16, 3>{ 1023, 513, 0 });
 
         TestTextureGetSetSingleAllChannels(
             { FormatTypes::NormalizedInt,
               FormatComponents::RG,
               BitDepths::B8 },
-            std::array{ (glm::u8)67, 127 });
+            std::array<glm::u8, 2>{ 67, 127 });
         TestTextureGetSetSingleAllChannels(
             { FormatTypes::NormalizedInt,
               FormatComponents::RG,
               BitDepths::B8 },
-            std::array{ (glm::i8)-67, -127 });
+            std::array<glm::i8, 2>{ -67, -127 });
 
         TestTextureGetSetSingleAllChannels(
             { FormatTypes::Float,
               FormatComponents::RGB,
               BitDepths::B32 },
-            std::array{ (glm::f32)123.456f, -123.456f, 0 });
+            std::array<glm::f32, 3>{ 123.456f, -123.456f, 0 });
         TestTextureGetSetSingleAllChannels(
             { FormatTypes::Float,
               FormatComponents::RGBA,
               BitDepths::B16 },
-            std::array{ (glm::f32)123, -123, 0, 1.5f });
+            std::array<glm::f32, 4>{ 123, -123, 0, 1.5f });
         
         TestTextureGetSetSingleAllChannels(
             { FormatTypes::UInt,
               FormatComponents::RGB,
               BitDepths::B16 },
-            std::array{ (glm::uint16_t)64001, 0, 20000 });
+            std::array<glm::u16, 3>{ 64001, 0, 20000 });
         TestTextureGetSetSingleAllChannels(
             { FormatTypes::UInt,
               FormatComponents::RGB,
               BitDepths::B32 },
-            std::array{ (glm::uint32_t)2647324001, 0, 567890123 });
+            std::array<glm::u32, 3>{ 2647324001, 0, 567890123 });
         TestTextureGetSetSingleAllChannels(
             { FormatTypes::UInt,
               FormatComponents::R,
               BitDepths::B32 },
-            std::array{ (glm::uint32_t)2097152 });
+            std::array<glm::u32, 1>{ 2097152 });
 
         TestTextureGetSetSingleAllChannels(
             { FormatTypes::Int,
               FormatComponents::RGB,
               BitDepths::B16 },
-            std::array{ (glm::int16_t)14503, -999, -20000 });
+            std::array<glm::i16, 3>{ 14503, -999, -20000 });
 
         //TODO: Special formats
         //TODO: Compressed formats
