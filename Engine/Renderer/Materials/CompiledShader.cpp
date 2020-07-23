@@ -12,11 +12,11 @@ namespace
 {
     thread_local struct
     {
-        CompiledShader* currentShader = nullptr;
+        const CompiledShader* currentShader = nullptr;
         bool initializedYet = false;
 
-        std::unordered_map<OglPtr::ShaderProgram, CompiledShader*> shadersByHandle =
-            std::unordered_map<OglPtr::ShaderProgram, CompiledShader*>();
+        std::unordered_map<OglPtr::ShaderProgram, const CompiledShader*> shadersByHandle =
+            std::unordered_map<OglPtr::ShaderProgram, const CompiledShader*>();
 
         //Annoyingly, OpenGL booleans have to be sent in as 32-bit integers.
         //This buffer stores the booleans, converted to integers to be sent to OpenGL.
@@ -301,7 +301,7 @@ CompiledShader& CompiledShader::operator=(CompiledShader&& src)
     return *this;
 }
 
-CompiledShader* CompiledShader::GetCurrentActive()
+const CompiledShader* CompiledShader::GetCurrentActive()
 {
     return threadData.currentShader;
 }
@@ -314,6 +314,15 @@ void CompiledShader::Activate()
 
     glUseProgram(programHandle.Get());
     threadData.currentShader = this;
+}
+
+const CompiledShader* CompiledShader::Find(OglPtr::ShaderProgram ptr)
+{
+    auto found = threadData.shadersByHandle.find(ptr);
+    if (found == threadData.shadersByHandle.end())
+        return nullptr;
+    else
+        return found->second;
 }
 
 CompiledShader::UniformAndStatus CompiledShader::CheckUniform(const std::string& name) const

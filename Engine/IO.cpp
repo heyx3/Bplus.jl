@@ -5,7 +5,7 @@
 using namespace Bplus;
 
 
-std::string IO::ReadEntireFile(const fs::path& path, const std::string& defaultIfMissing)
+bool IO::LoadEntireFile(const fs::path& path, std::string& output)
 {
     try
     {
@@ -14,12 +14,21 @@ std::string IO::ReadEntireFile(const fs::path& path, const std::string& defaultI
         {
             std::stringstream buffer;
             buffer << stream.rdbuf();
-            return buffer.str();
+            output += buffer.str();
+            return true;
         }
     }
     catch (...) { }
 
-    return defaultIfMissing;
+    return false;
+}
+std::string IO::ReadEntireFile(const fs::path& path, const std::string& defaultIfMissing)
+{
+    std::string value;
+    if (LoadEntireFile(path, value))
+        return value;
+    else
+        return defaultIfMissing;
 }
 
 //Returns whether it was successful.

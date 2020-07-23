@@ -133,6 +133,9 @@
     <ClInclude Include="Renderer\Textures\TexturesData.h">
       <Filter>Renderer\Textures</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\Materials\ShaderCompileJob.h">
+      <Filter>Renderer\Programs</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
@@ -206,6 +209,9 @@
     </ClCompile>
     <ClCompile Include="Renderer\Textures\TexturesData.cpp">
       <Filter>Renderer\Textures</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Materials\ShaderCompileJob.cpp">
+      <Filter>Renderer\Programs</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

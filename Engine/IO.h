@@ -39,6 +39,12 @@ namespace Bplus
         //Returns whether it was successful.
         bool BP_API WriteEntireFile(const fs::path& path, const std::string& contents, bool append);
 
+        //Reads the contents of the given text file
+        //    and writes them into the given output string,
+        //    returning whether or not it was successful.
+        bool BP_API LoadEntireFile(const fs::path& path, std::string& output);
+        //Reads the contents of the given text file and returns them as a string,
+        //    or returns the given fallback if the file couldn't be read.
         std::string BP_API ReadEntireFile(const fs::path& path,
                                           const std::string& defaultIfMissing);
 

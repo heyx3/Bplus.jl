@@ -1,10 +1,10 @@
 #pragma once
 
-#include <optional>
 #include <tuple>
 
 #include "../Context.h"
 #include "../Textures/Texture.h"
+#include "ShaderCompileJob.h"
 
 //Provides a way to access a matrix/vector as an array of floats.
 #include <glm/gtc/type_ptr.hpp>
@@ -12,10 +12,10 @@
 //TODO: Integrate this project: https://github.com/dfranx/ShaderDebugger
 
 
-//The valid "uniform" parameters for a shader are as follows:
+//The valid "uniform" types for a shader are as follows:
 //    * Primitive types int32_t, uint32_t, float, double, and bool/Bool
-//    * A GLM vector of the above primitive types (1-4 dimensions)
-//    * A GLM matrix of floats or doubles
+//    * A GLM vector of the above primitive types (up to 4D)
+//    * A GLM matrix of floats or doubles (up to 4x4)
 //    * Textures (i.e. Bplus::GL::Texture::TexView and ::ImgView)
 //    * Buffers (i.e. a pointer or reference to Bplus::GL::Buffers::Buffer)
 //Any functions that are templated on a type of uniform will accept any of these.
@@ -25,7 +25,6 @@ namespace Bplus::GL
 {
     namespace Buffers { class Buffer; }
 
-
     //A specific compiled shader, plus its "uniforms" (a.k.a. parameters).
     class BP_API CompiledShader
     {
@@ -33,9 +32,15 @@ namespace Bplus::GL
         
         //Gets the currently-active shader program.
         //Returns nullptr if none is active.
-        static CompiledShader* GetCurrentActive();
+        static const CompiledShader* GetCurrentActive();
+
+        //Gets the shader with the given OpenGL pointer.
+        //Returns nullptr if it couldn't be found.
+        static const CompiledShader* Find(OglPtr::ShaderProgram ptr);
 
         
+        //TODO: Use ShaderCompileJob.
+
         //Compiles and returns an OpenGL shader program with the given vertex and fragment shader.
         //The declaration of OpenGL version and any extensions is pre-pended automatically.
         //If compilation failed, 0 is returned and an error message is written.
@@ -50,8 +55,6 @@ namespace Bplus::GL
         static OglPtr::ShaderProgram Compile(std::string vertexShader, std::string geometryShader,
                                              std::string fragmentShader,
                                              std::string& outErrMsg);
-
-        //TODO: Ability to store pre-compiled shaders, plus a Compile() overload that takes them
 
 
         //The render state this shader will use.
@@ -508,7 +511,7 @@ namespace Bplus::GL
                                      value.GlPtr.Get());
         }
 
-        //TODO: Buffers.
+        //TODO: Buffers as UBO and SSBO.
 
         #pragma endregion
 
