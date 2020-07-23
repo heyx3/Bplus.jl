@@ -106,9 +106,6 @@
     <ClInclude Include="Renderer\Textures\SamplerDataSource.h">
       <Filter>Renderer\Textures</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\Textures\Data.h">
-      <Filter>Renderer\Textures</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\Functions.h">
       <Filter>Utils</Filter>
     </ClInclude>
@@ -132,6 +129,9 @@
     </ClInclude>
     <ClInclude Include="Renderer\Buffers\MeshVertexData.h">
       <Filter>Renderer\Buffers</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\Textures\TexturesData.h">
+      <Filter>Renderer\Textures</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -203,6 +203,9 @@
     </ClCompile>
     <ClCompile Include="Renderer\Buffers\MeshVertexData.cpp">
       <Filter>Renderer\Buffers</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\Textures\TexturesData.cpp">
+      <Filter>Renderer\Textures</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

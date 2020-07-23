@@ -32,6 +32,8 @@ namespace Bplus::GL::Textures
         RGBA = GL_RGBA,
         BGRA = GL_BGRA
     );
+    uint8_t BP_API GetNChannels(ComponentData data);
+    bool BP_API UsesChannel(ComponentData components, ColorChannels channel);
 
     //The different modes that an ImgView can be used in.
     BETTER_ENUM(ImageAccessModes, GLenum,
@@ -197,4 +199,6 @@ namespace Bplus::GL::Textures
 }
 
 //Allow enums in this file to be hashed, for use in STL collections.
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::ComponentData);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::Types);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::ImageAccessModes);

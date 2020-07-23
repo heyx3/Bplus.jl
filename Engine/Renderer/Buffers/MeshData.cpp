@@ -36,18 +36,18 @@ MeshData::MeshData(IndexDataTypes _indexType,
     //Configure the vertex buffer in OpenGL.
     for (size_t i = 0; i < vertexDataSources.size(); ++i)
     {
-        glVertexArrayVertexBuffer(glPtr.Get(), i,
+        glVertexArrayVertexBuffer(glPtr.Get(), (GLuint)i,
                                   vertexDataSources[i].Buf.Get(),
                                   (ptrdiff_t)vertexDataSources[i].InitialByteOffset,
                                   (GLsizei)vertexDataSources[i].DataStructSize);
     }
     //TODO: Can the below be done in one loop instead of three?
     for (size_t i = 0; i < vertexData.size(); ++i)
-        glEnableVertexArrayAttrib(glPtr.Get(), i);
-    size_t vertAttribI = 0;
+        glEnableVertexArrayAttrib(glPtr.Get(), (GLuint)i);
+    GLuint vertAttribI = 0;
     for (size_t i = 0; i < vertexData.size(); ++i)
     {
-        GLuint fieldOffsetFromStruct = vertexData[i].FieldByteOffset;
+        auto fieldOffsetFromStruct = (GLuint)vertexData[i].FieldByteOffset;
 
         //TODO: Do double vectors/matrices take up twice as many attrib slots as floats? Currently we assume they don't.
         auto fieldType = vertexData[i].FieldType;
@@ -107,7 +107,7 @@ MeshData::MeshData(IndexDataTypes _indexType,
         vertAttribI += 1;
     }
     for (size_t i = 0; i < vertexData.size(); ++i)
-        glVertexArrayAttribBinding(glPtr.Get(), i, (GLuint)vertexData[i].MeshDataSourceIndex);
+        glVertexArrayAttribBinding(glPtr.Get(), (GLuint)i, (GLuint)vertexData[i].MeshDataSourceIndex);
 }
 
 MeshData::~MeshData()

@@ -98,7 +98,7 @@ BP_HASHABLE_START_FULL(typename T BP_COMMA size_t N,
 
     size_t h = 0;
     for (size_t i = 0; i < N; ++i)
-        h = Bplus::CombineHash(h, hasher(a[i]));
+        h = Bplus::CombineHash(h, hasher(d[i]));
 
     return h;
 BP_HASHABLE_END

@@ -383,6 +383,7 @@ exit 0</Command>
     <ClCompile Include="Renderer\Materials\MaterialData.cpp" />
     <ClCompile Include="Renderer\Materials\Material_Basic.cpp" />
     <ClCompile Include="Renderer\Materials\CompiledShader.cpp" />
+    <ClCompile Include="Renderer\Textures\TexturesData.cpp" />
     <ClCompile Include="Renderer\Textures\Format.cpp" />
     <ClCompile Include="Renderer\Textures\Target.cpp" />
     <ClCompile Include="Renderer\Textures\TargetBuffer.cpp" />
@@ -421,7 +422,7 @@ exit 0</Command>
     <ClInclude Include="Renderer\Materials\MaterialData.h" />
     <ClInclude Include="Renderer\Materials\Material_Basic.h" />
     <ClInclude Include="Renderer\Materials\CompiledShader.h" />
-    <ClInclude Include="Renderer\Textures\Data.h" />
+    <ClInclude Include="Renderer\Textures\TexturesData.h" />
     <ClInclude Include="Renderer\Textures\Format.h" />
     <ClInclude Include="Renderer\Textures\Sampler.h" />
     <ClInclude Include="Renderer\Textures\SamplerDataSource.h" />
