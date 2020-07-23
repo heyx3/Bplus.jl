@@ -28,15 +28,26 @@ namespace Bplus::GL::Buffers
         //    the type it appears to be in the shader.
         VertexData::Type FieldType;
 
+        //If 0, this data is regular old per-vertex data.
+        //If 1, this data is per-instance, for instanced rendering.
+        //If 2, this data is per-instance and each element is reused for 2 consecutive instances.
+        //If 3, this data is per-instance and each element is reused for 3 consecutive instances.
+        // etc.
+        uint32_t PerInstance = 0;
+
+
         bool operator==(const VertexDataField& other) const
         {
             return (MeshDataSourceIndex == other.MeshDataSourceIndex) &
                    (FieldByteSize == other.FieldByteSize) &
                    (FieldByteOffset == other.FieldByteOffset) &
-                   (FieldType == other.FieldType);
+                   (FieldType == other.FieldType) &
+                   (PerInstance == other.PerInstance);
         }
         bool operator!=(const VertexDataField& other) const { return !operator==(other); }
     };
+
+    //TODO: Rename VertexDataField to VertexDataFromSource, and put it in the new VertexDataField as a union with with plain vector/matrix types, allowing the MeshData to set up a constant in place of a real array of vertex data.
 
 
     //The different kinds of indices that can be used in a mesh.
@@ -134,4 +145,5 @@ BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::IndexDataTypes);
 //Hashes for data structures:
 BP_HASHABLE_SIMPLE(Bplus::GL::Buffers::VertexDataField,
                    d.MeshDataSourceIndex, d.FieldType,
-                   d.FieldByteSize, d.FieldByteOffset)
+                   d.FieldByteSize, d.FieldByteOffset,
+                   d.PerInstance)

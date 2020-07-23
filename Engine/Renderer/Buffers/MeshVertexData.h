@@ -210,6 +210,7 @@ BP_HASHABLE_SIMPLE(Bplus::GL::Buffers::VertexData::DVectorType,
 
 #pragma endregion
 
+
 namespace Bplus::GL::Buffers::VertexData
 {
     //Some kind of vertex data coming from a Buffer,
@@ -268,9 +269,9 @@ namespace Bplus::GL::Buffers::VertexData
         GLenum GetOglEnum() const;
 
 
-        bool operator==(const Type& other) const { return data == other.data; }
+        bool operator==(const Type& other) const { return (data == other.data); }
         bool operator!=(const Type& other) const { return !operator==(other); }
-        size_t GetHash() const { using std::hash; return hash<TypeUnion>()(data); }
+        size_t GetHash() const { return MultiHash(data); }
 
     private:
         using TypeUnion = std::variant<FMatrixType,

@@ -101,6 +101,9 @@ MeshData::MeshData(IndexDataTypes _indexType,
                                       fieldOffsetFromStruct);
         }
 
+        glVertexArrayBindingDivisor(glPtr.Get(), vertAttribI,
+                                    vertexData[i].PerInstance);
+
         vertAttribI += 1;
     }
     for (size_t i = 0; i < vertexData.size(); ++i)

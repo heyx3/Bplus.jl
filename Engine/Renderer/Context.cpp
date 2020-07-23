@@ -35,8 +35,7 @@ Context::Context(SDL_Window* _owner, std::string& errMsg, VsyncModes _vsync)
         if (contextThreadData.Instance == this)
             errMsg = "This context has already been constructed!";
         else
-            errMsg = "A context already exists on this thread \
-that hasn't been cleaned up.";
+            errMsg = "A context already exists on this thread that hasn't been cleaned up.";
 
         return;
     }
@@ -88,11 +87,6 @@ Context::~Context()
 
 void Context::RefreshState()
 {
-    //Containers for various OpenGL settings.
-    GLint tempI;
-    glm::ivec4 tempI4;
-    glm::fvec4 tempF4;
-
     //A handful of features will be left enabled permanently for simplicity;
     //    they can still be effectively disabled via their specific parameters.
     glEnable(GL_BLEND);
@@ -100,6 +94,17 @@ void Context::RefreshState()
     //Depth-testing is particularly important to keep on, because disabling it
     //    has a side effect of disabling any depth writes.
     glEnable(GL_DEPTH_TEST);
+    //Point meshes must always specify their pixel size in their shaders;
+    //    we don't bother with the global setting.
+    //See https://www.khronos.org/opengl/wiki/Primitive#Point_primitives
+    glEnable(GL_PROGRAM_POINT_SIZE);
+    //Keep point sprite coordinates at their default origin: upper-left.
+    glPointParameteri(GL_POINT_SPRITE_COORD_ORIGIN, GL_UPPER_LEFT);
+
+    //Containers for various OpenGL settings.
+    GLint tempI;
+    glm::ivec4 tempI4;
+    glm::fvec4 tempF4;
 
     if (glIsEnabled(GL_SCISSOR_TEST))
     {
