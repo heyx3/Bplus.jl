@@ -3,29 +3,37 @@
 #include "Buffer.h"
 #include "MeshVertexData.h"
 
+//TODO: Add a "RunPass" struct that provides all the data and behavior for actually executing a render pass.
+
 
 namespace Bplus::GL::Buffers
 {
-    //A reference to a Buffer which contains an array of some data
-    //    (presumably vertices or indices).
+    //A reference to a Buffer which contains an array of vertices or indices.
     struct BP_API MeshDataSource
     {
         const Buffer* Buf;
-        uint32_t DataStructSize, InitialByteOffset;
+        //The byte size of a single element in the array.
+        uint32_t DataStructSize;
+        //The byte offset into the beginning of the buffer
+        //    for where the vertex/index data starts.
+        uint32_t InitialByteOffset;
     };
 
-    //Pulls some chunk of data out of each element in a MeshDataSource.
-    //The MeshDataSource is referenced by an index.
+    //Pulls some chunk of data (usually a vector of floats) out of each element
+    //    in a MeshDataSource.
     struct BP_API VertexDataField
     {
-        //The MeshDataSource this field pulls from, by its index in the list.
+        //The buffer this field pulls from, as its index in a list of MeshDataSources.
         size_t MeshDataSourceIndex;
         //The size of this field, in bytes.
+        //For example, a vec3 field would be "3*sizeof(float)".
         size_t FieldByteSize;
         //The offset of this field from the beginning of its struct, in bytes.
+        //For example, the offset of "Pos" in an array of "struct Vertex{ vec4 Color, vec3 Pos }"
+        //    is "offsetof(Vertex, Pos)" (i.e. "4*sizeof(float)").
         size_t FieldByteOffset;
-        //Describes the actual type of this field, as well as
-        //    the type it appears to be in the shader.
+        //Describes the actual type of this field in the buffer, as well as
+        //    the type it appears as in the shader.
         VertexData::Type FieldType;
 
         //If 0, this data is regular old per-vertex data.
@@ -57,6 +65,33 @@ namespace Bplus::GL::Buffers
         UInt32 = GL_UNSIGNED_INT
     );
 
+    //The different kinds of shapes that a mesh can be built from.
+    BETTER_ENUM(PrimitiveTypes, GLenum,
+        //Each vertex is a screen-space square.
+        Point = GL_POINTS,
+        //Each pair of vertices is a line.
+        //If an extra vertex is at the end of the mesh, it's ignored.
+        Line = GL_LINES,
+        //Each triplet of vertices is a triangle.
+        //If one or two extra vertices are at the end of the mesh, they're ignored.
+        Triangle = GL_TRIANGLES,
+
+        //Each vertex creates a line reaching forward to the next vertex.
+        //If there's only one vertex, no lines are created.
+        LineStripOpen = GL_LINE_STRIP,
+        //Each vertex creates a line reaching forward to the next vertex.
+        //The last vertex reaches back to the first vertex, creating a closed loop.
+        //If there's only one vertex, no lines are created.
+        LineStripClosed = GL_LINE_LOOP,
+
+        //Each new vertex creates a triangle with its two previous vertices.
+        //If there's only one or two vertices, no triangles are created.
+        TriangleStrip = GL_TRIANGLE_STRIP,
+        //Each new vertex creates a triangle with its previous vertex plus the first vertex.
+        //If there's only one or two vertices, no triangles are created.
+        TriangleFan = GL_TRIANGLE_FAN
+    );
+
 
     //A renderable 3D model, or "mesh", made from multiple data sources
     //    spread across some number of Buffers.
@@ -65,16 +100,21 @@ namespace Bplus::GL::Buffers
     {
     public:
 
+        PrimitiveTypes PrimitiveType;
+
+
         //Creates an indexed mesh.
-        MeshData(const MeshDataSource& indexData, IndexDataTypes indexType,
+        MeshData(PrimitiveTypes type,
+                 const MeshDataSource& indexData, IndexDataTypes indexType,
                  const std::vector<MeshDataSource>& vertexBuffers,
                  const std::vector<VertexDataField>& vertexData)
-            : MeshData(indexType, std::make_optional(indexData),
+            : MeshData(type, indexType, std::make_optional(indexData),
                        vertexBuffers, vertexData) { }
         //Creates a non-indexed mesh.
-        MeshData(const std::vector<MeshDataSource>& vertexBuffers,
+        MeshData(PrimitiveTypes type,
+                 const std::vector<MeshDataSource>& vertexBuffers,
                  const std::vector<VertexDataField>& vertexData)
-            : MeshData(IndexDataTypes::UInt8, std::nullopt,
+            : MeshData(type, IndexDataTypes::UInt8, std::nullopt,
                        vertexBuffers, vertexData) { }
 
         ~MeshData();
@@ -107,13 +147,26 @@ namespace Bplus::GL::Buffers
 
         OglPtr::Mesh GetOglPtr() const { return glPtr; }
 
+        bool HasIndexData() const { return indexData.has_value(); }
+        std::optional<MeshDataSource> GetIndexData() const;
+        std::optional<IndexDataTypes> GetIndexDataType() const;
+
+        void GetVertexData(std::vector<MeshDataSource>& outSources,
+                           std::vector<VertexDataField>& outData) const;
+
+
         void SetIndexData(const MeshDataSource& indexData, IndexDataTypes type);
         void RemoveIndexData();
 
-        //TODO: More methods to change mesh data (if OpenGL allows), or get/set mesh primitive type.
+        //TODO: More methods to change mesh data
 
 
     private:
+
+        //Internally, Buffers are stored by their OpenGL pointer,
+        //    so that they aren't tied to a specific location in memory
+        //    (otherwise we could get undefined behavior when e.x. an STL container moves the Buffer).
+        //The Buffer class provides a static function to get a buffer by its ID, so this is fine.
 
         struct MeshDataSource_Impl
         {
@@ -131,7 +184,7 @@ namespace Bplus::GL::Buffers
         std::vector<VertexDataField> vertexData;
 
 
-        MeshData(IndexDataTypes indexType,
+        MeshData(PrimitiveTypes primType, IndexDataTypes indexType,
                  const std::optional<MeshDataSource>& indexData,
                  const std::vector<MeshDataSource>& vertexBuffers,
                  const std::vector<VertexDataField>& vertexData);

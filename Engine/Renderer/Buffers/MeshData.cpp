@@ -7,12 +7,13 @@ using namespace Bplus::GL::Buffers;
 //TODO: Add Debug-mode code to ensure buffers aren't destroyed before the MeshData instance.
 
 
-MeshData::MeshData(IndexDataTypes _indexType,
+MeshData::MeshData(PrimitiveTypes primType, IndexDataTypes _indexType,
                    const std::optional<MeshDataSource>& _indexData,
                    const std::vector<MeshDataSource>& _vertexBuffers,
                    const std::vector<VertexDataField>& _vertexData)
     : glPtr(GlCreate(glCreateVertexArrays)),
-      indexDataType(_indexType), vertexData(_vertexData)
+      indexDataType(_indexType), vertexData(_vertexData),
+      PrimitiveType(primType)
 {
     //Set the vertex and index data sources.
     if (_indexData.has_value())
@@ -28,7 +29,7 @@ MeshData::MeshData(IndexDataTypes _indexType,
                                       vertexBufferSrc.InitialByteOffset });
     }
 
-    //Configure the vertex and index buffers in OpenGL.
+    //Configure the index buffer in OpenGL.
     if (indexData.has_value())
     {
         glVertexArrayElementBuffer(glPtr.Get(), indexData.value().Buf.Get());
@@ -116,4 +117,47 @@ MeshData::~MeshData()
         glDeleteVertexArrays(1, &glPtr.Get());
 }
 
-//TODO: Implement SetIndexData, RemoveIndexData.
+
+void MeshData::RemoveIndexData()
+{
+    indexData = std::nullopt;
+    glVertexArrayElementBuffer(glPtr.Get(),
+                               Bplus::GL::OglPtr::Buffer::null);
+}
+void MeshData::SetIndexData(const MeshDataSource& _indexData, IndexDataTypes type)
+{
+    indexData = { _indexData.Buf->GetOglPtr(),
+                  _indexData.DataStructSize,
+                  _indexData.InitialByteOffset };
+    indexDataType = type;
+
+    glVertexArrayElementBuffer(glPtr.Get(),
+                               indexData.has_value() ?
+                                   indexData.value().Buf.Get() :
+                                   OglPtr::Buffer::null);
+}
+
+std::optional<MeshDataSource> MeshData::GetIndexData() const
+{
+    return HasIndexData() ?
+               std::make_optional(MeshDataSource{ Buffer::Find(indexData.value().Buf),
+                                                  indexData.value().DataStructSize,
+                                                  indexData.value().InitialByteOffset }) :
+               std::nullopt;
+}
+std::optional<IndexDataTypes> MeshData::GetIndexDataType() const
+{
+    return HasIndexData() ? std::make_optional(indexDataType) : std::nullopt;
+}
+
+void MeshData::GetVertexData(std::vector<MeshDataSource>& outSources,
+                             std::vector<VertexDataField>& outData) const
+{
+    for (const auto& dataSource : vertexDataSources)
+    {
+        outSources.push_back({ Buffer::Find(dataSource.Buf),
+                               dataSource.DataStructSize, dataSource.InitialByteOffset });
+    }
+
+    outData.insert(outData.end(), vertexData.begin(), vertexData.end());
+}
