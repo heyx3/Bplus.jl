@@ -33,11 +33,15 @@ constexpr inline bool BPIsDebug =
 #pragma endregion
 
 
+//This macro technically counts as an expression or statement, but does nothing.
+//This can prevent compiler warnings about empty code blocks.
+#define BP_NOOP (void)0
+
 //Custom assert macro that can be configured by users of this engine.
 //Doesn't do anything in release builds.
 //TODO: Switch from plain C-style string to a std::string.
 #define BPAssert(expr, msg) \
-    BPRelease((void)0) \
+    BPRelease(BP_NOOP) \
     BPDebug(Bplus::GetAssertFunc()(expr, msg))
 
 namespace Bplus

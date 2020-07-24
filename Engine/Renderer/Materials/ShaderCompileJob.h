@@ -8,11 +8,11 @@
 
 namespace Bplus::GL
 {
-    //A function that can read a file and append its contents to the given string,
+    //A function that can read a file and write its contents to the given buffer,
     //    returning whether the file was successfully loaded.
     //Used to implement "include" statements in shader code.
-    using FileContentsAppender = bool(const std::filesystem::path& file,
-                                      std::string& output);
+    using FileContentsLoader = bool(const fs::path& file,
+                                    std::stringstream& output);
 
     //An implementation of "include" statements for shaders, for the most common use-case:
     //    loading the files from disk with a relative path,
@@ -21,34 +21,34 @@ namespace Bplus::GL
     {
     public:
 
-        using Cache_t = std::unordered_map<std::filesystem::path, std::string>;
+        using Cache_t = std::unordered_map<std::string, std::string>;
 
 
-        ShaderIncluderFromFiles(std::filesystem::path _relativePath) : relativePath(_relativePath) { }
+        ShaderIncluderFromFiles(fs::path _relativePath) : relativePath(_relativePath) { }
 
 
-        std::filesystem::path GetRelativePath() const { return relativePath; }        
-        void SetRelativePath(const std::filesystem::path& newPath) { relativePath = newPath; }
+        fs::path GetRelativePath() const { return relativePath; }        
+        void SetRelativePath(const fs::path& newPath) { relativePath = newPath; }
 
         const Cache_t& GetCache() const { return fileCache; }
         void ClearCache() { fileCache.clear(); }
-        void SetCacheEntry(const std::filesystem::path& relativePath, const std::string& contents);
+        void SetCacheEntry(const fs::path& relativePath, const std::string& contents);
 
         
-        std::filesystem::path ToFullPath(const std::filesystem::path& relativePath) const;
+        std::string ToFullPath(const fs::path& relativePath) const;
 
         //Reads the file from the given path and returns it.
         //Returns nothing if the file couldn't be loaded.
-        std::optional<std::string> GetFile(const std::filesystem::path& relativePath);
+        std::optional<std::string> GetFile(const fs::path& relativePath);
 
         //Reads the file from the given path and appends its contents to the given buffer.
         //Returns whether the file was successfully loaded.
-        bool GetFile(const std::filesystem::path& relativePath, std::string& output);
+        bool GetFile(const fs::path& relativePath, std::stringstream& output);
 
 
     private:
 
-        std::filesystem::path relativePath;
+        fs::path relativePath;
         Cache_t fileCache;
     };
 
@@ -59,6 +59,12 @@ namespace Bplus::GL
     {
     public:
         
+        //A cap on the number of includes that one file can make,
+        //    to prevent infinite loops.
+        //Starts at 100; feel free to increase this value if necessary.
+        static size_t MaxIncludesPerFile;
+
+
         //Gets a compiled binary blob of the given shader program.
         //This blob should replace the need for compilation,
         //    at least until the user's hardware/drivers change.
@@ -74,7 +80,7 @@ namespace Bplus::GL
         
         //Given a "#pragma include(...)" statement in the GLSL, this function should
         //    load that "file" and append it to the given output string.
-        std::function<FileContentsAppender> IncludeImplementation;
+        std::function<FileContentsLoader> IncludeImplementation;
 
         //If non-empty, this is a pre-compiled binary blob representing this shader.
         //This blob will be attempted to 
@@ -86,6 +92,11 @@ namespace Bplus::GL
         void PreProcessIncludes(std::string& sourceStr) const;
 
         //Compiles this program into an OpenGL object and returns it.
-        OglPtr::ShaderProgram Compile() const;
+        //This will do some in-place pre-processing of the shader source strings,
+        //    which is why this is non-const.
+        //If something went wrong, an error message will be returned.
+        //Otherwise, the empty string will be returned.
+        //Note that line numbers may be wrong due to "include" statements.
+        std::string Compile(OglPtr::ShaderProgram& outPtr);
     };
 }
