@@ -230,7 +230,7 @@ namespace Bplus::GL::Textures
         //Given a set of components for texture uploading/downloading,
         //    and the data type of this texture's pixels,
         //    finds the corresponding OpenGL enum value.
-        GLenum GetOglChannels(ComponentData components) const
+        GLenum GetOglChannels(PixelIOChannels components) const
         {
             //If the pixel format isn't integer (i.e. it's float or normalized integer),
             //    we can directly use the enum values.
@@ -239,14 +239,14 @@ namespace Bplus::GL::Textures
                 return (GLenum)components;
             else switch (components)
             {
-                case ComponentData::Red: return GL_RED_INTEGER;
-                case ComponentData::Green: return GL_GREEN_INTEGER;
-                case ComponentData::Blue: return GL_BLUE_INTEGER;
-                case ComponentData::RG: return GL_RG_INTEGER;
-                case ComponentData::RGB: return GL_RGB_INTEGER;
-                case ComponentData::BGR: return GL_BGR_INTEGER;
-                case ComponentData::RGBA: return GL_RGBA_INTEGER;
-                case ComponentData::BGRA: return GL_BGRA_INTEGER;
+                case PixelIOChannels::Red: return GL_RED_INTEGER;
+                case PixelIOChannels::Green: return GL_GREEN_INTEGER;
+                case PixelIOChannels::Blue: return GL_BLUE_INTEGER;
+                case PixelIOChannels::RG: return GL_RG_INTEGER;
+                case PixelIOChannels::RGB: return GL_RGB_INTEGER;
+                case PixelIOChannels::BGR: return GL_BGR_INTEGER;
+                case PixelIOChannels::RGBA: return GL_RGBA_INTEGER;
+                case PixelIOChannels::BGRA: return GL_BGRA_INTEGER;
 
                 default:
                     std::string msg = "Unexpected data component type: ";
@@ -297,27 +297,28 @@ namespace Bplus::GL::Textures
             return type;
         }
 
-        //Given a number of dimensions, and a switch for reversed (BGR) ordering,
-        //    finds the corresponding enum value representing component ordering
-        //    for texture upload/download.
+        //Given a number of channels, and a switch for reversed (BGR) ordering,
+        //    finds the corresponding enum value for pixel data IO.
+        //Assumes by default that single-channel data is Red.
         template<glm::length_t L>
-        ComponentData GetComponents(bool bgrOrdering) const
+        PixelIOChannels GetComponents(bool bgrOrdering,
+                                      PixelIOChannels valueFor1D = PixelIOChannels::Red) const
         {
             if constexpr (L == 1) {
-                return ComponentData::Greyscale;
+                return PixelIOChannels::Red;
             } else if constexpr (L == 2) {
-                return ComponentData::RG;
+                return PixelIOChannels::RG;
             } else if constexpr (L == 3) {
                 return (bgrOrdering ?
-                            ComponentData::BGR :
-                            ComponentData::RGB);
+                            PixelIOChannels::BGR :
+                            PixelIOChannels::RGB);
             } else if constexpr (L == 4) {
                 return (bgrOrdering ?
-                            ComponentData::BGRA :
-                            ComponentData::RGBA);
+                            PixelIOChannels::BGRA :
+                            PixelIOChannels::RGBA);
             } else {
                 static_assert(false, "L should be between 1 and 4");
-                return ComponentData::Greyscale;
+                return PixelIOChannels::Greyscale;
             }
         }
 

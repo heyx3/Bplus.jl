@@ -22,7 +22,8 @@ namespace Bplus::GL::Textures
 
     //Subsets of color channels when uploading/downloading pixel data,
     //    in byte order.
-    BETTER_ENUM(ComponentData, GLenum,
+    //TODO: Rename "PixelIOChannels"
+    BETTER_ENUM(PixelIOChannels, GLenum,
         Red = GL_RED,
         Green = GL_GREEN,
         Blue = GL_BLUE,
@@ -32,8 +33,8 @@ namespace Bplus::GL::Textures
         RGBA = GL_RGBA,
         BGRA = GL_BGRA
     );
-    uint8_t BP_API GetNChannels(ComponentData data);
-    bool BP_API UsesChannel(ComponentData components, ColorChannels channel);
+    uint8_t BP_API GetNChannels(PixelIOChannels data);
+    bool BP_API UsesChannel(PixelIOChannels components, ColorChannels channel);
 
     //The different modes that an ImgView can be used in.
     BETTER_ENUM(ImageAccessModes, GLenum,
@@ -199,6 +200,6 @@ namespace Bplus::GL::Textures
 }
 
 //Allow enums in this file to be hashed, for use in STL collections.
-BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::ComponentData);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::PixelIOChannels);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::Types);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::ImageAccessModes);

@@ -19,26 +19,26 @@ using namespace Bplus::GL::Textures;
 
 namespace
 {
-    bool _StoresChannel(FormatComponents components, AllChannels channel)
+    bool _StoresChannel(SimpleFormatComponents components, AllChannels channel)
     {
         switch (components)
         {
-            case FormatComponents::R:
+            case SimpleFormatComponents::R:
                 return channel == +AllChannels::Red;
-            case FormatComponents::RG:
+            case SimpleFormatComponents::RG:
                 return (channel == +AllChannels::Red) |
                        (channel == +AllChannels::Green);
-            case FormatComponents::RGB:
+            case SimpleFormatComponents::RGB:
                 return (channel == +AllChannels::Red) |
                        (channel == +AllChannels::Green) |
                        (channel == +AllChannels::Blue);
-            case FormatComponents::RGBA:
+            case SimpleFormatComponents::RGBA:
                 return (channel == +AllChannels::Red) |
                        (channel == +AllChannels::Green) |
                        (channel == +AllChannels::Blue) |
                        (channel == +AllChannels::Alpha);
 
-            SWITCH_DEFAULT(FormatComponents, components)
+            SWITCH_DEFAULT(SimpleFormatComponents, components)
                 return false;
         }
     }
@@ -356,13 +356,13 @@ bool Format::StoresChannel(AllChannels c) const
             case SpecialFormats::RGB_SharedExpFloats:
             case SpecialFormats::RGB_TinyFloats:
             case SpecialFormats::sRGB:
-                return _StoresChannel(FormatComponents::RGB, c);
+                return _StoresChannel(SimpleFormatComponents::RGB, c);
 
             case SpecialFormats::RGB10_A2:
             case SpecialFormats::RGB10_A2_UInt:
             case SpecialFormats::RGB5_A1:
             case SpecialFormats::sRGB_LinearAlpha:
-                return _StoresChannel(FormatComponents::RGBA, c);
+                return _StoresChannel(SimpleFormatComponents::RGBA, c);
 
             SWITCH_DEFAULT(SpecialFormats, AsSpecial())
                 return false;
@@ -370,27 +370,27 @@ bool Format::StoresChannel(AllChannels c) const
     }
     else if (IsCompressed())
     {
-        FormatComponents components;
+        SimpleFormatComponents components;
         switch (AsCompressed())
         {
             case CompressedFormats::Greyscale_NormalizedUInt:
             case CompressedFormats::Greyscale_NormalizedInt:
-                components = FormatComponents::R;
+                components = SimpleFormatComponents::R;
                 break;
 
             case CompressedFormats::RG_NormalizedUInt:
             case CompressedFormats::RG_NormalizedInt:
-                components = FormatComponents::RG;
+                components = SimpleFormatComponents::RG;
                 break;
 
             case CompressedFormats::RGB_Float:
             case CompressedFormats::RGB_UFloat:
-                components = FormatComponents::RGB;
+                components = SimpleFormatComponents::RGB;
                 break;
 
             case CompressedFormats::RGBA_NormalizedUInt:
             case CompressedFormats::RGBA_sRGB_NormalizedUInt:
-                components = FormatComponents::RGBA;
+                components = SimpleFormatComponents::RGBA;
                 break;
 
             SWITCH_DEFAULT(CompressedFormats, AsCompressed())
@@ -415,6 +415,15 @@ bool Format::StoresChannel(AllChannels c) const
         BPAssert(false, errMsg.c_str());
         return false;
     }
+}
+uint8_t Format::GetNChannels() const
+{
+    return (StoresChannel(AllChannels::Red) ? 1 : 0) +
+           (StoresChannel(AllChannels::Blue) ? 1 : 0) +
+           (StoresChannel(AllChannels::Green) ? 1 : 0) +
+           (StoresChannel(AllChannels::Alpha) ? 1 : 0) +
+           (StoresChannel(AllChannels::Depth) ? 1 : 0) +
+           (StoresChannel(AllChannels::Stencil) ? 1 : 0);
 }
 
 uint_fast8_t Format::GetChannelBitSize(std::optional<AllChannels> channel) const
@@ -455,12 +464,12 @@ uint_fast8_t Format::GetChannelBitSize(std::optional<AllChannels> channel) const
             COMPUTE_SEPARATE_OUTPUT("RGB_TinyFloats", 11, 11, 10, 0, 0, 0)
 
         case SpecialFormats::sRGB:
-            if (!channel.has_value() || _StoresChannel(FormatComponents::RGB, channel.value()))
+            if (!channel.has_value() || _StoresChannel(SimpleFormatComponents::RGB, channel.value()))
                 return 8;
             else
                 return 0;
         case SpecialFormats::sRGB_LinearAlpha:
-            if (!channel.has_value() || _StoresChannel(FormatComponents::RGBA, channel.value()))
+            if (!channel.has_value() || _StoresChannel(SimpleFormatComponents::RGBA, channel.value()))
                 return 8;
             else
                 return 0;
@@ -481,28 +490,28 @@ uint_fast8_t Format::GetChannelBitSize(std::optional<AllChannels> channel) const
     {
         case CompressedFormats::Greyscale_NormalizedUInt:
         case CompressedFormats::Greyscale_NormalizedInt:
-            if (!channel.has_value() || _StoresChannel(FormatComponents::R, channel.value()))
+            if (!channel.has_value() || _StoresChannel(SimpleFormatComponents::R, channel.value()))
                 return 64 / (4 * 4);
             else
                 return 0;
 
         case CompressedFormats::RG_NormalizedUInt:
         case CompressedFormats::RG_NormalizedInt:
-            if (!channel.has_value() || _StoresChannel(FormatComponents::RG, channel.value()))
+            if (!channel.has_value() || _StoresChannel(SimpleFormatComponents::RG, channel.value()))
                 return 2 * (64 / (4 * 4));
             else
                 return 0;
 
         case CompressedFormats::RGB_Float:
         case CompressedFormats::RGB_UFloat:
-            if (!channel.has_value() || _StoresChannel(FormatComponents::RGBA, channel.value()))
+            if (!channel.has_value() || _StoresChannel(SimpleFormatComponents::RGBA, channel.value()))
                 return 8;
             else
                 return 0;
 
         case CompressedFormats::RGBA_NormalizedUInt:
         case CompressedFormats::RGBA_sRGB_NormalizedUInt:
-            if (!channel.has_value() || _StoresChannel(FormatComponents::RGBA, channel.value()))
+            if (!channel.has_value() || _StoresChannel(SimpleFormatComponents::RGBA, channel.value()))
                 return 8;
             else
                 return 0;
@@ -678,11 +687,11 @@ GLenum Format::GetOglEnum() const
         #define SWITCH_COMPONENTS(r, rg, rgb, rgba) \
             switch (_data.Components) \
             { \
-                case FormatComponents::R:    { r }    break; \
-                case FormatComponents::RG:   { rg }   break; \
-                case FormatComponents::RGB:  { rgb }  break; \
-                case FormatComponents::RGBA: { rgba } break; \
-                SWITCH_DEFAULT(FormatComponents, _data.Components) return GL_NONE; \
+                case SimpleFormatComponents::R:    { r }    break; \
+                case SimpleFormatComponents::RG:   { rg }   break; \
+                case SimpleFormatComponents::RGB:  { rgb }  break; \
+                case SimpleFormatComponents::RGBA: { rgba } break; \
+                SWITCH_DEFAULT(SimpleFormatComponents, _data.Components) return GL_NONE; \
             }
         
         #define SWITCH_TYPES(flt, normUint, normInt, uint_, int_) \
@@ -699,9 +708,9 @@ GLenum Format::GetOglEnum() const
 
         switch (_data.ChannelBitSize)
         {
-            case BitDepths::B2:
+            case SimpleFormatBitDepths::B2:
                 if (_data.Type == +FormatTypes::NormalizedUInt &&
-                    _data.Components == +FormatComponents::RGBA)
+                    _data.Components == +SimpleFormatComponents::RGBA)
                 {
                     return GL_RGBA2;
                 }
@@ -710,14 +719,14 @@ GLenum Format::GetOglEnum() const
                     return GL_NONE;
                 }
 
-            case BitDepths::B4:
+            case SimpleFormatBitDepths::B4:
                 if (_data.Type == +FormatTypes::NormalizedUInt)
                     SWITCH_COMPONENTS(R(GL_NONE), R(GL_NONE), R(GL_RGB4), R(GL_RGBA4))
                 else
                     return GL_NONE;
 
-            case BitDepths::B5:
-                if (_data.Components == +FormatComponents::RGB &&
+            case SimpleFormatBitDepths::B5:
+                if (_data.Components == +SimpleFormatComponents::RGB &&
                     _data.Type == +FormatTypes::NormalizedUInt)
                 {
                     return GL_RGB5;
@@ -727,7 +736,7 @@ GLenum Format::GetOglEnum() const
                     return GL_NONE;
                 }
 
-            case BitDepths::B8:
+            case SimpleFormatBitDepths::B8:
                 SWITCH_TYPES(R(GL_NONE),
                              SWITCH_COMPONENTS(R(GL_R8), R(GL_RG8), R(GL_RGB8), R(GL_RGBA8)),
                              SWITCH_COMPONENTS(R(GL_R8_SNORM), R(GL_RG8_SNORM),
@@ -737,8 +746,8 @@ GLenum Format::GetOglEnum() const
                              SWITCH_COMPONENTS(R(GL_R8I), R(GL_RG8I),
                                                R(GL_RGB8I), R(GL_RGBA8I)))
 
-            case BitDepths::B10:
-                if (_data.Components == +FormatComponents::RGB &&
+            case SimpleFormatBitDepths::B10:
+                if (_data.Components == +SimpleFormatComponents::RGB &&
                     _data.Type == +FormatTypes::NormalizedUInt)
                 {
                     return GL_RGB10;
@@ -748,13 +757,13 @@ GLenum Format::GetOglEnum() const
                     return GL_NONE;
                 }
 
-            case BitDepths::B12:
+            case SimpleFormatBitDepths::B12:
                 if (_data.Type == +FormatTypes::NormalizedUInt)
                     SWITCH_COMPONENTS(R(GL_NONE), R(GL_NONE), R(GL_RGB12), R(GL_RGBA12))
                 else
                     return GL_NONE;
 
-            case BitDepths::B16:
+            case SimpleFormatBitDepths::B16:
                 SWITCH_TYPES(SWITCH_COMPONENTS(R(GL_R16F), R(GL_RG16F),
                                                R(GL_RGB16F), R(GL_RGBA16F)),
                              SWITCH_COMPONENTS(R(GL_R16), R(GL_RG16),
@@ -766,7 +775,7 @@ GLenum Format::GetOglEnum() const
                              SWITCH_COMPONENTS(R(GL_R16I), R(GL_RG16I),
                                                R(GL_RGB16I), R(GL_RGBA16I)))
 
-            case BitDepths::B32:
+            case SimpleFormatBitDepths::B32:
                 SWITCH_TYPES(SWITCH_COMPONENTS(R(GL_R32F), R(GL_RG32F),
                                                R(GL_RGB32F), R(GL_RGBA32F)),
                              R(GL_NONE), R(GL_NONE),
@@ -776,7 +785,7 @@ GLenum Format::GetOglEnum() const
                                                R(GL_RGB32I), R(GL_RGBA32I)))
 
 
-            SWITCH_DEFAULT(BitDepths, _data.ChannelBitSize)
+            SWITCH_DEFAULT(SimpleFormatBitDepths, _data.ChannelBitSize)
                 return GL_NONE;
         }
 

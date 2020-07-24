@@ -4,54 +4,54 @@ using namespace Bplus;
 using namespace Bplus::GL;
 using namespace Bplus::GL::Textures;
 
-uint8_t Bplus::GL::Textures::GetNChannels(ComponentData data)
+uint8_t Bplus::GL::Textures::GetNChannels(PixelIOChannels data)
 {
     switch (data)
     {
-        case ComponentData::Red:
-        case ComponentData::Green:
-        case ComponentData::Blue:
+        case PixelIOChannels::Red:
+        case PixelIOChannels::Green:
+        case PixelIOChannels::Blue:
             return 1;
 
-        case ComponentData::RG:
+        case PixelIOChannels::RG:
             return 2;
 
-        case ComponentData::RGB:
-        case ComponentData::BGR:
+        case PixelIOChannels::RGB:
+        case PixelIOChannels::BGR:
             return 3;
 
-        case ComponentData::RGBA:
-        case ComponentData::BGRA:
+        case PixelIOChannels::RGBA:
+        case PixelIOChannels::BGRA:
             return 4;
 
         default:
-            std::string errMsg = "Unknown :  Bplus::GL::Textures::ComponentData.";
+            std::string errMsg = "Unknown :  Bplus::GL::Textures::PixelIOChannels.";
             errMsg += data._to_string();
             BPAssert(false, errMsg.c_str());
             return 0;
     }
 }
-bool Bplus::GL::Textures::UsesChannel(ComponentData components, ColorChannels channel)
+bool Bplus::GL::Textures::UsesChannel(PixelIOChannels components, ColorChannels channel)
 {
     switch (components)
     {
-        case ComponentData::Red: return channel == +ColorChannels::Red;
-        case ComponentData::Green: return channel == +ColorChannels::Green;
-        case ComponentData::Blue: return channel == +ColorChannels::Blue;
+        case PixelIOChannels::Red: return channel == +ColorChannels::Red;
+        case PixelIOChannels::Green: return channel == +ColorChannels::Green;
+        case PixelIOChannels::Blue: return channel == +ColorChannels::Blue;
 
-        case ComponentData::RG: return channel == +ColorChannels::Red ||
+        case PixelIOChannels::RG: return channel == +ColorChannels::Red ||
                                        channel == +ColorChannels::Green;
 
-        case ComponentData::RGB:
-        case ComponentData::BGR:
+        case PixelIOChannels::RGB:
+        case PixelIOChannels::BGR:
             return channel != +ColorChannels::Alpha;
 
-        case ComponentData::RGBA:
-        case ComponentData::BGRA:
+        case PixelIOChannels::RGBA:
+        case PixelIOChannels::BGRA:
             return true;
 
         default:
-            std::string errMsg = "Unknown :  Bplus::GL::Textures::ComponentData.";
+            std::string errMsg = "Unknown :  Bplus::GL::Textures::PixelIOChannels.";
             errMsg += components._to_string();
             BPAssert(false, errMsg.c_str());
             return 0;

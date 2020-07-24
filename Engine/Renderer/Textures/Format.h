@@ -31,9 +31,9 @@ namespace Bplus::GL::Textures
 
 
     #pragma region SimpleFormat
-
+    
     //The sets of components that can be stored in various texture formats.
-    BETTER_ENUM(FormatComponents, uint8_t,
+    BETTER_ENUM(SimpleFormatComponents, uint8_t,
         R = 1,
         RG = 2,
         RGB = 3,
@@ -43,7 +43,7 @@ namespace Bplus::GL::Textures
     //The sets of bit-depths that components can have in various texture formats.
     //Note that not all combinations of bit depth and channels/types are legal
     //    (for example, 2-bit components are only allowed if you use all four RGBA channels).
-    BETTER_ENUM(BitDepths, uint8_t,
+    BETTER_ENUM(SimpleFormatBitDepths, uint8_t,
         B2 = 2,
         B4 = 4,
         B5 = 5,
@@ -61,8 +61,8 @@ namespace Bplus::GL::Textures
     public:
 
         FormatTypes Type;
-        FormatComponents Components;
-        BitDepths ChannelBitSize;
+        SimpleFormatComponents Components;
+        SimpleFormatBitDepths ChannelBitSize;
 
         bool operator==(const SimpleFormat& other) const
         {
@@ -257,6 +257,8 @@ namespace Bplus::GL::Textures
 
         //Gets whether this format stores the given channel.
         bool StoresChannel(AllChannels c) const;
+        //Gets the number of channels this format uses.
+        uint8_t GetNChannels() const;
 
         //Gets the number of bits for each channel in this format.
         //If a channel isn't given, assumes the channels are all the same bit-size.

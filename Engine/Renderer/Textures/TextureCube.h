@@ -285,7 +285,7 @@ namespace Bplus::GL::Textures
         //Note that the upload to the GPU will be slower if
         //    the data doesn't exactly match the texture's pixel format.
         template<typename T>
-        void Set_Color(const T* data, ComponentData components,
+        void Set_Color(const T* data, PixelIOChannels components,
                        SetDataCubeParams optionalParams = { })
         {
             BPAssert(!GetFormat().IsCompressed(),
@@ -395,7 +395,7 @@ namespace Bplus::GL::Textures
         //Note that the download from the GPU will be slower if
         //    the data type doesn't exactly match the texture's pixel format.
         template<typename T>
-        void Get_Color(T* data, ComponentData components,
+        void Get_Color(T* data, PixelIOChannels components,
                        GetDataCubeParams optionalParams = { }) const
         {
             BPAssert(!GetFormat().IsDepthStencil(),

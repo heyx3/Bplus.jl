@@ -18,8 +18,8 @@ void TestTargetBasic()
         TEST_CASE("Creating textures");
         Texture2D tColor(glm::uvec2{ 25, 455 },
                          SimpleFormat{ FormatTypes::NormalizedUInt,
-                                       FormatComponents::RGBA,
-                                       BitDepths::B16 });
+                                       SimpleFormatComponents::RGBA,
+                                       SimpleFormatBitDepths::B16 });
         Texture2D tDepth(glm::uvec2{ 25, 455 },
                          Format{ DepthStencilFormats::Depth_32F });
 
@@ -48,7 +48,7 @@ void TestTargetBasic()
 
         TEST_CASE("Reading cleared depth value");
         float depthPixel = -999.0f;
-        tDepth.Get_Color(&depthPixel, ComponentData::Red,
+        tDepth.Get_Color(&depthPixel, PixelIOChannels::Red,
                          Bplus::GL::Textures::GetData2DParams(
                              Bplus::Math::Box2Du::MakeSize(glm::uvec2{ 1 })));
         TEST_CHECK_(depthPixel == clearDepth,
