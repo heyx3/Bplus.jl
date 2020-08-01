@@ -14,12 +14,9 @@ namespace Bplus
     {
         //Reference: https://stackoverflow.com/a/1001328
 
-        static_assert(sizeof(char) < sizeof(int),
-                      "Only works if int is larger than char");
-
-        int i = 1;
-        char* iBytes = (char*)(&i);
-        return (*iBytes) == 1;
+        uint32_t i = 1;
+        unsigned char* iBytes = (unsigned char*)(&i);
+        return iBytes[0] == 1;
     }
 
 

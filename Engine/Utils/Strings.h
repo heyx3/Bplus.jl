@@ -23,13 +23,13 @@ namespace Bplus::Strings
         //Get each bit from each byte and append its value into the string.
         const std::byte* valueBytes = (const std::byte*)&value;
         constexpr size_t nBytes = sizeof(UInt_t);
-        for (ptrdiff_t byteI = nBytes - 1; byteI >= 0; ++byteI)
+        for (size_t byteI = 0; byteI < nBytes; ++byteI)
         {
             auto byte = (uint_fast8_t)valueBytes[IsPlatformLittleEndian() ?
                                                      (nBytes - 1 - byteI) :
                                                      byteI];
 
-            for (uint_fast8_t bitI = 0; bitI < 8; ++bitI)
+            for (int_fast8_t bitI = 7; bitI >= 0; --bitI)
             {
                 auto bit = (byte >> bitI) & 1;
                 BPAssert(bit == 0 || bit == 1, "Bit is not a bit");
@@ -43,7 +43,7 @@ namespace Bplus::Strings
             //    in case the total value is 0!
             const size_t charI = prefix.size();
             while (charI < result.size() - 1 && result[charI] == '0')
-                result.erase(charI);
+                result.erase(charI, 1);
         }
 
         return result;
@@ -81,7 +81,7 @@ namespace Bplus::Strings
 
         //Insert the rest of the data.
         size_t startI = result.size();
-        result.resize(result.size() + nDigits + 1);
+        result.resize(result.size() + nDigits);
         size_t nActualDigits = snprintf(&result[startI], nDigits + 1,
                                         formatStr, value);
         BPAssert(nActualDigits <= nDigits, "nDigits estimate is too small in ToBaseString()");

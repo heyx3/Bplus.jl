@@ -11,6 +11,10 @@
 
 
 TEST_LIST = {
+    { "ToBaseString()", TestToBaseString },
+    { "Strings::StartsWith()", TestStringStartsWith },
+    { "Strings::EndsWith()", TestStringEndsWith },
+
     { "Toml basic tests",         TomlBasic      },
     { "Toml wrapping/unwrapping", TomlWrapping   },
     { "Toml <=> primitives",      TomlPrimitives },
@@ -26,6 +30,8 @@ TEST_LIST = {
     { "Bplus::GL::Texture get/set data", TextureSimpleGetSetData },
 
     { "Bplus::GL::Target basic usage", TestTargetBasic },
+
+    { "Shader #pragma include preprocessor", TestShaderIncludeCommand },
 
     { NULL, NULL }
 };
