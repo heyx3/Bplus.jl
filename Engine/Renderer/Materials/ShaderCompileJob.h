@@ -5,6 +5,8 @@
 
 #include "../Context.h"
 
+//TODO: Put shader stuff into its own namespace.
+
 
 namespace Bplus::GL
 {
@@ -13,6 +15,7 @@ namespace Bplus::GL
     //Used to implement "include" statements in shader code.
     using FileContentsLoader = bool(const fs::path& file,
                                     std::stringstream& output);
+
 
     //An implementation of "include" statements for shaders, for the most common use-case:
     //    loading the files from disk with a relative path,
@@ -53,24 +56,29 @@ namespace Bplus::GL
     };
 
 
+    //A binary blob representing a previously-compiled shader.
+    //You can usually cache these to avoid recompiling shaders.
+    struct BP_API PreCompiledShader
+    {
+        GLenum Header;
+        std::vector<std::byte> Data;
+
+        PreCompiledShader(OglPtr::ShaderProgram compiledShader);
+    };
+
+
     //A shader that can be loaded and compiled,
-    //    with a bit of pre-processing to support "#pragma include(...)" statements.
+    //    with a bit of pre-processing to support "#pragma include" statements.
+    //The file path in an include statement can use forward- or back-slashes,
+    //    and the path string can be surrounded by double-quotes or angle brackets.
     class BP_API ShaderCompileJob
     {
     public:
         
-        //A cap on the number of includes that one file can make,
+        //A cap on the number of '#pragma include' statements that one file can make,
         //    to prevent infinite loops.
         //Starts at 100; feel free to increase this value if necessary.
         static size_t MaxIncludesPerFile;
-
-
-        //Gets a compiled binary blob of the given shader program.
-        //This blob should replace the need for compilation,
-        //    at least until the user's hardware/drivers change.
-        //Returns true if it succeeded, or false if the program isn't valid.
-        static bool GetCompiledBinary(OglPtr::ShaderProgram program,
-                                      std::vector<std::byte>& outData);
 
 
         //Shader source codes (any empty ones are considered nonexistent):
@@ -78,13 +86,13 @@ namespace Bplus::GL
                     GeometrySrc;
         //TODO: ComputeSource?
         
-        //Given a "#pragma include(...)" statement in the GLSL, this function should
-        //    load that "file" and append it to the given output string.
+        //When a "#pragma include" statement appears in the shader code,
+        //    this function loads the file's contents.
         std::function<FileContentsLoader> IncludeImplementation;
 
-        //If non-empty, this is a pre-compiled binary blob representing this shader.
-        //This blob will be attempted to 
-        std::vector<std::byte> CachedBinaryProgram;
+        //A pre-compiled version of this shader which this instance can attempt to use first.
+        //The shader source code is still needed as a fallback.
+        std::optional<PreCompiledShader> CachedBinary;
 
 
         //Pre-processes the given shader source to execute any "#pragma include(...)" statements.
@@ -92,11 +100,13 @@ namespace Bplus::GL
         void PreProcessIncludes(std::string& sourceStr) const;
 
         //Compiles this program into an OpenGL object and returns it.
-        //This will do some in-place pre-processing of the shader source strings,
-        //    which is why this is non-const.
-        //If something went wrong, an error message will be returned.
-        //Otherwise, the empty string will be returned.
-        //Note that line numbers may be wrong due to "include" statements.
-        std::string Compile(OglPtr::ShaderProgram& outPtr);
+        //If the CachedBinary field exists but wasn't loaded successfully,
+        //    it will be modified to contain the new up-to-date compiled binaries.
+        //Additionally, the shader source strings in this instance
+        //    will be modifed by the pre-processor,
+        //    so that you can see what was actually compiled.
+        //Returns an error message (or an empty string on success),
+        //    plus a boolean indicating whether the CachedBinary field had to be modified.
+        std::tuple<std::string, bool> Compile(OglPtr::ShaderProgram& outPtr);
     };
 }

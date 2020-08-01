@@ -52,29 +52,21 @@ bool ShaderIncluderFromFiles::GetFile(const std::filesystem::path& relativePath,
 }
 
 
-size_t ShaderCompileJob::MaxIncludesPerFile = 100;
-
-bool ShaderCompileJob::GetCompiledBinary(OglPtr::ShaderProgram program,
-                                         std::vector<std::byte>& outBytes)
+PreCompiledShader::PreCompiledShader(OglPtr::ShaderProgram program)
 {
     GLint byteSize;
     glGetProgramiv(program.Get(), GL_PROGRAM_BINARY_LENGTH, &byteSize);
-    if (byteSize == 0)
-        return false;
+    BPAssert(byteSize > 0, "Program isn't successfully compiled");
 
-    size_t offset = outBytes.size();
-    outBytes.resize(outBytes.size() + byteSize);
-    GLenum format;
-    glGetProgramBinary(program.Get(), byteSize, nullptr, &format, &outBytes[offset]);
-
-    return true;
+    Data.resize(byteSize);
+    glGetProgramBinary(program.Get(), byteSize, nullptr, &Header, Data.data());
 }
+
+
+size_t ShaderCompileJob::MaxIncludesPerFile = 100;
 
 void ShaderCompileJob::PreProcessIncludes(std::string& sourceStr) const
 {
-    //TODO: write "#line 0 [n]" right above an include, and "#line [x] 0" right after the include ends.
-    //TODO: If the include fails, write "#error Couldn't load [path]"
-
     std::stringstream strBuffer;
 
     //Search the code sequentially, skipping over comments, until we find an include statement.
@@ -255,9 +247,153 @@ expected double-quote '\"' or angle-bracket '>' to close it";
     }
 }
 
-std::string ShaderCompileJob::Compile(OglPtr::ShaderProgram& outPtr)
-{
-    //TODO: Implement.
 
-    return "";
+namespace
+{
+    //A buffer used during shader compilation.
+    //Made thread_local so that shader compilation is thread-safe.
+    thread_local std::vector<char> compileErrorMsgBuffer;
+
+    //Attempts to compile the given shader program (vertex, or fragment, or compute, etc).
+    //Returns the error message, or an empty string if it was successful.
+    std::string TryCompile(GLuint shaderObject)
+    {
+        glCompileShader(shaderObject);
+
+        GLint isCompiled = 0;
+        glGetShaderiv(shaderObject, GL_COMPILE_STATUS, &isCompiled);
+        if (isCompiled == GL_FALSE)
+        {
+            GLint msgLength = 0;
+            glGetShaderiv(shaderObject, GL_INFO_LOG_LENGTH, &msgLength);
+
+            compileErrorMsgBuffer.resize(msgLength, '\0');
+            glGetShaderInfoLog(shaderObject, msgLength, &msgLength,
+                               compileErrorMsgBuffer.data());
+
+            return std::string(compileErrorMsgBuffer.data());
+        }
+
+        return "";
+    }
+}
+
+std::tuple<std::string, bool> ShaderCompileJob::Compile(OglPtr::ShaderProgram& outPtr)
+{
+    outPtr = OglPtr::ShaderProgram(glCreateProgram());
+
+    //Try to use the pre-compiled binary blob.
+    bool updateBinary = false;
+    if (CachedBinary.has_value())
+    {
+        glProgramBinary(outPtr.Get(), CachedBinary.value().Header,
+                        CachedBinary.value().Data.data(),
+                        (GLsizei)CachedBinary.value().Data.size());
+
+        GLint linkStatus;
+        glGetProgramiv(outPtr.Get(), GL_LINK_STATUS, &linkStatus);
+        if (linkStatus == GL_TRUE)
+            return std::make_tuple("", false);
+        else
+            updateBinary = true;
+    }
+
+    //Generate the OpenGL/extensions declarations for the top of the shader files.
+    std::string shaderPrefix = Context::GLSLVersion();
+    shaderPrefix += "\n";
+    for (auto extension : Context::GLSLExtensions())
+    {
+        shaderPrefix += extension;
+        shaderPrefix += "\n";
+    }
+
+    //Store per-shader information into an array for easier processing:
+    struct StageData {
+        std::string* Source;
+        const char* StageName;
+        GLenum Stage;
+        GLuint Handle;
+    };
+    std::vector<StageData> shaderTypes;
+    for (auto& dataSource : std::array{
+            StageData{ &VertexSrc,   "vertex",   GL_VERTEX_SHADER,   0 },
+            StageData{ &GeometrySrc, "geometry", GL_GEOMETRY_SHADER, 0 },
+            StageData{ &FragmentSrc, "fragment", GL_FRAGMENT_SHADER, 0 }
+         })
+    {
+        if (dataSource.Source->size() > 0)
+            shaderTypes.push_back(dataSource);
+    }
+
+    //For each shader type that was given, try to insert the header
+    //    if it doesn't exist already.
+    for (auto& shaderData : shaderTypes)
+    {
+        auto& shaderSrc = *shaderData.Source;
+        if (shaderSrc.size() < shaderPrefix.size() ||
+            shaderSrc.compare(0, shaderPrefix.size(), shaderPrefix) != 0)
+        {
+            shaderSrc.insert(0, shaderPrefix);
+        }
+    }
+
+    //Create and compile each shader type.
+    for (auto& shaderData : shaderTypes)
+    {
+        //Create the shader's OpenGL object.
+        shaderData.Handle = glCreateShader(shaderData.Stage);
+
+        //Set the source code.
+        auto* shaderSrcPtr = shaderData.Source->c_str();
+        glShaderSource(shaderData.Handle, 1, &shaderSrcPtr, nullptr);
+
+        //Try to compile it.
+        auto errorMsg = TryCompile(shaderData.Handle);
+        if (errorMsg.size() > 0)
+        {
+            errorMsg = std::string("Error compiling ") + shaderData.StageName +
+                          ": " + errorMsg;
+            return std::make_tuple(errorMsg, false);
+        }
+    }
+
+    //Next, link all the shaders together.
+    for (auto& shaderData : shaderTypes)
+        glAttachShader(outPtr.Get(), shaderData.Handle);
+    glLinkProgram(outPtr.Get());
+
+    //Clean up the shader objects.
+    //Note that they aren't actually deleted until the program itself is deleted,
+    //    or the shader objects are manually detatched from the program.
+    for (auto& shaderData : shaderTypes)
+        glDeleteShader(shaderData.Handle);
+
+    //Check the result of the link.
+    GLint isSuccessful = 0;
+    glGetProgramiv(outPtr.Get(), GL_LINK_STATUS, &isSuccessful);
+    if (isSuccessful == GL_FALSE)
+    {
+        GLint msgLength = 0;
+        glGetProgramiv(outPtr.Get(), GL_INFO_LOG_LENGTH, &msgLength);
+
+        std::vector<char> msgBuffer(msgLength);
+        glGetProgramInfoLog(outPtr.Get(), msgLength, &msgLength, msgBuffer.data());
+
+        glDeleteProgram(outPtr.Get());
+        outPtr = OglPtr::ShaderProgram::Null();
+        return std::make_tuple("Error linking shader stages together : " +
+                                   std::string(msgBuffer.data()),
+                               false);
+    }
+
+    //If the link was successful, we need to "detach" the shader objects
+    //    from the main program object, so that they can be cleaned up.
+    for (auto& shaderData : shaderTypes)
+        glDetachShader(outPtr.Get(), shaderData.Handle);
+
+    //Finally, update the cached binary if necessary.
+    if (updateBinary)
+        CachedBinary = { outPtr };
+
+    return std::make_tuple("", updateBinary);
 }
