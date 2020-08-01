@@ -5,6 +5,8 @@
 #include <string>
 
 
+//Ad-hoc/uncategorized helper functions.
+
 namespace Bplus
 {
     //Not defined in the standard before C++20...
@@ -18,17 +20,6 @@ namespace Bplus
         int i = 1;
         char* iBytes = (char*)(&i);
         return (*iBytes) == 1;
-    }
-
-
-    //How does C++ not have a modern "itoa" already?
-    template<typename Int_t>
-    std::string ToStringInBase(Int_t value, int base,
-                               const char* prefix = nullptr)
-    {
-        char buffer[32];
-        itoa(value, buffer, base);
-        return buffer;
     }
 
 
@@ -75,6 +66,7 @@ namespace Bplus
                 dest[i] = srcBytes[sizeof(T) - i - 1];
         }
     }
+
 
     template<typename T, size_t Size>
     std::array<T, Size> MakeArray(const T& fillValue)

@@ -13,6 +13,7 @@
 #include "Utils/StrongTypedef.h"
 #include "Utils/Lazy.h"
 #include "Utils/Bool.h"
+#include "Utils/Strings.h"
 #include "Utils/BPAssert.h"
 
 

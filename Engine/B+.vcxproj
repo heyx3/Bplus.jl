@@ -392,6 +392,7 @@ exit 0</Command>
     <ClCompile Include="Renderer\Textures\TextureCube.cpp" />
     <ClCompile Include="TomlIO.cpp" />
     <ClCompile Include="Utils\BPAssert.cpp" />
+    <ClCompile Include="Utils\Strings.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
@@ -442,6 +443,7 @@ exit 0</Command>
     <ClInclude Include="Utils\Functions.h" />
     <ClInclude Include="Utils\Hashing.h" />
     <ClInclude Include="Utils\Lazy.h" />
+    <ClInclude Include="Utils\Strings.h" />
     <ClInclude Include="Utils\StrongTypedef.h" />
   </ItemGroup>
   <ItemGroup>

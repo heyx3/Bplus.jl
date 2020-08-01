@@ -136,6 +136,9 @@
     <ClInclude Include="Renderer\Materials\ShaderCompileJob.h">
       <Filter>Renderer\Programs</Filter>
     </ClInclude>
+    <ClInclude Include="Utils\Strings.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
@@ -212,6 +215,9 @@
     </ClCompile>
     <ClCompile Include="Renderer\Materials\ShaderCompileJob.cpp">
       <Filter>Renderer\Programs</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils\Strings.cpp">
+      <Filter>Utils</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

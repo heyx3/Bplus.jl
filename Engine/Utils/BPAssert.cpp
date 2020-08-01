@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <cstdio>
+#include <exception>
 
 
 namespace
@@ -28,6 +29,7 @@ void Bplus::DefaultAssertFunc(bool expr, const char* msg)
         printf("\n");
 
         assert(false);
+        throw std::exception(msg);
     }
     else
     {

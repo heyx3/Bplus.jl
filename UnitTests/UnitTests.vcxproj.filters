@@ -26,5 +26,11 @@
       <Filter>Tests</Filter>
     </ClInclude>
     <ClInclude Include="SimpleApp.hpp" />
+    <ClInclude Include="Tests\ShaderCompilation.hpp">
+      <Filter>Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="Tests\Strings.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -39,4 +39,12 @@ namespace Bplus::Math
 
         return true;
     }
+
+    //Gets the log of some number 'x' in a desired base.
+    template<typename Float_t>
+    Float_t Log(Float_t x, Float_t base)
+    {
+        using std::log10;
+        return log10(x) / log10(base);
+    }
 }

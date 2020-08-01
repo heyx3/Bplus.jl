@@ -37,12 +37,16 @@ constexpr inline bool BPIsDebug =
 //This can prevent compiler warnings about empty code blocks.
 #define BP_NOOP (void)0
 
+//Runs the assertion check.
+#define BP_CHECK(expr, msg) Bplus::GetAssertFunc()(expr, msg)
+
+//Runs the assertion check in debug builds, but not in release builds.
 //Custom assert macro that can be configured by users of this engine.
 //Doesn't do anything in release builds.
 //TODO: Switch from plain C-style string to a std::string.
 #define BPAssert(expr, msg) \
     BPRelease(BP_NOOP) \
-    BPDebug(Bplus::GetAssertFunc()(expr, msg))
+    BPDebug(BP_CHECK(expr, msg))
 
 namespace Bplus
 {

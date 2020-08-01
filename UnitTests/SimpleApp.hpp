@@ -44,7 +44,7 @@ namespace Simple
 
             default:
                 sourceStr = "[error: unexpected source ";
-                sourceStr += Bplus::ToStringInBase(source, 16, "0x");
+                sourceStr += Bplus::Strings::ToBaseString(source, Bplus::Strings::NumberBases::Hex, "0x");
                 sourceStr += "]";
             break;
         }
@@ -66,7 +66,7 @@ namespace Simple
 
             default:
                 typeStr = "[error: unexpected event type ";
-                typeStr += Bplus::ToStringInBase(type, 16, "0x");
+                typeStr += Bplus::Strings::ToBaseString(type, Bplus::Strings::NumberBases::Hex, "0x");
                 typeStr += "]";
             break;
         }
@@ -83,7 +83,7 @@ namespace Simple
 
             default:
                 severityStr = "[error: unexpected severity ";
-                severityStr += Bplus::ToStringInBase(severity, 16, "0x");
+                severityStr += Bplus::Strings::ToBaseString(severity, Bplus::Strings::NumberBases::Hex, "0x");
                 severityStr += "]";
             break;
         }
