@@ -1,7 +1,43 @@
 #include "Context.h"
 
+#include "Buffers/MeshData.h"
+#include "Materials/CompiledShader.h"
+
 using namespace Bplus;
 using namespace Bplus::GL;
+using namespace Bplus::GL::Buffers;
+
+
+DrawMeshMode_Basic::DrawMeshMode_Basic(const Buffers::MeshData& mesh,
+                                       std::optional<uint32_t> _nElements)
+    : Data(mesh), Primitive(mesh.PrimitiveType)
+{
+    uint32_t nElements;
+    if (_nElements.has_value())
+        nElements = _nElements.value();
+    else
+    {
+        if (mesh.HasIndexData())
+        {
+            auto indexData = mesh.GetIndexData().value();
+            BPAssert(indexData.DataStructSize ==
+                         GetByteSize(mesh.GetIndexDataType().value()),
+                     "Listed byte-size of the data in the index buffer doesn't match the size expected by the mesh");
+
+            BPAssert(indexData.Buf->GetByteSize() % indexData.DataStructSize == 0,
+                     "Index buffer's size isn't divisible by the byte size of one element");
+            nElements = indexData.Buf->GetByteSize() / indexData.DataStructSize;
+        }
+        else
+        {
+            BPAssert(false,
+                     "Can't deduce the Count from a non-indexed MeshData automatically!\
+ This can be done, but it's complicated when per-instance data is involved so I didn't bother.");
+        }
+    }
+
+    Elements = Math::IntervalU::MakeSize(glm::uvec1{ nElements });
+}
 
 
 namespace
@@ -88,7 +124,7 @@ Context::~Context()
 void Context::RefreshState()
 {
     //A handful of features will be left enabled permanently for simplicity;
-    //    they can still be effectively disabled via their specific parameters.
+    //    many can still be effectively disabled via object-specific parameters.
     glEnable(GL_BLEND);
     glEnable(GL_STENCIL_TEST);
     //Depth-testing is particularly important to keep on, because disabling it
@@ -98,6 +134,9 @@ void Context::RefreshState()
     //    we don't bother with the global setting.
     //See https://www.khronos.org/opengl/wiki/Primitive#Point_primitives
     glEnable(GL_PROGRAM_POINT_SIZE);
+    //Don't force a "fixed index" for primitive restart;
+    //    this would only be useful for OpenGL ES compatibility.
+    glDisable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
     //Keep point sprite coordinates at their default origin: upper-left.
     glPointParameteri(GL_POINT_SPRITE_COORD_ORIGIN, GL_UPPER_LEFT);
 
@@ -218,6 +257,15 @@ void Context::SetState(const RenderState& newState)
 }
 
 
+void Context::SetActiveTarget(OglPtr::Target t)
+{
+    if (activeRT != t)
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, t.Get());
+        activeRT = t;
+    }
+}
+
 void Context::Clear(float r, float g, float b, float a)
 {
     glClearColor(r, g, b, a);
@@ -228,7 +276,6 @@ void Context::Clear(float depth)
     glClearDepth(depth);
     glClear(GL_DEPTH_BUFFER_BIT);
 }
-
 void Context::Clear(float r, float g, float b, float a, float depth)
 {
     glClearColor(r, g, b, a);
@@ -236,6 +283,44 @@ void Context::Clear(float r, float g, float b, float a, float depth)
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 }
 
+
+void Context::Draw(const MeshData& mesh, const CompiledShader& shader,
+                   DrawMeshMode_Basic params) const
+{
+    if (params.Count == 0)
+    {
+        if (mesh.HasIndexData())
+        {
+            auto indexData = mesh.GetIndexData().value();
+            BPAssert(indexData.DataStructSize ==
+                         GetByteSize(mesh.GetIndexDataType().value()),
+                     "Listed byte-size of the data in the index buffer doesn't match the size expected by the mesh");
+
+            BPAssert(indexData.Buf->GetByteSize() % indexData.DataStructSize == 0,
+                     "Index buffer's size isn't divisible by the byte size of one element");
+            params.Count = indexData.Buf->GetByteSize() / indexData.DataStructSize;
+        }
+        else
+        {
+            BPAssert(false,
+                     "Can't deduce the Count from a non-indexed MeshData automatically!\
+ This can be done, but it's complicated when per-instance data is involved so I didn't bother.");
+        }
+    }
+
+    if (mesh.HasIndexData())
+    {
+        auto indexType = mesh.GetIndexDataType().value();
+        glDrawElements(mesh.PrimitiveType._to_integral(), params.Count,
+                       indexType._to_integral(),
+                       (const void*)(GetByteSize(indexType) * params.FirstElementI));
+    }
+    else
+    {
+        glDrawArrays(mesh.PrimitiveType._to_integral(),
+                     params.FirstElementI, params.Count);
+    }
+}
 
 
 void Context::SetViewport(int minX, int minY, int width, int height)

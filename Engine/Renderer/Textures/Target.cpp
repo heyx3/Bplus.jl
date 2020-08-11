@@ -1,6 +1,7 @@
 #include "Target.h"
 
 #include "../Device.h"
+#include "../Context.h"
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -108,15 +109,59 @@ uint32_t TargetOutput::GetLayerCount() const
 }
 
 
-Target::Target(const glm::uvec2& _size, uint32_t nLayers)
-    : size(_size)
+namespace
 {
+    thread_local struct ThreadTargetData {
+        bool initializedYet = false;
+        std::unordered_map<OglPtr::Target, const Target*> targetsByOglPtr;
+    } threadData;
+
+    void CheckInit()
+    {
+        if (!threadData.initializedYet)
+        {
+            threadData.initializedYet = true;
+
+            std::function<void()> refreshContext = []()
+            {
+                //Nothing needs to be done right now,
+                //    but this is kept here just in case it becomes useful.
+                //TODO: Assert all Target instances still exist in OpenGL.
+            };
+            refreshContext();
+            Context::RegisterCallback_RefreshState(refreshContext);
+
+            Context::RegisterCallback_Destroyed([]()
+            {
+                //Make sure all targets have been cleaned up.
+                //TODO: Use OpenGL's debug utilities to give the targets names and provide more info here.
+                BPAssert(threadData.targetsByOglPtr.size() == 0,
+                         "Target memory leaks!");
+
+                threadData.targetsByOglPtr.clear();
+            });
+        }
+    }
+}
+
+const Target* Target::Find(OglPtr::Target ptr)
+{
+    CheckInit();
+    
+    auto found = threadData.targetsByOglPtr.find(ptr);
+    return (found == threadData.targetsByOglPtr.end()) ?
+               nullptr :
+               found->second;
+}
+
+Target::Target(const glm::uvec2& _size, uint32_t nLayers)
+    : size(_size), glPtr(GlCreate(glCreateFramebuffers))
+{
+    CheckInit();
+    threadData.targetsByOglPtr[glPtr] = this;
+
     BPAssert(size.x > 0, "Target's width can't be 0");
     BPAssert(size.y > 0, "Target's height can't be 0");
-
-    GLuint glPtrU;
-    glCreateFramebuffers(1, &glPtrU);
-    glPtr.Get() = glPtrU;
 
     glNamedFramebufferParameteri(glPtr.Get(), GL_FRAMEBUFFER_DEFAULT_WIDTH, (GLint)size.x);
     glNamedFramebufferParameteri(glPtr.Get(), GL_FRAMEBUFFER_DEFAULT_HEIGHT, (GLint)size.y);
@@ -230,7 +275,11 @@ Target::~Target()
         depthBuffer.reset();
 
     //Finally, clean up the FBO itself.
-    glDeleteFramebuffers(1, &glPtr.Get());
+    if (!glPtr.IsNull())
+    {
+        threadData.targetsByOglPtr.erase(glPtr);
+        glDeleteFramebuffers(1, &glPtr.Get());
+    }
 }
 
 
@@ -247,6 +296,12 @@ Target::Target(Target&& from)
     managedTextures = std::move(from.managedTextures);
 
     from.glPtr = OglPtr::Target::Null();
+
+    //Update the static reference to this buffer.
+    auto found = threadData.targetsByOglPtr.find(glPtr);
+    BPAssert(found != threadData.targetsByOglPtr.end(),
+             "Un-indexed Target detected");
+    found->second = this;
 }
 
 TargetStates Target::Validate() const

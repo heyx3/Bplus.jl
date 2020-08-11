@@ -98,7 +98,13 @@ namespace Bplus::GL::Textures
     class BP_API Target
     {
     public:
-        //TODO: A special singleton Target representing the screen. Replace a lot of the state in Context with this.
+        //TODO: A special singleton Target representing the screen.
+
+        //Finds the Target from the given OpenGL object pointer.
+        //Only works on the main OpenGL thread.
+        //Returns nullptr if not found.
+        static const Target* Find(OglPtr::Target ptr);
+
 
         //Creates a new Target with no outputs.
         //Optionally acts like a "layered" Target, supporting multiple Geometry Shader outputs,
@@ -133,10 +139,10 @@ namespace Bplus::GL::Textures
         Target(Target&& from);
         Target& operator=(Target&& from)
         {
-            //Call deconstructor, then move constructor.
             //Only bother changing things if they represent different handles.
             if (this != &from)
             {
+                //Call deconstructor, then move constructor.
                 this->~Target();
                 new (this) Target(std::move(from));
             }
@@ -230,8 +236,6 @@ namespace Bplus::GL::Textures
         std::vector<TargetOutput> tex_colors;
         std::optional<TargetOutput> tex_depth;
         std::optional<TargetOutput> tex_stencil;
-
-        //TODO: Other state that comes with FrameBuffers.
 
         std::optional<TargetBuffer> depthBuffer;
         bool isDepthRBBound = false,
