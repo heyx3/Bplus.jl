@@ -154,8 +154,6 @@ namespace Bplus::GL
 
         #pragma region Draw operations
 
-        //TODO: Implement the below.
-
         //Draws the given mesh with the given shader, using NON-indexed rendering,
         //    into the currently-active Target.
         void Draw(const DrawMeshMode_Basic& mesh, const CompiledShader& shader) const;
@@ -164,6 +162,8 @@ namespace Bplus::GL
         //    into the currently-active Target.
         void Draw(const DrawMeshMode_Basic& mesh, DrawMeshMode_Indexed indices,
                   const CompiledShader& shader) const;
+
+        //TODO: Implement the below.
 
         //Draws multiple subsets of the given mesh using the given shader,
         //    using NON-indexed rendering, into the currently-active Target.
@@ -222,6 +222,8 @@ namespace Bplus::GL
         //    a special index value to reset for continuous fan/strip primitives
 
         #pragma endregion
+
+        //TODO: Indirect drawing.
 
         bool SetVsyncMode(VsyncModes mode);
         VsyncModes GetVsyncMode() const { return vsync; }

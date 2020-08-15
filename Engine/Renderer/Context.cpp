@@ -284,41 +284,48 @@ void Context::Clear(float r, float g, float b, float a, float depth)
 }
 
 
-void Context::Draw(const MeshData& mesh, const CompiledShader& shader,
-                   DrawMeshMode_Basic params) const
+void Context::Draw(const DrawMeshMode_Basic& mesh, const CompiledShader& shader) const
 {
-    if (params.Count == 0)
-    {
-        if (mesh.HasIndexData())
-        {
-            auto indexData = mesh.GetIndexData().value();
-            BPAssert(indexData.DataStructSize ==
-                         GetByteSize(mesh.GetIndexDataType().value()),
-                     "Listed byte-size of the data in the index buffer doesn't match the size expected by the mesh");
+    shader.Activate();
+    mesh.Data.Activate();
+    glDrawArrays((GLenum)mesh.Primitive,
+                 mesh.Elements.MinCorner.x, mesh.Elements.Size.x);
+}
+void Context::Draw(const DrawMeshMode_Basic& mesh, DrawMeshMode_Indexed indices,
+                   const CompiledShader& shader) const
+{
+    BPAssert(mesh.Data.HasIndexData(),
+             "Using indexed drawing on a mesh with no index data");
 
-            BPAssert(indexData.Buf->GetByteSize() % indexData.DataStructSize == 0,
-                     "Index buffer's size isn't divisible by the byte size of one element");
-            params.Count = indexData.Buf->GetByteSize() / indexData.DataStructSize;
-        }
-        else
-        {
-            BPAssert(false,
-                     "Can't deduce the Count from a non-indexed MeshData automatically!\
- This can be done, but it's complicated when per-instance data is involved so I didn't bother.");
-        }
-    }
+    shader.Activate();
+    mesh.Data.Activate();
 
-    if (mesh.HasIndexData())
+    //Configure the "primitive restart" special index, if desired.
+    if (indices.ResetValue.has_value())
     {
-        auto indexType = mesh.GetIndexDataType().value();
-        glDrawElements(mesh.PrimitiveType._to_integral(), params.Count,
-                       indexType._to_integral(),
-                       (const void*)(GetByteSize(indexType) * params.FirstElementI));
+        glEnable(GL_PRIMITIVE_RESTART);
+        glPrimitiveRestartIndex(indices.ResetValue.value());
     }
     else
     {
-        glDrawArrays(mesh.PrimitiveType._to_integral(),
-                     params.FirstElementI, params.Count);
+        glDisable(GL_PRIMITIVE_RESTART);
+    }
+
+    //Make the correct draw call.
+    auto indexType = mesh.Data.GetIndexDataType().value();
+    auto firstByte = GetByteSize(indexType) * mesh.Elements.MinCorner.x;
+    if (indices.ValueOffset == 0)
+    {
+        glDrawElements((GLenum)mesh.Primitive, mesh.Elements.Size.x,
+                        (GLenum)indexType, (const void*)firstByte);
+    }
+    else
+    {
+        glDrawElementsBaseVertex((GLenum)mesh.Primitive,
+                                    mesh.Elements.Size.x,
+                                    (GLenum)indexType,
+                                    (void*)firstByte, //TODO: File another GLEW issue; this should be const
+                                    indices.ValueOffset);
     }
 }
 

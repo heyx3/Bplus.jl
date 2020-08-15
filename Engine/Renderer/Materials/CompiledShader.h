@@ -84,7 +84,7 @@ namespace Bplus::GL
 
         //Sets this shader as the active one, meaning that
         //    all future rendering operations are done with it.
-        void Activate();
+        void Activate() const;
 
         //Gets whether the given uniform was optimized out of the shader.
         bool WasOptimizedOut(const std::string& uniformName) const

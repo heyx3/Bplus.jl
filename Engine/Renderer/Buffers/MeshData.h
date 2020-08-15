@@ -70,7 +70,7 @@ namespace Bplus::GL::Buffers
         UInt16 = GL_UNSIGNED_SHORT,
         UInt32 = GL_UNSIGNED_INT
     );
-    uint_fast8_t GetByteSize(IndexDataTypes d) { switch (d) {
+    inline uint_fast8_t GetByteSize(IndexDataTypes d) { switch (d) {
         case IndexDataTypes::UInt8: return 1;
         case IndexDataTypes::UInt16: return 2;
         case IndexDataTypes::UInt32: return 4;
@@ -158,6 +158,7 @@ namespace Bplus::GL::Buffers
 
 
         OglPtr::Mesh GetOglPtr() const { return glPtr; }
+        void Activate() const;
 
         bool HasIndexData() const { return indexData.has_value(); }
         std::optional<MeshDataSource> GetIndexData() const;
