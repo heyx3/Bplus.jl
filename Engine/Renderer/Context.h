@@ -64,18 +64,31 @@ namespace Bplus::GL
                            std::optional<uint32_t> nElements = std::nullopt);
     };
 
-    //Information that is common to indexed modes of rendering.
+    //Extra data when drawing a mesh with indexed primitives.
     struct DrawMeshMode_Indexed
     {
         //An index value equal to this does not actually reference a vertex,
         //    but tells OpenGL to restart the primitive for continuous ones
         //    like triangle strip and line strip.
         //Does not affect separated primitive types, like points, triangles, or lines.
-        std::optional<size_t> ResetValue;
+        std::optional<uint32_t> ResetValue;
 
         //All index values are offset by this amount.
         //Does not affect the "ResetValue"; that test happens before this offset.
         size_t ValueOffset = 0;
+    };
+    //Extra data when drawing multiple subsets of a mesh using indexed primitives.
+    struct DrawMeshMode_IndexedSubset
+    {
+        //A special index value that means "start the primitive over",
+        //    for continuous primitives like triangle-fan or line-strip.
+        std::optional<uint32_t> ResetValue;
+
+        //For each mesh subset being drawn, this provides an offset
+        //    for that subset's index values.
+        //Does not affect the "ResetValue"; that test happens before this offset
+        //    is applied to the value.
+        std::vector<uint32_t> ValueOffsets;
     };
 
 
@@ -139,12 +152,12 @@ namespace Bplus::GL
 
         #pragma region Clear operations
 
-        //Clears the current framebuffer's color and depth.
+        //Clears the current Target's color and depth.
         void Clear(float r, float g, float b, float a, float depth);
 
-        //Clears the current framebuffer's color.
+        //Clears the current Target's color.
         void Clear(float r, float g, float b, float a);
-        //Clears the current framebuffer's depth.
+        //Clears the current Target's depth.
         void Clear(float depth);
 
         template<typename TVec4>
@@ -154,68 +167,46 @@ namespace Bplus::GL
 
         #pragma region Draw operations
 
-        //Draws the given mesh with the given shader, using NON-indexed rendering,
-        //    into the currently-active Target.
-        void Draw(const DrawMeshMode_Basic& mesh, const CompiledShader& shader) const;
-
-        //Draws the given mesh with the given shader, using indexed rendering,
-        //    into the currently-active Target.
-        void Draw(const DrawMeshMode_Basic& mesh, DrawMeshMode_Indexed indices,
-                  const CompiledShader& shader) const;
-
-        //TODO: Implement the below.
+        //Draws the given mesh with the given shader, into the current active Target.
+        //Optionally draws in indexed mode.
+        //Optionally draws multiple instances of the mesh data.
+        void Draw(const DrawMeshMode_Basic& mesh, const CompiledShader& shader,
+                  std::optional<DrawMeshMode_Indexed> indices = std::nullopt,
+                  std::optional<Math::IntervalU> instancing = std::nullopt) const;
 
         //Draws multiple subsets of the given mesh using the given shader,
-        //    using NON-indexed rendering, into the currently-active Target.
-        //The ranges represent which groups of vertices in the mesh to draw from.
-        void Draw(const Buffers::MeshData& mesh, const std::vector<Math::IntervalU>& subsets,
-                  const CompiledShader& shader) const;
-        //Draws multiple subsets of the given mesh using the given shader,
-        //    using indexed rendering, into the currently-active Target.
-        //The ranges represent which groups of indices in the mesh to pull vertex data from.
-        void Draw(const Buffers::MeshData& mesh,
-                  const std::vector<std::pair<Math::IntervalU, DrawMeshMode_Indexed>>& indexSubsets,
-                  const CompiledShader& shader) const;
+        //    drawing into the current active Target.
+        //Optionally draws in indexed mode.
+        void Draw(const Buffers::MeshData& mesh, Buffers::PrimitiveTypes primitive,
+                  const CompiledShader& shader,
+                  const std::vector<Math::IntervalU>& subsets,
+                  std::optional<DrawMeshMode_IndexedSubset> indices = std::nullopt) const;
 
-        //Draws the same mesh data multiple times, known as "instancing",
-        //    with NON-indexed rendering.
-        //Draws with the given shader into the currently-active Target.
-        //Note that the range of instances has not just a count, but a "first index",
-        //    allowing you to "skip" instances if you wanted to do that for some reason.
-        void Draw(const DrawMeshMode_Basic& mesh, Math::IntervalU instances,
-                  const CompiledShader& shader) const;
-        //Draws the same mesh data multiple times, known as "instancing",
-        //    using indexed rendering.
-        //Draws with the given shader into the currently-active Target.
-        //Note that the range of instances has not just a count, but a "first index",
-        //    allowing you to "skip" instances if you wanted to do that for some reason.
-        void Draw(const DrawMeshMode_Basic& mesh, const DrawMeshMode_Indexed& indices,
-                  Math::IntervalU instances, const CompiledShader& shader) const;
-
-        //Draws a given mesh using indexed rendering,
-        //    with the given shader, into the currently-active render target.
-        //Also promises the GPU driver that the vertices used will be limited to the given subset,
-        //    allowing it to optimize memory usage for this draw call.
-        void DrawWithRange(const DrawMeshMode_Basic& mesh, const DrawMeshMode_Indexed& indices,
-                           Math::IntervalU vertexRange, const CompiledShader& shader) const;
+        //Draws the given mesh using indexed rendering, with the given shader,
+        //    drawing into the current active Target.
+        //Also tells the graphics driver which subset of the mesh's vertices
+        //    are actually used, so it can optimize memory access.
+        void Draw(const DrawMeshMode_Basic& mesh, const CompiledShader& shader,
+                  const DrawMeshMode_Indexed& indices,
+                  const Math::IntervalU& knownVertexRange) const;
 
         //The notes I took when preparing the draw calls interface:
         //All draw modes:
-        //   ~ Normal              "glDrawArrays()" ("first" element index and "count" elements)
-        //   ~ Normal + Multi-Draw "glMultiDrawArrays()" (multiple Normal draws from the same buffer data)
-        //   ~ Normal + Instance   "glDrawArraysInstanced()" (draw multiple instances of the same mesh).
+        //   * Normal              "glDrawArrays()" ("first" element index and "count" elements)
+        //   * Normal + Multi-Draw "glMultiDrawArrays()" (multiple Normal draws from the same buffer data)
+        //   * Normal + Instance   "glDrawArraysInstanced()" (draw multiple instances of the same mesh).
         //        should actually use "glDrawArraysInstancedBaseInstance()" to support an offset for the first instance to use
         //
-        //   ~ Indexed              "glDrawElements()" (draw indices instead of vertices)
-        //   ~ Indexed + Multi-Draw "glMultiDrawElements()"
-        //   ~ Indexed + Instance   "glDrawElementsInstanced()" (draw multiple instances of the same indexed mesh).
+        //   * Indexed              "glDrawElements()" (draw indices instead of vertices)
+        //   * Indexed + Multi-Draw "glMultiDrawElements()"
+        //   * Indexed + Instance   "glDrawElementsInstanced()" (draw multiple instances of the same indexed mesh).
         //        should actually use "glDrawElementsInstancedBaseInstance()" to support an offset for the first instance to use
-        //   ~ Indexed + Range      "glDrawRangeElements()" (provide the known range of indices that could be drawn, for driver optimization)
+        //   * Indexed + Range      "glDrawRangeElements()" (provide the known range of indices that could be drawn, for driver optimization)
         //
-        //   ~ Indexed + Base Index              "glDrawElementsBaseVertex()" (an offset for all indices)
-        //   ~ Indexed + Base Index + Multi-Draw "glMultiDrawElementsBaseVertex()" (each element of the multi-draw has a different "base index" offset)
-        //   ~ Indexed + Base Index + Range      "glDrawRangeElementsBaseVertex()"
-        //   ~ Indexed + Base Index + Instanced  "glDrawElementsInstancedBaseVertex()"
+        //   * Indexed + Base Index              "glDrawElementsBaseVertex()" (an offset for all indices)
+        //   * Indexed + Base Index + Multi-Draw "glMultiDrawElementsBaseVertex()" (each element of the multi-draw has a different "base index" offset)
+        //   * Indexed + Base Index + Range      "glDrawRangeElementsBaseVertex()"
+        //   * Indexed + Base Index + Instanced  "glDrawElementsInstancedBaseVertex()"
         //        should actually use "glDrawElementsInstancedBaseVertexBaseInstance()" to support an offset for the first instance to use
         //
         //All Indexed draw modes can have a "reset index", which is
@@ -223,7 +214,7 @@ namespace Bplus::GL
 
         #pragma endregion
 
-        //TODO: Indirect drawing.
+        //TODO: Indirect drawing: glDrawArraysIndirect(), glMultiDrawArraysIndirect(), glDrawElementsIndirect(), and glMultiDrawElementsIndirect().
 
         bool SetVsyncMode(VsyncModes mode);
         VsyncModes GetVsyncMode() const { return vsync; }

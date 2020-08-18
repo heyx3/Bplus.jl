@@ -26,7 +26,7 @@ DrawMeshMode_Basic::DrawMeshMode_Basic(const Buffers::MeshData& mesh,
 
             BPAssert(indexData.Buf->GetByteSize() % indexData.DataStructSize == 0,
                      "Index buffer's size isn't divisible by the byte size of one element");
-            nElements = indexData.Buf->GetByteSize() / indexData.DataStructSize;
+            nElements = (uint32_t)(indexData.Buf->GetByteSize() / indexData.DataStructSize);
         }
         else
         {
@@ -47,6 +47,9 @@ namespace
         Context* Instance = nullptr;
 
         std::vector<std::function<void()>> RefreshCallbacks, DestroyCallbacks;
+
+        std::vector<int32_t> multiDrawBufferArrayOffsets, multiDrawBufferCounts;
+        std::vector<void*> multiDrawBufferElementOffsets;
     };
     thread_local ContextThreadData contextThreadData = ContextThreadData();
 }
@@ -284,51 +287,181 @@ void Context::Clear(float r, float g, float b, float a, float depth)
 }
 
 
-void Context::Draw(const DrawMeshMode_Basic& mesh, const CompiledShader& shader) const
+//Indexed drawing code does a lot of conversion to void* for index data offsets.
+#pragma warning(push)
+#pragma warning(disable: 4312)
+
+void Context::Draw(const DrawMeshMode_Basic& mesh, const CompiledShader& shader,
+                   std::optional<DrawMeshMode_Indexed> _indices,
+                   std::optional<Math::IntervalU> _instancing) const
 {
     shader.Activate();
     mesh.Data.Activate();
-    glDrawArrays((GLenum)mesh.Primitive,
-                 mesh.Elements.MinCorner.x, mesh.Elements.Size.x);
+
+    auto primitive = (GLenum)mesh.Primitive;
+    auto nElements = (GLsizei)mesh.Elements.Size.x;
+
+    if (_indices.has_value())
+    {
+        auto indices = _indices.value();
+
+        BPAssert(mesh.Data.HasIndexData(),
+                 "Can't do indexed drawing for a mesh with no index data");
+
+        //Configure the "primitive restart" special index, if desired.
+        if (indices.ResetValue.has_value())
+        {
+            glEnable(GL_PRIMITIVE_RESTART);
+            glPrimitiveRestartIndex(indices.ResetValue.value());
+        }
+        else
+        {
+            glDisable(GL_PRIMITIVE_RESTART);
+        }
+
+        auto indexType = mesh.Data.GetIndexDataType().value();
+        auto glIndexType = (GLenum)indexType;
+        auto indexByteOffset = (void*)(GetByteSize(indexType) * mesh.Elements.MinCorner.x);
+        auto indexValueOffset = (GLint)indices.ValueOffset;
+        if (_instancing.has_value())
+        {
+            auto instancing = _instancing.value();
+            auto nInstances = (GLsizei)instancing.Size.x;
+            auto firstInstance = (GLuint)instancing.MinCorner.x;
+
+            if (instancing.MinCorner.x == 0)
+                if (indices.ValueOffset == 0)
+                    glDrawElementsInstanced(primitive, nElements, glIndexType, indexByteOffset, nInstances);
+                else
+                    glDrawElementsInstancedBaseVertex(primitive, nElements, glIndexType, indexByteOffset, nInstances, indexValueOffset);
+            else
+                if (indices.ValueOffset == 0)
+                    glDrawElementsInstancedBaseInstance(primitive, nElements, glIndexType, indexByteOffset, nInstances, firstInstance);
+                else
+                    glDrawElementsInstancedBaseVertexBaseInstance(primitive, nElements, glIndexType, indexByteOffset, nInstances, indexValueOffset, firstInstance);
+        }
+        else
+        {
+            if (indices.ValueOffset == 0)
+                glDrawElements(primitive, nElements, glIndexType, indexByteOffset);
+            else
+                glDrawElementsBaseVertex(primitive, nElements, glIndexType, indexByteOffset, indexValueOffset);
+        }
+    }
+    else
+    {
+        auto firstElement = (GLint)mesh.Elements.MinCorner.x;
+        if (_instancing.has_value())
+        {
+            auto instancing = _instancing.value();
+            auto nInstances = (GLsizei)instancing.Size.x;
+            auto firstInstance = (GLuint)instancing.MinCorner.x;
+
+            if (instancing.MinCorner.x != 0)
+                glDrawArraysInstanced(primitive, firstElement, nElements, nInstances);
+            else
+                glDrawArraysInstancedBaseInstance(primitive, firstElement, nElements, nInstances, firstInstance);
+        }
+        else
+        {
+            glDrawArrays(primitive, firstElement, nElements);
+        }
+    }
 }
-void Context::Draw(const DrawMeshMode_Basic& mesh, DrawMeshMode_Indexed indices,
-                   const CompiledShader& shader) const
+void Context::Draw(const Buffers::MeshData& mesh, Buffers::PrimitiveTypes primitive,
+                   const CompiledShader& shader,
+                   const std::vector<Math::IntervalU>& subsets,
+                   std::optional<DrawMeshMode_IndexedSubset> _indices) const
 {
+    shader.Activate();
+    mesh.Activate();
+
+    bool useIndexedRendering = _indices.has_value();
+
+    //Re-format the multi-draw data so we can send it to OpenGL.
+    auto& buffers = contextThreadData;
+    buffers.multiDrawBufferArrayOffsets.clear(); //Filled in differently for indexed vs non-indexed drawing.
+    buffers.multiDrawBufferCounts.clear(); //Always used the same way for indexed vs non-indexed drawing.
+    for (size_t subsetI = 0; subsetI < subsets.size(); ++subsetI)
+        buffers.multiDrawBufferCounts.push_back((int32_t)subsets[subsetI].Size.x);
+
+    if (useIndexedRendering)
+    {
+        const auto& indices = _indices.value();
+
+        auto indexType = mesh.GetIndexDataType().value();
+        auto indexByteSize = GetByteSize(indexType);
+
+        BPAssert(mesh.HasIndexData(),
+                 "Can't do indexed multi-draw for a mesh with no index data");
+        BPAssert(indices.ValueOffsets.size() == subsets.size(),
+                 "indices.ValueOffsets doesn't have exactly one element for each subset");
+
+        //Re-format more multi-draw data for OpenGL.
+        buffers.multiDrawBufferElementOffsets.clear();
+        for (size_t subsetI = 0; subsetI < subsets.size(); ++subsetI)
+        {
+            buffers.multiDrawBufferElementOffsets.push_back(
+                (void*)(indexByteSize * subsets[subsetI].MinCorner.x));
+            buffers.multiDrawBufferArrayOffsets.push_back(
+                (int32_t)indices.ValueOffsets[subsetI]);
+        }
+        static_assert(sizeof(decltype(buffers.multiDrawBufferArrayOffsets[0]))
+                        == sizeof(GLint),
+                      "Buffer doesn't hold the right type for the OpenGL call");
+
+        //Configure the "primitive restart" special index, if desired.
+        if (indices.ResetValue.has_value())
+        {
+            glEnable(GL_PRIMITIVE_RESTART);
+            glPrimitiveRestartIndex(indices.ResetValue.value());
+        }
+        else
+        {
+            glDisable(GL_PRIMITIVE_RESTART);
+        }
+
+        glMultiDrawElementsBaseVertex((GLenum)primitive,
+                                      buffers.multiDrawBufferCounts.data(),
+                                      (GLenum)indexType,
+                                      buffers.multiDrawBufferElementOffsets.data(),
+                                      (GLsizei)subsets.size(),
+                                      buffers.multiDrawBufferArrayOffsets.data());
+    }
+    else
+    {
+        for (size_t subsetI = 0; subsetI < subsets.size(); ++subsetI)
+            buffers.multiDrawBufferArrayOffsets.push_back(subsets[subsetI].MinCorner.x);
+        glMultiDrawArrays((GLenum)primitive,
+                          buffers.multiDrawBufferArrayOffsets.data(),
+                          buffers.multiDrawBufferCounts.data(),
+                          (GLsizei)subsets.size());
+    }
+}
+void Context::Draw(const DrawMeshMode_Basic& mesh, const CompiledShader& shader,
+                   const DrawMeshMode_Indexed& indices,
+                   const Math::IntervalU& knownVertexRange) const
+{
+    shader.Activate();
+    mesh.Data.Activate();
+
     BPAssert(mesh.Data.HasIndexData(),
-             "Using indexed drawing on a mesh with no index data");
+             "Can't do indexed multi-draw for a mesh with no index data");
 
-    shader.Activate();
-    mesh.Data.Activate();
-
-    //Configure the "primitive restart" special index, if desired.
-    if (indices.ResetValue.has_value())
-    {
-        glEnable(GL_PRIMITIVE_RESTART);
-        glPrimitiveRestartIndex(indices.ResetValue.value());
-    }
-    else
-    {
-        glDisable(GL_PRIMITIVE_RESTART);
-    }
-
-    //Make the correct draw call.
+    auto primitive = (GLenum)mesh.Primitive;
     auto indexType = mesh.Data.GetIndexDataType().value();
-    auto firstByte = GetByteSize(indexType) * mesh.Elements.MinCorner.x;
+    auto indexByteOffset = (void*)(GetByteSize(indexType) * mesh.Elements.MinCorner.x);
+    auto nElements = (GLsizei)mesh.Elements.Size.x;
+    auto startVert = knownVertexRange.MinCorner.x;
+    auto endVert = knownVertexRange.GetMaxCornerInclusive().x;
+
     if (indices.ValueOffset == 0)
-    {
-        glDrawElements((GLenum)mesh.Primitive, mesh.Elements.Size.x,
-                        (GLenum)indexType, (const void*)firstByte);
-    }
+        glDrawRangeElements(primitive, startVert, endVert, nElements, (GLenum)indexType, indexByteOffset);
     else
-    {
-        glDrawElementsBaseVertex((GLenum)mesh.Primitive,
-                                    mesh.Elements.Size.x,
-                                    (GLenum)indexType,
-                                    (void*)firstByte, //TODO: File another GLEW issue; this should be const
-                                    indices.ValueOffset);
-    }
+        glDrawRangeElementsBaseVertex(primitive, startVert, endVert, nElements, (GLenum)indexType, indexByteOffset, (GLint)indices.ValueOffset);
 }
 
+#pragma warning(pop)
 
 void Context::SetViewport(int minX, int minY, int width, int height)
 {
