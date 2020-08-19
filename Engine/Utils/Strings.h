@@ -96,4 +96,7 @@ namespace Bplus::Strings
 
     bool BP_API StartsWith(const std::string& str, const std::string& snippet);
     bool BP_API EndsWith(const std::string& str, const std::string& snippet);
+
+    void BP_API Replace(std::string& str,
+                        const std::string& snippet, const std::string& replacedWith);
 }

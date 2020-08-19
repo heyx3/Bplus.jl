@@ -190,6 +190,7 @@ namespace Bplus::GL
                   const DrawMeshMode_Indexed& indices,
                   const Math::IntervalU& knownVertexRange) const;
 
+
         //The notes I took when preparing the draw calls interface:
         //All draw modes:
         //   * Normal              "glDrawArrays()" ("first" element index and "count" elements)
