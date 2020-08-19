@@ -21,8 +21,6 @@ TEST_LIST = {
     { "Toml <=> BETTER_ENUM",     TomlEnums      },
     { "Toml <=> GLM",             TomlGLM        },
 
-    { "Simple Apps", SimpleApps },
-
     { "Bplus::GL::Buffers::Buffer basic",     BufferBasic   },
     { "Bplus::GL::Buffers::Buffer get/set data", BufferGetSetData },
 
@@ -32,6 +30,8 @@ TEST_LIST = {
     { "Bplus::GL::Target basic usage", TestTargetBasic },
 
     { "Shader #pragma include preprocessor", TestShaderIncludeCommand },
+
+    { "Simple Apps", SimpleApps },
 
     { NULL, NULL }
 };

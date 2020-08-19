@@ -84,7 +84,7 @@ void ShaderCompileJob::PreProcessIncludes(std::string& sourceStr) const
     for (size_t i = 0; i < sourceStr.size(); ++i)
     {
         bool isEOF = (i == sourceStr.size() - 1),
-             isNextEOF = (i + 1 == sourceStr.size() - 1);
+             isNextEOF = isEOF | (i + 1 == sourceStr.size() - 1);
         auto thisChar = sourceStr[i],
              nextChar = isEOF ? '\0' : sourceStr[i + 1],
              nextChar2 = isNextEOF ? '\0' : sourceStr[i + 2];
@@ -169,18 +169,23 @@ void ShaderCompileJob::PreProcessIncludes(std::string& sourceStr) const
                     {
                         //We're definitely going to 'include' something,
                         //    whether it's an actual file or an error message.
+                        //NOTE: Originally a lot of the error messages included the term
+                        //    '#pragma include', but that led to an infinite loop
+                        //    of the parser attempting to parse it, changing the include statement
+                        //    to an error, then attempting to parse that error...
                         strBuffer.str("");
 
                         //Skip ahead to the first non-white-space character,
                         //    which should be the start of the path.
+                        j += includeLen;
                         while (j < sourceStr.size() && (sourceStr[j] == ' ' || sourceStr[j] == '\t'))
                             j += 1;
 
                         //Process the character we just found.
                         if (j == sourceStr.size() || sourceStr[j] == '\n' || sourceStr[j] == '\r')
-                            strBuffer << "#error No file given in '#pragma include' statement";
+                            strBuffer << "#error No file given in 'pragma include' statement";
                         else if (sourceStr[j] != '<' && sourceStr[j] != '"')
-                            strBuffer << "#error Unexpected symbol in a '#pragma include'; \
+                            strBuffer << "#error Unexpected symbol in a 'pragma include'; \
 expected a path, starting with a double-quote '\"' or angle-bracket '<'";
                         else
                         {
@@ -189,7 +194,7 @@ expected a path, starting with a double-quote '\"' or angle-bracket '<'";
                             size_t pathStart = j;
                          
                             //Find the end of the path name.
-                            char expectedPathEnd = (sourceStr[j] == '<') ? '>' : '"';
+                            char expectedPathEnd = (sourceStr[j - 1] == '<') ? '>' : '"';
                             j += 1;
                             while (j < sourceStr.size() && sourceStr[j] != expectedPathEnd &&
                                    sourceStr[j] != '\n' && sourceStr[j] != '\r')
@@ -197,7 +202,7 @@ expected a path, starting with a double-quote '\"' or angle-bracket '<'";
                                 j += 1;
                             }
                             if (j == sourceStr.size() || sourceStr[j] == '\n' || sourceStr[j] == '\r')
-                                strBuffer << "#error unexpected end of '#pragma include' statement; \
+                                strBuffer << "#error unexpected end of 'pragma include' statement; \
 expected double-quote '\"' or angle-bracket '>' to close it";
                             else
                             {
@@ -210,7 +215,7 @@ expected double-quote '\"' or angle-bracket '>' to close it";
                                 if (includeCount >= MaxIncludesPerFile)
                                 {
                                     strBuffer << "#error Infinite loop detected: more than " << includeCount <<
-                                                 " '#pragma include' statements in one file";
+                                                 " 'pragma include' statements in one file";
                                 }
                                 else
                                 {
@@ -219,15 +224,19 @@ expected double-quote '\"' or angle-bracket '>' to close it";
                                     //Try to load the file.
                                     //If it succeeds, insert a #line statement before and after the file contents.
                                     //If it fails, replace it with an #error message.
-                                    strBuffer << "#line 0 " << nextFileI << "\n";
+                                    strBuffer << "\n#line 0 " << nextFileI << "\n";
                                     nextFileI += 1;
                                     if (IncludeImplementation(fs::path(pathName), strBuffer))
                                     {
-                                        strBuffer << "\n#line " << currentLine << " 0";
+                                        strBuffer << "\n#line " << currentLine << " 0\n";
                                     }
                                     else
                                     {
-                                        strBuffer.str("#error unable to '#pragma include' file: ");
+                                        strBuffer.str("#error unable to 'pragma include' file: ");
+
+                                        //Edge-case: make sure the file name doesn't have
+                                        //    '#pragma include' in it, or this parser loops forever.
+                                        Strings::Replace(pathName, "#", "#\\\\");
                                         strBuffer << pathName;
                                     }
                                 }
@@ -237,7 +246,7 @@ expected double-quote '\"' or angle-bracket '>' to close it";
                         //Finally, replace this pragma with the file contents.
                         //Note that 'j' will always be the first index *after* the relevant substring;
                         //    we do not want to remove the character at index j.
-                        sourceStr.erase(i, j - i);
+                        sourceStr.erase(i, j - i + 1);
                         sourceStr.insert(i, strBuffer.str());
                         j -= 1;
                     }

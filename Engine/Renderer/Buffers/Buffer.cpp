@@ -24,6 +24,7 @@ namespace
             {
                 //Nothing needs to be done right now,
                 //    but this is kept here just in case it becomes useful.
+                //TODO: Assert all Buffer instances still exist in OpenGL.
             };
             refreshContext();
             Context::RegisterCallback_RefreshState(refreshContext);
@@ -56,6 +57,8 @@ namespace
 
 const Buffer* Buffer::Find(OglPtr::Buffer ptr)
 {
+    CheckInit();
+
     auto found = threadData.buffersByOglPtr.find(ptr);
     return (found == threadData.buffersByOglPtr.end()) ?
                nullptr :
@@ -68,6 +71,7 @@ Buffer::Buffer(uint64_t byteSize, bool _canChangeData,
     : byteSize(byteSize), canChangeData(_canChangeData),
       glPtr(GlCreate(glCreateBuffers))
 {
+    CheckInit();
     threadData.buffersByOglPtr[glPtr] = this;
 
     GLbitfield flags = 0;

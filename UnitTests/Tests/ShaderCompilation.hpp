@@ -40,11 +40,12 @@ void TestShaderIncludeCommand()
     shaderSrcPre = testStr; \
     shaderSrcPost = shaderSrcPre; \
     compiler.PreProcessIncludes(shaderSrcPost); \
-    TEST_ASSERT_(test, testName)
+    if (!TEST_CHECK_(test, testName)) \
+        TEST_MSG("Input (next line):\n%s\n---------------------------\nOutput (next line):\n%s", shaderSrcPre.c_str(), shaderSrcPost.c_str())
 
     //This macro tests that one string parses into another string.
 #define TEST_PREPROCESS_INCLUDES_BASIC(testStr, resultStr, testName) \
-    TEST_PREPROCESS_INCLUDES(testStr, testStr == resultStr, testName)
+    TEST_PREPROCESS_INCLUDES(testStr, shaderSrcPost == resultStr, testName)
 
     //This macro tests that a string does not change after parsing.
 #define TEST_PREPROCESS_INCLUDES_UNCHANGED(testStr, testName) \
@@ -72,21 +73,21 @@ ji!)(*)!(*$)!($!oweijf",
         "Weird multi-line stuff with preprocessor symbols but no includes"
     );
 
-    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include <hello>", "hello",
+    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include <hello>", "\n#line 0 1\nhello\n#line 1 0\n",
                                    "Basic include statement with brackets");
-    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include \"hello2\"", "hello2",
+    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include \"hello2\"", "\n#line 0 1\nhello2\n#line 1 0\n",
                                    "Basic include statement with quotes");
-    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include <a\"b\">", "a\"b\"",
+    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include <a\"b\">", "\n#line 0 1\na\"b\"\n#line 1 0\n",
                                    "Putting quotes inside an angle-bracket include");
-    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include \"a<b>\"", "a<b>",
+    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include \"a<b>\"", "\n#line 0 1\na<b>\n#line 1 0\n",
                                    "Putting angle-brackets  inside a quoted include");
-    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include <abcd> ", "abcd ",
+    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include <abcd> ", "\n#line 0 1\nabcd\n#line 1 0\n ",
                                    "Preserves white-space after the include statement");
-    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include \"abcd\"  ", "abcd  ",
+    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include \"abcd\"  ", "\n#line 0 1\nabcd\n#line 1 0\n  ",
                                    "Preserves white-space after the include statement");
-    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include \"abcd\"  ", "abcd  ",
+    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include \"abcd\"  ", "\n#line 0 1\nabcd\n#line 1 0\n  ",
                                    "Preserves white-space after the include statement");
-    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include <abcd>efgh", "abcd",
+    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include <abcd>efgh", "\n#line 0 1\nabcd\n#line 1 0\nefgh",
                                    "Preserves text right after the include statement");
     TEST_PREPROCESS_INCLUDES("#pragma include FAIL-ldskjflksjdfksjdlkj",
                              strncmp(shaderSrcPost.c_str()  BP_COMMA
@@ -95,7 +96,7 @@ ji!)(*)!(*$)!($!oweijf",
                              "Failed include should result in an #error"
     );
     TEST_PREPROCESS_INCLUDES_BASIC(" #    pragma\t  include\t   \t    \t  <success.jpg>",
-                                   " success.jpg",
+                                   " \n#line 0 1\nsuccess.jpg\n#line 1 0\n",
                                    "Ignore whitespace in between tokens in the include statement");
 
     TEST_PREPROCESS_INCLUDES_BASIC
@@ -104,10 +105,18 @@ ji!)(*)!(*$)!($!oweijf",
 #pragma include \"hi\"\n\
 3\n\
 4 # pragma include \"30,000\" 50,000",
+//------------------------------------------
         "hello there\n\
 hi\n\
 3\n\
 4 30,000 50,000",
+        "\n#line 0 1\nhello there\n\#line 1 0\n\
+#line 0 2\nhi\n#line 2 0\n\
+3\n\
+4 \n\
+#line 0 3\n30,000\n#line 3 0\n\
+ 50,000",
+//------------------------------------------
         "Large file with many successful includes plus some gibberish"
     );
 

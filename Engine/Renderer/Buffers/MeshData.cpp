@@ -161,3 +161,9 @@ void MeshData::GetVertexData(std::vector<MeshDataSource>& outSources,
 
     outData.insert(outData.end(), vertexData.begin(), vertexData.end());
 }
+
+void MeshData::Activate() const
+{
+    //TODO: Keep track of the currently-active mesh, and don't re-bind it twice in a row.
+    glBindVertexArray(glPtr.Get());
+}

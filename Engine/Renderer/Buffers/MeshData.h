@@ -16,7 +16,13 @@ namespace Bplus::GL::Buffers
         uint32_t DataStructSize;
         //The byte offset into the beginning of the buffer
         //    for where the vertex/index data starts.
-        uint32_t InitialByteOffset;
+        size_t InitialByteOffset;
+
+        //Gets the maximum number of elements available for the mesh to pull from.
+        size_t GetMaxNElements() const {
+            size_t nBytes = Buf->GetByteSize() - InitialByteOffset;
+            return nBytes / DataStructSize;
+        }
     };
 
     //Pulls some chunk of data (usually a vector of floats) out of each element
@@ -64,6 +70,12 @@ namespace Bplus::GL::Buffers
         UInt16 = GL_UNSIGNED_SHORT,
         UInt32 = GL_UNSIGNED_INT
     );
+    inline uint_fast8_t GetByteSize(IndexDataTypes d) { switch (d) {
+        case IndexDataTypes::UInt8: return 1;
+        case IndexDataTypes::UInt16: return 2;
+        case IndexDataTypes::UInt32: return 4;
+        default: BPAssert(false, d._to_string()); return 0;
+    } }
 
     //The different kinds of shapes that a mesh can be built from.
     BETTER_ENUM(PrimitiveTypes, GLenum,
@@ -146,6 +158,7 @@ namespace Bplus::GL::Buffers
 
 
         OglPtr::Mesh GetOglPtr() const { return glPtr; }
+        void Activate() const;
 
         bool HasIndexData() const { return indexData.has_value(); }
         std::optional<MeshDataSource> GetIndexData() const;
@@ -171,7 +184,8 @@ namespace Bplus::GL::Buffers
         struct MeshDataSource_Impl
         {
             OglPtr::Buffer Buf;
-            uint32_t DataStructSize, InitialByteOffset;
+            uint32_t DataStructSize;
+            size_t InitialByteOffset;
         };
 
 

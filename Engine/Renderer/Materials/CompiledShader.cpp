@@ -305,7 +305,7 @@ const CompiledShader* CompiledShader::GetCurrentActive()
 {
     return threadData.currentShader;
 }
-void CompiledShader::Activate()
+void CompiledShader::Activate() const
 {
     Context::GetCurrentContext()->SetState(RenderSettings);
 
