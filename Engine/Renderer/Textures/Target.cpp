@@ -62,9 +62,9 @@ glm::uvec2 TargetOutput::GetSize() const
     else if (IsTex3D())
         return GetTex3D()->GetSize();
     else if (IsTexCube())
-        return GetTexCube()->GetSize();
+        return GetTexCube()->GetSize2D();
     else if (IsTexCubeFace())
-        return std::get<0>(GetTexCubeFace())->GetSize();
+        return std::get<0>(GetTexCubeFace())->GetSize2D();
     else if (IsTex3DSlice())
         return std::get<0>(GetTex3DSlice())->GetSize();
     else

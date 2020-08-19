@@ -41,7 +41,7 @@ namespace Bplus::GL::Textures
                  Sampler<D> sampler = { })
             : size(_size),
               Texture(GetClassType(), _format,
-                      (_nMipLevels < 1) ? GetMaxNumbMipmaps(size) : _nMipLevels,
+                      (_nMipLevels < 1) ? GetMaxNumbMipmaps(_size) : _nMipLevels,
                       sampler.ChangeDimensions<3>())
         {
             //Allocate GPU storage.

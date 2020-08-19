@@ -19,9 +19,12 @@ void RunTextureTypeCreationTest(std::string testName,
                                 Size_t size, Format format,
                                 uint_mipLevel_t nMips)
 {
-    TEST_CASE(testName.c_str());
-
+    std::string test1Name = testName + " (normal constructor)";
+    TEST_CASE(test1Name.c_str());
     Texture_t tex1{ size, format, nMips };
+
+    std::string test2Name = testName + " (move constructor)";
+    TEST_CASE(test2Name.c_str());
     Texture_t tex2{ std::move(tex1) };
 }
 
@@ -36,9 +39,8 @@ void RunTextureCreationTest(const char* testName,
     RunTextureTypeCreationTest<Texture3D, glm::uvec3>(std::string{ testName } + " (Texture3D)",
                                                       glm::uvec3{ fullSize.x, fullSize.y, fullSize.z },
                                                       format, nMips);
-    RunTextureTypeCreationTest<TextureCube, glm::uvec2>(std::string{ testName } +" (TextureCube)",
-                                                        glm::uvec2{ fullSize.x, fullSize.y },
-                                                        format, nMips);
+    RunTextureTypeCreationTest<TextureCube, glm::u32>(std::string{ testName } +" (TextureCube)",
+                                                      fullSize.x, format, nMips);
 }
 
 void TextureCreation()
@@ -127,6 +129,7 @@ void TestTextureGetSetColors(Format texFormat, PixelIOChannels components,
             
         }
 }
+
 template<typename T, glm::size_t L>
 void TestTextureGetSetSingle(Format texFormat, PixelIOChannels dataComponentFormat,
                              std::array<T, L> testDataComponents)
