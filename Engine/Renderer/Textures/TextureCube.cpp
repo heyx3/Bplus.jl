@@ -5,22 +5,23 @@ using namespace Bplus::GL;
 using namespace Bplus::GL::Textures;
 
 
-TextureCube::TextureCube(const glm::uvec2& _size, Format format,
+TextureCube::TextureCube(uint32_t _size, Format format,
                          uint_mipLevel_t nMips,
                          Sampler<2> sampler)
     : Texture(Types::Cubemap, format,
-              (nMips < 1) ? GetMaxNumbMipmaps(_size) : nMips,
+              (nMips < 1) ? GetMaxNumbMipmaps(glm::uvec1{_size}) : nMips,
               sampler.ChangeDimensions<3>()),
       size(_size)
 {
     //Allocate GPU storage.
     glTextureStorage2D(GetOglPtr().Get(), GetNMipLevels(), GetFormat().GetOglEnum(),
-                       size.x, size.y);
+                       size, size);
 
     //Cubemaps should always use clamping.
     BPAssert(GetSampler().GetWrapping() == +WrapModes::Clamp,
              "Only Clamp wrapping is supported for cubemap textures");
     //Make sure all cubemaps sample nicely around the edges.
+    //From what I understand, virtually all implementations can easily do this nowadays.
     glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 }
 
@@ -42,12 +43,11 @@ TextureCube& TextureCube::operator=(TextureCube&& src)
 }
 
 
-glm::uvec2 TextureCube::GetSize(uint_mipLevel_t mipLevel) const
+uint32_t TextureCube::GetSize(uint_mipLevel_t mipLevel) const
 {
     auto _size = size;
     for (uint_mipLevel_t i = 0; i < mipLevel; ++i)
-        _size = glm::max(_size / glm::uvec2{ 2 },
-                         glm::uvec2{ 1 });
+        _size = std::max(_size / 2U, 1U);
     return _size;
 }
 
@@ -57,7 +57,9 @@ void TextureCube::ClearData(void* clearValue,
                             const SetDataCubeParams& params)
 {
     auto fullSize = GetSize(params.MipLevel);
-    auto range = params.GetRange(fullSize);
+    glm::uvec2 fullSize2D{ fullSize, fullSize };
+
+    auto range = params.GetRange(fullSize2D);
     auto range3D = params.ToRange3D(range);
 
     glClearTexSubImage(GetOglPtr().Get(), params.MipLevel,
@@ -70,11 +72,11 @@ void TextureCube::ClearData(void* clearValue,
     {
         //If we've cleared the entire texture, skip mipmap generation
         //    and just clear all smaller mips.
-        if (range.Size == fullSize)
+        if (range.Size == fullSize2D)
         {
             for (uint_mipLevel_t mipI = params.MipLevel + 1; mipI < GetNMipLevels(); ++mipI)
             {
-                auto mipFullSize = GetSize(mipI);
+                auto mipFullSize = GetSize2D(mipI);
 
                 glClearTexSubImage(GetOglPtr().Get(), mipI,
                                    0, 0, range3D.MinCorner.z,
@@ -93,12 +95,14 @@ void TextureCube::SetData(const void* data,
                           GLenum dataChannels, GLenum dataType,
                           const SetDataCubeParams& params)
 {
-    auto sizeAtMip = GetSize(params.MipLevel);
+    auto sizeAtMip = GetSize2D(params.MipLevel);
     auto range = params.GetRange(sizeAtMip);
 
     for (glm::length_t d = 0; d < 2; ++d)
+    {
         BPAssert(range.GetMaxCornerInclusive()[d] < sizeAtMip[d],
                  "GetData() call would go past the texture bounds");
+    }
 
     auto range3D = params.ToRange3D(range);
     glTextureSubImage3D(GetOglPtr().Get(), params.MipLevel,
@@ -114,7 +118,7 @@ void TextureCube::GetData(void* data,
                           GLenum dataChannels, GLenum dataType,
                           const GetDataCubeParams& params) const
 {
-    auto sizeAtMip = GetSize(params.MipLevel);
+    auto sizeAtMip = GetSize2D(params.MipLevel);
     auto range = params.GetRange(sizeAtMip);
 
     for (glm::length_t d = 0; d < 2; ++d)
@@ -138,7 +142,7 @@ void TextureCube::Set_Compressed(const std::byte* compressedData,
                                  uint_mipLevel_t mipLevel)
 {
     //Convert block range to pixel size.
-    auto texSize = GetSize(mipLevel);
+    auto texSize = GetSize2D(mipLevel);
     auto blockSize = GetBlockSize(GetFormat().AsCompressed());
     auto destPixelRange = Math::Box2Du::MakeMinSize(destBlockRange.MinCorner * blockSize,
                                                     destBlockRange.Size * blockSize);
@@ -165,7 +169,7 @@ void TextureCube::Get_Compressed(std::byte* compressedData,
                                  uint_mipLevel_t mipLevel) const
 {
     //Convert block range to pixel size.
-    auto texSize = GetSize(mipLevel);
+    auto texSize = GetSize2D(mipLevel);
     auto blockSize = GetBlockSize(GetFormat().AsCompressed());
     auto pixelRange = Math::Box2Du::MakeMinSize(blockRange.MinCorner * blockSize,
                                                 blockRange.Size * blockSize);

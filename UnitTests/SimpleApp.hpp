@@ -169,7 +169,9 @@ protected:
     virtual void OnBegin()
     {
         //Add an error/debug-message handler for OpenGL that asserts "false".
+        //TODO: Make the App base class provide hooks for this.
         glEnable(GL_DEBUG_OUTPUT);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         glDebugMessageCallback(Simple::OnOglMsg, 0);
     }
     virtual void OnUpdate(float deltaT)
@@ -207,13 +209,14 @@ namespace Simple
         {
             //Originally I put a TEST_CHECK_ here, but
             //    sometimes we want to test that something fails as expected,
-            //    so instead we'll go with the more flexible exception.
+            //    so instead we'll go with an exception.
             //Acutest can catch exceptions.
 
             if (!condition)
             {
-                std::string errorMsg = "Assert failed: ";
+                std::string errorMsg = "BPAssert failed (might be a test that expects a failure): ";
                 errorMsg += msg;
+                std::cout << "\n" << errorMsg << "\n";
                 throw std::exception(errorMsg.c_str());
             }
         });

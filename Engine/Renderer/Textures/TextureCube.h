@@ -162,11 +162,11 @@ namespace Bplus::GL::Textures
         static constexpr Types GetClassType() { return Types::Cubemap; }
 
 
-        //Creates a new cube-map.
+        //Creates a new cube-map with the given width/height.
         //Pass "1" for nMipLevels to not use mip-maps.
         //Pass "0" for nMipLevels to generate full mip-maps down to a single pixel.
         //Pass anything else to generate a fixed amount of mip levels.
-        TextureCube(const glm::uvec2& size, Format format,
+        TextureCube(uint32_t size, Format format,
                     uint_mipLevel_t nMipLevels = 0,
                     Sampler<2> sampler = { });
 
@@ -176,11 +176,16 @@ namespace Bplus::GL::Textures
         TextureCube& operator=(TextureCube&& src);
 
 
-        glm::uvec2 GetSize(uint_mipLevel_t mipLevel = 0) const;
+        uint32_t GetSize(uint_mipLevel_t mipLevel = 0) const;
+        glm::uvec2 GetSize2D(uint_mipLevel_t mipLevel = 0) const
+        {
+            auto s = GetSize(mipLevel);
+            return { s, s };
+        }
 
         //Gets the number of bytes needed to store this texture in its native format.
         //This includes all six faces; divide the result by 6 to get the byte-size per face.
-        size_t GetByteSize(uint_mipLevel_t mipLevel = 0) const override { return 6 * GetFormat().GetByteSize(GetSize(mipLevel)); }
+        size_t GetByteSize(uint_mipLevel_t mipLevel = 0) const override { return 6 * GetFormat().GetByteSize(GetSize2D(mipLevel)); }
 
         //Gets (or creates) a view of this texture with the given sampler.
         TexView GetView(std::optional<Sampler<2>> customSampler = std::nullopt) const
@@ -495,6 +500,6 @@ namespace Bplus::GL::Textures
 
     protected:
 
-        glm::uvec2 size;
+        uint32_t size;
     };
 }
