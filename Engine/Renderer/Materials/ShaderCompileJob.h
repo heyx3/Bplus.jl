@@ -95,6 +95,11 @@ namespace Bplus::GL
         std::optional<PreCompiledShader> CachedBinary;
 
 
+        ShaderCompileJob() { }
+        ShaderCompileJob(std::function<FileContentsLoader> includeHandler)
+            : IncludeImplementation(includeHandler) { }
+
+
         //Pre-processes the given shader source to execute any "#pragma include(...)" statements.
         //Edits the string in-place.
         void PreProcessIncludes(std::string& sourceStr) const;

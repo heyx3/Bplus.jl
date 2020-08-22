@@ -14,6 +14,7 @@ TEST_LIST = {
     { "ToBaseString()", TestToBaseString },
     { "Strings::StartsWith()", TestStringStartsWith },
     { "Strings::EndsWith()", TestStringEndsWith },
+    { "Strings::Replace() and ::ReplaceNew()", TestStringReplace },
 
     { "Toml basic tests",         TomlBasic      },
     { "Toml wrapping/unwrapping", TomlWrapping   },

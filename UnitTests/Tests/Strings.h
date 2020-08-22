@@ -75,3 +75,52 @@ void TestStringEndsWith()
     TEST_CHECK_(!Strings::EndsWith("abc123", "abc"),
                 "'abc123' doesn't end with 'abc'");
 }
+
+namespace
+{
+    //Runs a given test for both versions of Strings::Replace().
+    void _TestStringReplaces(const std::string& _testName,
+                             const std::string& src,
+                             const std::string& snippet,
+                             const std::string& replaceWith,
+                             const std::string& expected)
+    {
+        std::string testName = _testName + " (inline)";
+        TEST_CASE(testName.c_str());
+        std::string result = src;
+        Strings::Replace(result, snippet, replaceWith);
+        if (!TEST_CHECK(result == expected))
+            TEST_MSG("Expected \"%s\" but got \"%s\"", expected.c_str(), result.c_str());
+
+        testName = _testName + " (New-ed)";
+        TEST_CASE(testName.c_str());
+        result = Strings::ReplaceNew(src, snippet, replaceWith);
+        if (!TEST_CHECK(result == expected))
+            TEST_MSG("Expected \"%s\" but got \"%s\"", expected.c_str(), result.c_str());
+    }
+}
+void TestStringReplace()
+{
+    _TestStringReplaces("src is Empty String",
+                        "",
+                        "abc", "def",
+                        "");
+    _TestStringReplaces("snippet is Empty String",
+                        "abc",
+                        "", "def",
+                        "abc");
+    _TestStringReplaces("replacedWith is Empty String",
+                        "abc123abc",
+                        "abc", "",
+                        "123");
+    _TestStringReplaces("basic",
+                        "Hello, world",
+                        "l", "[the letter L]",
+                        "He[the letter L][the letter L]o, wor[the letter L]d");
+    _TestStringReplaces("large replacement",
+                        "abc123abc",
+                        "c123a", "[]",
+                        "ab[]bc");
+}
+
+//TODO: Test Strings::FindDifference()

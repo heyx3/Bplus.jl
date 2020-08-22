@@ -12,16 +12,10 @@ using namespace Bplus;
 using namespace Bplus::GL;
 
 
-void TestShaderIncludeCommand()
+namespace
 {
-    //Spin up a shader compiler that "loads files"
-    //    by just pasting the file name.
-    //Except for any file beginning with "FAIL-",
-    //    which fails to load.
-    ShaderCompileJob compiler;
-    compiler.IncludeImplementation =
-        [](const fs::path& path, std::stringstream& out)
-        {
+    ShaderCompileJob compiler = ShaderCompileJob([&]
+        (const fs::path& path, std::stringstream& out) {
             auto pathStr = path.string();
 
             if (pathStr.substr(0, std::min(5ULL, pathStr.size())) == "FAIL-")
@@ -29,39 +23,113 @@ void TestShaderIncludeCommand()
 
             out << pathStr;
             return true;
-        };
+        });
 
+    void RunShaderInclude(std::string src,
+                          std::function<void(const std::string&)> processResult)
+    {
+        compiler.PreProcessIncludes(src);
+        processResult(src);
+    }
 
-    //The pre-processor modifies strings in-place.
-    std::string shaderSrcPre, shaderSrcPost;
+    //Tests that running the shader #pragma include preprocessor on the given string
+    //    changes it into the given "expected" string.
+    void TestShaderInclude(const std::string& testName,
+                           const std::string& src,
+                           const std::string& expected,
+                           std::function<void(const std::string&)> onFailure = [](const auto&) { })
+    {
+        TEST_CASE(testName.c_str());
 
-    //This macro tests that a string passes a given test after parsing.
-#define TEST_PREPROCESS_INCLUDES(testStr, test, testName) \
-    shaderSrcPre = testStr; \
-    shaderSrcPost = shaderSrcPre; \
-    compiler.PreProcessIncludes(shaderSrcPost); \
-    if (!TEST_CHECK_(test, testName)) \
-        TEST_MSG("Input (next line):\n%s\n---------------------------\nOutput (next line):\n%s", shaderSrcPre.c_str(), shaderSrcPost.c_str())
+        std::string actual = src;
+        compiler.PreProcessIncludes(actual);
+        std::string lineBreakVisual = "[[\\n]]\n";
+        std::string cmdFriendlySrc = Strings::ReplaceNew(src, "\n", lineBreakVisual),
+                    cmdFriendlyExpected = Strings::ReplaceNew(expected, "\n", lineBreakVisual),
+                    cmdFriendlyActual = Strings::ReplaceNew(actual, "\n", lineBreakVisual);
+        if (!TEST_CHECK_(actual == expected,
+                         "Input (next line, inside braces):\n{%s}\n"
+                             "----------------------\n"
+                             "Expected (next line, inside braces):\n{%s}\n"
+                             "----------------------\n"
+                             "Output (next line, inside braces):\n{%s}",
+                         cmdFriendlySrc.c_str(),
+                         cmdFriendlyExpected.c_str(),
+                         cmdFriendlyActual.c_str()))
+        {
+            //Find the character and line at which they're different.
+            size_t charI, lineI, differenceI;
+            bool wasDifferent = Strings::FindDifference(expected, actual,
+                                                        differenceI, charI, lineI);
 
-    //This macro tests that one string parses into another string.
-#define TEST_PREPROCESS_INCLUDES_BASIC(testStr, resultStr, testName) \
-    TEST_PREPROCESS_INCLUDES(testStr, shaderSrcPost == resultStr, testName)
+            //They have to be different somewhere; otherwise the test would have passed.
+            assert(wasDifferent);
 
-    //This macro tests that a string does not change after parsing.
-#define TEST_PREPROCESS_INCLUDES_UNCHANGED(testStr, testName) \
-    TEST_PREPROCESS_INCLUDES_BASIC(testStr, testStr, testName)
+            //Report the nature of the failure.
+            if (differenceI >= expected.size())
+                TEST_MSG("Output has extra characters");
+            else if (differenceI >= actual.size())
+                TEST_MSG("Output has too few characters");
+            else
+                TEST_MSG("Input and output differ at line %i, character %i: "
+                             "expected '%c' but got '%c'",
+                         lineI, charI, expected[differenceI], actual[differenceI]);
 
+            onFailure(actual);
+        }
+    }
+    //Tests that running the shader #pragma include preprocessor on the given string
+    //    does not change it at all.
+    void TestShaderIncludeUnchanged(const std::string& testName,
+                                    const std::string& src,
+                                    std::function<void(const std::string&)> onFailure = [](const auto&) { })
+    {
+        TEST_CASE(testName.c_str());
+
+        std::string actual = src;
+        compiler.PreProcessIncludes(actual);
+        if (!TEST_CHECK_(actual == src,
+                         "Input (next line):\n%s\n"
+                             "----------------------\n"
+                             "Expected (next line):\n%s\n"
+                             "----------------------\n"
+                             "Output (next line):\n%s",
+                         src.c_str(), src.c_str(), actual.c_str()))
+        {
+            //Find the character and line at which they're different.
+            size_t charI, lineI, differenceI;
+            bool wasDifferent = Strings::FindDifference(src, actual,
+                                                        differenceI, charI, lineI);
+
+            //They have to be different somewhere; otherwise the test would have passed.
+            assert(wasDifferent);
+
+            //Report the nature of the failure.
+            if (differenceI >= src.size())
+                TEST_MSG("Output has extra characters");
+            else if (differenceI >= actual.size())
+                TEST_MSG("Output has too few characters");
+            else
+                TEST_MSG("Input and output differ at line %i, character %i: "
+                             "expected '%c' but got '%c'",
+                         lineI, charI, src[differenceI], actual[differenceI]);
+
+            onFailure(actual);
+        }
+    }
+}
+
+void TestShaderIncludeCommand()
+{
     //Run some tests!
     TEST_CASE("Small tests");
 
-    TEST_PREPROCESS_INCLUDES_UNCHANGED("", "Empty string");
-    TEST_PREPROCESS_INCLUDES_UNCHANGED(
-        "123454321 hi there\nHe,,,llo\nwo.,.,ef\
-ji!)(*)!(*$)!($!oweijf",
-        "Plain multi-line string"
-    );
-    TEST_PREPROCESS_INCLUDES_UNCHANGED(
-        "#define A a\n\
+    TestShaderIncludeUnchanged("Empty string", "");
+    TestShaderIncludeUnchanged("Plain multi-line string",
+                               "123454321 hi there\nHe,,,llo\nwo.,.,ef\
+ji!)(*)!(*$)!($!oweijf");
+    TestShaderIncludeUnchanged("Weird multi-line stuff with preprocessor symbols but no includes",
+"#define A a\n\
          #   hello there      #\n\
 # ## ### ####\n\
 #\n\
@@ -69,65 +137,50 @@ ji!)(*)!(*$)!($!oweijf",
 #pragma haha  \n\
 #pragma dontinclude\n\
 #include \"this isn't a noticeable include statement\"\n\
-#include <This isn't either>",
-        "Weird multi-line stuff with preprocessor symbols but no includes"
-    );
+#include <This isn't either>");
+    
+    TestShaderInclude("Basic include statement with brackets",
+                      "#pragma include <hello>", "\n#line 0 1\nhello\n#line 1 0\n");
+    TestShaderInclude("Basic include statement with quotes",
+                      "#pragma include \"hello2\"", "\n#line 0 1\nhello2\n#line 1 0\n");
+    TestShaderInclude("Putting quotes inside an angle-bracket include",
+                      "#pragma include <a\"b\">", "\n#line 0 1\na\"b\"\n#line 1 0\n");
+    TestShaderInclude("Putting angle-brackets inside a quoted include",
+                      "#pragma include \"a<b>\"", "\n#line 0 1\na<b>\n#line 1 0\n");
+    TestShaderInclude("Preserves white-space after the include statement",
+                      "#pragma include <abcd> ", "\n#line 0 1\nabcd\n#line 1 0\n ");
+    TestShaderInclude("Preserves white-space after the include statement",
+                      "#pragma include \"abcd\"  ", "\n#line 0 1\nabcd\n#line 1 0\n  ");
+    TestShaderInclude("Preserves text right after the include statement",
+                      "#pragma include <abcd>efgh", "\n#line 0 1\nabcd\n#line 1 0\nefgh");
+    RunShaderInclude("#pragma include FAIL-ldskjflksjdfksjdlkj",
+                     [](const auto& resultStr) {
+                         TEST_CASE("Simple failure");
+                         TEST_CHECK_(strncmp(resultStr.c_str(), "#error", 6) == 0,
+                                    "Failed include should result in an #error");
+                     });
+    TestShaderInclude("Ignore whitespace in between tokens in the include statement",
+                      " #    pragma\t  include\t   \t    \t  <success.jpg>",
+                      " \n#line 0 1\nsuccess.jpg\n#line 1 0\n");
 
-    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include <hello>", "\n#line 0 1\nhello\n#line 1 0\n",
-                                   "Basic include statement with brackets");
-    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include \"hello2\"", "\n#line 0 1\nhello2\n#line 1 0\n",
-                                   "Basic include statement with quotes");
-    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include <a\"b\">", "\n#line 0 1\na\"b\"\n#line 1 0\n",
-                                   "Putting quotes inside an angle-bracket include");
-    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include \"a<b>\"", "\n#line 0 1\na<b>\n#line 1 0\n",
-                                   "Putting angle-brackets  inside a quoted include");
-    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include <abcd> ", "\n#line 0 1\nabcd\n#line 1 0\n ",
-                                   "Preserves white-space after the include statement");
-    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include \"abcd\"  ", "\n#line 0 1\nabcd\n#line 1 0\n  ",
-                                   "Preserves white-space after the include statement");
-    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include \"abcd\"  ", "\n#line 0 1\nabcd\n#line 1 0\n  ",
-                                   "Preserves white-space after the include statement");
-    TEST_PREPROCESS_INCLUDES_BASIC("#pragma include <abcd>efgh", "\n#line 0 1\nabcd\n#line 1 0\nefgh",
-                                   "Preserves text right after the include statement");
-    TEST_PREPROCESS_INCLUDES("#pragma include FAIL-ldskjflksjdfksjdlkj",
-                             strncmp(shaderSrcPost.c_str()  BP_COMMA
-                                     "#error"               BP_COMMA
-                                     6) == 0,
-                             "Failed include should result in an #error"
-    );
-    TEST_PREPROCESS_INCLUDES_BASIC(" #    pragma\t  include\t   \t    \t  <success.jpg>",
-                                   " \n#line 0 1\nsuccess.jpg\n#line 1 0\n",
-                                   "Ignore whitespace in between tokens in the include statement");
-
-    TEST_PREPROCESS_INCLUDES_BASIC
-    (
-        "#pragma include <hello there>\n\
+    TestShaderInclude("Large file with many successful includes plus some gibberish",
+"#pragma include <hello there>\n\
 #pragma include \"hi\"\n\
 3\n\
 4 # pragma include \"30,000\" 50,000",
-//------------------------------------------
-        "hello there\n\
-hi\n\
-3\n\
-4 30,000 50,000",
-        "\n#line 0 1\nhello there\n\#line 1 0\n\
+//-------------------------------------------
+"\n#line 0 1\nhello there\n#line 1 0\n\
 #line 0 2\nhi\n#line 2 0\n\
 3\n\
 4 \n\
 #line 0 3\n30,000\n#line 3 0\n\
- 50,000",
-//------------------------------------------
-        "Large file with many successful includes plus some gibberish"
-    );
-
-#undef TEST_PREPROCESS_INCLUDES_BASIC
-#undef TEST_PREPROCESS_INCLUDES_UNCHANGED
-#undef TEST_PREPROCESS_INCLUDES
-
+ 50,000");
 
     //Do a more comprehensive test about error includes and multi-line strings.
     TEST_CASE("Big test with a multi-line string with multiple include errors");
-    shaderSrcPre =
+
+    //The pre-processor modifies strings in-place.
+    std::string shaderSrcPre =
         "abc123\n\
 #pragma include FAIL-zxcv\n\
 #pragma include FAIL-asdf\n\
@@ -136,7 +189,7 @@ def456\n\
 \n\
 #pragma include FAIL-123456789\n\
 ";
-    shaderSrcPost = shaderSrcPre;
+    std::string shaderSrcPost = shaderSrcPre;
     compiler.PreProcessIncludes(shaderSrcPre);
 
     //Split the processed shader into individual lines to run tests.
@@ -164,6 +217,6 @@ def456\n\
                  "Line [6] should be an #error about including '123456789'");
 }
 
-//TODO: Test the including from disk helper class.
+//TODO: Test the 'including from disk' helper class.
 //TODO: Test nested includes.
 //TODO: Test actual shader compilation.

@@ -75,9 +75,11 @@ void ShaderCompileJob::PreProcessIncludes(std::string& sourceStr) const
     //    so that any nested includes are caught.
     //Set a hard max on the number of includes that can be processed,
     //    to avoid infinite loops.
-    //Use #line commands to keep line numbers in line with the origial files.
-    size_t currentLine = 1,
-           nextFileI = 1;
+    //Use #line commands to manage line numbers so that compile errors make sense.
+    std::vector<size_t> lineStack, fileIndexStack;
+    lineStack.push_back(1);
+    fileIndexStack.push_back(0);
+    size_t nextFileIndex = 1;
     size_t includeCount = 0;
     enum class CommentModes { None, SingleLine, MultiLine };
     CommentModes commentMode = CommentModes::None;
@@ -89,10 +91,22 @@ void ShaderCompileJob::PreProcessIncludes(std::string& sourceStr) const
              nextChar = isEOF ? '\0' : sourceStr[i + 1],
              nextChar2 = isNextEOF ? '\0' : sourceStr[i + 2];
 
-        //If this is a line break, count it.
-        if (thisChar == '\n' || thisChar == '\r')
+        //A null terminator signifies the end of an included sub-file.
+        if (thisChar == '\0')
         {
-            currentLine += 1;
+            lineStack.pop_back();
+            lineStack.back() += 1;
+
+            fileIndexStack.pop_back();
+
+            //Remove the null terminator.
+            sourceStr.erase(i, 1);
+            i -= 1;
+        }
+        //If this is a line break, count it.
+        else if (thisChar == '\n' || thisChar == '\r')
+        {
+            lineStack.back() += 1;
             
             //If we were in a single-line comment, end it.
             if (commentMode == CommentModes::SingleLine)
@@ -106,7 +120,7 @@ void ShaderCompileJob::PreProcessIncludes(std::string& sourceStr) const
         //   (but still increment the line number).
         else if (thisChar == '\\' && (nextChar == '\n' || nextChar == '\r'))
         {
-            currentLine += 1;
+            lineStack.back() += 1;
             i += 1;
 
             //Some line breaks are two characters long -- \n\r or \r\n.
@@ -195,7 +209,7 @@ expected a path, starting with a double-quote '\"' or angle-bracket '<'";
                          
                             //Find the end of the path name.
                             char expectedPathEnd = (sourceStr[j - 1] == '<') ? '>' : '"';
-                            j += 1;
+                            j += 1; //TODO: Remove this, right? And add a check for an empty #include
                             while (j < sourceStr.size() && sourceStr[j] != expectedPathEnd &&
                                    sourceStr[j] != '\n' && sourceStr[j] != '\r')
                             {
@@ -224,11 +238,21 @@ expected double-quote '\"' or angle-bracket '>' to close it";
                                     //Try to load the file.
                                     //If it succeeds, insert a #line statement before and after the file contents.
                                     //If it fails, replace it with an #error message.
-                                    strBuffer << "\n#line 0 " << nextFileI << "\n";
-                                    nextFileI += 1;
+                                    strBuffer << "\n#line 0 " << nextFileIndex << "\n";
+                                    nextFileIndex += 1;
                                     if (IncludeImplementation(fs::path(pathName), strBuffer))
                                     {
-                                        strBuffer << "\n#line " << currentLine << " 0\n";
+                                        //Insert the #line command to put things back to normal.
+                                        //Also insert a null terminator to represent the point
+                                        //    where the line number should be popped back off
+                                        //    the stack.
+                                        //We have to be careful to insert it on its own,
+                                        //    or it'll interrupt whatever string it's a part of!
+                                        strBuffer << "\n#line " << (lineStack.back()) <<
+                                                     " " << fileIndexStack.back() <<
+                                                    '\n' << '\0';
+                                        fileIndexStack.push_back(nextFileIndex - 1);
+                                        lineStack.push_back(1);
                                     }
                                     else
                                     {

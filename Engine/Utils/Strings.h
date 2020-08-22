@@ -97,6 +97,17 @@ namespace Bplus::Strings
     bool BP_API StartsWith(const std::string& str, const std::string& snippet);
     bool BP_API EndsWith(const std::string& str, const std::string& snippet);
 
+    //Edits the given string to replace all instances of "snippet" with "replacedWith".
     void BP_API Replace(std::string& str,
                         const std::string& snippet, const std::string& replacedWith);
+    //Returns a new string with all instances of the snippet replaced with a given value.
+    std::string BP_API ReplaceNew(const std::string& src,
+                                  const std::string& snippet,
+                                  const std::string& replaceWith);
+
+    //Finds the first place where the two strings differ,
+    //    including the index, and the line/character number.
+    //Returns whether they actually are different.
+    bool BP_API FindDifference(const std::string& a, const std::string b,
+                               size_t& outI, size_t& outCharI, size_t& outLineI);
 }
