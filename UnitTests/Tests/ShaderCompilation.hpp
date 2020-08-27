@@ -43,7 +43,7 @@ namespace
 
         std::string actual = src;
         compiler.PreProcessIncludes(actual);
-        std::string lineBreakVisual = "[[\\n]]\n";
+        std::string lineBreakVisual = "[\\n]\n";
         std::string cmdFriendlySrc = Strings::ReplaceNew(src, "\n", lineBreakVisual),
                     cmdFriendlyExpected = Strings::ReplaceNew(expected, "\n", lineBreakVisual),
                     cmdFriendlyActual = Strings::ReplaceNew(actual, "\n", lineBreakVisual);
@@ -140,19 +140,19 @@ ji!)(*)!(*$)!($!oweijf");
 #include <This isn't either>");
     
     TestShaderInclude("Basic include statement with brackets",
-                      "#pragma include <hello>", "\n#line 0 1\nhello\n#line 1 0\n");
+                      "#pragma include <hello>", "\n#line 1 1\nhello\n#line 1 0\n");
     TestShaderInclude("Basic include statement with quotes",
-                      "#pragma include \"hello2\"", "\n#line 0 1\nhello2\n#line 1 0\n");
+                      "#pragma include \"hello2\"", "\n#line 1 1\nhello2\n#line 1 0\n");
     TestShaderInclude("Putting quotes inside an angle-bracket include",
-                      "#pragma include <a\"b\">", "\n#line 0 1\na\"b\"\n#line 1 0\n");
+                      "#pragma include <a\"b\">", "\n#line 1 1\na\"b\"\n#line 1 0\n");
     TestShaderInclude("Putting angle-brackets inside a quoted include",
-                      "#pragma include \"a<b>\"", "\n#line 0 1\na<b>\n#line 1 0\n");
+                      "#pragma include \"a<b>\"", "\n#line 1 1\na<b>\n#line 1 0\n");
     TestShaderInclude("Preserves white-space after the include statement",
-                      "#pragma include <abcd> ", "\n#line 0 1\nabcd\n#line 1 0\n ");
+                      "#pragma include <abcd> ", "\n#line 1 1\nabcd\n#line 1 0\n ");
     TestShaderInclude("Preserves white-space after the include statement",
-                      "#pragma include \"abcd\"  ", "\n#line 0 1\nabcd\n#line 1 0\n  ");
+                      "#pragma include \"abcd\"  ", "\n#line 1 1\nabcd\n#line 1 0\n  ");
     TestShaderInclude("Preserves text right after the include statement",
-                      "#pragma include <abcd>efgh", "\n#line 0 1\nabcd\n#line 1 0\nefgh");
+                      "#pragma include <abcd>efgh", "\n#line 1 1\nabcd\n#line 1 0\nefgh");
     RunShaderInclude("#pragma include FAIL-ldskjflksjdfksjdlkj",
                      [](const auto& resultStr) {
                          TEST_CASE("Simple failure");
@@ -161,7 +161,7 @@ ji!)(*)!(*$)!($!oweijf");
                      });
     TestShaderInclude("Ignore whitespace in between tokens in the include statement",
                       " #    pragma\t  include\t   \t    \t  <success.jpg>",
-                      " \n#line 0 1\nsuccess.jpg\n#line 1 0\n");
+                      " \n#line 1 1\nsuccess.jpg\n#line 1 0\n");
 
     TestShaderInclude("Large file with many successful includes plus some gibberish",
 "#pragma include <hello there>\n\
@@ -169,11 +169,14 @@ ji!)(*)!(*$)!($!oweijf");
 3\n\
 4 # pragma include \"30,000\" 50,000",
 //-------------------------------------------
-"\n#line 0 1\nhello there\n#line 1 0\n\
-#line 0 2\nhi\n#line 2 0\n\
+"\n#line 1 1\nhello there\n#line 1 0\n\
+\n\
+\n\
+#line 1 2\nhi\n#line 2 0\n\
+\n\
 3\n\
 4 \n\
-#line 0 3\n30,000\n#line 3 0\n\
+#line 1 3\n30,000\n#line 4 0\n\
  50,000");
 
     //Do a more comprehensive test about error includes and multi-line strings.
@@ -182,15 +185,15 @@ ji!)(*)!(*$)!($!oweijf");
     //The pre-processor modifies strings in-place.
     std::string shaderSrcPre =
         "abc123\n\
-#pragma include FAIL-zxcv\n\
-#pragma include FAIL-asdf\n\
-#pragma incude FAIL-qwertyuiop\n\
+#pragma include <FAIL-zxcv>\n\
+#pragma include <FAIL-asdf>\n\
+#pragma incude <FAIL-qwertyuiop>\n\
 def456\n\
 \n\
-#pragma include FAIL-123456789\n\
+#pragma include <FAIL-123456789>\n\
 ";
     std::string shaderSrcPost = shaderSrcPre;
-    compiler.PreProcessIncludes(shaderSrcPre);
+    compiler.PreProcessIncludes(shaderSrcPost);
 
     //Split the processed shader into individual lines to run tests.
     std::vector<std::string> lines;
@@ -200,15 +203,15 @@ def456\n\
         lines.push_back(tempLine);
 
     //Run the tests.
-    TEST_ASSERT_(lines.size() == 8, "Expected 8 lines");
-    TEST_ASSERT_(lines[0] == "abac123", "Line [0] should be unchanged");
+    TEST_ASSERT_(lines.size() == 7, "Expected 7 lines");
+    TEST_ASSERT_(lines[0] == "abc123", "Line [0] should be unchanged");
     TEST_ASSERT_(Strings::StartsWith(lines[1], "#error")
                     && lines[1].find("zxcv") != std::string::npos,
                  "Line [1] should be an #error about including 'zxcv'");
     TEST_ASSERT_(Strings::StartsWith(lines[2], "#error")
                     && lines[2].find("asdf") != std::string::npos,
                  "Line [2] should be an #error about including 'asdf'");
-    TEST_ASSERT_(lines[3] == "#pragma incude FAIL-qwertyuiop",
+    TEST_ASSERT_(lines[3] == "#pragma incude <FAIL-qwertyuiop>",
                  "Line [3] is an intentional typo and should be left unchanged");
     TEST_ASSERT_(lines[4] == "def456", "Line [4] should be unchanged");
     TEST_ASSERT_(lines[5] == "", "Line [5] is empty");

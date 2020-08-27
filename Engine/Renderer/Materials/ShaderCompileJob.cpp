@@ -95,8 +95,6 @@ void ShaderCompileJob::PreProcessIncludes(std::string& sourceStr) const
         if (thisChar == '\0')
         {
             lineStack.pop_back();
-            lineStack.back() += 1;
-
             fileIndexStack.pop_back();
 
             //Remove the null terminator.
@@ -238,7 +236,7 @@ expected double-quote '\"' or angle-bracket '>' to close it";
                                     //Try to load the file.
                                     //If it succeeds, insert a #line statement before and after the file contents.
                                     //If it fails, replace it with an #error message.
-                                    strBuffer << "\n#line 0 " << nextFileIndex << "\n";
+                                    strBuffer << "\n#line 1 " << nextFileIndex << "\n";
                                     nextFileIndex += 1;
                                     if (IncludeImplementation(fs::path(pathName), strBuffer))
                                     {
@@ -248,7 +246,7 @@ expected double-quote '\"' or angle-bracket '>' to close it";
                                         //    the stack.
                                         //We have to be careful to insert it on its own,
                                         //    or it'll interrupt whatever string it's a part of!
-                                        strBuffer << "\n#line " << (lineStack.back()) <<
+                                        strBuffer << "\n#line " << lineStack.back() <<
                                                      " " << fileIndexStack.back() <<
                                                     '\n' << '\0';
                                         fileIndexStack.push_back(nextFileIndex - 1);
@@ -256,7 +254,8 @@ expected double-quote '\"' or angle-bracket '>' to close it";
                                     }
                                     else
                                     {
-                                        strBuffer.str("#error unable to 'pragma include' file: ");
+                                        strBuffer.str("");
+                                        strBuffer << "#error unable to 'pragma include' file: ";
 
                                         //Edge-case: make sure the file name doesn't have
                                         //    '#pragma include' in it, or this parser loops forever.
@@ -272,7 +271,6 @@ expected double-quote '\"' or angle-bracket '>' to close it";
                         //    we do not want to remove the character at index j.
                         sourceStr.erase(i, j - i + 1);
                         sourceStr.insert(i, strBuffer.str());
-                        j -= 1;
                     }
                 }
             }
