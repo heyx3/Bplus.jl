@@ -147,8 +147,19 @@ void TestTextureGetSetSingle(Format texFormat, PixelIOChannels dataComponentForm
     std::array<T, L> outputTestVal;
     tex.Get_Color(outputTestVal.data(), dataComponentFormat);
 
-    for (size_t i = 0; i < outputTestVal.size(); ++i)
-        TEST_CHECK(outputTestVal[i] == testDataComponents[i]);
+    //Test each channel that was actually set.
+    auto TestChannel = [&](ColorChannels channel, const char* channelName) {
+        if (UsesChannel(dataComponentFormat, channel))
+        {
+            auto channelI = GetChannelIndex(dataComponentFormat, channel);
+            TEST_CHECK(outputTestVal[channelI] == testDataComponents[channelI],
+                       channelName);
+        }
+    };
+    TestChannel(ColorChannels::Red, "Red");
+    TestChannel(ColorChannels::Green, "Red");
+    TestChannel(ColorChannels::Blue, "Blue");
+    TestChannel(ColorChannels::Alpha, "Alpha");
 }
 template<typename T, glm::size_t L>
 void TestTextureGetSetSingleAllChannels(SimpleFormat texFormat,

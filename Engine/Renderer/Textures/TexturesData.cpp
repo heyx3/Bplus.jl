@@ -57,3 +57,43 @@ bool Bplus::GL::Textures::UsesChannel(PixelIOChannels components, ColorChannels 
             return 0;
     }
 }
+uint8_t Bplus::GL::Textures::GetChannelIndex(PixelIOChannels components,
+                                             ColorChannels channel)
+{
+    BPAssert(UsesChannel(components, channel),
+             "Component format doesn't use the channel");
+
+    switch (components)
+    {
+        //If there's only one component, the index is always zero.
+        case PixelIOChannels::Red:
+        case PixelIOChannels::Green:
+        case PixelIOChannels::Blue:
+            return 0;
+
+        case PixelIOChannels::RG:
+            return (channel == +ColorChannels::Red) ? 0 : 1;
+
+        case PixelIOChannels::RGB:
+            return (channel == +ColorChannels::Red) ? 0 :
+                   ((channel == +ColorChannels::Green) ? 1 : 2);
+        case PixelIOChannels::BGR:
+            return (channel == +ColorChannels::Blue) ? 0 :
+                   ((channel == +ColorChannels::Green) ? 1 : 2);
+
+        case PixelIOChannels::RGBA:
+            return (channel == +ColorChannels::Red) ? 0 :
+                   ((channel == +ColorChannels::Green) ? 1 :
+                   ((channel == +ColorChannels::Blue) ? 2 : 3));
+        case PixelIOChannels::BGRA:
+            return (channel == +ColorChannels::Blue) ? 0 :
+                   ((channel == +ColorChannels::Green) ? 1 :
+                   ((channel == +ColorChannels::Red) ? 2 : 3));
+
+        default:
+            std::string errMsg = "Unknown :  Bplus::GL::Textures::PixelIOChannels.";
+            errMsg += components._to_string();
+            BPAssert(false, errMsg.c_str());
+            return 0;
+    }
+}

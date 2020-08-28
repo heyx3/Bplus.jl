@@ -409,6 +409,7 @@ namespace Bplus::GL::Textures
                 BPAssert(!GetFormat().IsInteger(), "Can't read an integer texture as non-integer data");
 
             GetData((void*)data,
+                    sizeof(decltype(data[0])) * GetNChannels(components),
                     GetOglChannels(components), GetOglInputFormat<T>(),
                     optionalParams);
         }
@@ -447,7 +448,8 @@ namespace Bplus::GL::Textures
             BPAssert(GetFormat().IsDepthOnly(),
                      "Trying to get depth data for a non-depth texture");
 
-            GetData(&pixels, GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
+            GetData(&pixels, sizeof(decltype(pixels[0])),
+                    GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
                     optionalParams);
         }
 
@@ -457,7 +459,7 @@ namespace Bplus::GL::Textures
             BPAssert(GetFormat().IsStencilOnly(),
                      "Trying to get the stencil values in a color, depth, or depth-stencil texture");
 
-            GetData(&pixels,
+            GetData(&pixels, sizeof(decltype(pixels[0])),
                     GL_STENCIL_INDEX, GetOglInputFormat<uint8_t>(),
                     optionalParams);
         }
@@ -472,6 +474,7 @@ namespace Bplus::GL::Textures
                      "Trying to set depth/stencil texture with a 24U depth, but it doesn't use 24U depth");
             
             GetData(&packedPixels_Depth24uStencil8u,
+                    sizeof(decltype(packedPixels_Depth24uStencil8u[0])),
                     GL_STENCIL_INDEX, GL_UNSIGNED_INT_24_8,
                     optionalParams);
         }
@@ -484,6 +487,7 @@ namespace Bplus::GL::Textures
                      "Trying to get depth/stencil texture with a 32F depth, but it doesn't use 32F depth");
 
             GetData(&packedPixels_Depth32fStencil8u,
+                    sizeof(decltype(packedPixels_Depth32fStencil8u[0])),
                     GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV,
                     optionalParams);
         }
@@ -491,7 +495,7 @@ namespace Bplus::GL::Textures
 
         //The implementation for getting any kind of data:
     private:
-        void GetData(void* data,
+        void GetData(void* data, size_t pixelByteSize,
                      GLenum dataChannels, GLenum dataType,
                      const GetDataCubeParams& params) const;
     public:

@@ -114,7 +114,7 @@ void TextureCube::SetData(const void* data,
     if (params.RecomputeMips)
         RecomputeMips();
 }
-void TextureCube::GetData(void* data,
+void TextureCube::GetData(void* data, size_t dataPixelSize,
                           GLenum dataChannels, GLenum dataType,
                           const GetDataCubeParams& params) const
 {
@@ -128,12 +128,11 @@ void TextureCube::GetData(void* data,
     }
 
     auto range3D = params.ToRange3D(range);
-    auto byteSize = (GLsizei)GetFormat().GetByteSize(range3D.Size);
+    auto byteSize = (GLsizei)(dataPixelSize * glm::compMul(range3D.Size));
     glGetTextureSubImage(GetOglPtr().Get(), params.MipLevel,
                          range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
                          range3D.Size.x, range3D.Size.y, range3D.Size.z,
-                         dataChannels, dataType,
-                         byteSize, data);
+                         dataChannels, dataType, byteSize, data);
 }
 
 void TextureCube::Set_Compressed(const std::byte* compressedData,

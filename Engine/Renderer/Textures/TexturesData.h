@@ -35,6 +35,7 @@ namespace Bplus::GL::Textures
     );
     uint8_t BP_API GetNChannels(PixelIOChannels data);
     bool BP_API UsesChannel(PixelIOChannels components, ColorChannels channel);
+    uint8_t BP_API GetChannelIndex(PixelIOChannels components, ColorChannels channel);
 
     //The different modes that an ImgView can be used in.
     BETTER_ENUM(ImageAccessModes, GLenum,
