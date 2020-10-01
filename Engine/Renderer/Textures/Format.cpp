@@ -813,5 +813,20 @@ GLenum Format::GetOglEnum() const
         return GL_NONE;
     }
 }
+GLenum Format::GetNativeOglEnum(std::optional<Textures::Types> texType) const
+{
+    GLenum glType = GL_RENDERBUFFER;
+    if (texType.has_value())
+        glType = texType.value()._to_integral();
+
+    GLint actualFormat;
+    glGetInternalformativ(glType, GetOglEnum(), GL_INTERNALFORMAT_PREFERRED,
+                          1, &actualFormat);
+    return (GLenum)actualFormat;
+}
+bool Format::IsNativelySupported(std::optional<Textures::Types> texType) const
+{
+    return GetNativeOglEnum(texType) == GetOglEnum();
+}
 
 #undef SWITCH_DEFAULT

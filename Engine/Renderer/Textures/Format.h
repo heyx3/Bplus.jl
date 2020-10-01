@@ -6,6 +6,19 @@
 
 namespace Bplus::GL::Textures
 {
+    //The different kinds of textures in OpenGL.
+    BETTER_ENUM(Types, GLenum,
+        OneD = GL_TEXTURE_1D,
+        TwoD = GL_TEXTURE_2D,
+        ThreeD = GL_TEXTURE_3D,
+        Cubemap = GL_TEXTURE_CUBE_MAP
+
+        //TODO: Multisample
+        //Array textures are not supported, because
+        //    they aren't necessary with bindless textures.
+    );
+
+
     BETTER_ENUM(ColorChannels, uint8_t,
         Red = 0, Green = 1, Blue = 2, Alpha = 3);
 
@@ -283,6 +296,13 @@ namespace Bplus::GL::Textures
         //Returns GL_NONE if the format isn't valid
         //    (i.e. a SimpleFormat with an invalid arrangement).
         GLenum GetOglEnum() const;
+        //Gets the OpenGL enum value representing the actual format
+        //    that this machine's GPU will use for this format on the given kind of texture.
+        //No given type means it will be used for a TargetBuffer.
+        GLenum GetNativeOglEnum(std::optional<Textures::Types> texType) const;
+        //Gets whether the driver actually uses this format,
+        //    as opposed to falling back on a "bigger" format under the hood.
+        bool IsNativelySupported(std::optional<Textures::Types> texType) const;
 
         bool operator==(const Format& other) const { return data == other.data; }
         bool operator!=(const Format& other) const { return !operator==(other); }

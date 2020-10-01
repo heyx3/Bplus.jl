@@ -9,6 +9,20 @@
 
 namespace Bplus
 {
+    //A helper type that does nothing but raise a lambda in the destructor.
+    //Cannot be moved or copied.
+    template<typename FuncOnStackClose>
+    struct TieToStack
+    {
+        FuncOnStackClose Func;
+        TieToStack(FuncOnStackClose func) : Func(func) { }
+        ~TieToStack() { Func(); }
+
+        TieToStack(const TieToStack<FuncOnStackClose>&) = delete;
+        TieToStack(TieToStack<FuncOnStackClose>&&) = delete;
+    };
+
+
     //Not defined in the standard before C++20...
     constexpr bool IsPlatformLittleEndian()
     {

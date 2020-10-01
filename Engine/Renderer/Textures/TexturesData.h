@@ -9,17 +9,6 @@
 
 namespace Bplus::GL::Textures
 {
-    //The different kinds of textures in OpenGL.
-    BETTER_ENUM(Types, GLenum,
-        OneD = GL_TEXTURE_1D,
-        TwoD = GL_TEXTURE_2D,
-        ThreeD = GL_TEXTURE_3D,
-        Cubemap = GL_TEXTURE_CUBE_MAP,
-
-        //A special kind of 2D texture that supports MSAA.
-        TwoD_Multisample = GL_TEXTURE_2D_MULTISAMPLE
-    );
-
     //Subsets of color channels when uploading/downloading pixel data,
     //    in byte order.
     //TODO: Rename "PixelIOChannels"

@@ -538,7 +538,7 @@ namespace Bplus::GL::Textures
                          "GetData() call would go past the texture bounds");
 
             auto range3D = range.ChangeDimensions<3>();
-            auto byteSize = (GLsizei)(dataPixelSize * glm::compMul(range3D.Size));
+            auto byteSize = GetFormat().GetByteSize(range3D.Size);
             glGetTextureSubImage(GetOglPtr().Get(), params.MipLevel,
                                  range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
                                  range3D.Size.x, range3D.Size.y, range3D.Size.z,

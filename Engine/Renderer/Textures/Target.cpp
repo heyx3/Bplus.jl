@@ -367,17 +367,17 @@ void Target::HandleRemoval(Texture* tex)
 
 void Target::AttachAt(GLenum attachment, const TargetOutput& output)
 {
-    if (output.IsLayered())
-    {
-        glNamedFramebufferTextureLayer(glPtr.Get(), attachment,
-                                       output.GetTex()->GetOglPtr().Get(),
-                                       output.MipLevel, (GLint)output.GetLayer());
-    }
-    else
+    if (output.IsLayered()) //TODO: Or isn't layer-able in the first place
     {
         glNamedFramebufferTexture(glPtr.Get(), attachment,
                                   output.GetTex()->GetOglPtr().Get(),
                                   output.MipLevel);
+    }
+    else
+    {
+        glNamedFramebufferTextureLayer(glPtr.Get(), attachment,
+                                       output.GetTex()->GetOglPtr().Get(),
+                                       output.MipLevel, (GLint)output.GetLayer());
     }
 }
 void Target::RemoveAt(GLenum attachment)
