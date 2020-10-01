@@ -144,16 +144,22 @@ void TestTextureGetSetSingle(Format texFormat, PixelIOChannels dataComponentForm
     Texture2D tex(glm::uvec2{ 1, 1 }, texFormat);
     tex.Set_Color(testDataComponents.data(), dataComponentFormat);
     
+    //Swap framebuffers so that graphics debuggers can take a snapshot.
+    SDL_GL_SwapWindow(Simple::App->MainWindow);
+
     std::array<T, L> outputTestVal;
     tex.Get_Color(outputTestVal.data(), dataComponentFormat);
+
+    //Swap framebuffers so that graphics debuggers can take a snapshot.
+    SDL_GL_SwapWindow(Simple::App->MainWindow);
 
     //Test each channel that was actually set.
     auto TestChannel = [&](ColorChannels channel, const char* channelName) {
         if (UsesChannel(dataComponentFormat, channel))
         {
             auto channelI = GetChannelIndex(dataComponentFormat, channel);
-            TEST_CHECK(outputTestVal[channelI] == testDataComponents[channelI],
-                       channelName);
+            TEST_CHECK_(outputTestVal[channelI] == testDataComponents[channelI],
+                        channelName);
         }
     };
     TestChannel(ColorChannels::Red, "Red");
@@ -217,22 +223,12 @@ void TextureSimpleGetSetData()
               SimpleFormatComponents::RGBA,
               SimpleFormatBitDepths::B8 },
             std::array<glm::u8, 4>{ 1, 128, 35, 206 });
-        TestTextureGetSetSingleAllChannels(
-            { FormatTypes::NormalizedUInt,
-              SimpleFormatComponents::RGB,
-              SimpleFormatBitDepths::B5 },
-            std::array<glm::u8, 3>{ 16, 0, 3 });
-        TestTextureGetSetSingleAllChannels(
-            { FormatTypes::NormalizedUInt,
-              SimpleFormatComponents::RGB,
-              SimpleFormatBitDepths::B10 },
-            std::array<glm::u16, 3>{ 1023, 513, 0 });
 
         TestTextureGetSetSingleAllChannels(
             { FormatTypes::NormalizedInt,
               SimpleFormatComponents::RG,
               SimpleFormatBitDepths::B8 },
-            std::array<glm::u8, 2>{ 67, 127 });
+            std::array<glm::i8, 2>{ 67, 127 });
         TestTextureGetSetSingleAllChannels(
             { FormatTypes::NormalizedInt,
               SimpleFormatComponents::RG,

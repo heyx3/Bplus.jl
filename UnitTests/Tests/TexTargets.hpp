@@ -48,7 +48,7 @@ void TestTargetBasic()
 
         TEST_CASE("Reading cleared depth value");
         float depthPixel = -999.0f;
-        tDepth.Get_Color(&depthPixel, PixelIOChannels::Red,
+        tDepth.Get_Depth(&depthPixel,
                          Bplus::GL::Textures::GetData2DParams(
                              Bplus::Math::Box2Du::MakeSize(glm::uvec2{ 1 })));
         TEST_CHECK_(depthPixel == clearDepth,
