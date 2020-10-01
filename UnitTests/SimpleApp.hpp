@@ -214,9 +214,8 @@ namespace Simple
 
             if (!condition)
             {
-                std::string errorMsg = "BPAssert failed (might be a test that expects a failure): ";
+                std::string errorMsg = "BPAssert failed: ";
                 errorMsg += msg;
-                std::cout << "\n" << errorMsg << "\n";
                 throw std::exception(errorMsg.c_str());
             }
         });
@@ -226,19 +225,18 @@ namespace Simple
         //TODO: DO write to the config file, and add a final unit test that checks that config exists and has the expected values.
         Config = std::make_unique<SimpleConfigFile>(fs::current_path() / "Config.toml", true);
 
+        //Create the "App". If it crashes, make sure it still gets cleaned up.
+        //If the app crashes, make sure we still clean things up.
         App = std::make_unique<SimpleApp>(onUpdate, onRender, onQuit);
-        try
-        {
-            App->Run();
-        }
-        catch (std::exception e)
-        {
+        Bplus::TieToStack cleanup([&]() {
             if (App->IsRunning())
                 App->Quit(true);
-        }
 
-        //Restore the previous assertion function.
-        Bplus::SetAssertFunc(oldAssertFunc);
+            //Restore the previous assertion function.
+            Bplus::SetAssertFunc(oldAssertFunc);
+        });
+
+        App->Run();
     }
 
     //Starts a SimpleApp, runs the given test, then immediately quits.
