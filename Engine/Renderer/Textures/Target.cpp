@@ -36,6 +36,18 @@ bool TargetOutput::IsLayered() const
         return false;
     }
 }
+bool TargetOutput::IsFlat() const
+{
+    if (IsTex1D() | IsTex2D())
+        return true;
+    else if (IsTex3D() | IsTexCube() | IsTex3DSlice() | IsTexCubeFace())
+        return false;
+    else
+    {
+        BPAssert(false, "Unknown TargetOutput type");
+        return false;
+    }
+}
 Texture* TargetOutput::GetTex() const
 {
     if (IsTex1D())
@@ -367,7 +379,7 @@ void Target::HandleRemoval(Texture* tex)
 
 void Target::AttachAt(GLenum attachment, const TargetOutput& output)
 {
-    if (output.IsLayered()) //TODO: Or isn't layer-able in the first place
+    if (output.IsLayered() || output.IsFlat())
     {
         glNamedFramebufferTexture(glPtr.Get(), attachment,
                                   output.GetTex()->GetOglPtr().Get(),

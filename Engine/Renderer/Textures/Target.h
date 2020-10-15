@@ -34,6 +34,10 @@ namespace Bplus::GL::Textures
 
         //Gets whether this output has multiple layers (e.x. a full 3D texture).
         bool IsLayered() const;
+        //Gets whether this output represents an entire un-layered texture,
+        //    i.e. not 3D or cubemap.
+        bool IsFlat() const;
+
         //Gets the number of layers in this output.
         //Non-layered outputs (e.x. 1D or 2D textures) only have 1.
         uint32_t GetLayerCount() const;
@@ -95,6 +99,8 @@ namespace Bplus::GL::Textures
     //A set of textures that can be rendered into -- color(s), depth, and stencil.
     //Can optionally manage the lifetime of textures attached to it.
     //The textures are specified via the "TargetOutput" data structure above.
+    //Once created, the Target's attachments are immutable.
+    //TODO: Redo this class to have immutable attachments.
     class BP_API Target
     {
     public:

@@ -171,6 +171,7 @@ namespace Bplus::GL::Textures
         //"sRGB" meaning that the values get converted from sRGB space to linear space when sampled.
         RGBA_sRGB_NormalizedUInt = GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM
     );
+    bool BP_API IsSupported(CompressedFormats format, Types texType);
 
     //Gets the width/height/depth of each block in a block-compressed texture
     //    of the given format.
@@ -299,6 +300,7 @@ namespace Bplus::GL::Textures
         //Gets the OpenGL enum value representing the actual format
         //    that this machine's GPU will use for this format on the given kind of texture.
         //No given type means it will be used for a TargetBuffer.
+        //If GL_INVALID_ENUM is returned, then it's not a valid format for the given texture type.
         GLenum GetNativeOglEnum(std::optional<Textures::Types> texType) const;
         //Gets whether the driver actually uses this format,
         //    as opposed to falling back on a "bigger" format under the hood.

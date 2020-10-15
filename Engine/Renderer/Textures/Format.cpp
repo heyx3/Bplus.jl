@@ -63,6 +63,28 @@ uint_fast32_t Bplus::GL::Textures::GetBlockSize(CompressedFormats format)
             return 0;
     }
 }
+bool Bplus::GL::Textures::IsSupported(CompressedFormats format, Types texType)
+{
+    switch (format)
+    {
+        //Currently, all Bplus-supported compressed formats
+        //    only work with 2D textures.
+        case CompressedFormats::Greyscale_NormalizedInt:
+        case CompressedFormats::Greyscale_NormalizedUInt:
+        case CompressedFormats::RG_NormalizedInt:
+        case CompressedFormats::RG_NormalizedUInt:
+        case CompressedFormats::RGB_Float:
+        case CompressedFormats::RGB_UFloat:
+        case CompressedFormats::RGBA_NormalizedUInt:
+        case CompressedFormats::RGBA_sRGB_NormalizedUInt:
+            return (texType == +Types::TwoD) |
+                   (texType == +Types::Cubemap);
+
+        SWITCH_DEFAULT(CompressedFormats, format)
+            return false;
+    }
+}
+
 
 std::string Bplus::GL::Textures::ToString(const SimpleFormat& format)
 {
@@ -815,10 +837,21 @@ GLenum Format::GetOglEnum() const
 }
 GLenum Format::GetNativeOglEnum(std::optional<Textures::Types> texType) const
 {
+    //Compressed textures are a special case.
+    //They definitely can't be rendered to,
+    //    and they often only support 2D textures.
+    if (IsCompressed() &&
+        (!texType.has_value() || !IsSupported(AsCompressed(), texType.value())))
+    {
+        return GL_INVALID_ENUM;
+    }
+
+    //Get an enum representing the use-case for this format.
     GLenum glType = GL_RENDERBUFFER;
     if (texType.has_value())
         glType = texType.value()._to_integral();
 
+    //Query OpenGL for the result.
     GLint actualFormat;
     glGetInternalformativ(glType, GetOglEnum(), GL_INTERNALFORMAT_PREFERRED,
                           1, &actualFormat);
