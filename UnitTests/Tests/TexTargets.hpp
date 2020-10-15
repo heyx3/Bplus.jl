@@ -19,7 +19,7 @@ void TestTargetBasic()
         Texture2D tColor(glm::uvec2{ 25, 455 },
                          SimpleFormat{ FormatTypes::NormalizedUInt,
                                        SimpleFormatComponents::RGBA,
-                                       SimpleFormatBitDepths::B16 });
+                                       SimpleFormatBitDepths::B8 });
         Texture2D tDepth(glm::uvec2{ 25, 455 },
                          Format{ DepthStencilFormats::Depth_32F });
 

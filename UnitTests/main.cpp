@@ -32,7 +32,9 @@ TEST_LIST = {
 
     { "Shader #pragma include preprocessor", TestShaderIncludeCommand },
 
-    { "Simple Apps", SimpleApps },
+    //Leave this test out for now,
+    //    as it requires user input.
+    //{ "Simple Apps", SimpleApps },
 
     { NULL, NULL }
 };

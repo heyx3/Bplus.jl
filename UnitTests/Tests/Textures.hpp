@@ -28,60 +28,79 @@ void RunTextureTypeCreationTest(std::string testName,
     Texture_t tex2{ std::move(tex1) };
 }
 
-void RunTextureCreationTest(const char* testName,
-                            glm::uvec3 fullSize, Format format,
-                            uint_mipLevel_t nMips = 0)
+
+enum class TextureTypesFlags : uint8_t {
+    OneD = 1, TwoD = 2, ThreeD = 4, Cube = 8,
+    AllTwoD = TwoD | Cube,
+    All = OneD | TwoD | ThreeD | Cube
+};
+#define TEX_TYPE_FLAGS_HAS(value, test) (((uint8_t)(value) & (uint8_t)(test)) != 0)
+
+void RunTextureCreationTests(const char* testName,
+                             glm::uvec3 fullSize, Format format,
+                             TextureTypesFlags types = TextureTypesFlags::All,
+                             uint_mipLevel_t nMips = 0)
 {
-    RunTextureTypeCreationTest<Texture1D, glm::uvec1>(std::string{ testName } + " (Texture1D)",
-                                                      glm::uvec1{ fullSize.x }, format, nMips);
-    RunTextureTypeCreationTest<Texture2D, glm::uvec2>(std::string{ testName } + " (Texture2D)",
-                                                      glm::uvec2{ fullSize.x, fullSize.y }, format, nMips);
-    RunTextureTypeCreationTest<Texture3D, glm::uvec3>(std::string{ testName } + " (Texture3D)",
-                                                      glm::uvec3{ fullSize.x, fullSize.y, fullSize.z },
-                                                      format, nMips);
-    RunTextureTypeCreationTest<TextureCube, glm::u32>(std::string{ testName } +" (TextureCube)",
-                                                      fullSize.x, format, nMips);
+    if (TEX_TYPE_FLAGS_HAS(types, TextureTypesFlags::OneD))
+        RunTextureTypeCreationTest<Texture1D, glm::uvec1>(std::string{ testName } + " (Texture1D)",
+                                                          glm::uvec1{ fullSize.x }, format, nMips);
+    if (TEX_TYPE_FLAGS_HAS(types, TextureTypesFlags::TwoD))
+        RunTextureTypeCreationTest<Texture2D, glm::uvec2>(std::string{ testName } + " (Texture2D)",
+                                                          glm::uvec2{ fullSize.x, fullSize.y }, format, nMips);
+    if (TEX_TYPE_FLAGS_HAS(types, TextureTypesFlags::ThreeD))
+        RunTextureTypeCreationTest<Texture3D, glm::uvec3>(std::string{ testName } + " (Texture3D)",
+                                                          glm::uvec3{ fullSize.x, fullSize.y, fullSize.z },
+                                                          format, nMips);
+    if (TEX_TYPE_FLAGS_HAS(types, TextureTypesFlags::Cube))
+        RunTextureTypeCreationTest<TextureCube, glm::u32>(std::string{ testName } +" (TextureCube)",
+                                                          fullSize.x, format, nMips);
 }
 
 void TextureCreation()
 {
     Simple::RunTest([&]()
     {
-        RunTextureCreationTest("Simple RGBA 8", { 1, 1, 1 },
-                               SimpleFormat{ +FormatTypes::NormalizedUInt,
-                                             +SimpleFormatComponents::RGBA,
-                                             +SimpleFormatBitDepths::B8 });
-        RunTextureCreationTest("Simple RG F32", { 2, 2, 2 },
-                               SimpleFormat{ +FormatTypes::Float,
-                                             +SimpleFormatComponents::RG,
-                                             +SimpleFormatBitDepths::B32 });
-        RunTextureCreationTest("Simple R I16", { 3, 7, 13 },
-                               SimpleFormat{ FormatTypes::Int,
-                                             SimpleFormatComponents::R,
-                                             SimpleFormatBitDepths::B16 });
-        RunTextureCreationTest("Special: RGB10 A2 UInt", { 31, 33, 29 },
-                               +SpecialFormats::RGB10_A2_UInt);
+        RunTextureCreationTests("Simple RGBA 8", { 1, 1, 1 },
+                                SimpleFormat{ +FormatTypes::NormalizedUInt,
+                                              +SimpleFormatComponents::RGBA,
+                                              +SimpleFormatBitDepths::B8 });
+        RunTextureCreationTests("Simple RG F32", { 2, 2, 2 },
+                                SimpleFormat{ +FormatTypes::Float,
+                                              +SimpleFormatComponents::RG,
+                                              +SimpleFormatBitDepths::B32 });
+        RunTextureCreationTests("Simple R I16", { 3, 7, 13 },
+                                SimpleFormat{ FormatTypes::Int,
+                                              SimpleFormatComponents::R,
+                                              SimpleFormatBitDepths::B16 });
+        RunTextureCreationTests("Special: RGB10 A2 UInt", { 31, 33, 29 },
+                                +SpecialFormats::RGB10_A2_UInt);
 
-        RunTextureCreationTest("Special: RGB9 e5", { 41, 39, 101 },
-                               +SpecialFormats::RGB_SharedExpFloats);
-        RunTextureCreationTest("Special: sRGB_LinA", { 41, 39, 101 },
-                               +SpecialFormats::sRGB_LinearAlpha);
+        RunTextureCreationTests("Special: RGB9 e5", { 41, 39, 101 },
+                                +SpecialFormats::RGB_SharedExpFloats);
+        RunTextureCreationTests("Special: sRGB_LinA", { 41, 39, 101 },
+                                +SpecialFormats::sRGB_LinearAlpha); 
 
-        RunTextureCreationTest("Compressed: Greyscale signed", { 31, 32, 7 },
-                               +CompressedFormats::Greyscale_NormalizedInt);
-        RunTextureCreationTest("Compressed: RG unsigned", { 1, 3, 5 },
-                               +CompressedFormats::RG_NormalizedUInt);
-        RunTextureCreationTest("Compressed: RGB unsigned float", { 5, 4, 3 },
-                               +CompressedFormats::RGB_UFloat);
-        RunTextureCreationTest("Compressed: RGBA sRGB", { 32, 129, 256 },
-                               +CompressedFormats::RGBA_sRGB_NormalizedUInt);
+        RunTextureCreationTests("Compressed: Greyscale signed", { 16, 16, 16 },
+                                +CompressedFormats::Greyscale_NormalizedInt,
+                                TextureTypesFlags::AllTwoD);
+        RunTextureCreationTests("Compressed: RG unsigned", { 16, 16, 16 },
+                                +CompressedFormats::RG_NormalizedUInt,
+                                TextureTypesFlags::AllTwoD);
+        RunTextureCreationTests("Compressed: RGB unsigned float", { 16, 16, 16 },
+                                +CompressedFormats::RGB_UFloat,
+                                TextureTypesFlags::AllTwoD);
+        RunTextureCreationTests("Compressed: RGBA sRGB", { 16, 16, 16 },
+                                +CompressedFormats::RGBA_sRGB_NormalizedUInt,
+                                TextureTypesFlags::AllTwoD);
 
-        RunTextureCreationTest("Depth: 24U", { 1920, 1080, 1 },
-                               +DepthStencilFormats::Depth_24U);
-        RunTextureCreationTest("Stencil: 8U", { 1920, 1080, 1 },
-                               +DepthStencilFormats::Stencil_8);
-        RunTextureCreationTest("Depth/Stencil: 32F, 8U", { 1921, 1079, 1 },
-                               +DepthStencilFormats::Depth32F_Stencil8);
+        RunTextureCreationTests("Depth: 24U", { 1920, 1080, 1 },
+                                +DepthStencilFormats::Depth_24U);
+        RunTextureCreationTests("Stencil: 8U", { 1920, 1080, 1 },
+                                +DepthStencilFormats::Stencil_8,
+                                TextureTypesFlags::AllTwoD);
+        RunTextureCreationTests("Depth/Stencil: 32F, 8U", { 1921, 1079, 1 },
+                                +DepthStencilFormats::Depth32F_Stencil8,
+                                TextureTypesFlags::AllTwoD);
     });
 }
 
