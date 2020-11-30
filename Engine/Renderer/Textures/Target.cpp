@@ -166,7 +166,9 @@ const Target* Target::Find(OglPtr::Target ptr)
                found->second;
 }
 
-Target::Target(const glm::uvec2& _size, uint32_t nLayers)
+
+Target::Target(TargetStates& outStatus,
+               const glm::uvec2& _size, uint32_t nLayers)
     : size(_size), glPtr(GlCreate(glCreateFramebuffers))
 {
     CheckInit();
@@ -179,11 +181,14 @@ Target::Target(const glm::uvec2& _size, uint32_t nLayers)
     glNamedFramebufferParameteri(glPtr.Get(), GL_FRAMEBUFFER_DEFAULT_HEIGHT, (GLint)size.y);
     if (nLayers > 1)
         glNamedFramebufferParameteri(glPtr.Get(), GL_FRAMEBUFFER_DEFAULT_LAYERS, (GLint)nLayers);
+
+    outStatus = GetStatus();
 }
-Target::Target(const glm::uvec2& _size,
+Target::Target(TargetStates& outStatus,
+               const glm::uvec2& _size,
                const Format& colorFormat, DepthStencilFormats depthFormat,
                bool depthIsRenderBuffer, uint_mipLevel_t nMips)
-    : Target(_size)
+    : Target(outStatus, _size)
 {
     auto colorTex = new Texture2D(size, colorFormat, nMips);
     managedTextures.insert(colorTex);
@@ -204,10 +209,14 @@ Target::Target(const glm::uvec2& _size,
         else
             OutputSet_DepthStencil({ depthTex }, true);
     }
+
+    outStatus = GetStatus();
 }
 
-Target::Target(const TargetOutput& color, const TargetOutput& depth)
-    : Target(glm::min(color.GetSize(), depth.GetSize()),
+Target::Target(TargetStates& outStatus,
+               const TargetOutput& color, const TargetOutput& depth)
+    : Target(outStatus,
+             glm::min(color.GetSize(), depth.GetSize()),
              std::min(color.GetLayerCount(), depth.GetLayerCount()))
 {
     BPAssert(depth.GetSize() == color.GetSize(),
@@ -215,12 +224,17 @@ Target::Target(const TargetOutput& color, const TargetOutput& depth)
 
     OutputSet_Depth(depth);
     OutputSet_Color(color);
+
+    outStatus = GetStatus();
 }
-Target::Target(const TargetOutput& color, DepthStencilFormats depthFormat)
-    : Target(color.GetSize(), color.GetLayerCount())
+Target::Target(TargetStates& outStatus,
+               const TargetOutput& color, DepthStencilFormats depthFormat)
+    : Target(outStatus, color.GetSize(), color.GetLayerCount())
 {
     OutputSet_Color(color);
     AttachDepthPlaceholder(depthFormat);
+
+    outStatus = GetStatus();
 }
 
 #pragma region Helper functions for the last Target() constructor
@@ -254,9 +268,11 @@ namespace
     uint32_t MinU32(const uint32_t& a, const uint32_t& b) { return std::min(a, b); }
 }
 #pragma endregion
-Target::Target(const TargetOutput* colorOutputs, uint32_t nColorOutputs,
+Target::Target(TargetStates& outStatus,
+               const TargetOutput* colorOutputs, uint32_t nColorOutputs,
                std::optional<TargetOutput> depthOutput)
-    : Target(ComputeMin<glm::uvec2, GetTargOutSize, glm::min>(
+    : Target(outStatus,
+             ComputeMin<glm::uvec2, GetTargOutSize, glm::min>(
                 colorOutputs, nColorOutputs, depthOutput,
                 glm::uvec2{ std::numeric_limits<glm::u32>().max() },
                 glm::uvec2{ 1 }),
@@ -274,6 +290,8 @@ Target::Target(const TargetOutput* colorOutputs, uint32_t nColorOutputs,
         OutputSet_Depth(depthOutput.value());
     else
         AttachDepthPlaceholder(DepthStencilFormats::Depth_24U);
+
+    outStatus = GetStatus();
 }
 
 Target::~Target()
@@ -316,7 +334,7 @@ Target::Target(Target&& from)
     found->second = this;
 }
 
-TargetStates Target::Validate() const
+TargetStates Target::GetStatus() const
 {
     //Make sure none of the formats are compressed.
     if ((tex_depth.has_value() &&

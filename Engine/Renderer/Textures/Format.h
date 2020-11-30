@@ -14,8 +14,9 @@ namespace Bplus::GL::Textures
         Cubemap = GL_TEXTURE_CUBE_MAP
 
         //TODO: Multisample
+
         //Array textures are not supported, because
-        //    they aren't necessary with bindless textures.
+        //    they aren't necessary after bindless textures were introduced.
     );
 
 

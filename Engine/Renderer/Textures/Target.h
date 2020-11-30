@@ -97,13 +97,24 @@ namespace Bplus::GL::Textures
 
 
     //A set of textures that can be rendered into -- color(s), depth, and stencil.
-    //Can optionally manage the lifetime of textures attached to it.
     //The textures are specified via the "TargetOutput" data structure above.
     //Once created, the Target's attachments are immutable.
-    //TODO: Redo this class to have immutable attachments.
     class BP_API Target
     {
     public:
+
+        //TODO: Here is the process for OpenGL Framebuffers:
+        //   * Create it
+        //       * Attach textures/images to it (possibly layered)
+        //            with glNamedFramebufferTexture[Layer]()
+        //   * Use it
+        //       * Set which attachments to use for color outputs
+        //            with glNamedFramebufferDrawBuffers()
+        //       * Depth/stencil outputs are already taken directly from the attachments
+
+        //TODO: Finish refactoring to have immutable attachments.
+        //TODO: Must use glNamedFramebufferDrawBuffers when rendering/clearing!
+        //TODO: Implement Copying: http://docs.gl/gl4/glBlitFramebuffer
         //TODO: A special singleton Target representing the screen.
 
         //Finds the Target from the given OpenGL object pointer.
@@ -112,34 +123,46 @@ namespace Bplus::GL::Textures
         static const Target* Find(OglPtr::Target ptr);
 
 
-        //Creates a new Target with no outputs.
-        //Optionally acts like a "layered" Target, supporting multiple Geometry Shader outputs,
-        //    even before any layered Outputs are attached to it.
-        Target(const glm::uvec2& size, uint32_t nLayers = 1);
+        //Creates a Target with no outputs,
+        //    which pretends to have the given size and (optionally) a number of layers.
+        Target(TargetStates& outStatus,
+               const glm::uvec2& size, uint32_t nLayers = 1);
 
-        //Creates a new Target with the given size and output formats.
-        //Automatically creates and takes ownership of the output textures.
-        Target(const glm::uvec2& size,
+        //Creates a new Target with the given output size/formats.
+        //Will create corresponding textures, which are then destroyed in the destructor.
+        //By default, uses a "renderbuffer" for depth, meaning
+        //    it isn't a true texture and can't be sampled or modified by the user.
+        Target(TargetStates& outStatus,
+               const glm::uvec2& size,
                const Format& colorFormat, DepthStencilFormats depthFormat,
                bool depthIsRenderbuffer = true,
                uint_mipLevel_t nMips = 0);
 
         //Creates a Target with the given color and depth outputs.
-        Target(const TargetOutput& color, const TargetOutput& depth);
+        //Note that the textures are not managed by this Target;
+        //    they will not be cleaned up when this Target is destroyed.
+        Target(TargetStates& outStatus,
+               const TargetOutput& color, const TargetOutput& depth);
         //Creates a target with the given color output and a depth renderbuffer.
-        Target(const TargetOutput& color,
+        //Note that the textures are not managed by this Target;
+        //    they will not be cleaned up when this Target is destroyed.
+        Target(TargetStates& outStatus,
+               const TargetOutput& color,
                DepthStencilFormats depthFormat = DepthStencilFormats::Depth_24U);
 
         //Creates a target with the given color outputs and depth output.
-        //If no depth output is passed, a renderbuffer is used
+        //Note that the given textures are not managed by this Target;
+        //    they will not be cleaned up when this Target is destroyed.
+        //If no depth output is passed, an internal renderbuffer is used
         //    with the Depth_24U format.
-        Target(const TargetOutput* colorOutputs, uint32_t nColorOutputs,
+        Target(TargetStates& outStatus,
+               const TargetOutput* colorOutputs, uint32_t nColorOutputs,
                std::optional<TargetOutput> depthOutput = std::nullopt);
 
         ~Target();
 
 
-        //No copy, but you can move.
+        //No copying, but you can move.
         Target(const Target& cpy) = delete;
         Target& operator=(const Target& cpy) = delete;
         Target(Target&& from);
@@ -163,14 +186,9 @@ namespace Bplus::GL::Textures
         uint32_t GetNColorOutputs() const { return (uint32_t)tex_colors.size(); }
 
 
-        //Checks the status of this Target.
-        TargetStates Validate() const;
-
-
-        #pragma region Managing "output" texture attachments
-
         //Functions to get various outputs.
         //They all return nullptr if the output doesn't exist.
+
         const TargetOutput* GetOutput_Color(uint32_t index = 0) const { return (index < tex_colors.size()) ? &tex_colors[index] : nullptr; }
         const TargetOutput* GetOutput_Depth() const { return tex_depth.has_value() ? &tex_depth.value() : nullptr; }
         const TargetOutput* GetOutput_Stencil() const { return tex_stencil.has_value() ? &tex_stencil.value() : nullptr; }
@@ -180,42 +198,8 @@ namespace Bplus::GL::Textures
                                                                        ? &tex_depth.value() :
                                                                          nullptr; }
 
-        //The below functions set this target's outputs.
-        void OutputSet_Color(const TargetOutput& newOutput, uint32_t index = 0, bool takeOwnership = false);
-        void OutputSet_Depth(const TargetOutput& newOutput, bool takeOwnership = false);
-        void OutputSet_Stencil(const TargetOutput& newOutput, bool takeOwnership = false);
-        void OutputSet_DepthStencil(const TargetOutput& newOutput, bool takeOwnership = false);
 
-        //The below functions remove an output from this target.
-        //If the output was managed by this target, it will be deleted automatically.
-        //If removing the depth buffer, you can optionally have it replaced with
-        //    a render-buffer (like a texture, but not usable in other things like shaders).
-        void OutputRemove_Color(uint32_t index = 0);
-        void OutputRemove_Depth(bool attachRenderBuffer = true);
-        void OutputRemove_Stencil();
-        void OutputRemove_DepthStencil(bool attachRenderBuffer = true);
-
-        //Releases ownership over the given texture.
-        //The texture must have been given to this target previously.
-        //Optionally also removes the texture from any of this Target's Outputs.
-        //If removing it from the depth Output, it will be automatically replaced
-        //    with a renderbuffer of the same format.
-        void OutputRelease(Texture* tex, bool removeOutputs = false);
-
-
-        //Uses a special texture for this target's depth
-        //    which works for rendering, but can't be sampled by another shader.
-        //If the special texture has been used before, it will be re-used
-        //    regardless of the "format" argument.
-        void AttachDepthPlaceholder(DepthStencilFormats format = DepthStencilFormats::Depth_24U);
-        //Cleans up the depth placeholder if one exists.
-        //The next time it's needed, it will be recreated at a new size/format.
-        //If it's currently being used, it will automatically be removed.
-        void DeleteDepthPlaceholder();
-
-        #pragma endregion
-
-        #pragma region Clearing
+        #pragma region 'Clear' functions
 
         //Clears a color buffer that has a floating-point or normalized integer format.
         void ClearColor(const glm::fvec4& rgba, uint32_t index = 0);
@@ -224,14 +208,12 @@ namespace Bplus::GL::Textures
         void ClearColor(const glm::uvec4& rgba_UInt, uint32_t index = 0);
         //Clears a color buffer that has an Integer format.
         void ClearColor(const glm::ivec4& rgba_Int, uint32_t index = 0);
-
+         
         void ClearDepth(float depth = 1.0f);
         void ClearStencil(uint32_t value = 0);
         void ClearDepthStencil(float depth = 1.0f, uint32_t stencil = 0);
 
         #pragma endregion
-
-        //TODO: Implement Copying: http://docs.gl/gl4/glBlitFramebuffer
 
 
     private:
@@ -239,24 +221,31 @@ namespace Bplus::GL::Textures
         OglPtr::Target glPtr;
         glm::uvec2 size;
 
+        //Attachments:  
         std::vector<TargetOutput> tex_colors;
         std::optional<TargetOutput> tex_depth;
         std::optional<TargetOutput> tex_stencil;
 
+        //Renderbuffer management:
         std::optional<TargetBuffer> depthBuffer;
-        bool isDepthRBBound = false,
-             isStencilRBBound = false;
+        bool isDepthRBBound = false, //Is the internal TargetBuffer bound to depth?
+             isStencilRBBound = false; //Is the internal TargetBuffer bound to stencil?
 
-        //Note that "managedTextures" originally contained unique_ptr instances,
-        //    but that made it more complicated/less efficient to search through it.
+        //The textures that this Target should clean up on destruction.
+        //Note that this originally contained unique_ptr instances,
+        //    but apparently that causes problems with sets/maps.
         std::unordered_set<Texture*> managedTextures;
 
-        void TakeOwnership(Texture* tex);
-        void ReleaseOwnership(Texture* tex);
-        void HandleRemoval(Texture* tex);
+
         void RecomputeSize();
+        TargetStates GetStatus() const;
+
 
         void AttachAt(GLenum attachment, const TargetOutput& output);
         void RemoveAt(GLenum attachment);
+
+        void TakeOwnership(Texture* tex);
+        void ReleaseOwnership(Texture* tex);
+        void HandleRemoval(Texture* tex); //TODO: Better name. What does this do?
     };
 }
