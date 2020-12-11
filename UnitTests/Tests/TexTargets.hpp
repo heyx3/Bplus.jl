@@ -23,10 +23,11 @@ void TestTargetBasic()
         Texture2D tDepth(glm::uvec2{ 25, 455 },
                          Format{ DepthStencilFormats::Depth_32F });
 
+        TargetStates targetStatus;
         TEST_CASE("Creating target");
-        Target target(&tColor, &tDepth);
-        TEST_CHECK_(target.Validate() == +TargetStates::Ready,
-                    "Target isn't usable: %s", target.Validate()._to_string());
+        Target target(targetStatus, &tColor, &tDepth);
+        TEST_CHECK_(targetStatus == +TargetStates::Ready,
+                    "Target isn't usable: %s", targetStatus._to_string());
         
         TEST_CASE("Clearing target");
         const glm::vec4 clearColor{ 0.45, 0.8f, 1.0f, 0.25f };

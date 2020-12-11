@@ -18,9 +18,11 @@ namespace Bplus::GL
         static Device* GetContextDevice();
 
 
-        //Gets the maximum number of color textures that a Target can output to at once.
+        //Gets the maximum number of color textures that a Target can have attached to it.
         //Guaranteed by OpenGL to be at least 8.
-        uint32_t GetMaxColorTargets() const { return maxColorTargets; }
+        uint32_t GetMaxTargetColorAttachments() const { return maxColorAttachments; }
+        //Gets the maximum number of color textures that a shader can output to at once.
+        uint32_t GetMaxTargetColorOutputs() const { return maxColorOutputs; }
 
 
         //Gets the driver-recommended maximum number of vertices for a single buffer.
@@ -50,7 +52,7 @@ namespace Bplus::GL
         Device(Context& context);
 
         uint32_t softMaxVertices, softMaxIndices,
-                 maxTexturesInShader, maxColorTargets,
+                 maxTexturesInShader, maxColorAttachments, maxColorOutputs,
                  maxUniformPrimitivesPerVertexShader, maxUniformPrimitivesPerFragmentShader;
     };
 }

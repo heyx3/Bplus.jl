@@ -51,7 +51,10 @@ Device::Device(Context& context)
               maxTexturesInShader);
     LOAD_UINT(GL_MAX_COLOR_ATTACHMENTS,
               "Max Color Attachments per Target",
-              maxColorTargets);
+              maxColorAttachments);
+    LOAD_UINT(GL_MAX_DRAW_BUFFERS,
+              "Max active Draw Buffers per Target",
+              maxColorOutputs);
     LOAD_UINT(GL_MAX_ELEMENTS_VERTICES,
               "Soft Max Vertices in Buffer",
               softMaxVertices);

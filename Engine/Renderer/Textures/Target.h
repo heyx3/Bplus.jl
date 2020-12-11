@@ -103,7 +103,7 @@ namespace Bplus::GL::Textures
     {
     public:
 
-        //TODO: Here is the process for OpenGL Framebuffers:
+        //Here is the process for OpenGL Framebuffers:
         //   * Create it
         //       * Attach textures/images to it (possibly layered)
         //            with glNamedFramebufferTexture[Layer]()
@@ -111,9 +111,9 @@ namespace Bplus::GL::Textures
         //       * Set which attachments to use for color outputs
         //            with glNamedFramebufferDrawBuffers()
         //       * Depth/stencil outputs are already taken directly from the attachments
+        //Our implementation makes the attachments immutable to simplify things,
+        //    although you can still change which draw buffers are active at any one time.
 
-        //TODO: Finish refactoring to have immutable attachments.
-        //TODO: Must use glNamedFramebufferDrawBuffers when rendering/clearing!
         //TODO: Implement Copying: http://docs.gl/gl4/glBlitFramebuffer
         //TODO: A special singleton Target representing the screen.
 
@@ -139,13 +139,12 @@ namespace Bplus::GL::Textures
                uint_mipLevel_t nMips = 0);
 
         //Creates a Target with the given color and depth outputs.
-        //Note that the textures are not managed by this Target;
-        //    they will not be cleaned up when this Target is destroyed.
+        //The given textures are NOT automatically cleaned up
+        //    when this target is destroyed.
         Target(TargetStates& outStatus,
                const TargetOutput& color, const TargetOutput& depth);
-        //Creates a target with the given color output and a depth renderbuffer.
-        //Note that the textures are not managed by this Target;
-        //    they will not be cleaned up when this Target is destroyed.
+        //Creates a target with the given color output and a depth buffer.
+        //The color texture is NOT automatically cleaned up when this target is destroyed.
         Target(TargetStates& outStatus,
                const TargetOutput& color,
                DepthStencilFormats depthFormat = DepthStencilFormats::Depth_24U);
@@ -180,10 +179,32 @@ namespace Bplus::GL::Textures
         }
 
 
+        //Tells this Target which subset of its color attachments to use during drawing,
+        //    and the order of those attachments.
+        //The order of this list matches the order of fragment shader outputs.
+        //If an entry is missing, then nothing happens when a fragment shader writes to that output.
+        void SetDrawBuffers(const std::optional<uint32_t>* attachmentList, size_t nAttachments);
+        //Tells this Target which subset of its color attachments to use during drawing,
+        //    and the order of those attachments.
+        //The order of this list matches the order of fragment shader outputs.
+        //If an entry is missing, then nothing happens when a fragment shader writes to that output.
+        void SetDrawBuffers(const std::vector<std::optional<uint32_t>>& attachments) { SetDrawBuffers(attachments.data(), attachments.size()); }
+        
+        //Gets the current subset of color attachments that are actually used
+        //    when rendering to this Target.
+        const std::vector<std::optional<uint32_t>>& GetDrawBuffers() const { return activeColorAttachments; }
+
+
         //The size of this Target is equal to the smallest size of its outputs.
         glm::uvec2 GetSize() const { return size; }
         //Gets the number of color outputs currently in this target.
         uint32_t GetNColorOutputs() const { return (uint32_t)tex_colors.size(); }
+
+        //Gives this Target ownership over the given Texture,
+        //    so that it gets cleaned up as soon as this Target is destroyed.
+        void TakeOwnership(Texture* tex) { managedTextures.insert(tex); }
+        //Gets the OpenGL handle to this texture.
+        OglPtr::Target GetGlPtr() const { return glPtr; }
 
 
         //Functions to get various outputs.
@@ -192,14 +213,14 @@ namespace Bplus::GL::Textures
         const TargetOutput* GetOutput_Color(uint32_t index = 0) const { return (index < tex_colors.size()) ? &tex_colors[index] : nullptr; }
         const TargetOutput* GetOutput_Depth() const { return tex_depth.has_value() ? &tex_depth.value() : nullptr; }
         const TargetOutput* GetOutput_Stencil() const { return tex_stencil.has_value() ? &tex_stencil.value() : nullptr; }
-        const TargetOutput* GetOutput_DepthStencil() const { return (tex_depth.has_value() &
-                                                                     tex_stencil.has_value() &
+        const TargetOutput* GetOutput_DepthStencil() const { return (tex_depth.has_value() &&
+                                                                     tex_stencil.has_value() &&
                                                                      (tex_depth.value() == tex_stencil.value()))
                                                                        ? &tex_depth.value() :
                                                                          nullptr; }
 
 
-        #pragma region 'Clear' functions
+        #pragma region Clear functions
 
         //Clears a color buffer that has a floating-point or normalized integer format.
         void ClearColor(const glm::fvec4& rgba, uint32_t index = 0);
@@ -225,6 +246,9 @@ namespace Bplus::GL::Textures
         std::vector<TargetOutput> tex_colors;
         std::optional<TargetOutput> tex_depth;
         std::optional<TargetOutput> tex_stencil;
+        //Color attachment management:
+        std::vector<std::optional<uint32_t>> activeColorAttachments;
+        std::vector<GLenum> internalActiveColorAttachments;
 
         //Renderbuffer management:
         std::optional<TargetBuffer> depthBuffer;
@@ -241,11 +265,9 @@ namespace Bplus::GL::Textures
         TargetStates GetStatus() const;
 
 
-        void AttachAt(GLenum attachment, const TargetOutput& output);
-        void RemoveAt(GLenum attachment);
+        void AttachTexture(GLenum attachment, const TargetOutput& output);
+        void AttachBuffer(DepthStencilFormats format);
 
-        void TakeOwnership(Texture* tex);
-        void ReleaseOwnership(Texture* tex);
-        void HandleRemoval(Texture* tex); //TODO: Better name. What does this do?
+        static GLenum GetAttachmentType(DepthStencilFormats format);
     };
 }
