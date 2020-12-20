@@ -152,16 +152,16 @@ namespace Bplus::GL
 
         #pragma region Clear operations
 
-        //Clears the current Target's color and depth.
-        void Clear(float r, float g, float b, float a, float depth);
+        //Clears the default framebuffer's color and depth.
+        void ClearScreen(float r, float g, float b, float a, float depth) { ClearScreen(depth); ClearScreen(r, g, b, a); }
 
-        //Clears the current Target's color.
-        void Clear(float r, float g, float b, float a);
-        //Clears the current Target's depth.
-        void Clear(float depth);
+        //Clears the default framebuffer's color.
+        void ClearScreen(float r, float g, float b, float a);
+        //Clears the default framebuffer's depth.
+        void ClearScreen(float depth);
 
         template<typename TVec4>
-        void Clear(const TVec4& rgba) { Clear(rgba.r, rgba.g, rgba.b, rgba.a); }
+        void ClearScreen(const TVec4& rgba) { ClearScreen(rgba.r, rgba.g, rgba.b, rgba.a); }
 
         #pragma endregion
 

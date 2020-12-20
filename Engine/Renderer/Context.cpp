@@ -157,8 +157,10 @@ void Context::RefreshState()
     {
         scissor.Clear();
     }
-
-    state.EnableDepthWrite = glIsEnabled(GL_DEPTH_WRITEMASK);
+    
+    GLboolean tempB;
+    glGetBooleanv(GL_DEPTH_WRITEMASK, &tempB);
+    state.EnableDepthWrite = tempB;
     vsync = VsyncModes::_from_integral(SDL_GL_GetSwapInterval());
     glGetBooleanv(GL_COLOR_WRITEMASK, (GLboolean*)(&state.ColorWriteMask[0]));
 
@@ -269,21 +271,14 @@ void Context::SetActiveTarget(OglPtr::Target t)
     }
 }
 
-void Context::Clear(float r, float g, float b, float a)
+void Context::ClearScreen(float r, float g, float b, float a)
 {
-    glClearColor(r, g, b, a);
-    glClear(GL_COLOR_BUFFER_BIT);
+    GLfloat rgba[] = { r, g, b, a };
+    glClearNamedFramebufferfv(0, GL_COLOR, 0, rgba);
 }
-void Context::Clear(float depth)
+void Context::ClearScreen(float depth)
 {
-    glClearDepth(depth);
-    glClear(GL_DEPTH_BUFFER_BIT);
-}
-void Context::Clear(float r, float g, float b, float a, float depth)
-{
-    glClearColor(r, g, b, a);
-    glClearDepth(depth);
-    glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+    glClearNamedFramebufferfv(0, GL_DEPTH, 0, &depth);
 }
 
 
@@ -575,10 +570,7 @@ void Context::SetDepthWrites(bool canWriteDepth)
     if (canWriteDepth != state.EnableDepthWrite)
     {
         state.EnableDepthWrite = canWriteDepth;
-        if (state.EnableDepthWrite)
-            glEnable(GL_DEPTH_WRITEMASK);
-        else
-            glDisable(GL_DEPTH_WRITEMASK);
+        glDepthMask(state.EnableDepthWrite);
     }
 }
 
@@ -613,7 +605,7 @@ void Context::SetBlending(const BlendStateRGBA& blendState)
                                     { blendState.Constant.r, blendState.Constant.g, blendState.Constant.b } };
     BlendStateAlpha newAlphaBlending{ blendState.Src, blendState.Dest, blendState.Op,
                                       glm::vec1(blendState.Constant.a) };
-    if ((newColorBlending == state.ColorBlending) &
+    if ((newColorBlending == state.ColorBlending) &&
         (newAlphaBlending == state.AlphaBlending))
     {
         return;

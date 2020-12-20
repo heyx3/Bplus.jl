@@ -49,8 +49,8 @@ indicating that not all ImGUI labels were visible.");
                                     colorT);
             backCol /= 255.0f;
 
-            auto* context = Bplus::GL::Context::GetCurrentContext();
-            context->Clear(backCol);
+            auto context = Bplus::GL::Context::GetCurrentContext();
+            context->ClearScreen(backCol);
 
             ImGui::Text("I'm label 2.");
 

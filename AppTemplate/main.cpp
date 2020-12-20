@@ -81,8 +81,8 @@ protected:
     virtual void OnRendering(float deltaT)
     {
         auto& context = GetContext();
-        context.Clear(1, 1, 1, 1,
-                      1);
+        context.ClearScreen(1, 1, 1, 1,
+                            1);
 
         ImGui::Text("This is a label in the template app");
     }

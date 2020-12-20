@@ -185,7 +185,7 @@ namespace Bplus
         //Does normal (i.e. non-physics) updates.
         virtual void OnUpdate(float deltaT) { }
         //Does all the rendering. Called immediately after "DoUpdate()".
-        virtual void OnRendering(float deltaT) { glContext->Clear(1, 0, 1, 1, 1); }
+        virtual void OnRendering(float deltaT) { glContext->ClearScreen(1, 0, 1, 1, 1); }
 
 
         //Given an SDL return code, responds accordingly if it represents an error.
