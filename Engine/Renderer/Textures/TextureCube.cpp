@@ -122,10 +122,8 @@ void TextureCube::GetData(void* data, size_t dataPixelSize,
     auto range = params.GetRange(sizeAtMip);
 
     for (glm::length_t d = 0; d < 2; ++d)
-    {
         BPAssert(range.GetMaxCornerInclusive()[d] < sizeAtMip[d],
                  "GetData() call would go past the texture bounds");
-    }
 
     auto range3D = params.ToRange3D(range);
     auto byteSize = (GLsizei)(dataPixelSize * glm::compMul(range3D.Size));

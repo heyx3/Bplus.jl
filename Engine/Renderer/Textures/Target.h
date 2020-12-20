@@ -193,11 +193,13 @@ namespace Bplus::GL::Textures
         //Gets the current subset of color attachments that are actually used
         //    when rendering to this Target.
         const std::vector<std::optional<uint32_t>>& GetDrawBuffers() const { return activeColorAttachments; }
+        //Gets the number of colors outputs this target is currently set to use.
+        const size_t GetNDrawBuffers() const { return activeColorAttachments.size(); }
 
 
         //The size of this Target is equal to the smallest size of its outputs.
         glm::uvec2 GetSize() const { return size; }
-        //Gets the number of color outputs currently in this target.
+        //Gets the number of color attachments in this target.
         uint32_t GetNColorOutputs() const { return (uint32_t)tex_colors.size(); }
 
         //Gives this Target ownership over the given Texture,
@@ -210,7 +212,7 @@ namespace Bplus::GL::Textures
         //Functions to get various outputs.
         //They all return nullptr if the output doesn't exist.
 
-        const TargetOutput* GetOutput_Color(uint32_t index = 0) const { return (index < tex_colors.size()) ? &tex_colors[index] : nullptr; }
+        const TargetOutput* GetOutput_Color(uint32_t index = 0) const;
         const TargetOutput* GetOutput_Depth() const { return tex_depth.has_value() ? &tex_depth.value() : nullptr; }
         const TargetOutput* GetOutput_Stencil() const { return tex_stencil.has_value() ? &tex_stencil.value() : nullptr; }
         const TargetOutput* GetOutput_DepthStencil() const { return (tex_depth.has_value() &&
@@ -218,6 +220,12 @@ namespace Bplus::GL::Textures
                                                                      (tex_depth.value() == tex_stencil.value()))
                                                                        ? &tex_depth.value() :
                                                                          nullptr; }
+
+        //Gets the texture attached to this Target at the given index.
+        //Note that this is different than the Target's current color outputs;
+        //    this is the pool of color textures that those outputs are chosen from.
+        //Returns nullptr if the output doesn't exist.
+        const TargetOutput* GetColorAttachment(uint32_t index = 0) const { return (index < tex_colors.size()) ? &tex_colors[index] : nullptr; }
 
 
         #pragma region Clear functions

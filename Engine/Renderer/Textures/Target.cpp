@@ -172,7 +172,7 @@ Target::Target(TargetStates& outStatus,
     : size(_size), glPtr(GlCreate(glCreateFramebuffers)),
       //According to the OpenGL 4.5 standard, framebuffers start with
       //    just the first attachment enabled.
-      activeColorAttachments({ 0 }),
+      activeColorAttachments(1, 0),
       internalActiveColorAttachments({ GL_COLOR_ATTACHMENT0 })
 {
     CheckInit();
@@ -196,6 +196,7 @@ Target::Target(TargetStates& outStatus,
 {
     auto colorTex = new Texture2D(size, colorFormat, nMips);
     managedTextures.insert(colorTex);
+    tex_colors.push_back(colorTex);
     AttachTexture(GL_COLOR_ATTACHMENT0, colorTex);
 
     //Generate a depth/stencil texture, or depth/stencil RenderBuffer.
@@ -207,7 +208,12 @@ Target::Target(TargetStates& outStatus,
     {
         auto tex = new Texture2D(size, depthFormat, nMips);
         managedTextures.insert(tex);
-        AttachTexture(GetAttachmentType(tex->GetFormat().AsDepthStencil()), tex);
+
+        auto format = tex->GetFormat().AsDepthStencil();
+        AttachTexture(GetAttachmentType(format), tex);
+        tex_depth = tex;
+        if (IsStencilOnly(format) || IsDepthAndStencil(format))
+            tex_stencil = tex;
     }
 
     outStatus = GetStatus();
@@ -225,8 +231,14 @@ Target::Target(TargetStates& outStatus,
              "Depth/stencil texture isn't a depth or stencil format");
 
     AttachTexture(GL_COLOR_ATTACHMENT0, color);
-    AttachTexture(GetAttachmentType(depthStencil.GetTex()->GetFormat().AsDepthStencil()),
+    tex_colors.push_back(color);
+
+    auto depthFormat = depthStencil.GetTex()->GetFormat().AsDepthStencil();
+    AttachTexture(GetAttachmentType(depthFormat),
                   depthStencil);
+    tex_depth = depthStencil;
+    if (IsStencilOnly(depthFormat) || IsDepthAndStencil(depthFormat))
+        tex_stencil = depthStencil;
 
     outStatus = GetStatus();
 }
@@ -235,6 +247,8 @@ Target::Target(TargetStates& outStatus,
     : Target(outStatus, color.GetSize(), color.GetLayerCount())
 {
     AttachTexture(GL_COLOR_ATTACHMENT0, color);
+    tex_colors.push_back(color);
+
     AttachBuffer(depthFormat);
 
     outStatus = GetStatus();
@@ -286,14 +300,22 @@ Target::Target(TargetStates& outStatus,
 {
     //Set up the color attachments.
     for (uint32_t i = 0; i < nColorOutputs; ++i)
+    {
         AttachTexture((GLenum)(GL_COLOR_ATTACHMENT0 + i), colorOutputs[i]);
+        tex_colors.push_back(colorOutputs[i]);
+    }
 
     //Set up the depth attachment.
     if (depthOutput.has_value())
     {
         auto format = depthOutput.value().GetTex()->GetFormat();
         BPAssert(format.IsDepthStencil(), "Depth attachment isn't a depth/stencil format");
+
         AttachTexture(GetAttachmentType(format.AsDepthStencil()), depthOutput.value());
+        tex_depth = depthOutput.value();
+
+        if (IsStencilOnly(format.AsDepthStencil()) || IsDepthAndStencil(format.AsDepthStencil()))
+            tex_stencil = depthOutput.value();
     }
     else
     {
@@ -467,12 +489,20 @@ void Target::SetDrawBuffers(const std::optional<uint32_t>* attachments, size_t n
                                   internalActiveColorAttachments.data());
 }
 
+const TargetOutput* Target::GetOutput_Color(uint32_t index) const
+{
+    return (index < GetNColorOutputs()) ?
+               &tex_colors[activeColorAttachments[index].value()] :
+               nullptr;
+}
+
 
 //Guide to clearing FBO's in OpenGL: https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glClearBuffer.xhtml
 
 void Target::ClearColor(const glm::fvec4& rgba, uint32_t index)
 {
-    BPAssert(index < GetNColorOutputs(), "Not enough color outputs to clear");
+    BPAssert(index < GetNColorOutputs(), "Not enough color outputs to reach this index");
+    BPAssert(GetOutput_Color(index) != nullptr, "No color output at this index");
     BPAssert(!GetOutput_Color(index)->GetTex()->GetFormat().IsInteger(),
              "Trying to clear an int/uint texture with a float value");
 
@@ -507,7 +537,13 @@ void Target::ClearColor(const glm::ivec4& rgba, uint32_t index)
 
 void Target::ClearDepth(float depth)
 {
+    auto context = Context::GetCurrentContext();
+    auto oldState = context->GetDepthWrites();
+
+    context->SetDepthWrites(true);
     glClearNamedFramebufferfv(glPtr.Get(), GL_DEPTH, 0, &depth);
+
+    context->SetDepthWrites(oldState);
 }
 void Target::ClearStencil(uint32_t value)
 {
