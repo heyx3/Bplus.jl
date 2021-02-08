@@ -104,6 +104,9 @@ void TextureCube::SetData(const void* data,
                  "GetData() call would go past the texture bounds");
     }
 
+    //Note that B+ always uses tighty-packed byte data --
+    //    no padding between pixels or rows.
+
     auto range3D = params.ToRange3D(range);
     glTextureSubImage3D(GetOglPtr().Get(), params.MipLevel,
                         range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
@@ -124,6 +127,9 @@ void TextureCube::GetData(void* data, size_t dataPixelSize,
     for (glm::length_t d = 0; d < 2; ++d)
         BPAssert(range.GetMaxCornerInclusive()[d] < sizeAtMip[d],
                  "GetData() call would go past the texture bounds");
+
+    //Note that B+ always uses tighty-packed byte data --
+    //    no padding between pixels or rows.
 
     auto range3D = params.ToRange3D(range);
     auto byteSize = (GLsizei)(dataPixelSize * glm::compMul(range3D.Size));

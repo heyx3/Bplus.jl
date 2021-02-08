@@ -44,6 +44,13 @@ namespace Bplus::GL::Textures
                       (_nMipLevels < 1) ? GetMaxNumbMipmaps(_size) : _nMipLevels,
                       sampler.ChangeDimensions<3>())
         {
+            //Depth and stencil textures are not supported on 3D textures.
+            if constexpr (D == 3)
+            {
+                BPAssert(!GetFormat().IsDepthStencil(),
+                         "3D textures cannot use a depth/stencil format");
+            }
+
             //Allocate GPU storage.
             if constexpr (D == 1) {
                 glTextureStorage1D(GetOglPtr().Get(), GetNMipLevels(), GetFormat().GetOglEnum(), size.x);
@@ -382,6 +389,9 @@ namespace Bplus::GL::Textures
                 BPAssert(range.GetMaxCornerInclusive()[d] < sizeAtMip[d],
                          "GetData() call would go past the texture bounds");
 
+            //Note that B+ always uses tighty-packed byte data --
+            //    no padding between pixels or rows.
+
             //Upload.
             if constexpr (D == 1) {
                 glTextureSubImage1D(GetOglPtr().Get(), params.MipLevel,
@@ -539,6 +549,10 @@ namespace Bplus::GL::Textures
 
             auto range3D = range.ChangeDimensions<3>();
             auto byteSize = (GLsizei)(dataPixelSize * glm::compMul(range3D.Size));
+
+            //Note that B+ always uses tighty-packed byte data --
+            //    no padding between pixels or rows.
+
             glGetTextureSubImage(GetOglPtr().Get(), params.MipLevel,
                                  range3D.MinCorner.x, range3D.MinCorner.y, range3D.MinCorner.z,
                                  range3D.Size.x, range3D.Size.y, range3D.Size.z,

@@ -127,7 +127,7 @@ Context::~Context()
 void Context::RefreshState()
 {
     //A handful of features will be left enabled permanently for simplicity;
-    //    many can still be effectively disabled via object-specific parameters.
+    //    many can still be effectively disabled per-draw or per-asset.
     glEnable(GL_BLEND);
     glEnable(GL_STENCIL_TEST);
     //Depth-testing is particularly important to keep on, because disabling it
@@ -140,6 +140,9 @@ void Context::RefreshState()
     //Don't force a "fixed index" for primitive restart;
     //    this would only be useful for OpenGL ES compatibility.
     glDisable(GL_PRIMITIVE_RESTART_FIXED_INDEX);
+    //Force pixel upload/download to always use tightly-packed bytes.
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     //Keep point sprite coordinates at their default origin: upper-left.
     glPointParameteri(GL_POINT_SPRITE_COORD_ORIGIN, GL_UPPER_LEFT);
 
