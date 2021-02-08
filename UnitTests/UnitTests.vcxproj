@@ -379,10 +379,10 @@ echo #undef TEST_NO_MAIN &gt;&gt; "%OUT_FILE%"
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AllTests.h" />
-    <ClInclude Include="D:\Git Repos\B-plus\UnitTests\Tests\SimpleApps.hpp" />
     <ClInclude Include="SimpleApp.hpp" />
     <ClInclude Include="Tests\Buffers.hpp" />
     <ClInclude Include="Tests\ShaderCompilation.hpp" />
+    <ClInclude Include="Tests\SimpleApps.hpp" />
     <ClInclude Include="Tests\Strings.h" />
     <ClInclude Include="Tests\TexTargets.hpp" />
     <ClInclude Include="Tests\Textures.hpp" />

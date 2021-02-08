@@ -16,9 +16,6 @@
     <ClInclude Include="Tests\Buffers.hpp">
       <Filter>Tests</Filter>
     </ClInclude>
-    <ClInclude Include="D:\Git Repos\B-plus\UnitTests\Tests\SimpleApps.hpp">
-      <Filter>Tests</Filter>
-    </ClInclude>
     <ClInclude Include="Tests\Textures.hpp">
       <Filter>Tests</Filter>
     </ClInclude>
@@ -30,6 +27,9 @@
       <Filter>Tests</Filter>
     </ClInclude>
     <ClInclude Include="Tests\Strings.h">
+      <Filter>Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="Tests\SimpleApps.hpp">
       <Filter>Tests</Filter>
     </ClInclude>
   </ItemGroup>
