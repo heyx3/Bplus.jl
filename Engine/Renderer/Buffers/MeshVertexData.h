@@ -67,6 +67,8 @@ namespace Bplus::GL::Buffers::VertexData
         VectorSizes Size;
         SimpleFVectorTypes ComponentType;
 
+        SimpleFVectorType(VectorSizes size, SimpleFVectorTypes componentType) : Size(size), ComponentType(componentType) { }
+
         bool operator==(const SimpleFVectorType& other) const {
             return (Size == other.Size) & (ComponentType == other.ComponentType);
         }
@@ -91,6 +93,9 @@ namespace Bplus::GL::Buffers::VertexData
         //If true, then the integer data is normalized to the range [0, 1] or [-1, 1].
         //If false, then the data is simply casted to a float.
         bool Normalize;
+
+        ConvertedFVectorType(VectorSizes size, ConvertedFVectorTypes type, bool normalize = false)
+            : Size(size), ComponentType(type), Normalize(normalize) { }
 
         bool operator==(const ConvertedFVectorType& other) const {
             return (Size == other.Size) & (Normalize == other.Normalize) &
@@ -152,6 +157,8 @@ namespace Bplus::GL::Buffers::VertexData
         VectorSizes Size;
         IVectorTypes ComponentType;
 
+        IVectorType(VectorSizes size, IVectorTypes type) : Size(size), ComponentType(type) { }
+
         bool operator==(const IVectorType& other) const {
             return (Size == other.Size) & (ComponentType == other.ComponentType);
         }
@@ -160,10 +167,12 @@ namespace Bplus::GL::Buffers::VertexData
 
     #pragma endregion
 
-    //Vertex data that gets interpreted as 64-bit double vectors:
+    //Vertex data that is both stored and interpreted as a vector of 64-bit 'doubles':
     struct DVectorType
     {
         VectorSizes Size;
+
+        DVectorType(VectorSizes size) : Size(size) { }
 
         bool operator==(const DVectorType& other) const { return Size == other.Size; }
         bool operator!=(const DVectorType& other) const { return !operator==(other); }
@@ -181,7 +190,6 @@ namespace Bplus::GL::Buffers::VertexData
     //The formats that mesh data can appear in from a shader's point of view
     //    (i.e. Vector or Matrix).
     BETTER_ENUM(LogicalFormats, uint8_t, Vector, Matrix);
-
 }
 
 #pragma region Add hashing support for the above types

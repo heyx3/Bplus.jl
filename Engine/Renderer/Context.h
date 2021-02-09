@@ -4,6 +4,8 @@
 #include "Buffers/MeshData.h"
 #include "../Math/Box.hpp"
 
+#include <optional>
+#include <array>
 #include <functional>
 
 

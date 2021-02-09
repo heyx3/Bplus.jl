@@ -18,6 +18,12 @@ namespace Bplus::GL::Buffers
         //    for where the vertex/index data starts.
         size_t InitialByteOffset;
 
+        MeshDataSource(const Buffer* buf, uint32_t dataStructSize, size_t initialByteOffset = 0)
+            : Buf(buf), DataStructSize(dataStructSize), InitialByteOffset(initialByteOffset) { }
+        template<typename T>
+        MeshDataSource(const Buffer* buf, size_t initialByteOffset = 0)
+            : MeshDataSource(buf, sizeof(T), initialByteOffset) { }
+
         //Gets the maximum number of elements available for the mesh to pull from.
         size_t GetMaxNElements() const {
             size_t nBytes = Buf->GetByteSize() - InitialByteOffset;

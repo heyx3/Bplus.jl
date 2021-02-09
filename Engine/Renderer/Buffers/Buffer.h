@@ -40,7 +40,7 @@ namespace Bplus::GL::Buffers
         //    for easy reads/writes.
         template<typename T>
         Buffer(uint64_t nElements, bool canChangeData,
-               const T* initialElements = nullptr,
+               const T* initialElements,
                bool recommendStorageOnCPUSide = false)
             : Buffer(nElements * sizeof(T), canChangeData,
                      (const std::byte*)initialElements,

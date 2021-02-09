@@ -140,14 +140,16 @@ class SimpleApp : public Bplus::App
 {
 public:
 
+    std::function<void()> _OnInit;
     std::function<void()> _OnQuit;
     std::function<void(float)> _OnUpdate, _OnRender;
 
-    SimpleApp(std::function<void(float)> onUpdate,
+    SimpleApp(std::function<void()> onInit,
+              std::function<void(float)> onUpdate,
               std::function<void(float)> onRender,
               std::function<void()> onQuit)
         : Bplus::App(*Simple::Config, Simple::OnError),
-          _OnUpdate(onUpdate), _OnRender(onRender), _OnQuit(onQuit)
+          _OnInit(onInit), _OnUpdate(onUpdate), _OnRender(onRender), _OnQuit(onQuit)
     {
 
     }
@@ -173,6 +175,8 @@ protected:
         glEnable(GL_DEBUG_OUTPUT);
         glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
         glDebugMessageCallback(Simple::OnOglMsg, 0);
+
+        _OnInit();
     }
     virtual void OnUpdate(float deltaT)
     {
@@ -198,8 +202,9 @@ protected:
 
 namespace Simple
 {
-    //Runs a SimpleApp with the given logic for unit testing.
-    void Run(std::function<void(float)> onUpdate,
+    //Runs a simple OpenGL window with the given logic.
+    void Run(std::function<void()> onInit,
+             std::function<void(float)> onUpdate,
              std::function<void(float)> onRender,
              std::function<void()> onQuit)
     {
@@ -227,7 +232,7 @@ namespace Simple
 
         //Create the "App". If it crashes, make sure it still gets cleaned up.
         //If the app crashes, make sure we still clean things up.
-        App = std::make_unique<SimpleApp>(onUpdate, onRender, onQuit);
+        App = std::make_unique<SimpleApp>(onInit, onUpdate, onRender, onQuit);
         Bplus::TieToStack cleanup([&]() {
             if (App->IsRunning())
                 App->Quit(true);
@@ -239,12 +244,13 @@ namespace Simple
         App->Run();
     }
 
-    //Starts a SimpleApp, runs the given test, then immediately quits.
-    //TODO: Change current tests to use this.
+
+    //Runs the given test within a valid OpenGL context and window, using the SimpleApp singleton.
     void RunTest(std::function<void()> test,
                  std::optional<std::function<void()>> onQuit = std::nullopt)
     {
-        Run([&](float deltaT) { test(); App->Quit(true); },
+        Run([&]() { },
+            [&](float deltaT) { test(); App->Quit(true); },
             [&](float deltaT) { },
             [&]() { if (onQuit.has_value()) onQuit.value()(); });
     }
