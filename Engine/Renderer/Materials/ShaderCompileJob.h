@@ -111,7 +111,8 @@ namespace Bplus::GL
         //    will be modifed by the pre-processor,
         //    so that you can see what was actually compiled.
         //Returns an error message (or an empty string on success),
-        //    plus a boolean indicating whether the CachedBinary field had to be modified.
+        //    plus a boolean indicating whether the CachedBinary field had to be modified
+        //    (left false if caching isn't used).
         std::tuple<std::string, bool> Compile(OglPtr::ShaderProgram& outPtr);
     };
 }

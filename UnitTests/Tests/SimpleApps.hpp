@@ -81,6 +81,7 @@ void BasicRenderApp()
 
     Buffer* trisCoordinates = nullptr;
     MeshData* tris = nullptr;
+    CompiledShader* shader = nullptr;
 
     //auto shaderPtr = CompiledShader::Compile()
     //CompiledShader shader(RenderState(), CompiledShader::Compile()
@@ -99,14 +100,53 @@ void BasicRenderApp()
                 glm::fvec2(0.75f, -0.25f)
             };
             trisCoordinates = new Buffer(6, false, trisCoordinatesData.data());
-            TEST_CASE("Creating a MeshData");
+
+            TEST_CASE("Creating a MeshData for two triangles");
             tris = new MeshData(PrimitiveTypes::Triangle,
                                 { MeshDataSource(trisCoordinates, sizeof(glm::fvec2)) },
                                 { VertexDataField{0, 2 * sizeof(float), 0,
                                                   MeshVertices::SimpleFVectorType(MeshVertices::VectorSizes::XY,
                                                                                   MeshVertices::SimpleFVectorTypes::Float32)} });
 
+            TEST_CASE("Compiling the shader");
+            OglPtr::ShaderProgram shaderPtr;
+            #pragma region Shader compilation
 
+            ShaderCompileJob compiler;
+
+            compiler.VertexSrc = R"(
+layout (location = 0) in vec2 vIn_Pos;
+layout (location = 0) out vec2 vOut_Pos;
+void main()
+{
+    gl_Position = vec4(vIn_Pos, 0, 1);
+    vOut_Pos = vIn_Pos;
+})";
+            compiler.FragmentSrc = R"(
+layout (location = 0) in vec2 fIn_Pos;
+layout (location = 0) out vec4 fOut_Color;
+
+void main()
+{
+    vec3 color = vec3(fract(fIn_Pos * 10),
+                      abs(sin(gl_FragCoord.y / 50.0)));
+    fOut_Color = vec4(color, 1);
+})";
+
+            std::string compileError;
+            bool dummyBool;
+            std::tie(compileError, dummyBool) = compiler.Compile(shaderPtr);
+
+            TEST_CHECK_(!shaderPtr.IsNull(), "Shader failed to compile:\n\t%s", compileError.c_str());
+            if (shaderPtr.IsNull())
+            {
+                Simple::App->Quit(true);
+                return;
+            }
+
+            #pragma endregion
+            shader = new CompiledShader(RenderState(FaceCullModes::Off, ValueTests::Off),
+                                        shaderPtr, { });
         },
 
         //Update:
@@ -120,7 +160,7 @@ void BasicRenderApp()
 
         //Render:
         [&](float deltaT) {
-
+            Context::GetCurrentContext()->Draw(DrawMeshMode_Basic(*tris, 6), *shader);
         },
 
         //Quit:
@@ -131,6 +171,7 @@ void BasicRenderApp()
                     x = nullptr; \
                 }
 
+            TRY_DELETE(shader);
             TRY_DELETE(trisCoordinates);
             TRY_DELETE(tris);
             #undef TRY_DELETE
