@@ -366,7 +366,7 @@ void main()     \n\
                                      SimpleFormatBitDepths::B8));
     fontTexture->Set_Color(pixels, PixelIOChannels::RGBA);
     fontTextureView = fontTexture->GetView();
-    io.Fonts->TexID = (ImTextureID)(uintptr_t)fontTexture->GetOglPtr().Get();
+    io.Fonts->TexID = (ImTextureID)(&fontTexture.value());
 }
 OGLImpl_BPlus::~ImGuiOpenGLInterface_BPlus()
 {
@@ -438,6 +438,13 @@ void OGLImpl_BPlus::RenderCommandList(ImDrawData& drawData, const ImDrawList& cm
                                                VertexDataField(0, IM_OFFSETOF(ImDrawVert, col),
                                                                Vertices::Type::IColor(Vertices::GetIVectorType<glm::u8>())) }));
     }
+    else
+    {
+        verticesBuffer->Set(cmdList.VtxBuffer.Data,
+                            Bplus::Math::IntervalUL::MakeSize(glm::vec<1, glm::u64>(cmdList.VtxBuffer.Size)));
+        indicesBuffer->Set(cmdList.IdxBuffer.Data,
+                           Bplus::Math::IntervalUL::MakeSize(glm::vec<1, glm::u64>(cmdList.IdxBuffer.Size)));
+    }
 
     for (int bufferI = 0; bufferI < cmdList.CmdBuffer.Size; ++bufferI)
     {
@@ -477,6 +484,8 @@ void OGLImpl_BPlus::RenderCommandList(ImDrawData& drawData, const ImDrawList& cm
                 }
 
                 //Bind texture and draw.
+                auto* texturePtr = (const Texture2D*)drawCmd.TextureId;
+                shader->SetUniform("Texture", texturePtr->GetView());
                 context.Draw(DrawMeshMode_Basic(*meshData, drawCmd.ElemCount), *shader,
                              DrawMeshMode_Indexed(std::nullopt, drawCmd.VtxOffset));
             }
