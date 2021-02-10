@@ -2,6 +2,7 @@
 
 #include "IO.h"
 #include "Renderer/Context.h"
+#include "Dear ImGui/ImGuiImplementations.h"
 
 //TODO: Detect when a graphics device reset has occurred and handle it gracefully: https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glGetGraphicsResetStatus.xhtml
 //TODO: Move more code to the cpp.
@@ -159,11 +160,11 @@ namespace Bplus
         }
         //Called as the app starts running.
         //Override this to change the OpenGL backend for Dear ImGUI.
-        //Default behavior: use ImGuiOpenGLInterface_Default.
+        //Default behavior: use ImGuiOpenGLInterface_PlainOGL.
         virtual void ConfigureImGUIOpenGL()
         {
             std::string errMsg;
-            ImGuiOpenGL.reset(new ImGuiOpenGLInterface_Default(errMsg));
+            ImGuiOpenGL.reset(new ImGuiOpenGLInterface_BPlus(errMsg));
             if (errMsg.size() > 0)
                 OnError(std::string("ImGUI OpenGL init error: ") + errMsg);
         }

@@ -79,12 +79,11 @@ void BasicRenderApp()
     using namespace Bplus::GL::Textures;
     namespace MeshVertices = Bplus::GL::Buffers::VertexData;
 
-    Buffer* trisCoordinates = nullptr;
+    Buffer *trisCoordinates = nullptr,
+           *trisIndices = nullptr;
     MeshData* tris = nullptr;
     CompiledShader* shader = nullptr;
-
-    //auto shaderPtr = CompiledShader::Compile()
-    //CompiledShader shader(RenderState(), CompiledShader::Compile()
+    Texture2D* tex = nullptr;
 
     Simple::Run(
         //Init:
@@ -99,14 +98,17 @@ void BasicRenderApp()
                 glm::fvec2(0.5f, 0.25f),
                 glm::fvec2(0.75f, -0.25f)
             };
+            std::array<glm::u16, 6> trisIndexData = { 0, 1, 2,    3, 4, 5 };
+
             trisCoordinates = new Buffer(6, false, trisCoordinatesData.data());
+            trisIndices = new Buffer(6, false, trisIndexData.data());
 
             TEST_CASE("Creating a MeshData for two triangles");
             tris = new MeshData(PrimitiveTypes::Triangle,
+                                MeshDataSource(trisIndices, sizeof(glm::u16)),
+                                IndexDataTypes::UInt16,
                                 { MeshDataSource(trisCoordinates, sizeof(glm::fvec2)) },
-                                { VertexDataField{0, 2 * sizeof(float), 0,
-                                                  MeshVertices::SimpleFVectorType(MeshVertices::VectorSizes::XY,
-                                                                                  MeshVertices::SimpleFVectorTypes::Float32)} });
+                                { VertexDataField(0, 0, MeshVertices::Type::FVector<2>()) });
 
             TEST_CASE("Compiling the shader");
             OglPtr::ShaderProgram shaderPtr;
@@ -114,24 +116,28 @@ void BasicRenderApp()
 
             ShaderCompileJob compiler;
 
-            compiler.VertexSrc = R"(
-layout (location = 0) in vec2 vIn_Pos;
+            compiler.VertexSrc =
+R"(layout (location = 0) in vec2 vIn_Pos;
 layout (location = 0) out vec2 vOut_Pos;
 void main()
 {
     gl_Position = vec4(vIn_Pos, 0, 1);
     vOut_Pos = vIn_Pos;
 })";
-            compiler.FragmentSrc = R"(
-layout (location = 0) in vec2 fIn_Pos;
+            compiler.FragmentSrc =
+R"(layout (location = 0) in vec2 fIn_Pos;
 layout (location = 0) out vec4 fOut_Color;
+layout (bindless_sampler) uniform sampler2D MyTexture;
 
 void main()
 {
+    vec4 texCol = texture(MyTexture, fIn_Pos * 3.5);
     vec3 color = vec3(fract(fIn_Pos * 10),
-                      abs(sin(gl_FragCoord.y / 50.0)));
-    fOut_Color = vec4(color, 1);
+                      abs(sin(gl_FragCoord.y / 15.0)));
+    fOut_Color = vec4(mix(texCol.rrr, color, 0.5), 1);
 })";
+
+            compiler.PreProcessIncludes();
 
             std::string compileError;
             bool dummyBool;
@@ -146,7 +152,20 @@ void main()
 
             #pragma endregion
             shader = new CompiledShader(RenderState(FaceCullModes::Off, ValueTests::Off),
-                                        shaderPtr, { });
+                                        shaderPtr, { "MyTexture" });
+
+            tex = new Texture2D(glm::uvec2{ 100, 100 },
+                                SimpleFormat(FormatTypes::Float, SimpleFormatComponents::R, SimpleFormatBitDepths::B32),
+                                0,
+                                Sampler<2>(WrapModes::Repeat, PixelFilters::Rough));
+            std::array<float, 100 * 100> pixels;
+            for (int y = 0; y < tex->GetSize().y; ++y)
+                for (int x = 0; x < tex->GetSize().x; ++x)
+                {
+                    pixels[x + (y * tex->GetSize().x)] = (rand() % RAND_MAX) / (float)RAND_MAX;
+                }
+            tex->Set_Color(pixels.data(), PixelIOChannels::Red);
+            shader->SetUniform("MyTexture", tex->GetView());
         },
 
         //Update:
@@ -160,7 +179,10 @@ void main()
 
         //Render:
         [&](float deltaT) {
-            Context::GetCurrentContext()->Draw(DrawMeshMode_Basic(*tris, 6), *shader);
+            auto& context = *Context::GetCurrentContext();
+            context.ClearScreen(glm::fvec4(0.25f, 0.25f, 0.1f, 0.0f));
+            context.Draw(DrawMeshMode_Basic(*tris, 6), *shader,
+                         DrawMeshMode_Indexed());
         },
 
         //Quit:
@@ -172,7 +194,9 @@ void main()
                 }
 
             TRY_DELETE(shader);
+            TRY_DELETE(tex);
             TRY_DELETE(trisCoordinates);
+            TRY_DELETE(trisIndices);
             TRY_DELETE(tris);
             #undef TRY_DELETE
         });

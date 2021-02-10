@@ -50,16 +50,16 @@
     </ClInclude>
     <ClInclude Include="Utils.h" />
     <ClInclude Include="Renderer\Materials\CompiledShader.h">
-      <Filter>Renderer\Programs</Filter>
+      <Filter>Renderer\Materials</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\Device.h">
       <Filter>Renderer</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\Materials\Material_Basic.h">
-      <Filter>Renderer\Programs</Filter>
+      <Filter>Renderer\Materials</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\Materials\MaterialData.h">
-      <Filter>Renderer\Programs</Filter>
+      <Filter>Renderer\Materials</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\Textures\Texture.h">
       <Filter>Renderer\Textures</Filter>
@@ -134,10 +134,13 @@
       <Filter>Renderer\Textures</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\Materials\ShaderCompileJob.h">
-      <Filter>Renderer\Programs</Filter>
+      <Filter>Renderer\Materials</Filter>
     </ClInclude>
     <ClInclude Include="Utils\Strings.h">
       <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Dear ImGui\ImGuiImplementations.h">
+      <Filter>Dear ImGui</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -172,16 +175,16 @@
     </ClCompile>
     <ClCompile Include="TomlIO.cpp" />
     <ClCompile Include="Renderer\Materials\CompiledShader.cpp">
-      <Filter>Renderer\Programs</Filter>
+      <Filter>Renderer\Materials</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\Device.cpp">
       <Filter>Renderer</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\Materials\Material_Basic.cpp">
-      <Filter>Renderer\Programs</Filter>
+      <Filter>Renderer\Materials</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\Materials\MaterialData.cpp">
-      <Filter>Renderer\Programs</Filter>
+      <Filter>Renderer\Materials</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\Textures\Texture.cpp">
       <Filter>Renderer\Textures</Filter>
@@ -214,10 +217,13 @@
       <Filter>Renderer\Textures</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\Materials\ShaderCompileJob.cpp">
-      <Filter>Renderer\Programs</Filter>
+      <Filter>Renderer\Materials</Filter>
     </ClCompile>
     <ClCompile Include="Utils\Strings.cpp">
       <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Dear ImGui\ImGuiImplementations.cpp">
+      <Filter>Dear ImGui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -236,14 +242,14 @@
     <Filter Include="Renderer\Buffers">
       <UniqueIdentifier>{03ee6afa-e9bc-44b3-9227-cfa1be60ae05}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Renderer\Programs">
-      <UniqueIdentifier>{1383e33b-f4af-4e68-ba5f-841a1bd915b8}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Utils">
       <UniqueIdentifier>{d2c9364c-6669-43fd-9f8f-eb57f6b6c469}</UniqueIdentifier>
     </Filter>
     <Filter Include="Math">
       <UniqueIdentifier>{6f80ac6e-5965-493c-b49c-1bcb7cc51280}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Renderer\Materials">
+      <UniqueIdentifier>{1383e33b-f4af-4e68-ba5f-841a1bd915b8}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
