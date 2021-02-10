@@ -214,8 +214,8 @@ namespace Bplus::GL::Textures
         //    allowing simple reads/writes but no sampling.
         ImgView GetView(ImgHandleData params) const;
 
-        //Gets (or creates) a view of this texture with the given sampler.
-        //Child classes should provide a public "GeteView() with
+        //Gets (or creates) a view of this texture with the given 3D sampler.
+        //Child classes should provide a public "GetView() with
         //    the correct-dimensional sampler.
         TexView GetViewFull(std::optional<Sampler<3>> customSampler = std::nullopt) const;
 

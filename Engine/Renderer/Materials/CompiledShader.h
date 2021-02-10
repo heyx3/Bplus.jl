@@ -2,7 +2,6 @@
 
 #include <tuple>
 
-#include "../Context.h"
 #include "../Textures/Texture.h"
 #include "ShaderCompileJob.h"
 
@@ -37,24 +36,6 @@ namespace Bplus::GL
         //Gets the shader with the given OpenGL pointer.
         //Returns nullptr if it couldn't be found.
         static const CompiledShader* Find(OglPtr::ShaderProgram ptr);
-
-        
-        //TODO: Use ShaderCompileJob.
-
-        //Compiles and returns an OpenGL shader program with the given vertex and fragment shader.
-        //The declaration of OpenGL version and any extensions is pre-pended automatically.
-        //If compilation failed, 0 is returned and an error message is written.
-        //Otherwise, the result should eventually be cleaned up with glDeleteProgram().
-        static OglPtr::ShaderProgram Compile(std::string vertexShader, std::string fragmentShader,
-                                             std::string& outErrMsg);
-        //Compiles and returns an OpenGL shader program with a vertex, geometry,
-        //    and fragment shader.
-        //The declaration of OpenGL version and any extensions is pre-pended automatically.
-        //If compilation failed, 0 is returned and an error message is written.
-        //Otherwise, the result should be cleaned up with glDeleteProgram().
-        static OglPtr::ShaderProgram Compile(std::string vertexShader, std::string geometryShader,
-                                             std::string fragmentShader,
-                                             std::string& outErrMsg);
 
 
         //The render state this shader will use.
@@ -189,16 +170,14 @@ namespace Bplus::GL
         template<typename Value_t>
         bool SetUniform(const std::string& name, const Value_t& value)
         {
-            UniformStates state;
-            OglPtr::ShaderUniform ptr;
-            std::tie(state, ptr) = CheckUniform(name);
-            switch (state)
+            UniformAndStatus status = CheckUniform(name);
+            switch (status.Status)
             {
                 case UniformStates::Missing: return false;
                 case UniformStates::OptimizedOut: return true;
 
                 case UniformStates::Exists:
-                    _SetUniform(ptr, value);
+                    _SetUniform(status.Uniform, value);
                     return true;
 
                 default:

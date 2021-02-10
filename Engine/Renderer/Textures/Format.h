@@ -2,6 +2,7 @@
 
 #include <variant>
 
+#include "../../RenderLibs.h"
 #include "../Data.h"
 
 namespace Bplus::GL::Textures
@@ -77,6 +78,11 @@ namespace Bplus::GL::Textures
         FormatTypes Type;
         SimpleFormatComponents Components;
         SimpleFormatBitDepths ChannelBitSize;
+
+        SimpleFormat(FormatTypes type,
+                     SimpleFormatComponents components,
+                     SimpleFormatBitDepths channelBitSize)
+            : Type(type), Components(components), ChannelBitSize(channelBitSize) { }
 
         bool operator==(const SimpleFormat& other) const
         {

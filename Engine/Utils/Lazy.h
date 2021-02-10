@@ -45,11 +45,13 @@ namespace Bplus
         const T& Cast() const
         {
             BPAssert(isCreated, "Accessed before creation");
-            return *(const T*)(&itemBytes[0]);
+            return PlainCast();
         }
+        //Gets the underlying data, assuming it's already been created.
         T& Cast()
         {
-            return const_cast<T&>(const_cast<const Lazy<T>*>(this)->Cast());
+            BPAssert(isCreated, "Accessed before creation");
+            return PlainCast();
         }
 
         //Makes this object un-instantiated again.
@@ -59,7 +61,7 @@ namespace Bplus
             if (isCreated)
             {
                 isCreated = false;
-                Cast().~T();
+                PlainCast().~T();
             }
         }
         
@@ -70,7 +72,7 @@ namespace Bplus
         ~Lazy()
         {
             if (isCreated)
-                Cast().~T();
+                PlainCast().~T();
             isCreated = false;
         }
 
@@ -79,18 +81,24 @@ namespace Bplus
             : isCreated(cpy.isCreated)
         {
             if (cpy.isCreated)
-                Create(cpy.Cast());
+                Create(cpy.PlainCast());
         }
         Lazy& operator=(const Lazy<T>& cpy)
         {
-            //Destroy or copy the "cpy" object as necessary.
-            if (isCreated && !cpy.isCreated)
-                Cast().~T();
-            else if (cpy.isCreated)
+            //If the new copy is empty, just destroy this instance.
+            if (!cpy.isCreated)
+            {
                 if (isCreated)
-                    Cast() = cpy.Cast();
+                    PlainCast().~T();
+            }
+            //Otherwise, call into the assignment operator or constructor as necessary.
+            else
+            {
+                if (isCreated)
+                    PlainCast() = cpy.PlainCast();
                 else
-                    new(&Cast()) T(cpy.Cast());
+                    new(&PlainCast()) T(cpy.PlainCast());
+            }
 
             isCreated = cpy.isCreated;
             return *this;
@@ -98,9 +106,9 @@ namespace Bplus
         Lazy& operator=(const T& cpy)
         {
             if (isCreated)
-                Cast() = cpy;
+                PlainCast() = cpy;
             else
-                new(&Cast()) T(cpy);
+                new(&PlainCast()) T(cpy);
 
             isCreated = true;
             return *this;
@@ -111,18 +119,24 @@ namespace Bplus
             : isCreated(src.isCreated)
         {
             if (src.isCreated)
-                Create(std::move(src.Cast()));
+                Create(std::move(src.PlainCast()));
         }
         Lazy& operator=(Lazy<T>&& src)
         {
-            //Destroy or move the "src" object as necessary.
-            if (isCreated && !src.isCreated)
-                Cast().~T();
-            else if (src.isCreated)
+            //If the new value is empty, just destroy this instance.
+            if (!src.isCreated)
+            {
                 if (isCreated)
-                    Cast() = std::move(src.Cast());
+                    PlainCast().~T();
+            }
+            //Otherwise, call into the assignment operator or constructor as necessary.
+            else
+            {
+                if (isCreated)
+                    PlainCast() = std::move(src.PlainCast());
                 else
-                    new(&Cast()) T(std::move(src.Cast()));
+                    new(&PlainCast()) T(std::move(src.PlainCast()));
+            }
 
             isCreated = src.isCreated;
             return *this;
@@ -130,9 +144,9 @@ namespace Bplus
         Lazy& operator=(T&& cpy)
         {
             if (isCreated)
-                Cast() = std::move(cpy);
+                PlainCast() = std::move(cpy);
             else
-                new(&Cast()) T(std::move(cpy));
+                new(&PlainCast()) T(std::move(cpy));
 
             isCreated = true;
             return *this;
@@ -143,6 +157,9 @@ namespace Bplus
 
     private:
         mutable bool isCreated = false;
-        uint8_t itemBytes[sizeof(T)];
+        std::byte itemBytes[sizeof(T)];
+
+        const T& PlainCast() const { return *(const T*)(&itemBytes[0]); }
+              T& PlainCast()       { return *(      T*)(&itemBytes[0]); }
     };
 }

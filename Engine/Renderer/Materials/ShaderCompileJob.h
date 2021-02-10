@@ -103,6 +103,9 @@ namespace Bplus::GL
         //Pre-processes the given shader source to execute any "#pragma include(...)" statements.
         //Edits the string in-place.
         void PreProcessIncludes(std::string& sourceStr) const;
+        //Pre-processes all this instance's shader strings to execute any "#pragma include(...)" statements.
+        //The strings are edited in-place.
+        void PreProcessIncludes();
 
         //Compiles this program into an OpenGL object and returns it.
         //If the CachedBinary field exists but wasn't loaded successfully,

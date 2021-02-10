@@ -15,6 +15,7 @@ namespace Bplus::GL::Textures
         //    when going past its border.
         Clamp = GL_CLAMP_TO_EDGE,
         //Outputs a custom color when outside the texture.
+        //TODO: It seems I forgot to actually use border color sampling. Add a field to Sampler for the border color, and NOTE that bindless textures have a very limited set of allowed border colors.
         CustomBorder = GL_CLAMP_TO_BORDER
     );
 

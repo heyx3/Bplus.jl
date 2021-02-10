@@ -1619,6 +1619,11 @@ main(int argc, char** argv)
                 test_no_exec__ = 1;
 #endif
         }
+
+        if (test_no_exec__)
+            printf("Keeping everything to a single process.\n");
+        else
+            printf("Spreading the tests across multiple processes...\n");
     }
 
     if(test_tap__) {

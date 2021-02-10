@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../RenderLibs.h"
 #include "Data.h"
 #include "Buffers/MeshData.h"
 #include "../Math/Box.hpp"
@@ -78,6 +79,10 @@ namespace Bplus::GL
         //All index values are offset by this amount.
         //Does not affect the "ResetValue"; that test happens before this offset.
         size_t ValueOffset = 0;
+
+        DrawMeshMode_Indexed(std::optional<uint32_t> resetValue = std::nullopt,
+                             size_t valueOffset = 0)
+            : ResetValue(resetValue), ValueOffset(valueOffset) { }
     };
     //Extra data when drawing multiple subsets of a mesh using indexed primitives.
     struct DrawMeshMode_IndexedSubset

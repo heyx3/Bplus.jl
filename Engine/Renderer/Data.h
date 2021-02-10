@@ -1,7 +1,13 @@
 #pragma once
 
+#include <gl/glew.h>
+
+#include <glm/glm.hpp>
+#include <glm/ext.hpp>
+#include <glm/matrix.hpp>
+
+#include "../Utils.h"
 #include "../TomlIO.h"
-#include "../RenderLibs.h"
 
 
 //Defines various enums and data structures that represent rendering state.
@@ -205,9 +211,9 @@ namespace Bplus::GL
                      int popupMaxItemHeight = -1)
         {
             bool changed =
-                     ImGui::EnumCombo<BlendFactors>("Src Factor", Src, popupMaxItemHeight) |
-                     ImGui::EnumCombo<BlendFactors>("Dest Factor", Dest, popupMaxItemHeight) |
-                     ImGui::EnumCombo<BlendOps>("Op", Op, popupMaxItemHeight);
+                     ImGui::EnumCombo("Src Factor", Src, popupMaxItemHeight) |
+                     ImGui::EnumCombo("Dest Factor", Dest, popupMaxItemHeight) |
+                     ImGui::EnumCombo("Op", Op, popupMaxItemHeight);
             if (UsesConstant())
                 changed |= editConstantValue("Constant", Constant);
             return changed;

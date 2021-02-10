@@ -34,7 +34,8 @@ namespace Bplus
     }
 
 
-    //Safe type-punning: reinterprets input A's byte-data as an instance of B.
+    //Safe type-punning: reinterprets input A's byte-data as an instance of B
+    //    by making a copy on the stack.
     template<typename A, typename B>
     B Reinterpret(const A& a)
     {

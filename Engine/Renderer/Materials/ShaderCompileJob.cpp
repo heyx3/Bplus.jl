@@ -65,6 +65,16 @@ PreCompiledShader::PreCompiledShader(OglPtr::ShaderProgram program)
 
 size_t ShaderCompileJob::MaxIncludesPerFile = 100;
 
+void ShaderCompileJob::PreProcessIncludes()
+{
+    if (!VertexSrc.empty())
+        PreProcessIncludes(VertexSrc);
+    if (!FragmentSrc.empty())
+        PreProcessIncludes(FragmentSrc);
+    if (!GeometrySrc.empty())
+        PreProcessIncludes(GeometrySrc);
+}
+
 void ShaderCompileJob::PreProcessIncludes(std::string& sourceStr) const
 {
     std::stringstream strBuffer;
@@ -337,6 +347,8 @@ std::tuple<std::string, bool> ShaderCompileJob::Compile(OglPtr::ShaderProgram& o
         shaderPrefix += extension;
         shaderPrefix += "\n";
     }
+    //Add a preprocessor definition that resets the line count.
+    shaderPrefix += "\n#line 1 0\n";
 
     //Store per-shader information into an array for easier processing:
     struct StageData {
@@ -384,6 +396,13 @@ std::tuple<std::string, bool> ShaderCompileJob::Compile(OglPtr::ShaderProgram& o
         {
             errorMsg = std::string("Error compiling ") + shaderData.StageName +
                           ": " + errorMsg;
+            
+            //Clean up OpenGL stuff.
+            for (auto& shaderData : shaderTypes)
+                glDeleteShader(shaderData.Handle);
+            glDeleteProgram(outPtr.Get());
+            outPtr = OglPtr::ShaderProgram::Null();
+
             return std::make_tuple(errorMsg, false);
         }
     }
@@ -412,6 +431,7 @@ std::tuple<std::string, bool> ShaderCompileJob::Compile(OglPtr::ShaderProgram& o
 
         glDeleteProgram(outPtr.Get());
         outPtr = OglPtr::ShaderProgram::Null();
+
         return std::make_tuple("Error linking shader stages together : " +
                                    std::string(msgBuffer.data()),
                                false);

@@ -20,9 +20,6 @@ namespace Bplus::GL::Buffers
 
         MeshDataSource(const Buffer* buf, uint32_t dataStructSize, size_t initialByteOffset = 0)
             : Buf(buf), DataStructSize(dataStructSize), InitialByteOffset(initialByteOffset) { }
-        template<typename T>
-        MeshDataSource(const Buffer* buf, size_t initialByteOffset = 0)
-            : MeshDataSource(buf, sizeof(T), initialByteOffset) { }
 
         //Gets the maximum number of elements available for the mesh to pull from.
         size_t GetMaxNElements() const {
@@ -37,9 +34,6 @@ namespace Bplus::GL::Buffers
     {
         //The buffer this field pulls from, as its index in a list of MeshDataSources.
         size_t MeshDataSourceIndex;
-        //The size of this field, in bytes.
-        //For example, a vec3 field would be "3*sizeof(float)".
-        size_t FieldByteSize;
         //The offset of this field from the beginning of its struct, in bytes.
         //For example, the offset of "Pos" in an array of "struct Vertex{ vec4 Color, vec3 Pos }"
         //    is "offsetof(Vertex, Pos)" (i.e. "4*sizeof(float)").
@@ -55,11 +49,17 @@ namespace Bplus::GL::Buffers
         // etc.
         uint32_t PerInstance = 0;
 
+        VertexDataField(size_t meshDataSourceIndex,
+                        size_t fieldByteOffset, VertexData::Type fieldType,
+                        uint32_t perInstance = 0)
+            : MeshDataSourceIndex(meshDataSourceIndex),
+              FieldByteOffset(fieldByteOffset), FieldType(fieldType),
+              PerInstance(perInstance) { }
+
 
         bool operator==(const VertexDataField& other) const
         {
             return (MeshDataSourceIndex == other.MeshDataSourceIndex) &
-                   (FieldByteSize == other.FieldByteSize) &
                    (FieldByteOffset == other.FieldByteOffset) &
                    (FieldType == other.FieldType) &
                    (PerInstance == other.PerInstance);
@@ -217,6 +217,6 @@ BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::IndexDataTypes);
 
 //Hashes for data structures:
 BP_HASHABLE_SIMPLE(Bplus::GL::Buffers::VertexDataField,
-                   d.MeshDataSourceIndex, d.FieldType,
-                   d.FieldByteSize, d.FieldByteOffset,
+                   d.MeshDataSourceIndex,
+                   d.FieldType, d.FieldByteOffset,
                    d.PerInstance)

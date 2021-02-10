@@ -42,6 +42,46 @@ namespace Bplus::GL::Buffers::VertexData
     using FMatrixType = MatrixType<float>;
     using DMatrixType = MatrixType<double>;
 
+    
+    #pragma region Vertex data that gets interpreted as 32-bit int or uint vectors
+
+    BETTER_ENUM(IVectorTypes, GLenum,
+        UInt8 = GL_UNSIGNED_BYTE,
+        UInt16 = GL_UNSIGNED_SHORT,
+        UInt32 = GL_UNSIGNED_INT,
+
+        Int8 = GL_BYTE,
+        Int16 = GL_SHORT,
+        Int32 = GL_INT
+    );
+
+    //Deduces at compile-time the type of an IVector's components.
+    template<typename T>
+    constexpr IVectorTypes GetIVectorType() { static_assert(false, "Unsupported type for IVector"); }
+
+    #pragma region Specializations
+    template<> constexpr IVectorTypes GetIVectorType<uint8_t>() { return IVectorTypes::UInt8; }
+    template<> constexpr IVectorTypes GetIVectorType<uint16_t>() { return IVectorTypes::UInt16; }
+    template<> constexpr IVectorTypes GetIVectorType<uint32_t>() { return IVectorTypes::UInt32; }
+    template<> constexpr IVectorTypes GetIVectorType<int8_t>() { return IVectorTypes::Int8; }
+    template<> constexpr IVectorTypes GetIVectorType<int16_t>() { return IVectorTypes::Int16; }
+    template<> constexpr IVectorTypes GetIVectorType<int32_t>() { return IVectorTypes::Int32; }
+    #pragma endregion
+
+    struct IVectorType
+    {
+        VectorSizes Size;
+        IVectorTypes ComponentType;
+
+        IVectorType(VectorSizes size, IVectorTypes type) : Size(size), ComponentType(type) { }
+
+        bool operator==(const IVectorType& other) const {
+            return (Size == other.Size) & (ComponentType == other.ComponentType);
+        }
+        bool operator!=(const IVectorType& other) const { return !operator==(other); }
+    };
+
+    #pragma endregion
 
     #pragma region Vertex data that gets interpreted as 32-bit float vectors
 
@@ -75,26 +115,15 @@ namespace Bplus::GL::Buffers::VertexData
         bool operator!=(const SimpleFVectorType& other) const { return !operator==(other); }
     };
 
-    //The different possible types of integer vertex data stored in a buffer,
-    //    to be interpreted as 32-bit float vector components by a shader.
-    BETTER_ENUM(ConvertedFVectorTypes, GLenum,
-        UInt8 = GL_UNSIGNED_BYTE,
-        UInt16 = GL_UNSIGNED_SHORT,
-        UInt32 = GL_UNSIGNED_INT,
-
-        Int8 = GL_BYTE,
-        Int16 = GL_SHORT,
-        Int32 = GL_INT
-    );
     struct ConvertedFVectorType
     {
         VectorSizes Size;
-        ConvertedFVectorTypes ComponentType;
+        IVectorTypes ComponentType;
         //If true, then the integer data is normalized to the range [0, 1] or [-1, 1].
         //If false, then the data is simply casted to a float.
         bool Normalize;
 
-        ConvertedFVectorType(VectorSizes size, ConvertedFVectorTypes type, bool normalize = false)
+        ConvertedFVectorType(VectorSizes size, IVectorTypes type, bool normalize)
             : Size(size), ComponentType(type), Normalize(normalize) { }
 
         bool operator==(const ConvertedFVectorType& other) const {
@@ -140,33 +169,6 @@ namespace Bplus::GL::Buffers::VertexData
 
     #pragma endregion
 
-    #pragma region Vertex data that gets interpreted as 32-bit int or uint vectors
-
-    BETTER_ENUM(IVectorTypes, GLenum,
-        UInt8 = GL_UNSIGNED_BYTE,
-        UInt16 = GL_UNSIGNED_SHORT,
-        UInt32 = GL_UNSIGNED_INT,
-
-        Int8 = GL_BYTE,
-        Int16 = GL_SHORT,
-        Int32 = GL_INT
-    );
-
-    struct IVectorType
-    {
-        VectorSizes Size;
-        IVectorTypes ComponentType;
-
-        IVectorType(VectorSizes size, IVectorTypes type) : Size(size), ComponentType(type) { }
-
-        bool operator==(const IVectorType& other) const {
-            return (Size == other.Size) & (ComponentType == other.ComponentType);
-        }
-        bool operator!=(const IVectorType& other) const { return !operator==(other); }
-    };
-
-    #pragma endregion
-
     //Vertex data that is both stored and interpreted as a vector of 64-bit 'doubles':
     struct DVectorType
     {
@@ -198,7 +200,6 @@ namespace Bplus::GL::Buffers::VertexData
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::VectorSizes);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::SimpleFVectorTypes);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::PackedFVectorTypes);
-BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::ConvertedFVectorTypes);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::PackedConvertedFVectorTypes);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::IVectorTypes);
 
@@ -225,6 +226,31 @@ namespace Bplus::GL::Buffers::VertexData
     //    interpreted into a specific format for the mesh/shader.
     struct BP_API Type
     {
+        #pragma region Static getters for common types
+            
+        //Data that comes in as a vector of floats (from 1D to 4D),
+        //    and shows up in shaders in the same way -- a vector of floats.
+        template<glm::size_t D>
+        static Type FVector() { return SimpleFVectorType(VectorSizes::_from_integral((VectorSizes::_integral)D), SimpleFVectorTypes::Float32); }
+
+        //Data that comes in as a vector of integers (from 1D to 4D),
+        //    and shows up in shaders as either signed 32-bit vectors or UNsigned 32-bit vectors.
+        template<glm::size_t D>
+        static Type IVector(IVectorTypes type) { return IVectorType(VectorSizes::_from_integral((VectorSizes::_integral)D), type); }
+
+        //Data that comes in as a 3D or 4D vector of integers,
+        //    and shows up in shaders as a vector of floats.
+        //For example, you can send in color data as RGBA bytes, and it'll come out as a fvec4.
+        //Or RGB bytes (no alpha), which comes out as a fvec3.
+        static Type IColor(IVectorTypes channelType, bool includeAlpha = true)
+        {
+            return ConvertedFVectorType(includeAlpha ? VectorSizes::XYZW : VectorSizes::XYZ,
+                                        channelType,
+                                        true);
+        }
+
+        #pragma endregion
+
         #pragma region Constructors and getters for each type in the union
 
         Type(FMatrixType d) : data(d) { }
