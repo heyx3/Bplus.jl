@@ -256,18 +256,37 @@ namespace Bplus::GL
         std::unordered_map<OglPtr::View, Textures::TexView> texViews;
         std::unordered_map<OglPtr::View, Textures::ImgView> imgViews;
 
+        //Tracks how many uniforms use each texture/image view.
+        std::unordered_map<OglPtr::View, std::vector<OglPtr::ShaderUniform>> usedViews;
+
 
         enum class UniformStates { Missing, OptimizedOut, Exists };
         struct UniformAndStatus {   OglPtr::ShaderUniform Uniform;    UniformStates Status;    };
         UniformAndStatus CheckUniform(const std::string& name) const;
         
         template<typename Value_t>
-        Value_t GetUniform(OglPtr::ShaderUniform ptr) const
+        auto GetUniform(OglPtr::ShaderUniform ptr) const
         {
             BPAssert(!ptr.IsNull(), "Given an null uniform location!");
             return _GetUniform<Value_t>(ptr);
         }
         #pragma region _GetUniform()
+
+        //Texture views may or may not exist,
+        //    so they are returned as a pointer which may be null.
+        template<>
+        auto GetUniform<Textures::TexView>(OglPtr::ShaderUniform ptr) const
+        {
+            return GetUniform<const Textures::TexView*>(ptr);
+        }
+        //Image views may or may not exist,
+        //    so they are returned as a pointer which may be null.
+        template<>
+        auto GetUniform<Textures::ImgView>(OglPtr::ShaderUniform ptr) const
+        {
+            return GetUniform<const Textures::ImgView*>(ptr);
+        }
+
 
         //The non-specialized version gives you a compile error
         //    about using an incorrect template type.
@@ -358,27 +377,33 @@ namespace Bplus::GL
 
         #pragma region Textures and Buffers
 
-        GET_UNIFORM_FOR(Textures::TexView)
+        GET_UNIFORM_FOR(const Textures::TexView*)
         {
             OglPtr::View viewPtr;
             glGetnUniformui64vARB(programHandle.Get(), ptr.Get(),
-                                  1, &viewPtr.Get());
+                                  sizeof(viewPtr), &viewPtr.Get());
+
+            if (viewPtr.IsNull())
+                return nullptr;
 
             auto found = texViews.find(viewPtr);
             BPAssert(found != texViews.end(),
                      "Can't find TexView uniform value");
-            return found->second;
+            return &found->second;
         }
-        GET_UNIFORM_FOR(Textures::ImgView)
+        GET_UNIFORM_FOR(const Textures::ImgView*)
         {
             OglPtr::View viewPtr;
             glGetnUniformui64vARB(programHandle.Get(), ptr.Get(),
-                                  1, &viewPtr.Get());
+                                  sizeof(viewPtr), &viewPtr.Get());
+
+            if (viewPtr.IsNull())
+                return nullptr;
 
             auto found = imgViews.find(viewPtr);
             BPAssert(found != imgViews.end(),
                      "Can't find ImgView uniform value");
-            return found->second;
+            return &found->second;
         }
 
         //TODO: Figure out how to support UBO and SSBO
@@ -398,7 +423,7 @@ namespace Bplus::GL
             _SetUniform<Value_t>(ptr, value);
         }
         #pragma region _SetUniform()
-        
+
         //The non-specialized version gives you a compile error
         //    about using an incorrect template type.
         template<typename Value_t>
@@ -478,14 +503,47 @@ namespace Bplus::GL
 
         SET_UNIFORM_FOR(Textures::TexView)
         {
+            const auto* currentView = GetUniform<const Textures::TexView*>(ptr);
+            if (currentView != nullptr && *currentView == value)
+                return;
+
+            //The old value is no longer associated with this uniform.
+            if (currentView != nullptr)
+            {
+                auto& v = usedViews[currentView->GlPtr];
+                v.erase(std::find(v.begin(), v.end(), ptr));
+
+                //If the old value doesn't associate with ANY uniform anymore, stop tracking it.
+                if (v.empty())
+                    usedViews.erase(currentView->GlPtr);
+            }
+
             texViews.emplace(value.GlPtr, value);
+            usedViews[value.GlPtr].push_back(ptr);
+
             glProgramUniform1ui64ARB(programHandle.Get(), ptr.Get(),
                                      value.GlPtr.Get());
         }
-        //TexView:
         SET_UNIFORM_FOR(Textures::ImgView)
         {
+            const auto* currentView = GetUniform<const Textures::ImgView*>(ptr);
+            if (currentView != nullptr && *currentView == value)
+                return;
+
+            //The old value is no longer associated with this uniform.
+            if (currentView != nullptr)
+            {
+                auto& v = usedViews[currentView->GlPtr];
+                v.erase(std::find(v.begin(), v.end(), ptr));
+
+                //If the old value doesn't associate with ANY uniform anymore, stop tracking it.
+                if (v.empty())
+                    usedViews.erase(currentView->GlPtr);
+            }
+
             imgViews.emplace(value.GlPtr, value);
+            usedViews[value.GlPtr].push_back(ptr);
+
             glProgramUniform1ui64ARB(programHandle.Get(), ptr.Get(),
                                      value.GlPtr.Get());
         }

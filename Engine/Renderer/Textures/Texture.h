@@ -147,6 +147,9 @@ namespace Bplus::GL::Textures
         TexView& operator=(const TexView& cpy);
         TexView(TexView&& from) : TexView(from) { }
         TexView& operator=(TexView&& from) { return operator=(from); }
+
+        bool operator==(const TexView& v) const { return (GlPtr == v.GlPtr); }
+        bool operator!=(const TexView& v) const { return (GlPtr != v.GlPtr); }
     };
 
     //A specific mip-level of a texture,
@@ -165,6 +168,9 @@ namespace Bplus::GL::Textures
         ImgView& operator=(const ImgView& cpy);
         ImgView(ImgView&& from) : ImgView(from) { }
         ImgView& operator=(ImgView&& from) { return operator=(from); }
+
+        bool operator==(const ImgView& v) const { return (GlPtr == v.GlPtr); }
+        bool operator!=(const ImgView& v) const { return (GlPtr != v.GlPtr); }
     };
 }
 BP_HASHABLE_SIMPLE(Bplus::GL::Textures::ImgHandleData,
