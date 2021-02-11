@@ -48,6 +48,8 @@ constexpr inline bool BPIsDebug =
     BPRelease(BP_NOOP) \
     BPDebug(BP_CHECK(expr, msg))
 
+//TODO: Add a BP_LOG.
+
 namespace Bplus
 {
     using AssertFuncSignature = void(*)(bool, const char*);

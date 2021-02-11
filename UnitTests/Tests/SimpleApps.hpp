@@ -180,6 +180,7 @@ void main()
         //Render:
         [&](float deltaT) {
             auto& context = *Context::GetCurrentContext();
+            
             context.ClearScreen(glm::fvec4(0.25f, 0.25f, 0.1f, 0.0f));
             context.Draw(DrawMeshMode_Basic(*tris, 6), *shader,
                          DrawMeshMode_Indexed());

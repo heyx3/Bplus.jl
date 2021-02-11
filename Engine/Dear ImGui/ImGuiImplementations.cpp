@@ -424,19 +424,19 @@ void OGLImpl_BPlus::RenderCommandList(ImDrawData& drawData, const ImDrawList& cm
          !indicesBuffer.has_value() || indicesBuffer->GetByteSize() < indicesDataByteSize))
     {
         //TODO: I think it's more efficient to store the buffers in CPU memory, via the last (optional) constructor argument.
-        verticesBuffer = Buffer(cmdList.VtxBuffer.Size, true, cmdList.VtxBuffer.Data);
-        indicesBuffer = Buffer(cmdList.IdxBuffer.Size, true, cmdList.IdxBuffer.Data);
+        verticesBuffer.emplace(cmdList.VtxBuffer.Size, true, cmdList.VtxBuffer.Data);
+        indicesBuffer.emplace(cmdList.IdxBuffer.Size, true, cmdList.IdxBuffer.Data);
 
-        meshData.emplace(MeshData(PrimitiveTypes::Triangle,
-                                  MeshDataSource(&indicesBuffer.value(), sizeof(ImDrawIdx)),
-                                  IndexDataTypes::UInt16,
-                                  std::vector{ MeshDataSource(&verticesBuffer.value(), sizeof(ImDrawVert), 0) },
-                                  std::vector{ VertexDataField(0, IM_OFFSETOF(ImDrawVert, pos),
-                                                               Vertices::Type::FVector<2>()),
-                                               VertexDataField(0, IM_OFFSETOF(ImDrawVert, uv),
-                                                               Vertices::Type::FVector<2>()),
-                                               VertexDataField(0, IM_OFFSETOF(ImDrawVert, col),
-                                                               Vertices::Type::IColor(Vertices::GetIVectorType<glm::u8>())) }));
+        meshData.emplace(PrimitiveTypes::Triangle,
+                         MeshDataSource(&indicesBuffer.value(), sizeof(ImDrawIdx)),
+                         IndexDataTypes::UInt16,
+                         std::vector{ MeshDataSource(&verticesBuffer.value(), sizeof(ImDrawVert), 0) },
+                         std::vector{ VertexDataField(0, IM_OFFSETOF(ImDrawVert, pos),
+                                                      Vertices::Type::FVector<2>()),
+                                      VertexDataField(0, IM_OFFSETOF(ImDrawVert, uv),
+                                                      Vertices::Type::FVector<2>()),
+                                      VertexDataField(0, IM_OFFSETOF(ImDrawVert, col),
+                                                      Vertices::Type::IColor(Vertices::GetIVectorType<glm::u8>())) });
     }
     else
     {
@@ -496,6 +496,7 @@ void OGLImpl_BPlus::RenderCommandList(ImDrawData& drawData, const ImDrawList& cm
 void OGLImpl_BPlus::RenderFrame()
 {
     auto* drawData = ImGui::GetDrawData();
+    auto& context = *Context::GetCurrentContext();
 
     //Scale coordinates for retina displays.
     auto framebufferSize = (glm::ivec2)
@@ -515,6 +516,10 @@ void OGLImpl_BPlus::RenderFrame()
 
     PrepareRenderState(*drawData, framebufferSize);
     
+    //Remember scissor state so that we can un-do our changes to it.
+    auto externalScissorState = context.GetScissor();
+    auto externalViewport = context.GetViewport();
+
     //Project scissor/clipping rectangles into framebuffer space.
     auto clipOffset = drawData->DisplayPos;         // (0, 0) unless using multi-viewports)
     auto clipScale = drawData->FramebufferScale; // (1, 1) unless using retina displays
@@ -529,6 +534,13 @@ void OGLImpl_BPlus::RenderFrame()
                           glm::fvec2{clipScale.x, clipScale.y},
                           clipOriginIsLowerLeft);
     }
+
+    //Reset the state that we changed.
+    context.SetViewport(externalViewport);
+    if (externalScissorState.has_value())
+        context.SetScissor(*externalScissorState);
+    else
+        context.DisableScissor();
 }
 
 

@@ -470,7 +470,7 @@ void Context::SetViewport(int minX, int minY, int width, int height)
     viewport = newViewport;
     glViewport(minX, minY, width, height);
 }
-void Context::GetViewport(int& outMinX, int& outMinY, int& outWidth, int& outHeight)
+void Context::GetViewport(int& outMinX, int& outMinY, int& outWidth, int& outHeight) const
 {
     outMinX = viewport.x;
     outMinY = viewport.y;

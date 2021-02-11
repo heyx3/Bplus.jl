@@ -234,14 +234,27 @@ namespace Bplus::GL
 
         void SetViewport(int minX, int minY, int width, int height);
         void SetViewport(int width, int height) { SetViewport(0, 0, width, height); }
-        void GetViewport(int& outMinX, int& outMinY, int& outWidth, int& outHeight);
+        void SetViewport(const Math::Box2Di& area) { SetViewport(area.MinCorner.x, area.MinCorner.y, area.Size.x, area.Size.y); }
+
+        void GetViewport(int& outMinX, int& outMinY, int& outWidth, int& outHeight) const;
+        Math::Box2Di GetViewport() const { Math::Box2Di box; GetViewport(box.MinCorner.x, box.MinCorner.y, box.Size.x, box.Size.y); return box; }
 
         void SetScissor(int minX, int minY, int width, int height);
+        void SetScissor(const Math::Box2Di& area) { SetScissor(area.MinCorner.x, area.MinCorner.y, area.Size.x, area.Size.y); }
         void DisableScissor();
 
         //If scissor is disabled, returns false.
         //Otherwise, returns true and sets the given output parameters.
         bool GetScissor(int& outMinX, int& outMinY, int& outWidth, int& outHeight) const;
+        //If scissor is disabled, returns nothing.
+        std::optional<Math::Box2Di> GetScissor() const
+        {
+            Math::Box2Di box;
+            if (GetScissor(box.MinCorner.x, box.MinCorner.y, box.Size.x, box.Size.y))
+                return box;
+            else
+                return std::nullopt;
+        }
 
         #pragma endregion
 
