@@ -142,6 +142,9 @@
     <ClInclude Include="Dear ImGui\ImGuiImplementations.h">
       <Filter>Dear ImGui</Filter>
     </ClInclude>
+    <ClInclude Include="Helpers\EditorCamControls.h">
+      <Filter>Helpers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
@@ -225,6 +228,9 @@
     <ClCompile Include="Dear ImGui\ImGuiImplementations.cpp">
       <Filter>Dear ImGui</Filter>
     </ClCompile>
+    <ClCompile Include="Helpers\EditorCamControls.cpp">
+      <Filter>Helpers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Native File Dialog">
@@ -250,6 +256,9 @@
     </Filter>
     <Filter Include="Renderer\Materials">
       <UniqueIdentifier>{1383e33b-f4af-4e68-ba5f-841a1bd915b8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Helpers">
+      <UniqueIdentifier>{92f39609-036b-40a6-aa48-a968d7477955}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
