@@ -11,7 +11,7 @@
 
 
 TEST_LIST = {
-   /* { "ToBaseString()", TestToBaseString },
+    { "ToBaseString()", TestToBaseString },
     { "Strings::StartsWith()", TestStringStartsWith },
     { "Strings::EndsWith()", TestStringEndsWith },
     { "Strings::Replace() and ::ReplaceNew()", TestStringReplace },
@@ -30,11 +30,11 @@ TEST_LIST = {
 
     { "Bplus::GL::Target basic usage", TestTargetBasic },
 
-    { "Shader #pragma include preprocessor", TestShaderIncludeCommand },*/
+    { "Shader #pragma include preprocessor", TestShaderIncludeCommand },
 
     //The below tests are interactive apps, so they're normally disabled to simplify testing.
     //{ "Simple Apps", SimpleApps },
-    { "Basic Rendering App", BasicRenderApp },
+    //{ "Basic Rendering App", BasicRenderApp },
 
     { NULL, NULL }
 };
