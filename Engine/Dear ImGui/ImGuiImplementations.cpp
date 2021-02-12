@@ -330,8 +330,9 @@ layout(bindless_sampler) uniform sampler2D Texture;  \n\
 layout (location = 0) out vec4 Out_Color;  \n\
 void main()     \n\
 {    \n\
-    Out_Color = Frag_Color * texture(Texture, Frag_UV);    \n\
+    Out_Color = Frag_Color * texture(Texture, Frag_UV.st);    \n\
 }\n";
+    compiler.PreProcessIncludes();
 
     bool _;
     OglPtr::ShaderProgram shaderPtr;
@@ -344,17 +345,12 @@ void main()     \n\
     
     //Configure the render state for this shader:
     RenderState shaderRenderMode;
-    shaderRenderMode.CullMode = FaceCullModes::Off;
     shaderRenderMode.DepthTest = ValueTests::Off;
+    shaderRenderMode.CullMode = FaceCullModes::Off;
     shaderRenderMode.ColorBlending = BlendStateRGB::Transparent();
+    shaderRenderMode.AlphaBlending = BlendStateAlpha::Opaque();
     shader.emplace(shaderRenderMode, shaderPtr,
                    std::vector<std::string>{ "ProjMtx", "Texture" });
-
-    //Get attribute/uniform locations.
-    shader->Activate();
-    attrib_pos = glGetUniformLocation(shaderPtr.Get(), "Position");
-    attrib_uv = glGetUniformLocation(shaderPtr.Get(), "UV");
-    attrib_color = glGetUniformLocation(shaderPtr.Get(), "Color");
 
     //Create and configure the fonts texture.
     unsigned char* pixels;
@@ -424,8 +420,8 @@ void OGLImpl_BPlus::RenderCommandList(ImDrawData& drawData, const ImDrawList& cm
          !indicesBuffer.has_value() || indicesBuffer->GetByteSize() < indicesDataByteSize))
     {
         //TODO: I think it's more efficient to store the buffers in CPU memory, via the last (optional) constructor argument.
-        verticesBuffer.emplace(cmdList.VtxBuffer.Size, true, cmdList.VtxBuffer.Data);
-        indicesBuffer.emplace(cmdList.IdxBuffer.Size, true, cmdList.IdxBuffer.Data);
+        verticesBuffer.emplace(sizeof(ImDrawVert) * cmdList.VtxBuffer.Size, true, (const std::byte*)cmdList.VtxBuffer.Data);
+        indicesBuffer.emplace(sizeof(ImDrawIdx) * cmdList.IdxBuffer.Size, true, (const std::byte*)cmdList.IdxBuffer.Data);
 
         meshData.emplace(PrimitiveTypes::Triangle,
                          MeshDataSource(&indicesBuffer.value(), sizeof(ImDrawIdx)),
@@ -486,7 +482,10 @@ void OGLImpl_BPlus::RenderCommandList(ImDrawData& drawData, const ImDrawList& cm
                 //Bind texture and draw.
                 auto* texturePtr = (const Texture2D*)drawCmd.TextureId;
                 shader->SetUniform("Texture", texturePtr->GetView());
-                context.Draw(DrawMeshMode_Basic(*meshData, drawCmd.ElemCount), *shader,
+                context.Draw(DrawMeshMode_Basic(*meshData,
+                                                Math::IntervalU::MakeMinSize(glm::uvec1{ drawCmd.IdxOffset }, glm::uvec1{ drawCmd.ElemCount }),
+                                                PrimitiveTypes::Triangle),
+                             *shader,
                              DrawMeshMode_Indexed(std::nullopt, drawCmd.VtxOffset));
             }
         }

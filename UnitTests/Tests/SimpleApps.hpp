@@ -151,8 +151,10 @@ void main()
             }
 
             #pragma endregion
-            shader = new CompiledShader(RenderState(FaceCullModes::Off, ValueTests::Off),
-                                        shaderPtr, { "MyTexture" });
+            RenderState shaderRenderState;
+            shaderRenderState.CullMode = FaceCullModes::Off;
+            shaderRenderState.DepthTest = ValueTests::Off;
+            shader = new CompiledShader(shaderRenderState, shaderPtr, { "MyTexture" });
 
             tex = new Texture2D(glm::uvec2{ 100, 100 },
                                 SimpleFormat(FormatTypes::Float, SimpleFormatComponents::R, SimpleFormatBitDepths::B32),

@@ -33,7 +33,7 @@ TEST_LIST = {
     { "Shader #pragma include preprocessor", TestShaderIncludeCommand },*/
 
     //The below tests are interactive apps, so they're normally disabled to simplify testing.
-    { "Simple Apps", SimpleApps },
+    //{ "Simple Apps", SimpleApps },
     { "Basic Rendering App", BasicRenderApp },
 
     { NULL, NULL }

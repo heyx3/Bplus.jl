@@ -25,22 +25,68 @@ namespace Bplus::GL
     {
     public:
 
-        bool EnableDepthWrite;
-        glm::bvec4 ColorWriteMask;
-        FaceCullModes CullMode;
-        ValueTests DepthTest;
-        BlendStateRGB ColorBlending;
-        BlendStateAlpha AlphaBlending;
-        StencilTest StencilTestFront, StencilTestBack;
-        StencilResult StencilResultFront, StencilResultBack;
-        GLuint StencilMaskFront, StencilMaskBack;
+        glm::bvec4 ColorWriteMask = glm::bvec4{ true, true, true, true };
+        bool EnableDepthWrite = true;
+
+        ValueTests DepthTest = ValueTests::LessThanOrEqual;
+
+        FaceCullModes CullMode = FaceCullModes::On;
+
+        BlendStateRGB ColorBlending = BlendStateRGB::Opaque();
+        BlendStateAlpha AlphaBlending = BlendStateAlpha::Opaque();
+
+        StencilTest StencilTestFront = StencilTest(),
+                    StencilTestBack = StencilTest();
+        StencilResult StencilResultFront = StencilResult(),
+                      StencilResultBack = StencilResult();
+        GLuint StencilMaskFront = 0,
+               StencilMaskBack = 0;
+
+        //TODO: glPolygonMode controls "wireframe mode", for front and back faces
         //TODO: Anything else?
 
 
-        //Must give the better_enum types constructed values to avoid a compile error.
-        RenderState(FaceCullModes cullMode = FaceCullModes::On,
-                    ValueTests depthTest = ValueTests::LessThan)
-            : CullMode(cullMode), DepthTest(depthTest) { }
+        //Gets the stencil test, assuming it's the same for both front and back faces.
+        StencilTest GetStencilTest() const
+        {
+            BPAssert(StencilTestFront == StencilTestBack,
+                     "Using different stencil tests for front vs back faces");
+            return StencilTestFront;
+        }
+        //Sets the stencil test (for both front and back faces) to the given value.
+        void SetStencilTest(StencilTest newVal)
+        {
+            StencilTestFront = newVal;
+            StencilTestBack = newVal;
+        }
+
+        //Gets the stencil test response, assuming it's the same for both front and back faces.
+        StencilResult GetStencilResult() const
+        {
+            BPAssert(StencilResultFront == StencilResultBack,
+                "Using different stencil results for front vs back faces");
+            return StencilResultFront;
+        }
+        //Sets the stencil test (for both front and back faces) to the given value.
+        void SetStencilResult(StencilResult newVal)
+        {
+            StencilResultFront = newVal;
+            StencilResultBack = newVal;
+        }
+
+        //Gets the stencil mask, assuming it's the same for both front and back faces.
+        GLuint GetStencilMask() const
+        {
+            BPAssert(StencilMaskFront == StencilMaskBack,
+                     "Using different stencil masks for front vs back faces");
+            return StencilMaskFront;
+        }
+        //Sets the stencil mask (for both front and back faces) to the given value.
+        void SetStencilMask(GLuint newVal)
+        {
+            StencilMaskFront = newVal;
+            StencilMaskBack = newVal;
+        }
     };
 
     

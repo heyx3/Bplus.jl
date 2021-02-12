@@ -75,10 +75,6 @@ namespace Bplus
         std::optional<Bplus::GL::Buffers::Buffer> verticesBuffer, indicesBuffer;
         std::optional<Bplus::GL::CompiledShader> shader;
         std::optional<Bplus::GL::Buffers::MeshData> meshData;
-
-        int attrib_pos = 0,
-            attrib_uv = 0,
-            attrib_color = 0;
     };
 
     #pragma endregion
