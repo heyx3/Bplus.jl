@@ -243,7 +243,7 @@ void App::Run()
         //Now run an update frame of the App.
         uint64_t newFrameTime = SDL_GetPerformanceCounter();
         double deltaT = (newFrameTime - lastFrameStartTime) /
-            (double)SDL_GetPerformanceFrequency();
+                        (double)SDL_GetPerformanceFrequency();
 
         //If the frame-rate is too fast, wait.
         if (deltaT < MinDeltaT)

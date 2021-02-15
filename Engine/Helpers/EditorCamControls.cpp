@@ -16,11 +16,15 @@ void EditorCamControls::Update(float deltaT)
     if (EnableRotation)
     {
         speed = deltaT * TurnSpeedDegrees;
-        Forward = glm::normalize(glm::angleAxis(speed * InputCamYawPitch.x, Up) * Forward);
+
+        auto yawRot = glm::angleAxis(speed * -InputCamYawPitch.x, Up);
+        
+        Forward = glm::normalize(yawRot * Forward);
 
         auto forwardPrePitch = Forward;
-        auto pitchRot = glm::angleAxis(speed * InputCamYawPitch.y, GetRight());
+        auto pitchRot = glm::angleAxis(speed * -InputCamYawPitch.y, GetRight());
 
+        auto oldForward = Forward;
         Forward = glm::normalize(pitchRot * Forward);
         switch (UpMode)
         {
@@ -34,8 +38,11 @@ void EditorCamControls::Update(float deltaT)
                 auto oldRight = glm::cross(forwardPrePitch, Up);
                 auto oldTrueForward = glm::cross(Up, oldRight);
                 auto newTrueForward = glm::cross(Up, GetRight());
-                if (glm::dot(oldTrueForward, newTrueForward) < 0)
-                    Forward = oldTrueForward;
+                if (glm::dot(Forward, newTrueForward) < 0 ||
+                    abs(glm::dot(Forward, Up)) < 0.001f)
+                {
+                    Forward = oldForward;
+                }
             break;
 
             default:

@@ -3,6 +3,7 @@
 #include "../Platform.h"
 
 #include <string>
+#include <vector>
 
 
 //Ad-hoc/uncategorized helper functions.
@@ -86,6 +87,14 @@ namespace Bplus
         std::array<T, Size> arr;
         arr.fill(fillValue);
         return arr;
+    }
+
+    template<typename T, typename ... Inputs>
+    std::vector<T> Concatenate(const Inputs& ... inputs)
+    {
+        std::vector<T> output;
+        (output.insert(output.end(), inputs.begin(), inputs.end()), ...);
+        return output;
     }
 
 

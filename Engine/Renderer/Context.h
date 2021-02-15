@@ -214,7 +214,12 @@ namespace Bplus::GL
         void ClearScreen(float depth);
 
         template<typename TVec4>
-        void ClearScreen(const TVec4& rgba) { ClearScreen(rgba.r, rgba.g, rgba.b, rgba.a); }
+        void ClearScreen(const TVec4& rgba, std::optional<float> depth = std::nullopt)
+        {
+            ClearScreen(rgba.r, rgba.g, rgba.b, rgba.a);
+            if (depth.has_value())
+                ClearScreen(depth.value());
+        }
 
         #pragma endregion
 

@@ -38,7 +38,7 @@ namespace Bplus::Helpers
 
 
         //Movement speed per second:
-        float MoveSpeed = 5;
+        float MoveSpeed = 20;
         //The scale in movement speed when holding the "speed" button:
         float MoveSpeedBoostMultiplier = 3;
         //The scale in movement speed due to the "ChangeSpeed" input:
@@ -47,7 +47,7 @@ namespace Bplus::Helpers
               MoveSpeedScaledMax = std::numeric_limits<float>::max();
 
         //Turn speed, in degrees per second:
-        float TurnSpeedDegrees = 720;
+        float TurnSpeedDegrees = 1;
         //Whether/how much the camera preserves its up axis.
         CameraUpModes UpMode = CameraUpModes::KeepUpright;
 
