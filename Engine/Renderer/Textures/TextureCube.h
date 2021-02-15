@@ -161,6 +161,8 @@ namespace Bplus::GL::Textures
     public:
         static constexpr Types GetClassType() { return Types::Cubemap; }
 
+        using Sampler_t = Sampler<2>;
+
 
         //Creates a new cube-map with the given width/height.
         //Pass "1" for nMipLevels to not use mip-maps.
@@ -168,7 +170,10 @@ namespace Bplus::GL::Textures
         //Pass anything else to generate a fixed amount of mip levels.
         TextureCube(uint32_t size, Format format,
                     uint_mipLevel_t nMipLevels = 0,
-                    Sampler<2> sampler = { });
+                    Sampler_t sampler = { },
+                    SwizzleRGBA swizzling = { SwizzleSources::Red, SwizzleSources::Green,
+                                              SwizzleSources::Blue, SwizzleSources::Alpha },
+                    std::optional<DepthStencilSources> depthStencilMode = std::nullopt);
 
         //Note that the copy constructor/operator is automatically deleted via the parent class.
 

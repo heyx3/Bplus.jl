@@ -4,6 +4,7 @@
 #include <array>
 
 #include "TexturesData.h"
+#include "Format.h"
 
 
 namespace Bplus::GL::Textures
@@ -20,8 +21,8 @@ namespace Bplus::GL::Textures
     //    but it can't be nested in Texture due to forward-declaration problems.
     struct BP_API TexHandle
     {
-        const OglPtr::View ViewGlPtr;
         const OglPtr::Sampler SamplerGlPtr = OglPtr::Sampler::Null();
+        const OglPtr::View ViewGlPtr;
 
         //No copying, but moves are fine.
         TexHandle(const TexHandle& cpy) = delete;
@@ -77,8 +78,8 @@ namespace Bplus::GL::Textures
         bool operator==(const ImgHandleData& other) const
         {
             return (SingleLayer == other.SingleLayer) &
-                (Access == other.Access) &
-                (MipLevel == other.MipLevel);
+                   (Access == other.Access) &
+                   (MipLevel == other.MipLevel);
         }
         bool operator!=(const ImgHandleData& other) const { return !operator==(other); }
     };
@@ -185,7 +186,10 @@ namespace Bplus::GL::Textures
     public:
 
         Texture(Types type, Format format, uint_mipLevel_t nMipLevels,
-                const Sampler<3>& sampler3D);
+                const Sampler<3>& sampler3D,
+                SwizzleRGBA swizzling = { SwizzleSources::Red, SwizzleSources::Green,
+                                          SwizzleSources::Blue, SwizzleSources::Alpha },
+                std::optional<DepthStencilSources> depthStencilMode = std::nullopt);
 
         virtual ~Texture();
         
@@ -195,14 +199,25 @@ namespace Bplus::GL::Textures
 
 
         const Format& GetFormat() const { return format; }
+        const SwizzleRGBA& GetSwizzling() const { return swizzling; }
 
-        //Gets a 3D version of this texture's sampler,
-        //    which may contain some garbage data if the texture is smaller than 3D.
+        //Gets a 3D version of this texture's sampler.
+        //If this texture is less than 3-dimensional,
+        //    then you should ignore that higher-dimensional data.
         const Sampler<3>& GetSamplerFull() const { return sampler3D; }
 
         Types GetType() const { return type; }
         uint_mipLevel_t GetNMipLevels() const { return nMipLevels; }
         OglPtr::Texture GetOglPtr() const { return glPtr; }
+
+        //Change the values coming out of this texture when it's sampled in a shader.
+        //For example, you could swap the Red and Blue values,
+        //    or replace the Alpha with a constant 1.
+        //This does not change the actual pixel data; merely how it's sampled.
+        void SetSwizzling(const SwizzleRGBA& newSwizzling);
+        //Change how this depth/stencil hybrid texture can be sampled.
+        //You can sample the depth OR the stencil, but not both at once.
+        void SetDepthStencilSource(DepthStencilSources newValue);
 
 
         //Gets the number of bytes needed to store one mip leve of this texture
@@ -337,7 +352,8 @@ namespace Bplus::GL::Textures
 
         Format format;
         Sampler<3> sampler3D;
-
+        SwizzleRGBA swizzling;
+        std::optional<DepthStencilSources> depthStencilMode;
 
         //Texture views represent different ways of sampling from this texture in a shader.
         //This field is a cache of the views that have already been created.

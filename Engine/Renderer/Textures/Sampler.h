@@ -1,7 +1,7 @@
 #pragma once
 
-#include "SamplerDataSource.h"
-
+#include "../../Math/Box.hpp"
+#include "../Data.h"
 
 namespace Bplus::GL::Textures
 {
@@ -64,7 +64,8 @@ namespace Bplus::GL::Textures
     }
     
 
-    //The different sources a color texture sampler can pull from.
+    //The different sources a color texture can pull from during sampling.
+    //Note that swizzling is set per-texture, not per-sampler.
     BETTER_ENUM(SwizzleSources, GLenum,
         //The texture's Red component.
         Red = GL_RED,
@@ -82,9 +83,17 @@ namespace Bplus::GL::Textures
     using SwizzleRGBA = std::array<SwizzleSources, 4>;
 
 
+    //The different ways a depth/stencil hybrid texture can be sampled.
+    //Note that this setting is per-texture, not per-sampler.
+    BETTER_ENUM(DepthStencilSources, GLenum,
+        //The texture will sample its depth and output floats (generally between 0-1).
+        Depth = GL_DEPTH_COMPONENT,
+        //The texture will sample its stencil and output unsigned integers.
+        Stencil = GL_STENCIL_INDEX
+    );
+
 
     //Information about a sampler for a D-dimensional texture.
-    //TODO: Have this class actually manage the sampler objects for texture handles, with staic OglPtrs under the hood.
     template<uint8_t D>
     struct Sampler
     {
@@ -98,43 +107,34 @@ namespace Bplus::GL::Textures
         //For example, a value of 1 essentially forces all samples to go up one mip level.
         float MipOffset = 0.0f;
         //Sets the boundaries of the mip level calculation for mipmapped textures.
-        Math::IntervalF MipClampRange = Math::IntervalF::MakeMinSize(glm::vec1{-1000}, //This is the default value specified by OpenGL.
-                                                                     glm::vec1{2000});
+        //According to the OpenGL standard, it defaults to {-1000, 1000}.
+        Math::IntervalF MipClampRange = Math::IntervalF::MakeMinMax(glm::fvec1{-1000}, glm::fvec1{1000});
 
-        SamplerDataSource DataSource = { };
-        SwizzleRGBA DataSwizzle;
+        //If this is a depth (or depth-stencil) texture,
+        //    this setting makes it a "shadow" sampler,
+        std::optional<ValueTests> DepthComparisonMode = std::nullopt;
 
 
         Sampler(WrapModes wrapping = WrapModes::Clamp,
                 PixelFilters filter = PixelFilters::Smooth,
-                SamplerDataSource dataSource = { },
-                SwizzleRGBA dataSwizzle = { SwizzleSources::Red, SwizzleSources::Green,
-                                            SwizzleSources::Blue, SwizzleSources::Alpha },
+                std::optional<ValueTests> depthComparisonMode = std::nullopt,
                 float mipOffset = 0.0f,
-                Math::IntervalF mipClampRange = Math::IntervalF::MakeMinSize(
-                    glm::vec1{-1000}, glm::vec1{2000}))
+                Math::IntervalF mipClampRange = Math::IntervalF::MakeMinMax(glm::fvec1{-1000}, glm::fvec1{1000}))
             : Sampler(MakeArray<WrapModes, D>(wrapping),
                       filter,
                       MipFilters::_from_integral(filter._to_integral()),
-                      dataSource, dataSwizzle,
+                      depthComparisonMode,
                       mipOffset, mipClampRange) { }
 
         Sampler(const std::array<WrapModes, D>& wrappingPerAxis,
                 PixelFilters pixelFilter, MipFilters mipFilter,
-                SamplerDataSource dataSource = { },
-                SwizzleRGBA dataSwizzle = { SwizzleSources::Red, SwizzleSources::Green,
-                                            SwizzleSources::Blue, SwizzleSources::Alpha },
+                std::optional<ValueTests> depthComparisonMode = std::nullopt,
                 float mipOffset = 0.0f,
-                Math::IntervalF mipClampRange = Math::IntervalF::MakeMinSize(
-                    glm::vec1{-1000}, glm::vec1{2000}))
+                Math::IntervalF mipClampRange = Math::IntervalF::MakeMinMax(glm::fvec1{-1000}, glm::fvec1{1000}))
             : Wrapping(wrappingPerAxis), PixelFilter(pixelFilter), MipFilter(mipFilter),
-              MipOffset(mipOffset), MipClampRange(mipClampRange),
-              DataSource(dataSource), DataSwizzle(dataSwizzle)
+              MipOffset(mipOffset), MipClampRange(mipClampRange)
         {
-            BPAssert(DataSource != +DepthStencilSources::Stencil ||
-                         (pixelFilter == +PixelFilters::Rough &&
-                          mipFilter == +MipFilters::Rough),
-                     "Can't use 'Smooth' filtering on a stencil-sampled texture");
+
         }
 
 
@@ -157,20 +157,6 @@ namespace Bplus::GL::Textures
         void Apply(OglPtr::Texture tex)  const { Apply( tex.Get(), glTextureParameteri, glTextureParameterf); }
         void Apply(OglPtr::Sampler samp) const { Apply(samp.Get(), glSamplerParameteri, glSamplerParameterf); }
 
-        void AssertFormatIsAllowed(Format texFormat) const
-        {
-            BPAssert(DataSource != DepthStencilSources::Depth ||
-                         texFormat.IsDepthAndStencil() || texFormat.IsDepthOnly(),
-                     "Trying to sample depth from a non-depth texture");
-            BPAssert(DataSource != DepthStencilSources::Stencil ||
-                         texFormat.IsDepthAndStencil() || texFormat.IsStencilOnly(),
-                     "Trying to sample stencil from a non-stencil texture");
-            
-            BPAssert(!DataSource.IsDepthComparison() ||
-                         texFormat.IsDepthAndStencil() || texFormat.IsDepthOnly(),
-                     "Trying to use a Depth Comparison sampler for a non-depth texture");
-        }
-
 
         //A helper function to convert the per-axis part of this sampler's data.
         //Some code doesn't want to be templated, so they store all sampler data
@@ -182,7 +168,7 @@ namespace Bplus::GL::Textures
             static_assert(D > 0,
                           "No support for Sampler<D>::ChangeDimensions<>() with D == 0");
             Sampler<D2> result(MakeArray<WrapModes, D2>(Wrapping.back()),
-                               PixelFilter, MipFilter, DataSource, DataSwizzle,
+                               PixelFilter, MipFilter, DepthComparisonMode,
                                MipOffset, MipClampRange);
 
             //Copy over the Wrapping array's elements.
@@ -198,19 +184,18 @@ namespace Bplus::GL::Textures
         {
             return (Wrapping == other.Wrapping) &
                    (PixelFilter == other.PixelFilter) &
+                   (DepthComparisonMode == other.DepthComparisonMode) &
                    (MipFilter == other.MipFilter) &
                    (MipOffset == other.MipOffset) &
-                   (MipClampRange == other.MipClampRange) &
-                   (DataSource == other.DataSource) &
-                   (DataSwizzle == other.DataSwizzle);
+                   (MipClampRange == other.MipClampRange);
         }
         bool operator!=(const Sampler<D>& other) const { return !operator==(other); }
 
 
     private:
 
-        //Applies this sampler's settings to the given OpenGL object,
-        //    using the given OpenGL function.
+        //Applies this sampler's settings to the given OpenGL object (a texture or sampler),
+        //    using the given OpenGL functions.
         void Apply(GLuint targetPtr,
                    void(*glSetFuncI)(GLuint, GLenum, GLint),
                    void(*glSetFuncF)(GLuint, GLenum, GLfloat)) const
@@ -226,40 +211,14 @@ namespace Bplus::GL::Textures
             glSetFuncF(targetPtr, GL_TEXTURE_MAX_LOD, MipClampRange.GetMaxCorner().x);
             glSetFuncF(targetPtr, GL_TEXTURE_LOD_BIAS, MipOffset);
 
-            //Set swizzling.
-            glSetFuncI(targetPtr, GL_TEXTURE_SWIZZLE_R, (GLint)DataSwizzle[0]);
-            glSetFuncI(targetPtr, GL_TEXTURE_SWIZZLE_G, (GLint)DataSwizzle[1]);
-            glSetFuncI(targetPtr, GL_TEXTURE_SWIZZLE_B, (GLint)DataSwizzle[2]);
-            glSetFuncI(targetPtr, GL_TEXTURE_SWIZZLE_A, (GLint)DataSwizzle[3]);
-
-            //Set the depth/stencil data source.
-            if (DataSource.IsDepthComparison())
+            if (DepthComparisonMode.has_value())
             {
-                glSetFuncI(targetPtr, GL_DEPTH_STENCIL_TEXTURE_MODE,
-                           (GLint)DepthStencilSources::Depth);
-                glSetFuncI(targetPtr, GL_TEXTURE_COMPARE_MODE,
-                           (GLint)GL_COMPARE_REF_TO_TEXTURE);
-
-                glSetFuncI(targetPtr, GL_TEXTURE_COMPARE_FUNC,
-                           (GLint)DataSource.AsDepthComparison());
+                glSetFuncI(targetPtr, GL_TEXTURE_COMPARE_MODE, (GLint)GL_COMPARE_REF_TO_TEXTURE);
+                glSetFuncI(targetPtr, GL_TEXTURE_COMPARE_FUNC, (GLint)*DepthComparisonMode);
             }
             else
             {
-                //No depth comparison.
                 glSetFuncI(targetPtr, GL_TEXTURE_COMPARE_MODE, (GLint)GL_NONE);
-
-                //If setting depth vs stencil explicitly, do that.
-                if (DataSource.IsDepthOrStencil())
-                {
-                    glSetFuncI(targetPtr, GL_DEPTH_STENCIL_TEXTURE_MODE,
-                               (GLint)DataSource.AsDepthOrStencil());
-                }
-                //Otherwise use the default, Depth.
-                else
-                {
-                    glSetFuncI(targetPtr, GL_DEPTH_STENCIL_TEXTURE_MODE,
-                               (GLint)DepthStencilSources::Depth);
-                }
             }
 
             //Note that OpenGL is not bothered by setting this value for dimensions
@@ -279,8 +238,9 @@ BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::WrapModes);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::PixelFilters);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::MipFilters);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::SwizzleSources);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::DepthStencilSources);
 
 BP_HASHABLE_SIMPLE_FULL(size_t D, Bplus::GL::Textures::Sampler<D>,
                         d.Wrapping, d.PixelFilter, d.MipFilter,
                         d.MipOffset, d.MipClampRange,
-                        d.DataSource, d.DataSwizzle)
+                        d.DepthComparisonMode)

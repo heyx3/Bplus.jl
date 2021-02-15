@@ -76,12 +76,27 @@ namespace Bplus::GL::Buffers
         UInt16 = GL_UNSIGNED_SHORT,
         UInt32 = GL_UNSIGNED_INT
     );
+
     inline uint_fast8_t GetByteSize(IndexDataTypes d) { switch (d) {
         case IndexDataTypes::UInt8: return 1;
         case IndexDataTypes::UInt16: return 2;
         case IndexDataTypes::UInt32: return 4;
         default: BPAssert(false, d._to_string()); return 0;
     } }
+
+    template<typename UInt_t>
+    inline IndexDataTypes GetIndexType() {
+        if constexpr (std::is_same_v<UInt_t, uint8_t>) {
+            return IndexDataTypes::UInt8;
+        } else if constexpr (std::is_same_v<UInt_t, uint16_t>) {
+            return IndexDataTypes::UInt16;
+        } else if constexpr (std::is_same_v<UInt_t, uint32_t>) {
+            return IndexDataTypes::UInt32;
+        } else {
+            static_assert(false, "Not a supported index data type!");
+        }
+    }
+
 
     //The different kinds of shapes that a mesh can be built from.
     BETTER_ENUM(PrimitiveTypes, GLenum,

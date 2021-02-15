@@ -19,22 +19,29 @@ void RunTextureTypeCreationTest(std::string testName,
                                 Size_t size, Format format,
                                 uint_mipLevel_t nMips)
 {
+    auto swizzle = std::array<SwizzleSources, 4>{ SwizzleSources::Red, SwizzleSources::Green,
+                                                  SwizzleSources::Blue, SwizzleSources::Alpha };
+
+    std::optional<DepthStencilSources> depthStencil = std::nullopt;
+    if (format.IsDepthAndStencil())
+        depthStencil = DepthStencilSources::Depth;
+
     std::string test1Name = testName + " (normal constructor)";
     TEST_CASE(test1Name.c_str());
     //Note that Depth/Stencil formats aren't supported for 3D textures.
     if (std::is_same_v<Texture_t, Bplus::GL::Textures::Texture3D> &&
         format.IsDepthStencil())
     {
-        TEST_EXCEPTION_(Texture_t tex1{ size BP_COMMA format BP_COMMA nMips },
+        TEST_EXCEPTION_(Texture_t tex1(size BP_COMMA format BP_COMMA nMips),
                         std::exception,
                         "Expected an error when creating a 3D depth/stencil texture");
     }
     else
     {
-        Texture_t tex1{ size, format, nMips };
+        Texture_t tex1(size, format, nMips, Texture_t::Sampler_t(), swizzle, depthStencil);
         std::string test2Name = testName + " (move constructor)";
         TEST_CASE(test2Name.c_str());
-        Texture_t tex2{ std::move(tex1) };
+        Texture_t tex2(std::move(tex1));
     }
 }
 

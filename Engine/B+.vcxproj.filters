@@ -103,9 +103,6 @@
     <ClInclude Include="Renderer\Buffers\Buffer.h">
       <Filter>Renderer\Buffers</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\Textures\SamplerDataSource.h">
-      <Filter>Renderer\Textures</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\Functions.h">
       <Filter>Utils</Filter>
     </ClInclude>

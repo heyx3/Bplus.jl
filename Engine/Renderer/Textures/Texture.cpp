@@ -12,6 +12,18 @@ using namespace Bplus::GL::Textures;
 
 #pragma region Handles
 
+namespace
+{
+    OglPtr::Sampler MakeSampler(const Sampler<3>& sampler3D)
+    {
+        //TODO: Can multiple bindless texture views use the same sampler? If so, should we just keep a static dictionary of samplers instead of many redundant ones?
+
+        OglPtr::Sampler ptr(GlCreate(glCreateSamplers));
+        sampler3D.Apply(ptr);
+        return ptr;
+    }
+}
+
 TexHandle::TexHandle(const Texture* src)
     : ViewGlPtr(glGetTextureHandleARB(src->GetOglPtr().Get()))
 {
@@ -29,12 +41,11 @@ ImgHandle::ImgHandle(const Texture* src, const ImgHandleData& params)
 
 TexHandle::TexHandle(const Texture* src,
                      const Sampler<3>& sampler3D)
-    : SamplerGlPtr(GlCreate(glCreateSamplers)),
+    : SamplerGlPtr(MakeSampler(sampler3D)),
       ViewGlPtr(glGetTextureSamplerHandleARB(src->GetOglPtr().Get(),
                                              SamplerGlPtr.Get()))
 {
-    sampler3D.AssertFormatIsAllowed(src->GetFormat());
-    sampler3D.Apply(SamplerGlPtr);
+
 }
 
 TexHandle::~TexHandle()
@@ -168,11 +179,19 @@ ImgView& ImgView::operator=(const ImgView& cpy)
 #pragma region Texture
 
 Texture::Texture(Types _type, Format _format, uint_mipLevel_t nMips,
-                 const Sampler<3>& _sampler3D)
+                 const Sampler<3>& _sampler3D,
+                 SwizzleRGBA customSwizzling,
+                 std::optional<DepthStencilSources> customDepthStencilMode)
     : type(_type), format(_format), nMipLevels(nMips),
-      sampler3D(_sampler3D)
+      sampler3D(_sampler3D),
+      swizzling({ SwizzleSources::Red, SwizzleSources::Green, SwizzleSources::Blue, SwizzleSources::Alpha }),
+      depthStencilMode(std::nullopt)
 {
     BPAssert(format.GetOglEnum() != GL_NONE, "OpenGL format is invalid");
+    BPAssert(!customDepthStencilMode.has_value() || format.IsDepthAndStencil(),
+             "Can't give a depth/stencil sampling mode to a texture that isn't depth/stencil");
+    BPAssert(customDepthStencilMode.has_value() || !format.IsDepthAndStencil(),
+             "Must give a depth/stencil sampling mode if a texture is depth/stencil");
 
     //Create the texture handle.
     OglPtr::Texture::Data_t texPtr;
@@ -180,7 +199,9 @@ Texture::Texture(Types _type, Format _format, uint_mipLevel_t nMips,
     glPtr.Get() = texPtr;
 
     //Set up the sampler settings.
-    sampler3D.AssertFormatIsAllowed(format);
+    SetSwizzling(customSwizzling);
+    if (customDepthStencilMode.has_value())
+        SetDepthStencilSource(*customDepthStencilMode);
     sampler3D.Apply(glPtr);
 }
 Texture::~Texture()
@@ -196,7 +217,8 @@ Texture::~Texture()
 Texture::Texture(Texture&& src)
     : glPtr(src.glPtr), type(src.type),
       nMipLevels(src.nMipLevels), format(src.format),
-      sampler3D(src.sampler3D)
+      sampler3D(src.sampler3D),
+      swizzling(src.swizzling), depthStencilMode(src.depthStencilMode)
 {
     src.glPtr = OglPtr::Texture::Null();
 }
@@ -217,9 +239,44 @@ size_t Texture::GetTotalByteSize() const
     return sum;
 }
 
+void Texture::SetSwizzling(const SwizzleRGBA& newSwizzling)
+{
+    //Tell OpenGL about the change, but skip ones that aren't actually changing.
+    const auto glArgs = std::array{ GL_TEXTURE_SWIZZLE_R, GL_TEXTURE_SWIZZLE_G,
+                                    GL_TEXTURE_SWIZZLE_B, GL_TEXTURE_SWIZZLE_A };
+    for (uint_fast8_t i = 0; i < glArgs.size(); ++i)
+    {
+        if (newSwizzling[i] != swizzling[i])
+            glTextureParameteri(glPtr.Get(), glArgs[i], (GLint)newSwizzling[i]);
+    }
+
+    swizzling = newSwizzling;
+}
+void Texture::SetDepthStencilSource(DepthStencilSources newSource)
+{
+    BPAssert(format.IsDepthAndStencil(),
+             "Can only set DepthStencil mode for a Depth/Stencil hybrid texture");
+
+    if (newSource != depthStencilMode)
+    {
+        depthStencilMode = newSource;
+        glTextureParameteri(glPtr.Get(), GL_DEPTH_STENCIL_TEXTURE_MODE, (GLint)newSource);
+    }
+}
+
 TexView Texture::GetViewFull(std::optional<Sampler<3>> customSampler) const
 {
     auto sampler = customSampler.value_or(sampler3D);
+
+    bool isStencilSampler = format.IsStencilOnly() ||
+                            depthStencilMode == +DepthStencilSources::Stencil,
+         isDepthSampler = format.IsDepthOnly() ||
+                          depthStencilMode == +DepthStencilSources::Depth;
+    BPAssert(!isStencilSampler || sampler.PixelFilter == +PixelFilters::Rough,
+             "Can't use 'Smooth' filtering on a stencil texture sampler -- the values are integers");
+    BPAssert(isDepthSampler || !sampler.DepthComparisonMode.has_value(),
+             "Can't use a depth comparison sampler (a.k.a. 'shadow sampler') on a non-depth texture");
+
     auto found = texHandles.find(sampler);
     if (found == texHandles.end())
         if (customSampler.has_value())

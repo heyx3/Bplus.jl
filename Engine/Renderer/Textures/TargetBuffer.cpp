@@ -15,7 +15,7 @@ TargetBuffer::TargetBuffer(const Format& _format,
     BPAssert(!_format.IsCompressed(),
              "Can't render to compressed formats");
 
-    glGenRenderbuffers(1, &glPtr.Get());
+    glCreateRenderbuffers(1, &glPtr.Get());
     glNamedRenderbufferStorage(glPtr.Get(), format.GetOglEnum(),
                                (GLsizei)size.x, (GLsizei)size.y);
 }

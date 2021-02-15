@@ -4,6 +4,8 @@
 #include <array>
 
 #include "Sampler.h"
+#include "Format.h"
+
 #include "../../Math/Box.hpp"
 
 

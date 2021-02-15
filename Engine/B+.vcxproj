@@ -432,7 +432,6 @@ exit 0</Command>
     <ClInclude Include="Renderer\Textures\TexturesData.h" />
     <ClInclude Include="Renderer\Textures\Format.h" />
     <ClInclude Include="Renderer\Textures\Sampler.h" />
-    <ClInclude Include="Renderer\Textures\SamplerDataSource.h" />
     <ClInclude Include="Renderer\Textures\Target.h" />
     <ClInclude Include="Renderer\Textures\TargetBuffer.h" />
     <ClInclude Include="Renderer\Textures\Texture.h" />

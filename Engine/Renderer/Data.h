@@ -289,6 +289,15 @@ namespace Bplus::GL
     #pragma endregion
 }
 
+//Make the various enums hashable.
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::VsyncModes);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::FaceCullModes);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::ValueTests);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::StencilOps);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::BlendFactors);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::BlendOps);
+
+
 #pragma region OpenGL handle typedefs
 
 //Creates a type-safe wrapper around a raw OpenGL integer value.

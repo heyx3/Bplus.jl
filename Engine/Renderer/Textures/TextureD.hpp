@@ -29,6 +29,8 @@ namespace Bplus::GL::Textures
         using uBox_t = Math::Box<D, glm::u32>;
         using iBox_t = Math::Box<D, glm::i32>;
 
+        using Sampler_t = Sampler<D>;
+
         static const glm::length_t NDimensions = D;
 
 
@@ -38,11 +40,15 @@ namespace Bplus::GL::Textures
         //Pass anything else to generate a fixed amount of mip levels.
         TextureD(const uVec_t& _size, Format _format,
                  uint_mipLevel_t _nMipLevels = 0,
-                 Sampler<D> sampler = { })
+                 Sampler_t sampler = { },
+                 SwizzleRGBA swizzling = { SwizzleSources::Red, SwizzleSources::Green,
+                                           SwizzleSources::Blue, SwizzleSources::Alpha },
+                 std::optional<DepthStencilSources> depthStencilMode = std::nullopt)
             : size(_size),
               Texture(GetClassType(), _format,
                       (_nMipLevels < 1) ? GetMaxNumbMipmaps(_size) : _nMipLevels,
-                      sampler.ChangeDimensions<3>())
+                      sampler.ChangeDimensions<3>(),
+                      swizzling, depthStencilMode)
         {
             //Depth and stencil textures are not supported on 3D textures.
             if constexpr (D == 3)
@@ -98,14 +104,14 @@ namespace Bplus::GL::Textures
         }
 
         //Gets (or creates) a view of this texture with the given sampler.
-        TexView GetView(std::optional<Sampler<D>> customSampler = std::nullopt) const
+        TexView GetView(std::optional<Sampler_t> customSampler = std::nullopt) const
         {
             return GetViewFull(customSampler.has_value() ?
                                std::make_optional(customSampler.value().ChangeDimensions<3>()) :
                                std::nullopt);
         }
 
-        const Sampler<D>& GetSampler() const { return GetSamplerFull().ChangeDimensions<D>(); }
+        const Sampler_t& GetSampler() const { return GetSamplerFull().ChangeDimensions<D>(); }
 
 
         #pragma region Clearing data

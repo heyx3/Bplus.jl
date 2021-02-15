@@ -21,6 +21,13 @@ namespace Bplus::Helpers
     {
     public:
 
+        EditorCamControls(glm::fvec3 pos = { 0, 0, 0 },
+                          CameraUpModes upMode = CameraUpModes::KeepUpright,
+                          glm::fvec3 forward = { 1, 0, 0 },
+                          glm::fvec3 up = { 0, 0, 1 })
+            : Position(pos), Forward(forward), Up(up), UpMode(upMode) { }
+
+
         glm::fvec3 Position;
 
         glm::fvec3 Forward, Up;
@@ -57,7 +64,7 @@ namespace Bplus::Helpers
         bool InputSpeedBoost = false;
         //When this input is changed, the camera's speed will increase or decrease.
         //The value is reset to 0 as soon as it gets applied.
-        int InputSpeedChange = 0;
+        float InputSpeedChange = 0;
 
 
         void Update(float deltaT);

@@ -7,10 +7,12 @@ using namespace Bplus::GL::Textures;
 
 TextureCube::TextureCube(uint32_t _size, Format format,
                          uint_mipLevel_t nMips,
-                         Sampler<2> sampler)
+                         Sampler<2> sampler,
+                         SwizzleRGBA swizzling,
+                         std::optional<DepthStencilSources> depthStencilMode)
     : Texture(Types::Cubemap, format,
               (nMips < 1) ? GetMaxNumbMipmaps(glm::uvec1{_size}) : nMips,
-              sampler.ChangeDimensions<3>()),
+              sampler.ChangeDimensions<3>(), swizzling, depthStencilMode),
       size(_size)
 {
     //Allocate GPU storage.

@@ -441,8 +441,8 @@ namespace Bplus::GL
         #pragma region Primitives and Vectors
 
     #define SET_UNIFORM_VECTORS(PrimitiveType, glFuncLetters) \
-        SET_UNIFORM_FOR(PrimitiveType) { glUniform1##glFuncLetters(ptr.Get(), value); } \
-        SET_UNIFORM_FOR(glm::vec<1 BP_COMMA PrimitiveType>) { glUniform1##glFuncLetters(ptr.Get(), value.x); } \
+        SET_UNIFORM_FOR(PrimitiveType) { glProgramUniform1##glFuncLetters(programHandle.Get(), ptr.Get(), value); } \
+        SET_UNIFORM_FOR(glm::vec<1 BP_COMMA PrimitiveType>) { glProgramUniform1##glFuncLetters(programHandle.Get(), ptr.Get(), value.x); } \
         SET_UNIFORM_FOR(glm::vec<2 BP_COMMA PrimitiveType>) { \
             glProgramUniform2##glFuncLetters(programHandle.Get(), ptr.Get(), value.x, value.y); \
         } \

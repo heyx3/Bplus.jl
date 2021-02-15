@@ -16,17 +16,17 @@ void EditorCamControls::Update(float deltaT)
     if (EnableRotation)
     {
         speed = deltaT * TurnSpeedDegrees;
-        Forward = glm::normalize(Forward * glm::angleAxis(speed * InputCamYawPitch.x, Up));
+        Forward = glm::normalize(glm::angleAxis(speed * InputCamYawPitch.x, Up) * Forward);
 
         auto forwardPrePitch = Forward;
         auto pitchRot = glm::angleAxis(speed * InputCamYawPitch.y, GetRight());
 
-        Forward = glm::normalize(Forward * pitchRot);
+        Forward = glm::normalize(pitchRot * Forward);
         switch (UpMode)
         {
             case CameraUpModes::Free:
             case CameraUpModes::ResetZUp:
-                Up = glm::normalize(Up * pitchRot);
+                Up = glm::normalize(pitchRot * Up);
             break;
 
             case CameraUpModes::KeepUpright:
