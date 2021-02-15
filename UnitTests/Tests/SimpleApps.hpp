@@ -5,13 +5,18 @@
 #define TEST_NO_MAIN
 #include <acutest.h>
 
-#include <B+/RenderLibs.h>
 #include <glm/gtx/string_cast.hpp>
+
+#include <B+/RenderLibs.h>
+#include <B+/Renderer/Textures/Target.h>
+#include <B+/Renderer/Materials/CompiledShader.h>
+#include <B+/Renderer/Buffers/MeshData.h>
+#include <B+/Helpers/EditorCamControls.h>
 
 #include "../SimpleApp.hpp"
 
 
-void SimpleApps()
+void SimpleApp()
 {
     glm::u8vec4 backCol1{ 45, 80, 206, 255 },
                 backCol2{ 254, 2, 145, 150 };
@@ -61,7 +66,7 @@ indicating that not all ImGUI labels were visible.");
 
             ImGui::Text("I'm label 2.");
 
-            ImGui::Text("If you see all four labels including this one,\nPress Enter. \
+            ImGui::Text("If you see all four labels (including this one),\nPress Enter. \
 Else, press Space.");
         },
 
@@ -161,8 +166,8 @@ void main()
                                 0,
                                 Sampler<2>(WrapModes::Repeat, PixelFilters::Rough));
             std::array<float, 100 * 100> pixels;
-            for (int y = 0; y < tex->GetSize().y; ++y)
-                for (int x = 0; x < tex->GetSize().x; ++x)
+            for (uint32_t y = 0; y < tex->GetSize().y; ++y)
+                for (uint32_t x = 0; x < tex->GetSize().x; ++x)
                 {
                     pixels[x + (y * tex->GetSize().x)] = (rand() % RAND_MAX) / (float)RAND_MAX;
                 }
@@ -201,6 +206,583 @@ void main()
             TRY_DELETE(trisCoordinates);
             TRY_DELETE(trisIndices);
             TRY_DELETE(tris);
+            #undef TRY_DELETE
+        });
+}
+
+void ProcTerrainApp()
+{
+    using namespace Bplus::Helpers;
+    using namespace Bplus::GL;
+    using namespace Bplus::GL::Buffers;
+    using namespace Bplus::GL::Textures;
+    namespace MeshVertices = Bplus::GL::Buffers::VertexData;
+    
+    Buffer *terrainUVs = nullptr,
+           *terrainIndices = nullptr,
+           *fullScreenTri = nullptr;
+    MeshData *terrainMesh = nullptr,
+             *fullScreenMesh = nullptr;
+    CompiledShader *noiseShader = nullptr,
+                   *terrainShader = nullptr;
+    Target* heightmapTarget = nullptr;
+
+    float elapsedTime = 0;
+
+    #pragma region Lighting
+
+    float sunYawDegrees = 0,
+          sunPitchDegrees = 45;
+    glm::vec3 sunColor = { 1.0, 1.0, 0.35f };
+
+    auto getSunDir = [&sunYawDegrees, &sunPitchDegrees]() {
+        auto yawRot = glm::angleAxis(glm::radians(sunYawDegrees), glm::fvec3{ 0, 0, 1 }),
+             pitchRot = glm::angleAxis(glm::radians(sunPitchDegrees), glm::fvec3{ 0, 1, 0 });
+        return yawRot  * pitchRot * glm::fvec3{ 1, 0, 0 };
+    };
+
+    auto doGuiSun = [&sunYawDegrees, &sunPitchDegrees, &sunColor]() {
+        ImGui::SliderFloat("Yaw", &sunYawDegrees, -360, 360);
+        ImGui::SliderFloat("Pitch", &sunPitchDegrees, 0, 90);
+        ImGui::ColorEdit3("Color", glm::value_ptr(sunColor), ImGuiColorEditFlags_NoLabel);
+    };
+
+    auto updateShaderSun = [&getSunDir, &sunColor](CompiledShader& shader) {
+        shader.SetUniform("u_SunDir", getSunDir());
+        shader.SetUniform("u_SunColor", sunColor);
+    };
+
+    auto sunShaderParams = std::vector<std::string>{
+        "u_SunDir", "u_SunColor"
+    };
+
+    const char* const sunFunction = R"(
+
+uniform vec3 u_SunDir = vec3(0.707106781, 0, -0.707106781);
+uniform vec3 u_SunColor = vec3(1, 1, 0.35);
+
+vec3 calcLighting(vec3 surfaceNormal) {
+    return u_SunColor * dot(surfaceNormal, -u_SunDir);
+}
+
+)";
+
+    #pragma endregion
+
+    #pragma region Terrain noise
+
+    int noiseOctaveCount = 1;
+    float noiseScale = 2.0f,
+          noisePersistence = 2;
+    bool noiseRidged = false;
+
+
+    auto doGuiNoise = [&noiseOctaveCount, &noisePersistence, &noiseScale, &noiseRidged]() {
+        ImGui::SliderInt("# Octaves", &noiseOctaveCount, 1, 10);
+        ImGui::SliderFloat("Persistence", &noisePersistence, 0.00001f, 100, "%.5f", 3);
+        ImGui::SliderFloat("Scale", &noiseScale, 1.0f, 100);
+        ImGui::Checkbox("Ridged", &noiseRidged);
+    };
+
+    auto updateShaderNoise = [&noiseOctaveCount, &noisePersistence, &noiseScale, &noiseRidged]
+        (CompiledShader& shader) {
+            shader.SetUniform("u_NoiseOctaves", noiseOctaveCount);
+            shader.SetUniform("u_NoiseScale", noiseScale);
+            shader.SetUniform("u_NoisePersistence", noisePersistence);
+            shader.SetUniform("u_NoiseRidged", noiseRidged);
+        };
+
+    auto noiseShaderParams = std::vector<std::string>{
+        "u_NoiseOctaves", "u_NoiseScale",
+        "u_NoisePersistence", "u_NoiseRidged"
+    };
+    const char* const noiseShaderFunction = R"(
+
+uniform int u_NoiseOctaves = 3;
+uniform float u_NoiseScale = 2.0,
+              u_NoisePersistence = 2.0;
+uniform bool u_NoiseRidged = false;
+
+vec2 hash( uvec2 x )
+{
+    //Source: https://stackoverflow.com/a/52207531
+
+    const uint K = 1103515245U;
+
+    x = ((x>>8U) ^ x.yx)* K;
+    x = ((x>>8U) ^ x.yx)* K;
+    x = ((x>>8U) ^ x.yx)* K;
+
+    return x * (1.0 / float(0xffffffffU));
+}
+vec2 hash(vec2 x) { return hash(floatBitsToUint(x)); }
+
+vec2 smoothNoise(vec2 p)
+{
+    vec2 minP = floor(p),
+         maxP = minP + 1;
+    vec2 t = p - minP;
+
+    return mix(mix(hash(minP),                   hash(vec2(maxP.x, minP.y)), t.x),
+               mix(hash(vec2(minP.x, maxP.y)),   hash(maxP),                 t.x),
+               t.y);
+}
+
+float terrainNoise(vec2 uv)
+{
+    uv *= u_NoiseScale;
+
+    float noiseSum = 0,
+          noiseMax = 0.000000001,
+          noiseWeight = 1.0;
+    for (int i = 0; i < u_NoiseOctaves; ++i)
+    {
+        float octaveVal = smoothNoise(uv).r;
+        if (u_NoiseRidged)
+            octaveVal = abs(octaveVal - 0.5) * 2;
+
+        noiseSum += noiseWeight * octaveVal;
+        noiseMax += noiseWeight;
+        
+        noiseWeight /= u_NoisePersistence;
+        uv = (uv + (2.7412 * mix(vec2(-1.0), vec2(1.0), hash(uvec2(i, i * 47))))) * u_NoisePersistence;
+    }
+
+    return noiseSum / noiseMax;
+}
+
+)";
+
+    #pragma endregion
+
+    #pragma region Terrain positioning
+
+    float terrainHorzSize = 2048,
+          terrainVertSize = 500;
+
+    auto doGuiTerrainTransform = [&terrainHorzSize, &terrainVertSize]() {
+        ImGui::DragFloat("Length", &terrainHorzSize);
+        ImGui::DragFloat("Height", &terrainVertSize);
+    };
+
+    auto terrainTransformParams = std::vector<std::string>{
+        "u_TerrainLength", "u_TerrainHeight"
+    };
+
+    auto updateShaderTerrainTransform = [&terrainHorzSize, &terrainVertSize](CompiledShader& shader) {
+        shader.SetUniform("u_TerrainLength", terrainHorzSize);
+        shader.SetUniform("u_TerrainHeight", terrainVertSize);
+    };
+
+    const char* const terrainTransformFunction = R"(
+
+uniform float u_TerrainLength, u_TerrainHeight;
+
+vec3 getTerrainPos(vec2 uv, float heightmap) {
+    float halfLength = u_TerrainLength / 2;
+    return mix(vec2(-halfLength, 0).xxy,
+               vec2(halfLength, u_TerrainHeight).xxy,
+               vec3(uv, heightmap));
+}
+
+)";
+
+    #pragma endregion
+    
+    #pragma region Terrain surface color
+
+    glm::vec3 terrainColor = { 0.2f, 0.8f, 0.4f };
+
+    auto doGuiTerrainColor = [&terrainColor]() {
+        ImGui::ColorEdit3("##Color", glm::value_ptr(terrainColor));
+    };
+
+    auto terrainColorParams = std::vector<std::string>{
+        "u_TerrainColor"
+    };
+
+    auto updateShaderTerrainColor = [&terrainColor](CompiledShader& shader) {
+        shader.SetUniform("u_TerrainColor", terrainColor);
+    };
+
+    const char* const terrainColorFunction = R"(
+
+uniform vec3 u_TerrainColor;
+
+vec3 getTerrainColor(vec2 uv, vec3 worldNormal, float height) {
+    return u_TerrainColor;
+}
+
+)";
+
+    #pragma endregion
+
+    #pragma region Camera Settings
+
+    float camVerticalFOV = 90;
+
+    EditorCamControls camera(glm::fvec3{ 0, 0, terrainVertSize + 10 },
+                             CameraUpModes::KeepUpright,
+                             glm::normalize(glm::fvec3{ 1, 1, -1 }));
+
+    auto doGuiCamera = [&camVerticalFOV]() {
+        ImGui::SliderFloat("Field of View", &camVerticalFOV, 0.00001f, 179.99f);
+    };
+
+    auto getProjectionMatrix = [&camVerticalFOV, &terrainHorzSize]() {
+        glm::ivec2 windowSize;
+        SDL_GetWindowSize(Simple::App->MainWindow, &windowSize.x, &windowSize.y);
+        return glm::perspective(camVerticalFOV,
+                                (float)windowSize.x / windowSize.y,
+                                0.1f, terrainHorzSize * 2);
+    };
+
+    #pragma endregion
+
+    Simple::Run(
+        //Init:
+        [&]() {
+
+            TEST_CASE("Creating the terrain data");
+            #pragma region Create terrain data
+
+            const uint_fast32_t terrainResolution = 128;
+            using TerrainIdx = glm::u32;
+
+            //Vertices:
+            {
+                std::vector<glm::vec2> terrainUVData;
+                terrainUVData.reserve(terrainResolution * terrainResolution);
+                const float texelSize = 1 / (float)(terrainResolution - 1);
+                for (uint_fast32_t y = 0; y < terrainResolution; ++y)
+                    for (uint_fast32_t x = 0; x < terrainResolution; ++x)
+                        terrainUVData.push_back(glm::fvec2((float)x, (float)y) * texelSize);
+
+                terrainUVs = new Buffer(terrainResolution * terrainResolution, false, terrainUVData.data());
+            }
+
+            //Indices:
+            {
+                std::vector<TerrainIdx> terrainIndexData;
+                size_t nIndices = (terrainResolution - 1) * (terrainResolution - 1) * 6;
+                terrainIndexData.reserve(nIndices);
+                for (TerrainIdx y = 1; y < terrainResolution; ++y)
+                    for (TerrainIdx x = 1; x < terrainResolution; ++x)
+                    {
+                        TerrainIdx baseI = (x - 1) + ((y - 1) * terrainResolution);
+                        
+                        terrainIndexData.push_back(baseI);
+                        terrainIndexData.push_back(baseI + terrainResolution + 1);
+                        terrainIndexData.push_back(baseI + terrainResolution);
+
+                        terrainIndexData.push_back(baseI + terrainResolution + 1);
+                        terrainIndexData.push_back(baseI);
+                        terrainIndexData.push_back(baseI + 1);
+                    }
+
+                terrainIndices = new Buffer(nIndices, false, terrainIndexData.data());
+            }
+
+            TEST_CASE("Creating a MeshData for the terrain");
+            terrainMesh = new MeshData(PrimitiveTypes::Triangle,
+                                       MeshDataSource(terrainIndices, sizeof(TerrainIdx)),
+                                       GetIndexType<TerrainIdx>(),
+                                       { MeshDataSource(terrainUVs, sizeof(glm::fvec2)) },
+                                       { VertexDataField(0, 0, MeshVertices::Type::FVector<2>()) });
+
+            #pragma endregion
+
+            TEST_CASE("Creating the full-screen triangle mesh");
+            #pragma region Create full screen triangle mesh
+
+            auto fullScreenTriData = std::array{ glm::fvec2{ -1, -3 },
+                                                 glm::fvec2{ -1, 1 },
+                                                 glm::fvec2{ 3, 1 } };
+            fullScreenTri = new Buffer(3, false, fullScreenTriData.data());
+
+            fullScreenMesh = new MeshData(PrimitiveTypes::Triangle,
+                                          std::vector{ MeshDataSource(fullScreenTri, sizeof(glm::fvec2)) },
+                                          std::vector{ VertexDataField(0, 0, MeshVertices::Type::FVector<2>()) });
+
+            #pragma endregion
+
+            OglPtr::ShaderProgram shaderPtr;
+            ShaderCompileJob compiler;
+
+            TEST_CASE("Compiling the noise shader");
+            #pragma region Noise shader
+
+            compiler.VertexSrc = std::string(R"(#line 1 0
+layout (location = 0) in vec2 vIn_Pos;
+layout (location = 0) out vec2 vOut_Pos;
+void main()
+{
+    gl_Position = vec4(vIn_Pos, 0, 1);
+    vOut_Pos = vIn_Pos;
+})");
+
+            compiler.FragmentSrc = std::string(R"(#line 1 0
+layout (location = 0) in vec2 fIn_Pos;
+layout (location = 0) out vec4 fOut_Color;
+
+)") + noiseShaderFunction + R"(
+
+void main()
+{
+    float val = terrainNoise(fIn_Pos);
+    fOut_Color = vec4(val.xxx, 1);
+})";
+
+            compiler.PreProcessIncludes();
+
+            std::string compileError;
+            bool dummyBool;
+            std::tie(compileError, dummyBool) = compiler.Compile(shaderPtr);
+
+            TEST_CHECK_(!shaderPtr.IsNull(), "Noise shader failed to compile:\n\t%s", compileError.c_str());
+            if (shaderPtr.IsNull())
+            {
+                Simple::App->Quit(true);
+                return;
+            }
+
+            RenderState shaderRenderState;
+            shaderRenderState.CullMode = FaceCullModes::Off;
+            shaderRenderState.DepthTest = ValueTests::Off;
+            shaderRenderState.EnableDepthWrite = false;
+            noiseShader = new CompiledShader(shaderRenderState, shaderPtr, noiseShaderParams);
+
+            #pragma endregion
+
+            TEST_CASE("Compiling the terrain shader");
+            #pragma region Terrain shader
+
+            compiler.VertexSrc = std::string(R"(#line 1 0
+layout (location = 0) in vec2 vIn_UV;
+layout (location = 0) out vec2 vOut_UV;
+
+)") + terrainTransformFunction + R"(
+
+layout(bindless_sampler) uniform sampler2D u_Heightmap;
+uniform mat4 u_ViewProjMatrix;
+
+void main()
+{
+    float heightmap = textureLod(u_Heightmap, vIn_UV, 0).r;
+    vec3 worldPos = getTerrainPos(vIn_UV, heightmap);
+    
+    gl_Position = u_ViewProjMatrix * vec4(worldPos, 1);
+    vOut_UV = vIn_UV;
+
+    //gl_Position = vec4(vIn_UV, heightmap, 1);
+})";
+
+            compiler.FragmentSrc = std::string(R"(#line 1 0
+layout (location = 0) in vec2 fIn_UV;
+layout (location = 0) out vec4 fOut_Color;
+
+)") + terrainTransformFunction + sunFunction + terrainColorFunction + R"(
+
+layout(bindless_sampler) uniform sampler2D u_Heightmap;
+
+void main()
+{
+    //Calculate the normal using finite differences.
+    vec3 texel = vec3(1.0 / vec2(textureSize(u_Heightmap, 0)),
+                      0.0);
+    float heightMinX = textureLod(u_Heightmap, fIn_UV - texel.xz, 0).r,
+          heightMaxX = textureLod(u_Heightmap, fIn_UV + texel.xz, 0).r,
+          heightMinY = textureLod(u_Heightmap, fIn_UV - texel.zy, 0).r,
+          heightMaxY = textureLod(u_Heightmap, fIn_UV + texel.zy, 0).r;
+    vec3 vNormal = vec3((heightMaxX - heightMinX) / 2,
+                        (heightMaxY - heightMinY) / 2,
+                        2.0);
+    vNormal.xy *= u_TerrainLength;
+    vNormal.z *= u_TerrainHeight;
+    vNormal = normalize(vNormal);
+
+    //Calculate the surface color.
+    fOut_Color.rgb = getTerrainColor(fIn_UV, vNormal, textureLod(u_Heightmap, fIn_UV, 0).r)
+                      * calcLighting(vNormal);
+    fOut_Color.a = 1;
+})";
+
+            compiler.PreProcessIncludes();
+            std::tie(compileError, dummyBool) = compiler.Compile(shaderPtr);
+
+            TEST_CHECK_(!shaderPtr.IsNull(), "Terrain shader failed to compile:\n\t%s", compileError.c_str());
+            if (shaderPtr.IsNull())
+            {
+                Simple::App->Quit(true);
+                return;
+            }
+
+            shaderRenderState = RenderState();
+            //DEBUG:
+            //shaderRenderState.DepthTest = ValueTests::Off;
+            //shaderRenderState.CullMode = FaceCullModes::Off;
+            auto terrainShaderParams = Bplus::Concatenate<std::string>(sunShaderParams,
+                                                                       terrainColorParams,
+                                                                       terrainTransformParams,
+                                                                       std::vector{ "u_Heightmap", "u_ViewProjMatrix" });
+            terrainShader = new CompiledShader(shaderRenderState, shaderPtr, terrainShaderParams);
+
+            #pragma endregion
+
+            TEST_CASE("Creating the heightmap Target");
+            #pragma region Heightmap texture
+            
+            TargetStates targetState;
+            heightmapTarget = new Target(targetState, { terrainResolution, terrainResolution },
+                                         SimpleFormat(FormatTypes::NormalizedUInt,
+                                                      SimpleFormatComponents::R,
+                                                      SimpleFormatBitDepths::B16),
+                                         DepthStencilFormats::Depth_16U,
+                                         true, 1U);
+
+            TEST_CHECK_(targetState == +TargetStates::Ready,
+                        "Heightmap Target not valid: %s", targetState._to_string());
+
+            #pragma endregion
+
+            TEST_CASE("Running the ProcTerrain app loop");
+        },
+
+        //Update:
+        [&](float deltaT) {
+
+            #pragma region GUI logic
+
+            ImGui::Text("Press 'escape' to quit.");
+
+            ImGui::Text("SUN");
+            ImGui::PushID("SUN");
+            ImGui::Indent();
+            doGuiSun();
+            ImGui::Unindent();
+            ImGui::Dummy({ 1, 10 });
+            ImGui::PopID();
+
+            ImGui::Text("TERRAIN");
+            ImGui::PushID("TERRAIN");
+            ImGui::Indent();
+            doGuiTerrainTransform();
+            doGuiTerrainColor();
+            ImGui::Unindent();
+            ImGui::Dummy({ 1, 10 });
+            ImGui::PopID();
+            
+            ImGui::Text("HEIGHTMAP");
+            ImGui::PushID("HEIGHTMAP");
+            ImGui::Indent();
+            doGuiNoise();
+            ImGui::Unindent();
+            ImGui::Dummy({ 1, 10 });
+            ImGui::PopID();
+
+            #pragma endregion
+
+            auto keyStates = SDL_GetKeyboardState(nullptr);
+            
+            if (keyStates[SDL_SCANCODE_ESCAPE])
+                Simple::App->Quit(true);
+            
+            #pragma region Camera input
+
+            bool ignoreKeyboard = ImGui::GetIO().WantCaptureKeyboard,
+                 ignoreMouse = ImGui::GetIO().WantCaptureMouse;
+
+            camera.InputMoveForward = ignoreKeyboard ? 0 :
+                                        ((keyStates[SDL_SCANCODE_W] ? 1.0f : 0) +
+                                         (keyStates[SDL_SCANCODE_S] ? -1.0f : 0));
+            camera.InputMoveUp = ignoreKeyboard ? 0 :
+                                     ((keyStates[SDL_SCANCODE_E] ? 1.0f : 0) +
+                                      (keyStates[SDL_SCANCODE_Q] ? -1.0f : 0));
+            camera.InputMoveRight = ignoreKeyboard ? 0 :
+                                       ((keyStates[SDL_SCANCODE_D] ? 1.0f : 0) +
+                                        (keyStates[SDL_SCANCODE_A] ? -1.0f : 0));
+            camera.InputSpeedBoost = ignoreKeyboard ? false :
+                                         (keyStates[SDL_SCANCODE_LSHIFT] |
+                                          keyStates[SDL_SCANCODE_RSHIFT]);
+            
+            glm::ivec2 mouseMovement;
+            auto mouseButtonMask = SDL_GetRelativeMouseState(&mouseMovement.x, &mouseMovement.y);
+
+            camera.EnableRotation = (!ignoreMouse) &
+                                    ((mouseButtonMask & SDL_BUTTON(SDL_BUTTON_LEFT)) |
+                                     (mouseButtonMask & SDL_BUTTON(SDL_BUTTON_RIGHT)));
+            camera.InputCamYawPitch = ignoreMouse ? glm::fvec2{ 0, 0 } : glm::fvec2(mouseMovement);
+            camera.InputSpeedChange = ignoreKeyboard ? 0.0f : ImGui::GetIO().MouseWheel;
+
+            #pragma endregion
+            
+            ImGui::LabelText("Camera Forward",
+                             "%f,  %f,  %f",
+                             camera.Forward.x, camera.Forward.y, camera.Forward.z);
+            ImGui::LabelText("Camera Up",
+                             "%f,  %f,  %f",
+                             camera.Up.x, camera.Up.y, camera.Up.z);
+            ImGui::LabelText("Camera Turning",
+                             "%f,  %f",
+                             camera.InputCamYawPitch.x, camera.InputCamYawPitch.y);
+            camera.Update(deltaT);
+
+            elapsedTime += deltaT;
+        },
+
+        //Render:
+        [&](float deltaT) {
+            auto& context = *Context::GetCurrentContext();
+            
+            auto skyColor = glm::mix(glm::fvec3(1, 1, 1),
+                                     glm::fvec3(0.5f, 0.5f, 1),
+                                     0.5 + (0.5 * sin(elapsedTime)));
+            context.ClearScreen(glm::fvec4(skyColor, 0.0f));
+
+            #pragma region Update heightmap
+
+            updateShaderNoise(*noiseShader);
+
+            context.SetActiveTarget(heightmapTarget->GetGlPtr());
+            context.Draw(DrawMeshMode_Basic(*fullScreenMesh, 3), *noiseShader);
+            context.SetActiveTarget(OglPtr::Target::Null());
+            
+            #pragma endregion
+
+            #pragma region Draw terrain
+
+            updateShaderSun(*terrainShader);
+            updateShaderTerrainColor(*terrainShader);
+            updateShaderTerrainTransform(*terrainShader);
+
+            Sampler<2> heightmapSampler(WrapModes::Clamp, PixelFilters::Smooth);
+            auto heightmapView = heightmapTarget->GetOutput_Color()->GetTex2D()->GetView(heightmapSampler);
+            terrainShader->SetUniform("u_Heightmap", heightmapView);
+
+            terrainShader->SetUniform("u_ViewProjMatrix", getProjectionMatrix() * camera.GetViewMat());
+
+            context.Draw(DrawMeshMode_Basic(*terrainMesh), *terrainShader,
+                         DrawMeshMode_Indexed());
+
+            #pragma endregion
+        },
+
+        //Quit:
+        [&]() {
+            #define TRY_DELETE(x) \
+                if (x != nullptr) { \
+                    delete x; \
+                    x = nullptr; \
+                }
+            
+            TRY_DELETE(terrainUVs);
+            TRY_DELETE(terrainIndices);
+            TRY_DELETE(fullScreenTri);
+            TRY_DELETE(fullScreenMesh);
+            TRY_DELETE(terrainMesh);
+            TRY_DELETE(noiseShader);
+            TRY_DELETE(terrainShader);
+            TRY_DELETE(heightmapTarget);
             #undef TRY_DELETE
         });
 }
