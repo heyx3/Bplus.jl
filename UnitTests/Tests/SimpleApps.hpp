@@ -227,8 +227,10 @@ void AdvancedTexturesApp()
              *skyCubeMesh = nullptr;
     CompiledShader *noiseShader = nullptr,
                    *terrainShader = nullptr,
+                   *skyNoiseShader = nullptr,
                    *skyShader = nullptr;
-    Target* heightmapTarget = nullptr;
+    Target *heightmapTarget = nullptr,
+            *skyNoiseTarget = nullptr;
     TextureCube* skyTex = nullptr;
 
     float elapsedTime = 0;
@@ -272,35 +274,35 @@ vec3 calcLighting(vec3 surfaceNormal) {
 )";
 
     #pragma endregion
-
+    
     #pragma region Terrain noise
 
-    int noiseOctaveCount = 7;
-    float noiseScale = 5.875f,
-          noisePersistence = 2.48120f;
-    bool noiseRidged = false;
+    int tNoiseOctaveCount = 7;
+    float tNoiseScale = 5.875f,
+          tNoisePersistence = 2.48120f;
+    bool tNoiseRidged = false;
 
 
-    auto doGuiNoise = [&noiseOctaveCount, &noisePersistence, &noiseScale, &noiseRidged]() {
-        ImGui::SliderInt("# Octaves", &noiseOctaveCount, 1, 10);
-        ImGui::SliderFloat("Persistence", &noisePersistence, 0.00001f, 100, "%.5f", 3);
-        ImGui::SliderFloat("Scale", &noiseScale, 1.0f, 100);
-        ImGui::Checkbox("Ridged", &noiseRidged);
+    auto doGuiTNoise = [&tNoiseOctaveCount, &tNoisePersistence, &tNoiseScale, &tNoiseRidged]() {
+        ImGui::SliderInt("# Octaves", &tNoiseOctaveCount, 1, 10);
+        ImGui::SliderFloat("Scale", &tNoiseScale, 1.0f, 100);
+        ImGui::SliderFloat("Persistence", &tNoisePersistence, 0.00001f, 100, "%.5f", 3);
+        ImGui::Checkbox("Ridged", &tNoiseRidged);
     };
 
-    auto updateShaderNoise = [&noiseOctaveCount, &noisePersistence, &noiseScale, &noiseRidged]
+    auto updateShaderTNoise = [&tNoiseOctaveCount, &tNoisePersistence, &tNoiseScale, &tNoiseRidged]
         (CompiledShader& shader) {
-            shader.SetUniform("u_NoiseOctaves", noiseOctaveCount);
-            shader.SetUniform("u_NoiseScale", noiseScale);
-            shader.SetUniform("u_NoisePersistence", noisePersistence);
-            shader.SetUniform("u_NoiseRidged", noiseRidged);
+            shader.SetUniform("u_NoiseOctaves", tNoiseOctaveCount);
+            shader.SetUniform("u_NoiseScale", tNoiseScale);
+            shader.SetUniform("u_NoisePersistence", tNoisePersistence);
+            shader.SetUniform("u_NoiseRidged", tNoiseRidged);
         };
 
-    auto noiseShaderParams = std::vector<std::string>{
+    auto tNoiseShaderParams = std::vector<std::string>{
         "u_NoiseOctaves", "u_NoiseScale",
         "u_NoisePersistence", "u_NoiseRidged"
     };
-    const char* const noiseShaderFunction = R"(
+    const char* const tNoiseShaderFunction = R"(
 
 uniform int u_NoiseOctaves = 3;
 uniform float u_NoiseScale = 2.0,
@@ -353,6 +355,135 @@ float terrainNoise(vec2 uv)
     }
 
     return noiseSum / noiseMax;
+}
+
+)";
+
+    #pragma endregion
+    
+    #pragma region Sky noise
+
+    int sSkyNoiseOctaveCount = 7;
+    float sSkyNoiseScale = 5.875f,
+          sSkyNoisePersistence = 2.48120f;
+    int sCloudNoiseOctaveCount = 7;
+    float sCloudNoiseScale = 5.875f,
+          sCloudNoisePersistence = 2.48120f;
+    float sCloudSharpness = 1.0f;
+    glm::fvec3 skyColor1 = { 0.6f, 0.6f, 1.0f },
+               skyColor2 = { 0.5f, 0.7f, 1.0f },
+               cloudColor = { 1, 1, 1};
+
+    auto doGuiSNoise = [&]() {
+        ImGui::SliderInt("# Octaves", &sSkyNoiseOctaveCount, 1, 10);
+        ImGui::SliderFloat("Scale", &sSkyNoiseScale, 1.0f, 100);
+        ImGui::SliderFloat("Persistence", &sSkyNoisePersistence, 0.00001f, 100, "%.5f", 3);
+        ImGui::ColorEdit3("Color 1", glm::value_ptr(skyColor1));
+        ImGui::ColorEdit3("Color 2", glm::value_ptr(skyColor2));
+        ImGui::Dummy({ 1, 5 });
+
+        ImGui::Text("CLOUDS");
+        ImGui::PushID("CLOUDS");
+        ImGui::Indent();
+        ImGui::SliderInt("# Octaves", &sCloudNoiseOctaveCount, 1, 10);
+        ImGui::SliderFloat("Scale", &sCloudNoiseScale, 1.0f, 100);
+        ImGui::SliderFloat("Persistence", &sCloudNoisePersistence, 0.00001f, 100, "%.5f", 3);
+        ImGui::SliderFloat("Sharpness", &sCloudSharpness, 0.0001f, 10, "%.5f", 2);
+        ImGui::ColorEdit3("##Color", glm::value_ptr(cloudColor));
+        ImGui::Unindent();
+        ImGui::PopID();
+    };
+
+    auto updateShaderSNoise = [&](CompiledShader& shader) {
+            shader.SetUniform("u_SkyNoise.NOctaves", sSkyNoiseOctaveCount);
+            shader.SetUniform("u_SkyNoise.Scale", sSkyNoiseScale);
+            shader.SetUniform("u_SkyNoise.Persistence", sSkyNoisePersistence);
+            shader.SetUniform("u_CloudNoise.NOctaves", sSkyNoiseOctaveCount);
+            shader.SetUniform("u_CloudNoise.Scale", sSkyNoiseScale);
+            shader.SetUniform("u_CloudNoise.Persistence", sSkyNoisePersistence);
+            shader.SetUniform("u_CloudSharpness", sCloudSharpness);
+            shader.SetUniform("u_SkyColor1", skyColor1);
+            shader.SetUniform("u_SkyColor2", skyColor2);
+            shader.SetUniform("u_CloudColor", cloudColor);
+        };
+
+    std::vector<std::string> sNoiseShaderParams = {
+        "u_SkyNoise.NOctaves", "u_SkyNoise.Scale", "u_SkyNoise.Persistence",
+        "u_CloudNoise.NOctaves", "u_CloudNoise.Scale", "u_CloudNoise.Persistence",
+        "u_CloudSharpness",
+        "u_SkyColor1", "u_SkyColor2", "u_CloudColor"
+    };
+    const char* const sNoiseShaderFunction = R"(#line 1 1
+struct NoiseSettings {
+    int NOctaves;
+    float Scale,
+          Persistence;
+};
+uniform NoiseSettings u_SkyNoise;
+uniform NoiseSettings u_CloudNoise;
+uniform float u_CloudSharpness;
+
+uniform vec3 u_SkyColor1, u_SkyColor2, u_CloudColor;
+
+
+vec3 hash( uvec3 x )
+{
+    //Source: https://stackoverflow.com/a/52207531
+
+    const uint K = 1103515245U;
+
+    x = ((x>>8U) ^ x.yzx)* K;
+    x = ((x>>8U) ^ x.yzx)* K;
+    x = ((x>>8U) ^ x.yzx)* K;
+
+    return x * (1.0 / float(0xffffffffU));
+}
+vec3 hash(vec3 x) { return hash(floatBitsToUint(x)); }
+
+vec3 smoothNoise(vec3 p)
+{
+    vec3 minP = floor(p),
+         maxP = minP + 1;
+    vec3 t = p - minP;
+
+    return mix(mix(mix(hash(minP),                           hash(vec3(maxP.x, minP.yz)),         t.x),
+                   mix(hash(vec3(minP.x, maxP.y, minP.z)),   hash(vec3(maxP.xy, minP.z)),         t.x),
+                   t.y),
+               mix(mix(hash(vec3(minP.xy, maxP.z)),          hash(vec3(maxP.x, minP.y, maxP.z)),  t.x),
+                   mix(hash(vec3(minP.x, maxP.yz)),          hash(maxP),                          t.x),
+                   t.y),
+               t.z);
+}
+
+float octaveNoise(vec3 p, NoiseSettings settings)
+{
+    p *= settings.Scale;
+
+    float noiseSum = 0,
+          noiseMax = 0.000000001,
+          noiseWeight = 1.0;
+    for (int i = 0; i < settings.NOctaves; ++i)
+    {
+        noiseSum += noiseWeight * smoothNoise(p).r;
+        noiseMax += noiseWeight;
+        
+        noiseWeight /= settings.Persistence;
+        p += 2.7412 * mix(vec3(-1.0), vec3(1.0), hash(uvec3(i, i * 47, i * 53)));
+        p *= settings.Persistence;
+    }
+
+    return noiseSum / noiseMax;
+}
+
+vec3 getSkyColor(vec3 viewDir)
+{
+    viewDir = normalize(viewDir);
+    float skyNoise = octaveNoise(viewDir, u_SkyNoise),
+          cloudNoise = octaveNoise(viewDir, u_CloudNoise);
+
+    return mix(mix(u_SkyColor1, u_SkyColor2, skyNoise),
+               u_CloudColor,
+               pow(cloudNoise, u_CloudSharpness));
 }
 
 )";
@@ -437,7 +568,7 @@ vec3 getTerrainColor(vec2 uv, vec3 worldNormal, float height) {
     auto getProjectionMatrix = [&camVerticalFOV, &terrainHorzSize, &getFarClipPlane]() {
         glm::ivec2 windowSize;
         SDL_GetWindowSize(Simple::App->MainWindow, &windowSize.x, &windowSize.y);
-        return glm::perspective(camVerticalFOV,
+        return glm::perspective(glm::radians(camVerticalFOV),
                                 (float)windowSize.x / windowSize.y,
                                 0.1f, getFarClipPlane());
     };
@@ -500,9 +631,9 @@ vec3 getTerrainColor(vec2 uv, vec3 worldNormal, float height) {
             TEST_CASE("Creating the full-screen triangle mesh");
             #pragma region Create full screen triangle mesh
 
-            auto fullScreenTriData = std::array{ glm::fvec2{ -1, -3 },
-                                                 glm::fvec2{ -1, 1 },
-                                                 glm::fvec2{ 3, 1 } };
+            auto fullScreenTriData = std::array{ glm::fvec2{ -1, -1 },
+                                                 glm::fvec2{ 3, -1 },
+                                                 glm::fvec2{ -1, 3 } };
             fullScreenTri = new Buffer(3, false, fullScreenTriData.data());
 
             fullScreenMesh = new MeshData(PrimitiveTypes::Triangle,
@@ -600,7 +731,7 @@ void main()
 layout (location = 0) in vec2 fIn_Pos;
 layout (location = 0) out vec4 fOut_Color;
 
-)") + noiseShaderFunction + R"(
+)") + tNoiseShaderFunction + R"(
 
 void main()
 {
@@ -625,7 +756,7 @@ void main()
             noiseRenderState.CullMode = FaceCullModes::Off;
             noiseRenderState.DepthTest = ValueTests::Off;
             noiseRenderState.EnableDepthWrite = false;
-            noiseShader = new CompiledShader(noiseRenderState, shaderPtr, noiseShaderParams);
+            noiseShader = new CompiledShader(noiseRenderState, shaderPtr, tNoiseShaderParams);
 
             #pragma endregion
 
@@ -757,6 +888,68 @@ void main()
 
             #pragma endregion
 
+            TEST_CASE("Compiling the sky noise shader");
+            #pragma region Sky noise shader
+
+            compiler.GeometrySrc = "";
+
+            compiler.VertexSrc = std::string(R"(#line 1 0
+layout (location = 0) in vec2 vIn_Pos;
+layout (location = 0) out vec2 vOut_Pos;
+void main()
+{
+    gl_Position = vec4(vIn_Pos, 0, 1);
+    vOut_Pos = 0.5 + (0.5 * vIn_Pos);
+})");
+
+            compiler.FragmentSrc = std::string(R"(#line 1 0
+layout (location = 0) in vec2 fIn_Pos;
+
+layout (location = 0) out vec4 fOut_PosX;
+layout (location = 1) out vec4 fOut_NegX;
+layout (location = 2) out vec4 fOut_PosY;
+layout (location = 3) out vec4 fOut_NegY;
+layout (location = 4) out vec4 fOut_PosZ;
+layout (location = 5) out vec4 fOut_NegZ;
+
+)") + sNoiseShaderFunction + R"(#line 11 0
+
+void main()
+{
+    vec3 p = vec3(0, 0, 0);
+
+#define COLOR_FACE(face,   mainAxis, mainPos,  horzAxis, horzMin, horzMax,    vertAxis, vertMin, vertMax) \
+    p.mainAxis = mainPos; \
+    p.horzAxis = mix(horzMin, horzMax, fIn_Pos.x); \
+    p.vertAxis = mix(vertMin, vertMax, fIn_Pos.y); \
+    face = vec4(fIn_Pos, 0, 1)
+
+    COLOR_FACE(fOut_PosX,   x, 1,    z, 1, -1,   y, 1, -1);
+    COLOR_FACE(fOut_NegX,   x, -1,   z, -1, 1,   y, 1, -1);
+    COLOR_FACE(fOut_PosY,   y, 1,    x, 1, -1,   z, -1, 1);
+    COLOR_FACE(fOut_NegY,   y, -1,   x, -1, 1,   z, 1, -1);
+    COLOR_FACE(fOut_PosZ,   z, 1,    x, -1, 1,   y, 1, -1);
+    COLOR_FACE(fOut_NegZ,   z, -1,   x, 1, -1,   y, 1, -1);
+})";
+
+            compiler.PreProcessIncludes();
+            std::tie(compileError, dummyBool) = compiler.Compile(shaderPtr);
+
+            TEST_CHECK_(!shaderPtr.IsNull(), "Skybox noise shader failed to compile:\n\t%s", compileError.c_str());
+            if (shaderPtr.IsNull())
+            {
+                Simple::App->Quit(true);
+                return;
+            }
+
+            RenderState sNoiseRenderState;
+            sNoiseRenderState.CullMode = FaceCullModes::Off;
+            sNoiseRenderState.DepthTest = ValueTests::Off;
+            sNoiseRenderState.EnableDepthWrite = false;
+            skyNoiseShader = new CompiledShader(sNoiseRenderState, shaderPtr, sNoiseShaderParams);
+
+            #pragma endregion
+
             TEST_CASE("Creating the heightmap Target");
             #pragma region Heightmap texture
             
@@ -776,25 +969,7 @@ void main()
             TEST_CASE("Creating the sky texture");
             #pragma region Sky Texture
 
-            //TODO: Make a tool for assembling sky-boxes with a shader.
-            
-            auto getSkyColor = [](glm::fvec3 viewDir) {
-                viewDir = glm::normalize(viewDir);
-                float cloudNoise = 0.5f + (0.5f * glm::perlin(viewDir * 10.0f)),
-                        skyNoise = 0.5f + (0.5f * glm::perlin(viewDir * 20.0f + 3.624f));
-
-                const glm::fvec3 skyColor1(0.5f, 0.5f, 1.0f),
-                                 skyColor2(0.25f, 0.85f, 1.0f),
-                                 cloudColor(1.0f, 1.0f, 1.0f);
-                const float cloudStrength = 0.4f;
-
-                auto skyColor = glm::mix(skyColor1, skyColor2, skyNoise);
-
-                return glm::mix(cloudColor, skyColor,
-                                powf(cloudNoise, cloudStrength));
-            };
-
-            const uint_fast32_t cubeFaceResolution = 128;
+            const uint_fast32_t cubeFaceResolution = 256;
             auto cubeFaceTexel = 1.0f / glm::fvec2(cubeFaceResolution);
             skyTex = new TextureCube(cubeFaceResolution,
                                      SimpleFormat(FormatTypes::NormalizedUInt,
@@ -803,7 +978,6 @@ void main()
 
             //Generate the data.
             {
-
                 const auto cubeFaceOrientations = GetFacesOrientation();
                 std::vector<glm::fvec3> cubePixels;
                 cubePixels.reserve(cubeFaceOrientations.size() *
@@ -814,10 +988,26 @@ void main()
                         for (uint_fast32_t x = 0; x < cubeFaceResolution; ++x)
                         {
                             auto uv = (glm::fvec2(x, y) + 0.5f) * cubeFaceTexel;
-                            cubePixels.push_back(getSkyColor(face.GetDir(uv)));
+                            cubePixels.push_back(glm::fvec3(0, 0, 0));
                         }
                 skyTex->Set_Color(cubePixels.data());
             }
+
+            #pragma endregion
+
+            TEST_CASE("Creating the sky noise Target");
+            #pragma region Sky Noise Target
+
+            std::array skyNoiseOutputs = {
+                TargetOutput(std::make_tuple(skyTex, CubeFaces::PosX)),
+                TargetOutput(std::make_tuple(skyTex, CubeFaces::NegX)),
+                TargetOutput(std::make_tuple(skyTex, CubeFaces::PosY)),
+                TargetOutput(std::make_tuple(skyTex, CubeFaces::NegY)),
+                TargetOutput(std::make_tuple(skyTex, CubeFaces::PosZ)),
+                TargetOutput(std::make_tuple(skyTex, CubeFaces::NegZ))
+            };
+            skyNoiseTarget = new Target(targetState,
+                                        skyNoiseOutputs.data(), skyNoiseOutputs.size());
 
             #pragma endregion
 
@@ -860,7 +1050,15 @@ void main()
             ImGui::Text("HEIGHTMAP");
             ImGui::PushID("HEIGHTMAP");
             ImGui::Indent();
-            doGuiNoise();
+            doGuiTNoise();
+            ImGui::Unindent();
+            ImGui::Dummy({ 1, 10 });
+            ImGui::PopID();
+
+            ImGui::Text("SKY");
+            ImGui::PushID("SKY");
+            ImGui::Indent();
+            doGuiSNoise();
             ImGui::Unindent();
             ImGui::Dummy({ 1, 10 });
             ImGui::PopID();
@@ -870,7 +1068,10 @@ void main()
             auto keyStates = SDL_GetKeyboardState(nullptr);
             
             if (keyStates[SDL_SCANCODE_ESCAPE])
+            {
                 Simple::App->Quit(true);
+                return;
+            }
             
             #pragma region Camera input
 
@@ -929,7 +1130,7 @@ void main()
 
             #pragma region Update heightmap
 
-            updateShaderNoise(*noiseShader);
+            updateShaderTNoise(*noiseShader);
 
             context.SetActiveTarget(heightmapTarget->GetGlPtr());
             context.Draw(DrawMeshMode_Basic(*fullScreenMesh, 3), *noiseShader);
@@ -953,6 +1154,18 @@ void main()
 
             context.Draw(DrawMeshMode_Basic(*terrainMesh), *terrainShader,
                          DrawMeshMode_Indexed());
+
+            #pragma endregion
+
+            #pragma region Render skybox noise
+
+            updateShaderSNoise(*skyNoiseShader);
+
+            context.SetActiveTarget(skyNoiseTarget->GetGlPtr());
+            context.Draw(DrawMeshMode_Basic(*fullScreenMesh, 3), *skyNoiseShader);
+            context.SetActiveTarget(OglPtr::Target::Null());
+
+            skyTex->RecomputeMips();
 
             #pragma endregion
 
@@ -990,6 +1203,9 @@ void main()
             TRY_DELETE(skyCubeMesh);
             TRY_DELETE(skyShader);
             TRY_DELETE(skyTex);
+
+            TRY_DELETE(skyNoiseShader);
+            TRY_DELETE(skyNoiseTarget);
 
             #undef TRY_DELETE
         });
