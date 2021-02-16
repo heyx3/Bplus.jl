@@ -202,6 +202,7 @@ namespace Bplus::GL
 
         OglPtr::Target GetActiveTarget() const { return activeRT; }
         void SetActiveTarget(OglPtr::Target t);
+        void ClearActiveTarget(bool resetViewport = true, bool resetScissor = true);
 
         #pragma region Clear operations
 

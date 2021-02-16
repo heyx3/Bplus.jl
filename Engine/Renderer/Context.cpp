@@ -271,6 +271,20 @@ void Context::SetActiveTarget(OglPtr::Target t)
         activeRT = t;
     }
 }
+void Context::ClearActiveTarget(bool resetViewport, bool resetScissor)
+{
+    SetActiveTarget(OglPtr::Target::Null());
+    if (resetViewport)
+    {
+        int w, h;
+        SDL_GetWindowSize(owner, &w, &h);
+        SetViewport(w, h);
+    }
+    if (resetScissor)
+    {
+        DisableScissor();
+    }
+}
 
 void Context::ClearScreen(float r, float g, float b, float a)
 {

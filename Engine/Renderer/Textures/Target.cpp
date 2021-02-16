@@ -437,6 +437,16 @@ void Target::RecomputeSize()
     }
 }
 
+void Target::Activate(bool resetViewport, bool resetScissor) const
+{
+    auto& context = *Context::GetCurrentContext();
+    context.SetActiveTarget(GetGlPtr());
+    if (resetViewport)
+        context.SetViewport(0, 0, (int)GetSize().x, (int)GetSize().y);
+    if (resetScissor)
+        context.DisableScissor();
+}
+
 void Target::AttachTexture(GLenum attachment, const TargetOutput& output)
 {
     if (output.IsLayered() || output.IsFlat())

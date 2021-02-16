@@ -179,6 +179,9 @@ namespace Bplus::GL::Textures
         }
 
 
+        //Makes this the active Target, so that all future draw calls write into it.
+        void Activate(bool resetViewport = true, bool resetScissor = true) const;
+
         //Tells this Target which subset of its color attachments to use during drawing,
         //    and the order of those attachments.
         //The order of this list matches the order of fragment shader outputs.
