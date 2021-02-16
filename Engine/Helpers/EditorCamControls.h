@@ -32,7 +32,7 @@ namespace Bplus::Helpers
 
         glm::fvec3 Forward, Up;
 
-        glm::fvec3 GetRight() const { return glm::cross(Forward, Up); }
+        glm::fvec3 GetRight() const { return glm::normalize(glm::cross(Forward, Up)); }
         glm::quat GetRotation() const { return glm::quatLookAt(Forward, Up); }
         glm::fmat4 GetViewMat() const { return glm::lookAt(Position, Position + Forward, Up); }
 

@@ -21,11 +21,10 @@ void EditorCamControls::Update(float deltaT)
         
         Forward = glm::normalize(yawRot * Forward);
 
-        auto forwardPrePitch = Forward;
-        auto pitchRot = glm::angleAxis(speed * -InputCamYawPitch.y, GetRight());
-
         auto oldForward = Forward;
+        auto pitchRot = glm::angleAxis(speed * -InputCamYawPitch.y, GetRight());
         Forward = glm::normalize(pitchRot * Forward);
+
         switch (UpMode)
         {
             case CameraUpModes::Free:
@@ -35,9 +34,9 @@ void EditorCamControls::Update(float deltaT)
 
             case CameraUpModes::KeepUpright:
                 //Leave the Up alone, and prevent Forward from passing through it.
-                auto oldRight = glm::cross(forwardPrePitch, Up);
-                auto oldTrueForward = glm::cross(Up, oldRight);
-                auto newTrueForward = glm::cross(Up, GetRight());
+                auto oldRight = glm::normalize(glm::cross(oldForward, Up));
+                auto oldTrueForward = glm::normalize(glm::cross(Up, oldRight));
+                auto newTrueForward = glm::normalize(glm::cross(Up, GetRight()));
                 if (glm::dot(Forward, newTrueForward) < 0 ||
                     abs(glm::dot(Forward, Up)) < 0.001f)
                 {

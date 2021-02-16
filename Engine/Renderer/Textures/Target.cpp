@@ -299,11 +299,15 @@ Target::Target(TargetStates& outStatus,
                 (uint32_t)1))
 {
     //Set up the color attachments.
-    for (uint32_t i = 0; i < nColorOutputs; ++i)
+    std::vector<std::optional<uint_fast32_t>> colorAttachmentIndices;
+    for (uint_fast32_t i = 0; i < nColorOutputs; ++i)
     {
         AttachTexture((GLenum)(GL_COLOR_ATTACHMENT0 + i), colorOutputs[i]);
         tex_colors.push_back(colorOutputs[i]);
+        colorAttachmentIndices.push_back(i);
     }
+    //By default, make sure all attachments are used for rendering.
+    this->SetDrawBuffers(colorAttachmentIndices.data(), colorAttachmentIndices.size());
 
     //Set up the depth attachment.
     if (depthOutput.has_value())
