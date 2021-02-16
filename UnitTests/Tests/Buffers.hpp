@@ -5,7 +5,7 @@
 #define TEST_NO_MAIN
 #include <acutest.h>
 
-#include <B+/Renderer/Buffers/Buffer.h>
+#include <B+/GL/Buffers/Buffer.h>
 #include "../SimpleApp.hpp"
 
 #include <glm/gtx/string_cast.hpp>

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "IO.h"
-#include "Renderer/Context.h"
+#include "GL/Context.h"
 #include "Dear ImGui/ImGuiImplementations.h"
 
 //TODO: Detect when a graphics device reset has occurred and handle it gracefully: https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glGetGraphicsResetStatus.xhtml

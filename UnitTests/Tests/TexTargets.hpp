@@ -5,7 +5,7 @@
 #define TEST_NO_MAIN
 #include <acutest.h>
 
-#include <B+/Renderer/Textures/Target.h>
+#include <B+/GL/Textures/Target.h>
 #include "../SimpleApp.hpp"
 
 using namespace Bplus::GL::Textures;

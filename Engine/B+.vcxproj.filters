@@ -35,38 +35,14 @@
     <ClInclude Include="NativeFileDialog\nfd.h">
       <Filter>Native File Dialog</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\Context.h">
-      <Filter>Renderer</Filter>
-    </ClInclude>
     <ClInclude Include="Dear ImGui\ImGuiInterfaces.h">
       <Filter>Dear ImGui</Filter>
     </ClInclude>
     <ClInclude Include="TomlIO.h" />
-    <ClInclude Include="Renderer\Data.h">
-      <Filter>Renderer</Filter>
-    </ClInclude>
     <ClInclude Include="Dear ImGui\ImGuiAddons.h">
       <Filter>Dear ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Utils.h" />
-    <ClInclude Include="Renderer\Materials\CompiledShader.h">
-      <Filter>Renderer\Materials</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\Device.h">
-      <Filter>Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\Materials\Material_Basic.h">
-      <Filter>Renderer\Materials</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\Materials\MaterialData.h">
-      <Filter>Renderer\Materials</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\Textures\Texture.h">
-      <Filter>Renderer\Textures</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\Textures\Format.h">
-      <Filter>Renderer\Textures</Filter>
-    </ClInclude>
     <ClInclude Include="Math\Math.h">
       <Filter>Math</Filter>
     </ClInclude>
@@ -81,27 +57,6 @@
     </ClInclude>
     <ClInclude Include="Math\Shapes.hpp">
       <Filter>Math</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\Textures\Sampler.h">
-      <Filter>Renderer\Textures</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\Textures\TextureCube.h">
-      <Filter>Renderer\Textures</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\Textures\TextureD.hpp">
-      <Filter>Renderer\Textures</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\Textures\Target.h">
-      <Filter>Renderer\Textures</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\Textures\TargetBuffer.h">
-      <Filter>Renderer\Textures</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\Buffers\Map.h">
-      <Filter>Renderer\Buffers</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\Buffers\Buffer.h">
-      <Filter>Renderer\Buffers</Filter>
     </ClInclude>
     <ClInclude Include="Utils\Functions.h">
       <Filter>Utils</Filter>
@@ -121,18 +76,6 @@
     <ClInclude Include="Utils\Hashing.h">
       <Filter>Utils</Filter>
     </ClInclude>
-    <ClInclude Include="Renderer\Buffers\MeshData.h">
-      <Filter>Renderer\Buffers</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\Buffers\MeshVertexData.h">
-      <Filter>Renderer\Buffers</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\Textures\TexturesData.h">
-      <Filter>Renderer\Textures</Filter>
-    </ClInclude>
-    <ClInclude Include="Renderer\Materials\ShaderCompileJob.h">
-      <Filter>Renderer\Materials</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\Strings.h">
       <Filter>Utils</Filter>
     </ClInclude>
@@ -141,6 +84,57 @@
     </ClInclude>
     <ClInclude Include="Helpers\EditorCamControls.h">
       <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Data.h">
+      <Filter>GL</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Device.h">
+      <Filter>GL</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Context.h">
+      <Filter>GL</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Buffers\MeshData.h">
+      <Filter>GL\Buffers</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Buffers\MeshVertexData.h">
+      <Filter>GL\Buffers</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Buffers\Buffer.h">
+      <Filter>GL\Buffers</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Buffers\Map.h">
+      <Filter>GL\Buffers</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Materials\ShaderCompileJob.h">
+      <Filter>GL\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Materials\CompiledShader.h">
+      <Filter>GL\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Textures\Texture.h">
+      <Filter>GL\Textures</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Textures\TextureCube.h">
+      <Filter>GL\Textures</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Textures\TextureD.hpp">
+      <Filter>GL\Textures</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Textures\TexturesData.h">
+      <Filter>GL\Textures</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Textures\Format.h">
+      <Filter>GL\Textures</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Textures\Sampler.h">
+      <Filter>GL\Textures</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Textures\Target.h">
+      <Filter>GL\Textures</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Textures\TargetBuffer.h">
+      <Filter>GL\Textures</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -164,60 +158,12 @@
     <ClCompile Include="NativeFileDialog\nfd_win.cpp">
       <Filter>Native File Dialog</Filter>
     </ClCompile>
-    <ClCompile Include="Renderer\Context.cpp">
-      <Filter>Renderer</Filter>
-    </ClCompile>
     <ClCompile Include="Dear ImGui\ImGuiInterfaces.cpp">
       <Filter>Dear ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Renderer\Data.cpp">
-      <Filter>Renderer</Filter>
-    </ClCompile>
     <ClCompile Include="TomlIO.cpp" />
-    <ClCompile Include="Renderer\Materials\CompiledShader.cpp">
-      <Filter>Renderer\Materials</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\Device.cpp">
-      <Filter>Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\Materials\Material_Basic.cpp">
-      <Filter>Renderer\Materials</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\Materials\MaterialData.cpp">
-      <Filter>Renderer\Materials</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\Textures\Texture.cpp">
-      <Filter>Renderer\Textures</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\Textures\Format.cpp">
-      <Filter>Renderer\Textures</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\Textures\TextureCube.cpp">
-      <Filter>Renderer\Textures</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\Textures\Target.cpp">
-      <Filter>Renderer\Textures</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\Textures\TargetBuffer.cpp">
-      <Filter>Renderer\Textures</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\Buffers\Buffer.cpp">
-      <Filter>Renderer\Buffers</Filter>
-    </ClCompile>
     <ClCompile Include="Utils\BPAssert.cpp">
       <Filter>Utils</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\Buffers\MeshData.cpp">
-      <Filter>Renderer\Buffers</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\Buffers\MeshVertexData.cpp">
-      <Filter>Renderer\Buffers</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\Textures\TexturesData.cpp">
-      <Filter>Renderer\Textures</Filter>
-    </ClCompile>
-    <ClCompile Include="Renderer\Materials\ShaderCompileJob.cpp">
-      <Filter>Renderer\Materials</Filter>
     </ClCompile>
     <ClCompile Include="Utils\Strings.cpp">
       <Filter>Utils</Filter>
@@ -228,6 +174,48 @@
     <ClCompile Include="Helpers\EditorCamControls.cpp">
       <Filter>Helpers</Filter>
     </ClCompile>
+    <ClCompile Include="GL\Data.cpp">
+      <Filter>GL</Filter>
+    </ClCompile>
+    <ClCompile Include="GL\Device.cpp">
+      <Filter>GL</Filter>
+    </ClCompile>
+    <ClCompile Include="GL\Context.cpp">
+      <Filter>GL</Filter>
+    </ClCompile>
+    <ClCompile Include="GL\Buffers\MeshVertexData.cpp">
+      <Filter>GL\Buffers</Filter>
+    </ClCompile>
+    <ClCompile Include="GL\Buffers\Buffer.cpp">
+      <Filter>GL\Buffers</Filter>
+    </ClCompile>
+    <ClCompile Include="GL\Buffers\MeshData.cpp">
+      <Filter>GL\Buffers</Filter>
+    </ClCompile>
+    <ClCompile Include="GL\Materials\ShaderCompileJob.cpp">
+      <Filter>GL\Materials</Filter>
+    </ClCompile>
+    <ClCompile Include="GL\Materials\CompiledShader.cpp">
+      <Filter>GL\Materials</Filter>
+    </ClCompile>
+    <ClCompile Include="GL\Textures\TextureCube.cpp">
+      <Filter>GL\Textures</Filter>
+    </ClCompile>
+    <ClCompile Include="GL\Textures\TexturesData.cpp">
+      <Filter>GL\Textures</Filter>
+    </ClCompile>
+    <ClCompile Include="GL\Textures\Format.cpp">
+      <Filter>GL\Textures</Filter>
+    </ClCompile>
+    <ClCompile Include="GL\Textures\Target.cpp">
+      <Filter>GL\Textures</Filter>
+    </ClCompile>
+    <ClCompile Include="GL\Textures\TargetBuffer.cpp">
+      <Filter>GL\Textures</Filter>
+    </ClCompile>
+    <ClCompile Include="GL\Textures\Texture.cpp">
+      <Filter>GL\Textures</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Native File Dialog">
@@ -236,26 +224,26 @@
     <Filter Include="Dear ImGui">
       <UniqueIdentifier>{607face5-05a3-473f-b301-e4e6b0c85089}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Renderer">
-      <UniqueIdentifier>{40c8695a-51c8-4ce1-a153-54ac8002ad24}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Renderer\Textures">
-      <UniqueIdentifier>{01b36350-c27e-42ac-bc78-6c40259a208c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Renderer\Buffers">
-      <UniqueIdentifier>{03ee6afa-e9bc-44b3-9227-cfa1be60ae05}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Utils">
       <UniqueIdentifier>{d2c9364c-6669-43fd-9f8f-eb57f6b6c469}</UniqueIdentifier>
     </Filter>
     <Filter Include="Math">
       <UniqueIdentifier>{6f80ac6e-5965-493c-b49c-1bcb7cc51280}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Renderer\Materials">
-      <UniqueIdentifier>{1383e33b-f4af-4e68-ba5f-841a1bd915b8}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Helpers">
       <UniqueIdentifier>{92f39609-036b-40a6-aa48-a968d7477955}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GL">
+      <UniqueIdentifier>{40c8695a-51c8-4ce1-a153-54ac8002ad24}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GL\Textures">
+      <UniqueIdentifier>{01b36350-c27e-42ac-bc78-6c40259a208c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GL\Buffers">
+      <UniqueIdentifier>{03ee6afa-e9bc-44b3-9227-cfa1be60ae05}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GL\Materials">
+      <UniqueIdentifier>{1383e33b-f4af-4e68-ba5f-841a1bd915b8}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

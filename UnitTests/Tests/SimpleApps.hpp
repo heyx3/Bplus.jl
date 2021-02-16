@@ -8,9 +8,9 @@
 #include <glm/gtx/string_cast.hpp>
 
 #include <B+/RenderLibs.h>
-#include <B+/Renderer/Textures/Target.h>
-#include <B+/Renderer/Materials/CompiledShader.h>
-#include <B+/Renderer/Buffers/MeshData.h>
+#include <B+/GL/Textures/Target.h>
+#include <B+/GL/Materials/CompiledShader.h>
+#include <B+/GL/Buffers/MeshData.h>
 #include <B+/Helpers/EditorCamControls.h>
 
 #include "../SimpleApp.hpp"

@@ -5,7 +5,7 @@
 #define TEST_NO_MAIN
 #include <acutest.h>
 
-#include <B+/Renderer/Materials/CompiledShader.h>
+#include <B+/GL/Materials/CompiledShader.h>
 #include "../SimpleApp.hpp"
 
 using namespace Bplus;

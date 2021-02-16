@@ -2,9 +2,9 @@
 
 #include "ImGuiInterfaces.h"
 
-#include "../Renderer/Textures/TextureD.hpp"
-#include "../Renderer/Buffers/MeshData.h"
-#include "../Renderer/Materials/CompiledShader.h"
+#include "../GL/Textures/TextureD.hpp"
+#include "../GL/Buffers/MeshData.h"
+#include "../GL/Materials/CompiledShader.h"
 
 
 namespace Bplus

@@ -1,6 +1,6 @@
 #include "ImGuiImplementations.h"
 
-#include "../Renderer/Context.h"
+#include "../GL/Context.h"
 
 
 //This file is a custom rewrite of Dear ImGUI's built-in example SDL and OpenGL3 integrations.
