@@ -363,16 +363,16 @@ float terrainNoise(vec2 uv)
     
     #pragma region Sky noise
 
-    int sSkyNoiseOctaveCount = 7;
-    float sSkyNoiseScale = 5.875f,
-          sSkyNoisePersistence = 2.48120f;
+    int sSkyNoiseOctaveCount = 10;
+    float sSkyNoiseScale = 5.325f,
+          sSkyNoisePersistence = 3.441f;
     int sCloudNoiseOctaveCount = 7;
     float sCloudNoiseScale = 5.875f,
           sCloudNoisePersistence = 2.48120f;
     float sCloudSharpness = 1.0f;
-    glm::fvec3 skyColor1 = { 0.6f, 0.6f, 1.0f },
-               skyColor2 = { 0.5f, 0.7f, 1.0f },
-               cloudColor = { 1, 1, 1};
+    glm::fvec3 skyColor1 = { 0.152f, 0.152f, 1.0f },
+               skyColor2 = { 0.27f, 0.548f, 0.966f },
+               cloudColor = { 1, 1, 1 };
 
     auto doGuiSNoise = [&]() {
         ImGui::SliderInt("# Octaves", &sSkyNoiseOctaveCount, 1, 10);
@@ -398,9 +398,9 @@ float terrainNoise(vec2 uv)
             shader.SetUniform("u_SkyNoise.NOctaves", sSkyNoiseOctaveCount);
             shader.SetUniform("u_SkyNoise.Scale", sSkyNoiseScale);
             shader.SetUniform("u_SkyNoise.Persistence", sSkyNoisePersistence);
-            shader.SetUniform("u_CloudNoise.NOctaves", sSkyNoiseOctaveCount);
-            shader.SetUniform("u_CloudNoise.Scale", sSkyNoiseScale);
-            shader.SetUniform("u_CloudNoise.Persistence", sSkyNoisePersistence);
+            shader.SetUniform("u_CloudNoise.NOctaves", sCloudNoiseOctaveCount);
+            shader.SetUniform("u_CloudNoise.Scale", sCloudNoiseScale);
+            shader.SetUniform("u_CloudNoise.Persistence", sCloudNoisePersistence);
             shader.SetUniform("u_CloudSharpness", sCloudSharpness);
             shader.SetUniform("u_SkyColor1", skyColor1);
             shader.SetUniform("u_SkyColor2", skyColor2);
@@ -922,11 +922,11 @@ void main()
     p.mainAxis = mainPos; \
     p.horzAxis = mix(horzMin, horzMax, fIn_Pos.x); \
     p.vertAxis = mix(vertMin, vertMax, fIn_Pos.y); \
-    face = vec4(fIn_Pos, 0, 1)
+    face = vec4(getSkyColor(p), 1)
 
     COLOR_FACE(fOut_PosX,   x, 1,    z, 1, -1,   y, 1, -1);
     COLOR_FACE(fOut_NegX,   x, -1,   z, -1, 1,   y, 1, -1);
-    COLOR_FACE(fOut_PosY,   y, 1,    x, 1, -1,   z, -1, 1);
+    COLOR_FACE(fOut_PosY,   y, 1,    x, -1, 1,   z, -1, 1);
     COLOR_FACE(fOut_NegY,   y, -1,   x, -1, 1,   z, 1, -1);
     COLOR_FACE(fOut_PosZ,   z, 1,    x, -1, 1,   y, 1, -1);
     COLOR_FACE(fOut_NegZ,   z, -1,   x, 1, -1,   y, 1, -1);
@@ -972,9 +972,9 @@ void main()
             const uint_fast32_t cubeFaceResolution = 256;
             auto cubeFaceTexel = 1.0f / glm::fvec2(cubeFaceResolution);
             skyTex = new TextureCube(cubeFaceResolution,
-                                     SimpleFormat(FormatTypes::NormalizedUInt,
+                                     SimpleFormat(FormatTypes::Float,
                                                   SimpleFormatComponents::RGB,
-                                                  SimpleFormatBitDepths::B10));
+                                                  SimpleFormatBitDepths::B32));
 
             //Generate the data.
             {
@@ -1122,22 +1122,36 @@ void main()
         //Render:
         [&](float deltaT) {
             auto& context = *Context::GetCurrentContext();
+            glm::ivec2 windowSize;
+            SDL_GetWindowSize(Simple::App->MainWindow, &windowSize.x, &windowSize.y);
             
-            auto skyColor = glm::mix(glm::fvec3(1, 1, 1),
-                                     glm::fvec3(0.5f, 0.5f, 1),
-                                     0.5 + (0.5 * sin(elapsedTime)));
-            context.ClearScreen(glm::fvec4(skyColor, 0.0f));
+            //Draw into Targets:
 
             #pragma region Update heightmap
 
             updateShaderTNoise(*noiseShader);
 
-            context.SetActiveTarget(heightmapTarget->GetGlPtr());
+            heightmapTarget->Activate();
             context.Draw(DrawMeshMode_Basic(*fullScreenMesh, 3), *noiseShader);
-            context.SetActiveTarget(OglPtr::Target::Null());
-            
+
             #pragma endregion
 
+            #pragma region Render skybox noise
+
+            updateShaderSNoise(*skyNoiseShader);
+
+            skyNoiseTarget->Activate();
+            context.Draw(DrawMeshMode_Basic(*fullScreenMesh, 3), *skyNoiseShader);
+            context.ClearActiveTarget();
+
+            skyTex->RecomputeMips();
+
+            #pragma endregion
+
+
+            //Now draw the world:
+
+            context.ClearActiveTarget();
             auto viewProjMatrix = getProjectionMatrix() * camera.GetViewMat();
 
             #pragma region Draw terrain
@@ -1154,18 +1168,6 @@ void main()
 
             context.Draw(DrawMeshMode_Basic(*terrainMesh), *terrainShader,
                          DrawMeshMode_Indexed());
-
-            #pragma endregion
-
-            #pragma region Render skybox noise
-
-            updateShaderSNoise(*skyNoiseShader);
-
-            context.SetActiveTarget(skyNoiseTarget->GetGlPtr());
-            context.Draw(DrawMeshMode_Basic(*fullScreenMesh, 3), *skyNoiseShader);
-            context.SetActiveTarget(OglPtr::Target::Null());
-
-            skyTex->RecomputeMips();
 
             #pragma endregion
 
