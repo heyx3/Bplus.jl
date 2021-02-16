@@ -210,7 +210,7 @@ void main()
         });
 }
 
-void ProcTerrainApp()
+void AdvancedTexturesApp()
 {
     using namespace Bplus::Helpers;
     using namespace Bplus::GL;
@@ -220,12 +220,16 @@ void ProcTerrainApp()
     
     Buffer *terrainUVs = nullptr,
            *terrainIndices = nullptr,
-           *fullScreenTri = nullptr;
+           *fullScreenTri = nullptr,
+           *skyCubePoses = nullptr;
     MeshData *terrainMesh = nullptr,
-             *fullScreenMesh = nullptr;
+             *fullScreenMesh = nullptr,
+             *skyCubeMesh = nullptr;
     CompiledShader *noiseShader = nullptr,
-                   *terrainShader = nullptr;
+                   *terrainShader = nullptr,
+                   *skyShader = nullptr;
     Target* heightmapTarget = nullptr;
+    TextureCube* skyTex = nullptr;
 
     float elapsedTime = 0;
 
@@ -271,9 +275,9 @@ vec3 calcLighting(vec3 surfaceNormal) {
 
     #pragma region Terrain noise
 
-    int noiseOctaveCount = 1;
-    float noiseScale = 2.0f,
-          noisePersistence = 2;
+    int noiseOctaveCount = 7;
+    float noiseScale = 5.875f,
+          noisePersistence = 2.48120f;
     bool noiseRidged = false;
 
 
@@ -429,12 +433,13 @@ vec3 getTerrainColor(vec2 uv, vec3 worldNormal, float height) {
         ImGui::SliderFloat("Field of View", &camVerticalFOV, 0.00001f, 179.99f);
     };
 
-    auto getProjectionMatrix = [&camVerticalFOV, &terrainHorzSize]() {
+    auto getFarClipPlane = [&terrainHorzSize]() { return terrainHorzSize * 2; };
+    auto getProjectionMatrix = [&camVerticalFOV, &terrainHorzSize, &getFarClipPlane]() {
         glm::ivec2 windowSize;
         SDL_GetWindowSize(Simple::App->MainWindow, &windowSize.x, &windowSize.y);
         return glm::perspective(camVerticalFOV,
                                 (float)windowSize.x / windowSize.y,
-                                0.1f, terrainHorzSize * 2);
+                                0.1f, getFarClipPlane());
     };
 
     #pragma endregion
@@ -446,7 +451,7 @@ vec3 getTerrainColor(vec2 uv, vec3 worldNormal, float height) {
             TEST_CASE("Creating the terrain data");
             #pragma region Create terrain data
 
-            const uint_fast32_t terrainResolution = 128;
+            const uint_fast32_t terrainResolution = 512;
             using TerrainIdx = glm::u32;
 
             //Vertices:
@@ -506,11 +511,81 @@ vec3 getTerrainColor(vec2 uv, vec3 worldNormal, float height) {
 
             #pragma endregion
 
+            TEST_CASE("Creating the sky-box mesh");
+            #pragma region Create sky-box mesh
+
+            {
+                std::array skyCubeVertices = {
+                    //+X
+                    glm::fvec3(1, -1, -1),
+                    glm::fvec3(1, 1, -1),
+                    glm::fvec3(1, -1, 1),
+                    //
+                    glm::fvec3(1, 1, -1),
+                    glm::fvec3(1, -1, 1),
+                    glm::fvec3(1, 1, 1),
+
+                    //-X
+                    glm::fvec3(-1, -1, -1),
+                    glm::fvec3(-1, 1, -1),
+                    glm::fvec3(-1, -1, 1),
+                    //
+                    glm::fvec3(-1, 1, -1),
+                    glm::fvec3(-1, -1, 1),
+                    glm::fvec3(-1, 1, 1),
+
+                    //+Y
+                    glm::fvec3(-1, 1, -1),
+                    glm::fvec3(1, 1, -1),
+                    glm::fvec3(-1, 1, 1),
+                    //
+                    glm::fvec3(1, 1, -1),
+                    glm::fvec3(-1, 1, 1),
+                    glm::fvec3(1, 1, 1),
+
+                    //-Y
+                    glm::fvec3(-1, -1, -1),
+                    glm::fvec3(1, -1, -1),
+                    glm::fvec3(-1, -1, 1),
+                    //
+                    glm::fvec3(1, -1, -1),
+                    glm::fvec3(-1, -1, 1),
+                    glm::fvec3(1, -1, 1),
+
+                    //+Z
+                    glm::fvec3(-1, -1, 1),
+                    glm::fvec3(1, -1, 1),
+                    glm::fvec3(-1, 1, 1),
+                    //
+                    glm::fvec3(1, -1, 1),
+                    glm::fvec3(-1, 1, 1),
+                    glm::fvec3(1, 1, 1),
+
+                    //-Z
+                    glm::fvec3(-1, -1, -1),
+                    glm::fvec3(1, -1, -1),
+                    glm::fvec3(-1, 1, -1),
+                    //
+                    glm::fvec3(1, -1, -1),
+                    glm::fvec3(-1, 1, -1),
+                    glm::fvec3(1, 1, -1)
+                };
+                skyCubePoses = new Buffer(skyCubeVertices.size(), false, skyCubeVertices.data());
+            }
+            skyCubeMesh = new MeshData(PrimitiveTypes::Triangle,
+                                       { MeshDataSource(skyCubePoses, sizeof(glm::fvec3)) },
+                                       { VertexDataField(0, 0, MeshVertices::Type::FVector<3>()) });
+
+            #pragma endregion
+
+
             OglPtr::ShaderProgram shaderPtr;
             ShaderCompileJob compiler;
 
             TEST_CASE("Compiling the noise shader");
             #pragma region Noise shader
+
+            compiler.GeometrySrc = "";
 
             compiler.VertexSrc = std::string(R"(#line 1 0
 layout (location = 0) in vec2 vIn_Pos;
@@ -546,16 +621,18 @@ void main()
                 return;
             }
 
-            RenderState shaderRenderState;
-            shaderRenderState.CullMode = FaceCullModes::Off;
-            shaderRenderState.DepthTest = ValueTests::Off;
-            shaderRenderState.EnableDepthWrite = false;
-            noiseShader = new CompiledShader(shaderRenderState, shaderPtr, noiseShaderParams);
+            RenderState noiseRenderState;
+            noiseRenderState.CullMode = FaceCullModes::Off;
+            noiseRenderState.DepthTest = ValueTests::Off;
+            noiseRenderState.EnableDepthWrite = false;
+            noiseShader = new CompiledShader(noiseRenderState, shaderPtr, noiseShaderParams);
 
             #pragma endregion
 
             TEST_CASE("Compiling the terrain shader");
             #pragma region Terrain shader
+
+            compiler.GeometrySrc = "";
 
             compiler.VertexSrc = std::string(R"(#line 1 0
 layout (location = 0) in vec2 vIn_UV;
@@ -573,8 +650,6 @@ void main()
     
     gl_Position = u_ViewProjMatrix * vec4(worldPos, 1);
     vOut_UV = vIn_UV;
-
-    //gl_Position = vec4(vIn_UV, heightmap, 1);
 })";
 
             compiler.FragmentSrc = std::string(R"(#line 1 0
@@ -594,11 +669,11 @@ void main()
           heightMaxX = textureLod(u_Heightmap, fIn_UV + texel.xz, 0).r,
           heightMinY = textureLod(u_Heightmap, fIn_UV - texel.zy, 0).r,
           heightMaxY = textureLod(u_Heightmap, fIn_UV + texel.zy, 0).r;
-    vec3 vNormal = vec3((heightMaxX - heightMinX) / 2,
-                        (heightMaxY - heightMinY) / 2,
-                        2.0);
-    vNormal.xy *= u_TerrainLength;
-    vNormal.z *= u_TerrainHeight;
+    vec3 vNormal = vec3((heightMaxX - heightMinX),
+                        (heightMaxY - heightMinY),
+                        4.0);
+    vNormal.xy /= u_TerrainLength * texel.xy;
+    vNormal.z /= u_TerrainHeight;
     vNormal = normalize(vNormal);
 
     //Calculate the surface color.
@@ -617,15 +692,68 @@ void main()
                 return;
             }
 
-            shaderRenderState = RenderState();
-            //DEBUG:
-            //shaderRenderState.DepthTest = ValueTests::Off;
-            //shaderRenderState.CullMode = FaceCullModes::Off;
+            RenderState terrainRenderState;
             auto terrainShaderParams = Bplus::Concatenate<std::string>(sunShaderParams,
                                                                        terrainColorParams,
                                                                        terrainTransformParams,
                                                                        std::vector{ "u_Heightmap", "u_ViewProjMatrix" });
-            terrainShader = new CompiledShader(shaderRenderState, shaderPtr, terrainShaderParams);
+            terrainShader = new CompiledShader(terrainRenderState, shaderPtr, terrainShaderParams);
+
+            #pragma endregion
+
+            TEST_CASE("Compiling the sky shader");
+            #pragma region Sky shader
+
+            compiler.GeometrySrc = "";
+
+            compiler.VertexSrc = R"(#line 1 0
+layout (location = 0) in vec3 vIn_Pos;
+layout (location = 0) out vec3 vOut_CubeUV;
+
+uniform mat4 u_ViewProjMatrix;
+uniform vec3 u_CamPos;
+uniform float u_Length;
+
+void main()
+{
+    vec3 worldPos = u_CamPos + (vIn_Pos * u_Length);
+    
+    vOut_CubeUV = vIn_Pos;
+    gl_Position = u_ViewProjMatrix * vec4(worldPos, 1);
+
+    //Don't allow the cube to escape the camera's far plane
+    //    by capping its depth at 1.
+    gl_Position.z = min(gl_Position.z, gl_Position.w);
+})";
+
+            compiler.FragmentSrc = R"(#line 1 0
+layout (location = 0) in vec3 fIn_CubeUV;
+layout (location = 0) out vec4 fOut_Color;
+
+layout(bindless_sampler) uniform samplerCube u_Skybox;
+
+void main()
+{
+    fOut_Color.rgb = texture(u_Skybox, fIn_CubeUV).rgb;
+    fOut_Color.a = 1;
+})";
+
+            compiler.PreProcessIncludes();
+            std::tie(compileError, dummyBool) = compiler.Compile(shaderPtr);
+
+            TEST_CHECK_(!shaderPtr.IsNull(), "Skybox shader failed to compile:\n\t%s", compileError.c_str());
+            if (shaderPtr.IsNull())
+            {
+                Simple::App->Quit(true);
+                return;
+            }
+
+            RenderState skyboxRenderState;
+            skyboxRenderState.EnableDepthWrite = false;
+            skyboxRenderState.CullMode = FaceCullModes::Off;
+            std::vector<std::string> skyboxShaderParams = { "u_ViewProjMatrix", "u_CamPos",
+                                                            "u_Length", "u_Skybox" };
+            skyShader = new CompiledShader(skyboxRenderState, shaderPtr, skyboxShaderParams);
 
             #pragma endregion
 
@@ -645,6 +773,54 @@ void main()
 
             #pragma endregion
 
+            TEST_CASE("Creating the sky texture");
+            #pragma region Sky Texture
+
+            //TODO: Make a tool for assembling sky-boxes with a shader.
+            
+            auto getSkyColor = [](glm::fvec3 viewDir) {
+                viewDir = glm::normalize(viewDir);
+                float cloudNoise = 0.5f + (0.5f * glm::perlin(viewDir * 10.0f)),
+                        skyNoise = 0.5f + (0.5f * glm::perlin(viewDir * 20.0f + 3.624f));
+
+                const glm::fvec3 skyColor1(0.5f, 0.5f, 1.0f),
+                                 skyColor2(0.25f, 0.85f, 1.0f),
+                                 cloudColor(1.0f, 1.0f, 1.0f);
+                const float cloudStrength = 0.4f;
+
+                auto skyColor = glm::mix(skyColor1, skyColor2, skyNoise);
+
+                return glm::mix(cloudColor, skyColor,
+                                powf(cloudNoise, cloudStrength));
+            };
+
+            const uint_fast32_t cubeFaceResolution = 128;
+            auto cubeFaceTexel = 1.0f / glm::fvec2(cubeFaceResolution);
+            skyTex = new TextureCube(cubeFaceResolution,
+                                     SimpleFormat(FormatTypes::NormalizedUInt,
+                                                  SimpleFormatComponents::RGB,
+                                                  SimpleFormatBitDepths::B10));
+
+            //Generate the data.
+            {
+
+                const auto cubeFaceOrientations = GetFacesOrientation();
+                std::vector<glm::fvec3> cubePixels;
+                cubePixels.reserve(cubeFaceOrientations.size() *
+                                       sizeof(glm::fvec3) *
+                                       (cubeFaceResolution * cubeFaceResolution));
+                for (const auto& face : cubeFaceOrientations)
+                    for (uint_fast32_t y = 0; y < cubeFaceResolution; ++y)
+                        for (uint_fast32_t x = 0; x < cubeFaceResolution; ++x)
+                        {
+                            auto uv = (glm::fvec2(x, y) + 0.5f) * cubeFaceTexel;
+                            cubePixels.push_back(getSkyColor(face.GetDir(uv)));
+                        }
+                skyTex->Set_Color(cubePixels.data());
+            }
+
+            #pragma endregion
+
             TEST_CASE("Running the ProcTerrain app loop");
         },
 
@@ -659,6 +835,15 @@ void main()
             ImGui::PushID("SUN");
             ImGui::Indent();
             doGuiSun();
+            ImGui::Unindent();
+            ImGui::Dummy({ 1, 10 });
+            ImGui::PopID();
+
+            ImGui::Text("CAMERA");
+            ImGui::PushID("CAMERA");
+            ImGui::Indent();
+            ImGui::DragFloat("FoV (vertical)", &camVerticalFOV);
+            ImGui::DragFloat("Speed", &camera.MoveSpeed);
             ImGui::Unindent();
             ImGui::Dummy({ 1, 10 });
             ImGui::PopID();
@@ -716,6 +901,9 @@ void main()
 
             #pragma endregion
             
+            ImGui::LabelText("Camera Pos",
+                             "%f,  %f,  %f",
+                             camera.Position.x, camera.Position.y, camera.Position.z);
             ImGui::LabelText("Camera Forward",
                              "%f,  %f,  %f",
                              camera.Forward.x, camera.Forward.y, camera.Forward.z);
@@ -749,6 +937,8 @@ void main()
             
             #pragma endregion
 
+            auto viewProjMatrix = getProjectionMatrix() * camera.GetViewMat();
+
             #pragma region Draw terrain
 
             updateShaderSun(*terrainShader);
@@ -759,10 +949,21 @@ void main()
             auto heightmapView = heightmapTarget->GetOutput_Color()->GetTex2D()->GetView(heightmapSampler);
             terrainShader->SetUniform("u_Heightmap", heightmapView);
 
-            terrainShader->SetUniform("u_ViewProjMatrix", getProjectionMatrix() * camera.GetViewMat());
+            terrainShader->SetUniform("u_ViewProjMatrix", viewProjMatrix);
 
             context.Draw(DrawMeshMode_Basic(*terrainMesh), *terrainShader,
                          DrawMeshMode_Indexed());
+
+            #pragma endregion
+
+            #pragma region Draw skybox
+
+            skyShader->SetUniform("u_ViewProjMatrix", viewProjMatrix);
+            skyShader->SetUniform("u_CamPos", camera.Position);
+            skyShader->SetUniform("u_Length", getFarClipPlane());
+            skyShader->SetUniform("u_Skybox", skyTex->GetView());
+
+            context.Draw(DrawMeshMode_Basic(*skyCubeMesh, 2 * 3 * 6), *skyShader);
 
             #pragma endregion
         },
@@ -775,14 +976,21 @@ void main()
                     x = nullptr; \
                 }
             
-            TRY_DELETE(terrainUVs);
-            TRY_DELETE(terrainIndices);
             TRY_DELETE(fullScreenTri);
             TRY_DELETE(fullScreenMesh);
-            TRY_DELETE(terrainMesh);
             TRY_DELETE(noiseShader);
-            TRY_DELETE(terrainShader);
             TRY_DELETE(heightmapTarget);
+
+            TRY_DELETE(terrainUVs);
+            TRY_DELETE(terrainIndices);
+            TRY_DELETE(terrainMesh);
+            TRY_DELETE(terrainShader);
+
+            TRY_DELETE(skyCubePoses);
+            TRY_DELETE(skyCubeMesh);
+            TRY_DELETE(skyShader);
+            TRY_DELETE(skyTex);
+
             #undef TRY_DELETE
         });
 }

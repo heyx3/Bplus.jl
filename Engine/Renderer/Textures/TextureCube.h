@@ -5,7 +5,7 @@
 namespace Bplus::GL::Textures
 {
     //The six faces of a cube, defined to match the OpenGL cubemap texture faces.
-    //Note that they are ordered in the same way that OpenGL orders them.
+    //Note that they are ordered in the same way that OpenGL orders them in memory.
     BETTER_ENUM(CubeFaces, GLenum,
         PosX = GL_TEXTURE_CUBE_MAP_POSITIVE_X,
         NegX = GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
@@ -151,6 +151,49 @@ namespace Bplus::GL::Textures
             return range;
         }
     };
+
+    #pragma endregion
+
+    #pragma region Cube face orientation data
+
+    //Defines, for each face of a cube-map texture, how it is oriented in 3D space.
+    //The faces are ordered in their GPU memory order.
+    struct CubeFaceOrientation
+    {
+        CubeFaces Face;
+        //The 'Min Corner' maps the first pixel of the 2D texture face
+        //    to its 3D corner in the cube-map (from -1 to +1).
+        //The 'Max Corner' does the same for the last pixel.
+        glm::i8vec3 MinCorner, MaxCorner;
+        //These values describe the 3D axis for each of the texture face's axes.
+        //0=X, 1=Y, 2=Z
+        glm::u8 HorzAxis, VertAxis;
+
+        //Converts a UV coordinate on this face to a 3D cubemap vector.
+        glm::fvec3 GetDir(glm::fvec2 uv) const
+        {
+            glm::fvec3 dir3D(MinCorner);
+            dir3D[HorzAxis] = glm::mix((float)MinCorner[HorzAxis],
+                                       (float)MaxCorner[HorzAxis],
+                                       uv.x);
+            dir3D[VertAxis] = glm::mix((float)MinCorner[VertAxis],
+                                       (float)MaxCorner[VertAxis],
+                                       uv.y);
+            return dir3D;
+        }
+    };
+    //Gets the memory layout for each face of a cubemap texture.
+    inline std::array<CubeFaceOrientation, 6> GetFacesOrientation()
+    {
+        return std::array{
+            CubeFaceOrientation{CubeFaces::PosX, { 1, 1, 1 }, { 1, -1, -1 }, 2, 1 },
+            CubeFaceOrientation{CubeFaces::NegX, { -1, 1, -1 }, { -1, -1, 1 }, 2, 1 },
+            CubeFaceOrientation{CubeFaces::PosY, { -1, 1, -1 }, { 1, 1, 1 }, 0, 2 },
+            CubeFaceOrientation{CubeFaces::NegY, { -1, -1, 1 }, { 1, -1, -1 }, 0, 2 },
+            CubeFaceOrientation{CubeFaces::PosZ, { -1, 1, 1 }, { 1, -1, 1 }, 0, 1 },
+            CubeFaceOrientation{CubeFaces::NegZ, { 1, 1, -1 }, { -1, -1, -1 }, 0, 1 },
+        };
+    }
 
     #pragma endregion
 

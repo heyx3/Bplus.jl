@@ -30,9 +30,7 @@ DrawMeshMode_Basic::DrawMeshMode_Basic(const Buffers::MeshData& mesh,
         }
         else
         {
-            BPAssert(false,
-                     "Can't deduce the Count from a non-indexed MeshData automatically!\
- This can be done, but it's complicated when per-instance data is involved so I didn't bother.");
+            BPAssert(false, "Can't deduce the Count from a non-indexed MeshData automatically!");
         }
     }
 
