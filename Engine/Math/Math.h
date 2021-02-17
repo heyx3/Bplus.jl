@@ -3,6 +3,8 @@
 #include <array>
 #include <algorithm>
 
+#include <glm/glm.hpp>
+
 namespace Bplus::Math
 {
     //Not actually defined in the standard...
@@ -47,4 +49,8 @@ namespace Bplus::Math
         using std::log10;
         return log10(x) / log10(base);
     }
+
+    //For some reason, this isn't clearly exposed in GLM's interface.
+    template<typename T, enum glm::qualifier Q = glm::packed_highp>
+    glm::qua<T, Q> RotIdentity() { return glm::qua<T, Q>(1, 0, 0, 0); }
 }
