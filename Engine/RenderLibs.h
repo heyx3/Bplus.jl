@@ -1,7 +1,14 @@
 #pragma once
 
-//Os/platform defines.
+//TODO: Rename to "Dependencies.h"
+
+//Basic B+ platform/macro stuff:
 #include "Platform.h"
+#include "Utils/BPAssert.h"
+
+
+//SmallVector class.
+#include <llvm/SmallVector.hpp>
 
 //Dear ImGUI.
 #include "Dear ImGui\ImGuiInterfaces.h"
@@ -19,6 +26,10 @@
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 #include <glm/matrix.hpp>
+
+//EnTT, the Entity-Component System.
+#define ENTT_ASSERT(condition) BPAssert(condition, "[internal EnTT assert]")
+#include <entt.hpp>
 
 //DevIL, the image loading/saving library.
 #include <DevIL/il.h>
