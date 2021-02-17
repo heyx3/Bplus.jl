@@ -136,6 +136,12 @@
     <ClInclude Include="GL\Textures\TargetBuffer.h">
       <Filter>GL\Textures</Filter>
     </ClInclude>
+    <ClInclude Include="ST\DataTypes.h">
+      <Filter>ST</Filter>
+    </ClInclude>
+    <ClInclude Include="ST\NodeTransform.h">
+      <Filter>ST</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
@@ -216,6 +222,9 @@
     <ClCompile Include="GL\Textures\Texture.cpp">
       <Filter>GL\Textures</Filter>
     </ClCompile>
+    <ClCompile Include="ST\NodeTransform.cpp">
+      <Filter>ST</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Native File Dialog">
@@ -244,6 +253,9 @@
     </Filter>
     <Filter Include="GL\Materials">
       <UniqueIdentifier>{1383e33b-f4af-4e68-ba5f-841a1bd915b8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ST">
+      <UniqueIdentifier>{251c1afe-5580-482e-83b7-a6bf08415e0c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

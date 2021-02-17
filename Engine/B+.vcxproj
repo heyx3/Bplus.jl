@@ -390,6 +390,7 @@ exit 0</Command>
     <ClCompile Include="IO.cpp" />
     <ClCompile Include="NativeFileDialog\nfd_common.c" />
     <ClCompile Include="NativeFileDialog\nfd_win.cpp" />
+    <ClCompile Include="ST\NodeTransform.cpp" />
     <ClCompile Include="TomlIO.cpp" />
     <ClCompile Include="Utils\BPAssert.cpp" />
     <ClCompile Include="Utils\Strings.cpp" />
@@ -435,6 +436,8 @@ exit 0</Command>
     <ClInclude Include="Platform.h" />
     <ClInclude Include="RenderLibs.h" />
     <ClInclude Include="IO.h" />
+    <ClInclude Include="ST\DataTypes.h" />
+    <ClInclude Include="ST\NodeTransform.h" />
     <ClInclude Include="TomlIO.h" />
     <ClInclude Include="Utils.h" />
     <ClInclude Include="Utils\Bool.h" />
