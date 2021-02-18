@@ -15,7 +15,7 @@
 #ifndef LLVM_SUPPORT_COMPILER_H
 #define LLVM_SUPPORT_COMPILER_H
 
-#include "llvm/Config/llvm-config.h"
+//#include "llvm/Config/llvm-config.h"
 
 #ifdef __cplusplus
 #include <new>

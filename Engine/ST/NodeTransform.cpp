@@ -22,7 +22,7 @@ const glm::fmat4& NodeTransform::GetLocalMatrix() const
     {
         cachedLocalMatrix = glm::mat4(1);
         cachedLocalMatrix = glm::translate(*cachedLocalMatrix, localPos);
-        cachedLocalMatrix = *cachedLocalMatrix * glm::mat4_cast(localRot);
+        cachedLocalMatrix = Math::ApplyTransform(glm::mat4_cast(localRot), *cachedLocalMatrix);
         cachedLocalMatrix = glm::scale(*cachedLocalMatrix, localScale);
     }
 
@@ -72,11 +72,6 @@ bool NodeTransform::SetLocalMatrix(const glm::fmat4& newMat)
 }
 
 
-glm::fvec3 NodeTransform::GetWorldPos() const
-{
-    glm::fvec4 pos4 = GetWorldMatrix() * glm::fvec4(GetLocalPos(), 1);
-    return glm::fvec3(pos4.x, pos4.y, pos4.z) / pos4.w;
-}
 const glm::fquat& NodeTransform::GetWorldRot() const
 {
     //Update the cache if needed.
@@ -84,6 +79,8 @@ const glm::fquat& NodeTransform::GetWorldRot() const
     {
         cachedWorldRot = localRot;
         if (parent.has_value())
+            //Note: this is less readable than I'd like, but I think it's the highest-performance version,
+            //    writing directly into the original value.
             *cachedWorldRot *= world.get<NodeTransform>(*parent).GetWorldRot();
     }
 
@@ -96,14 +93,99 @@ const glm::fmat4& NodeTransform::GetWorldMatrix() const
     {
         cachedWorldMatrix = GetLocalMatrix();
         if (parent.has_value())
+            //Note: this is less readable than I'd like, but I think it's the highest-performance version,
+            //    writing directly into the original value.
             *cachedWorldMatrix *= world.get<NodeTransform>(*parent).GetWorldMatrix();
+
+        cachedWorldInverseMatrix = glm::inverse(*cachedWorldMatrix);
     }
+
+    return *cachedWorldMatrix;
+}
+const glm::fmat4& NodeTransform::GetWorldInverseMatrix() const
+{
+    //Make sure the cached value is up-to-date first.
+    GetWorldMatrix();
+
+    return cachedWorldInverseMatrix;
 }
 
-//TODO: SetWorldX()
+void NodeTransform::SetParent(NodeID myID, std::optional<NodeID> newParentID,
+                              Spaces preserve) 
+{
+    //Error-checking and edge cases:
+    BPAssert(&world.get<NodeTransform>(myID) == this,
+             "Passed the wrong ID for 'myID' in NodeTransform::SetParent()");
+    if (parent == newParentID)
+        return;
+
+    //Get the parents so we can let them know about the change.
+    NodeTransform* currentParent = parent.has_value() ? world.try_get<NodeTransform>(*parent) :
+                                                        nullptr;
+    NodeTransform* newParent = newParentID.has_value() ? world.try_get<NodeTransform>(*parent) :
+                                                         nullptr;
+     
+    //Update this node's "NodeRoot" component.
+    if (newParentID.has_value())
+        world.remove_if_exists<NodeRoot>(myID);
+    else
+        world.get_or_emplace<NodeRoot>(myID);
+
+    //Update the parents.
+    if (parent.has_value())
+    {
+        auto& oldSiblings = currentParent->children;
+        auto found = std::find(oldSiblings.begin(), oldSiblings.end(), myID);
+        BPAssert(found != oldSiblings.end(), "Can't find myself in my parent's child list?");
+        oldSiblings.erase(found);
+    }
+    if (newParentID.has_value())
+    {
+        auto& newSiblings = newParent->children;
+        BPAssert(std::find(newSiblings.begin(), newSiblings.end(), myID) == newSiblings.end(),
+                 "Somehow I already existed in the new parent's child list?");
+
+        newSiblings.push_back(myID);
+    }
+
+    //Handle transform data and update the parent field:
+    switch (preserve)
+    {
+        case Spaces::Local:
+            //Leave local position alone, but world position will change.
+            parent = newParentID;
+            InvalidateWorldMatrix(true);
+        break;
+
+        case Spaces::World:
+            //The local position, rotation, and scale will change,
+            //    but the world transform should stay the same,
+            //    which means the cached world transform (and child nodes' caches)
+            //    stays the same.
+
+            auto worldMatrix = GetWorldMatrix(),
+                 inverseWorldMatrix = GetWorldInverseMatrix();
+            cachedLocalMatrix = Math::ApplyTransform(worldMatrix, inverseWorldMatrix);
+
+            glm::fvec3 newSkew;
+            glm::fvec4 newPerspective;
+            bool success = glm::decompose(*cachedLocalMatrix, localScale, localRot, localPos, newSkew, newPerspective);
+            
+            parent = newParentID;
+
+            BPAssert(success, "Failed to recalculate local matrix on NodeTransform::SetParent()");
+        break;
 
 
-//TODO: SetParent()
+        default:
+            parent = newParentID;
+
+            std::string errMsg = "Unknown space mode ";
+            errMsg += preserve._to_string();
+            BPAssert(false, errMsg.c_str());
+        break;
+    }
+}
 
 void NodeTransform::InvalidateWorldMatrix(bool includeRot) const
 {

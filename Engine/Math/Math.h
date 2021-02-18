@@ -50,7 +50,30 @@ namespace Bplus::Math
         return log10(x) / log10(base);
     }
 
+
+    //GLM helpers:
+
     //For some reason, this isn't clearly exposed in GLM's interface.
     template<typename T, enum glm::qualifier Q = glm::packed_highp>
     glm::qua<T, Q> RotIdentity() { return glm::qua<T, Q>(1, 0, 0, 0); }
+
+    //Applies two transforms (matrices or quaternions) in the given order.
+    template<typename glm_t>
+    glm_t ApplyTransform(glm_t firstTransform, glm_t secondTransform)
+    {
+        return secondTransform * firstTransform;
+    }
+
+    template<typename T, enum glm::qualifier Q = glm::packed_highp>
+    glm::vec<3, T, Q> ApplyToPoint(const glm::mat<4, 4, T, Q>& mat, const glm::vec<3, T, Q>& point)
+    {
+        auto point4 = mat * glm::vec<4, T, Q>(point, 1);
+        return glm::vec<3, T, Q>(point4.x, point4.y, point4.z) / point4.w;
+    }
+    template<typename T, enum glm::qualifier Q = glm::packed_highp>
+    glm::vec<3, T, Q> ApplyToVector(const glm::mat<4, 4, T, Q>& mat, const glm::vec<3, T, Q>& point)
+    {
+        auto point4 = mat * glm::vec<4, T, Q>(point, 0);
+        return glm::vec<3, T, Q>(point4.x, point4.y, point4.z);
+    }
 }
