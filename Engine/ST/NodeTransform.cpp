@@ -6,13 +6,13 @@
 using namespace Bplus::ST;
 
 
-NodeTransform::NodeTransform(ECS& world,
+NodeTransform::NodeTransform(Scene& _world,
                              glm::fvec3 localPos, glm::fquat localRot, glm::fvec3 localScale,
-                             std::optional<NodeID> parent)
+                             NodeID desiredParent)
     : localPos(localPos), localRot(localRot), localScale(localScale),
-      world(world), parent(parent)
+      world(&_world)
 {
-
+    SetParent(desiredParent);
 }
 
 
@@ -78,10 +78,10 @@ const glm::fquat& NodeTransform::GetWorldRot() const
     if (!cachedWorldRot.has_value())
     {
         cachedWorldRot = localRot;
-        if (parent.has_value())
+        if (parent != entt::null)
             //Note: this is less readable than I'd like, but I think it's the highest-performance version,
             //    writing directly into the original value.
-            *cachedWorldRot *= world.get<NodeTransform>(*parent).GetWorldRot();
+            *cachedWorldRot *= world->get<NodeTransform>(parent).GetWorldRot();
     }
 
     return *cachedWorldRot;
@@ -92,10 +92,10 @@ const glm::fmat4& NodeTransform::GetWorldMatrix() const
     if (!cachedWorldMatrix.has_value())
     {
         cachedWorldMatrix = GetLocalMatrix();
-        if (parent.has_value())
+        if (parent != entt::null)
             //Note: this is less readable than I'd like, but I think it's the highest-performance version,
             //    writing directly into the original value.
-            *cachedWorldMatrix *= world.get<NodeTransform>(*parent).GetWorldMatrix();
+            *cachedWorldMatrix *= world->get<NodeTransform>(parent).GetWorldMatrix();
 
         cachedWorldInverseMatrix = glm::inverse(*cachedWorldMatrix);
     }
@@ -110,61 +110,64 @@ const glm::fmat4& NodeTransform::GetWorldInverseMatrix() const
     return cachedWorldInverseMatrix;
 }
 
-void NodeTransform::SetParent(NodeID myID, std::optional<NodeID> newParentID,
-                              Spaces preserve) 
+void NodeTransform::SetParent(NodeID newParentID, Spaces preserve) 
 {
-    //Error-checking and edge cases:
-    BPAssert(&world.get<NodeTransform>(myID) == this,
-             "Passed the wrong ID for 'myID' in NodeTransform::SetParent()");
     if (parent == newParentID)
         return;
 
-    //Get the parents so we can let them know about the change.
-    NodeTransform* currentParent = parent.has_value() ? world.try_get<NodeTransform>(*parent) :
-                                                        nullptr;
-    NodeTransform* newParent = newParentID.has_value() ? world.try_get<NodeTransform>(*parent) :
-                                                         nullptr;
+    NodeID myID = entt::to_entity(*world, *this);
+
+    BPAssert(!IsDeepChildOf(newParentID),
+             "Trying to create a loop of parents");
      
     //Update this node's "NodeRoot" component.
-    if (newParentID.has_value())
-        world.remove_if_exists<NodeRoot>(myID);
-    else
-        world.get_or_emplace<NodeRoot>(myID);
+    if (newParentID != entt::null)
+        world->remove_if_exists<NodeRoot>(myID);
+    else if (!world->has<NodeRoot>(myID))
+        world->emplace<NodeRoot>(myID);
 
-    //Update the parents.
-    if (parent.has_value())
+    //Get the parents so we can let them know about the change.
+    NodeTransform* currentParent = (parent != entt::null) ?
+                                     world->try_get<NodeTransform>(parent) :
+                                     nullptr;
+    NodeTransform* newParent = (newParentID != entt::null) ?
+                                   world->try_get<NodeTransform>(parent) :
+                                   nullptr;
+     
+    //Update the parents/siblings.
+    if (parent != entt::null)
     {
-        auto& oldSiblings = currentParent->children;
-        auto found = std::find(oldSiblings.begin(), oldSiblings.end(), myID);
-        BPAssert(found != oldSiblings.end(), "Can't find myself in my parent's child list?");
-        oldSiblings.erase(found);
+        _DisconnectParent(myID, currentParent);
     }
-    if (newParentID.has_value())
+    if (newParentID != entt::null)
     {
-        auto& newSiblings = newParent->children;
-        BPAssert(std::find(newSiblings.begin(), newSiblings.end(), myID) == newSiblings.end(),
-                 "Somehow I already existed in the new parent's child list?");
+        //The simplest method is to insert this child at the beginning of the list.
+        this->nextSibling = newParent->firstChild;
+        this->prevSibling = entt::null;
+        newParent->firstChild = myID;
 
-        newSiblings.push_back(myID);
+        newParent->nChildren += 1;
+        
+        //Note that the setting of 'this->parent' is done later, below.
     }
 
     //Handle transform data and update the parent field:
     switch (preserve)
     {
-        case Spaces::Local:
+        case Spaces::Local: {
             //Leave local position alone, but world position will change.
             parent = newParentID;
             InvalidateWorldMatrix(true);
-        break;
+        } break;
 
-        case Spaces::World:
+        case Spaces::World: {
             //The local position, rotation, and scale will change,
             //    but the world transform should stay the same,
             //    which means the cached world transform (and child nodes' caches)
             //    stays the same.
 
-            auto worldMatrix = GetWorldMatrix(),
-                 inverseWorldMatrix = GetWorldInverseMatrix();
+            const auto &worldMatrix = GetWorldMatrix(),
+                       &inverseWorldMatrix = GetWorldInverseMatrix();
             cachedLocalMatrix = Math::ApplyTransform(worldMatrix, inverseWorldMatrix);
 
             glm::fvec3 newSkew;
@@ -174,16 +177,53 @@ void NodeTransform::SetParent(NodeID myID, std::optional<NodeID> newParentID,
             parent = newParentID;
 
             BPAssert(success, "Failed to recalculate local matrix on NodeTransform::SetParent()");
-        break;
+        } break;
 
 
-        default:
+        default: {
             parent = newParentID;
 
             std::string errMsg = "Unknown space mode ";
             errMsg += preserve._to_string();
             BPAssert(false, errMsg.c_str());
-        break;
+        } break;
+    }
+}
+
+void NodeTransform::_DisconnectParent(NodeID myID, NodeTransform* parentPtr)
+{
+    //Find the parent.
+    if (parentPtr == nullptr)
+    {
+        parentPtr = (parent != entt::null) ?
+                        world->try_get<NodeTransform>(parent) :
+                        nullptr;
+    }
+
+    //Handle the parent.
+    if (parentPtr != nullptr && parentPtr->firstChild == myID)
+    {
+        BPAssert(prevSibling == entt::null,
+                 "I am my parent's first child, but I have a previous sibling??");
+        
+        parentPtr->firstChild = nextSibling;
+    }
+    parentPtr->nChildren -= 1;
+
+    //Handle any siblings.
+    if (prevSibling != entt::null)
+    {
+        auto& sibling = world->get<NodeTransform>(prevSibling);
+        BPAssert(sibling.nextSibling == myID,
+                    "My 'previous' sibling has a different 'next' sibling; it isn't me");
+        sibling.nextSibling = this->nextSibling;
+    }
+    if (nextSibling != entt::null)
+    {
+        auto& sibling = world->get<NodeTransform>(nextSibling);
+        BPAssert(sibling.prevSibling == myID,
+                    "My 'next' sibling has a different 'previous' sibling; it isn't me");
+        sibling.prevSibling = this->prevSibling;
     }
 }
 
@@ -195,9 +235,9 @@ void NodeTransform::InvalidateWorldMatrix(bool includeRot) const
         //Assert that no child has a "valid" world cache, while this one was already invalidated.
         if (BPIsDebug)
         {
-            for (NodeID childID : children)
+            for (NodeID childID : IterChildren())
             {
-                auto child = world.get<NodeTransform>(childID);
+                auto child = world->get<NodeTransform>(childID);
                 BPAssert(!child.cachedWorldMatrix.has_value(),
                          "Child node has a valid world matrix while the direct parent has an invalid one");
                 BPAssert((!includeRot) | (!child.cachedWorldRot.has_value()),
@@ -209,9 +249,9 @@ void NodeTransform::InvalidateWorldMatrix(bool includeRot) const
     }
 
     //Assert that our parent is already invalidated, since we are about to be.
-    if (BPIsDebug && parent.has_value())
+    if (BPIsDebug && parent != entt::null)
     {
-        const auto& parentNode = world.get<NodeTransform>(*parent);
+        const auto& parentNode = world->get<NodeTransform>(parent);
         BPAssert(!parentNode.cachedWorldMatrix.has_value(),
                  "Parent node's cached world matrix is still valid while this node's is being invalidated");
         BPAssert((!includeRot) | (!parentNode.cachedWorldRot.has_value()),
@@ -224,6 +264,14 @@ void NodeTransform::InvalidateWorldMatrix(bool includeRot) const
         cachedWorldRot = std::nullopt;
 
     //Invalidate all childrens' caches.
-    for (NodeID child : children)
-        world.get<NodeTransform>(child).InvalidateWorldMatrix(includeRot);
+    for (NodeID child : IterChildren())
+        world->get<NodeTransform>(child).InvalidateWorldMatrix(includeRot);
+}
+
+bool NodeTransform::IsDeepChildOf(NodeID parentID) const
+{
+    //Walk upwards until we find a matching parent, or the root.
+    auto iter = IterParents();
+    return std::any_of(iter.begin(), iter.end(),
+                       [parentID](NodeID deepParent) { return parentID == deepParent; });
 }

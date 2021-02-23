@@ -8,7 +8,9 @@
 #if defined(_WIN32) || defined(WIN32)
     #define OS_WINDOWS
     #define WIN32_LEAN_AND_MEAN     // Exclude rarely-used stuff from Windows headers
-    #define NOMINMAX                // Stop conflicts with "min" and "max" macro names
+    #if !defined(NOMINMAX)
+        #define NOMINMAX                // Stop conflicts with "min" and "max" macro names
+    #endif
     #include <windows.h>
 
 #elif defined(__APPLE__)
@@ -23,18 +25,21 @@
 #endif
 
 
-//Define some compiler-specific tokens, BP_COMPILER_EXPORT and BP_COMPILER_IMPORT.
-//You shouldn't use these directly.
+//Defines either COMPILER_VS, COMPILER_GCC, or COMPILER_UNKNOWN.
+//Also defines BP_COMPILER_EXPORT and BP_COMPILER_IMPORT.
 #if defined(_MSC_VER)
     //  Microsoft 
+    #define COMPILER_VS
     #define BP_COMPILER_EXPORT __declspec(dllexport)
     #define BP_COMPILER_IMPORT __declspec(dllimport)
 #elif defined(__GNUC__)
     //  GCC
+    #define COMPILER_GCC
     #define BP_COMPILER_EXPORT __attribute__((visibility("default")))
     #define BP_COMPILER_IMPORT
 #else
     //  do nothing and hope for the best?
+    #define COMPILER_UNKNOWN
     #define BP_COMPILER_EXPORT
     #define BP_COMPILER_IMPORT
     #pragma warning Unknown dynamic link import/export semantics.

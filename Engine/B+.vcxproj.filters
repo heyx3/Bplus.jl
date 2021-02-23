@@ -136,10 +136,10 @@
     <ClInclude Include="GL\Textures\TargetBuffer.h">
       <Filter>GL\Textures</Filter>
     </ClInclude>
-    <ClInclude Include="ST\DataTypes.h">
+    <ClInclude Include="ST\NodeTransform.h">
       <Filter>ST</Filter>
     </ClInclude>
-    <ClInclude Include="ST\NodeTransform.h">
+    <ClInclude Include="ST\Scene.h">
       <Filter>ST</Filter>
     </ClInclude>
   </ItemGroup>
@@ -223,6 +223,9 @@
       <Filter>GL\Textures</Filter>
     </ClCompile>
     <ClCompile Include="ST\NodeTransform.cpp">
+      <Filter>ST</Filter>
+    </ClCompile>
+    <ClCompile Include="ST\Scene.cpp">
       <Filter>ST</Filter>
     </ClCompile>
   </ItemGroup>

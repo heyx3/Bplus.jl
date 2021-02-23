@@ -724,6 +724,9 @@ template<typename Type>
 template<typename Type, auto = stripped_type_name<Type>().find_first_of('.')>
 [[nodiscard]] static constexpr id_type type_hash(int) ENTT_NOEXCEPT {
     constexpr auto stripped = stripped_type_name<Type>();
+#if defined(_MSC_VER)
+    __pragma(warning(suppress:4307))
+#endif
     constexpr auto value = hashed_string::value(stripped.data(), stripped.size());
     return value;
 }

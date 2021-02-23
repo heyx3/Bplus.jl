@@ -7,9 +7,6 @@
 #include "Utils/BPAssert.h"
 
 
-//SmallVector class.
-#include <llvm/SmallVector.hpp>
-
 //Dear ImGUI.
 #include "Dear ImGui\ImGuiInterfaces.h"
 #include "Dear ImGui\ImGuiAddons.h"
@@ -27,9 +24,22 @@
 #include <glm/ext.hpp>
 #include <glm/matrix.hpp>
 
+
 //EnTT, the Entity-Component System.
 #define ENTT_ASSERT(condition) BPAssert(condition, "[internal EnTT assert]")
 #include <entt.hpp>
+
+//In order to avoid warnings, the use of EnTT "hashed strings" must go through the below macro.
+#if !defined(COMPILER_VS)
+    #define ENTT_SYMBOL(str) entt::hashed_string{str}
+#else
+    #define ENTT_SYMBOL(str) __pragma(warning(suppress:4307)) entt::hashed_string{str}
+#endif
+
+
+//Simple Iterator Template, which makes it much easier to construct custom STL iterators.
+#include <iterator_tpl.h>
+
 
 //DevIL, the image loading/saving library.
 #include <DevIL/il.h>
