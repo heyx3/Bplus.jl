@@ -116,7 +116,7 @@ void NodeTransform::SetParent(NodeID newParentID, Spaces preserve)
 
     NodeID myID = entt::to_entity(*world, *this);
 
-    BPAssert(!IsDeepChildOf(newParentID),
+    BP_ASSERT(!IsDeepChildOf(newParentID),
              "Trying to create a loop of parents");
      
     //Update this node's "NodeRoot" component.
@@ -175,7 +175,7 @@ void NodeTransform::SetParent(NodeID newParentID, Spaces preserve)
             
             parent = newParentID;
 
-            BPAssert(success, "Failed to recalculate local matrix on NodeTransform::SetParent()");
+            BP_ASSERT(success, "Failed to recalculate local matrix on NodeTransform::SetParent()");
         } break;
 
 
@@ -184,7 +184,7 @@ void NodeTransform::SetParent(NodeID newParentID, Spaces preserve)
 
             std::string errMsg = "Unknown space mode ";
             errMsg += preserve._to_string();
-            BPAssert(false, errMsg.c_str());
+            BP_ASSERT(false, errMsg.c_str());
         } break;
     }
 }
@@ -202,7 +202,7 @@ void NodeTransform::_DisconnectParent(NodeID myID, NodeTransform* parentPtr)
     //Handle the parent.
     if (parentPtr != nullptr && parentPtr->firstChild == myID)
     {
-        BPAssert(prevSibling == entt::null,
+        BP_ASSERT(prevSibling == entt::null,
                  "I am my parent's first child, but I have a previous sibling??");
         
         parentPtr->firstChild = nextSibling;
@@ -213,14 +213,14 @@ void NodeTransform::_DisconnectParent(NodeID myID, NodeTransform* parentPtr)
     if (prevSibling != entt::null)
     {
         auto& sibling = world->get<NodeTransform>(prevSibling);
-        BPAssert(sibling.nextSibling == myID,
+        BP_ASSERT(sibling.nextSibling == myID,
                     "My 'previous' sibling has a different 'next' sibling; it isn't me");
         sibling.nextSibling = this->nextSibling;
     }
     if (nextSibling != entt::null)
     {
         auto& sibling = world->get<NodeTransform>(nextSibling);
-        BPAssert(sibling.prevSibling == myID,
+        BP_ASSERT(sibling.prevSibling == myID,
                     "My 'next' sibling has a different 'previous' sibling; it isn't me");
         sibling.prevSibling = this->prevSibling;
     }
@@ -237,9 +237,9 @@ void NodeTransform::InvalidateWorldMatrix(bool includeRot) const
             for (NodeID childID : IterChildren())
             {
                 auto child = world->get<NodeTransform>(childID);
-                BPAssert(!child.cachedWorldMatrix.has_value(),
+                BP_ASSERT(!child.cachedWorldMatrix.has_value(),
                          "Child node has a valid world matrix while the direct parent has an invalid one");
-                BPAssert((!includeRot) | (!child.cachedWorldRot.has_value()),
+                BP_ASSERT((!includeRot) | (!child.cachedWorldRot.has_value()),
                          "Child node has a valid world rotation while the direct parent has an invalid one");
             }
         }
@@ -253,9 +253,9 @@ void NodeTransform::InvalidateWorldMatrix(bool includeRot) const
         if (parent != entt::null)
         {
             const auto& parentNode = world->get<NodeTransform>(parent);
-            BPAssert(!parentNode.cachedWorldMatrix.has_value(),
+            BP_ASSERT(!parentNode.cachedWorldMatrix.has_value(),
                      "Parent node's cached world matrix is still valid while this node's is being invalidated");
-            BPAssert((!includeRot) | (!parentNode.cachedWorldRot.has_value()),
+            BP_ASSERT((!includeRot) | (!parentNode.cachedWorldRot.has_value()),
                      "Parent node's cached world rotation is still valid while this node's is being invalidated");
         }
     }

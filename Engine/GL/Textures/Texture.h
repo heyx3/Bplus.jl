@@ -272,7 +272,7 @@ namespace Bplus::GL::Textures
                 default:
                     std::string msg = "Unexpected data component type: ";
                     msg += components._to_string();
-                    BPAssert(false, msg.c_str());
+                    BP_ASSERT(false, msg.c_str());
                     return GL_NONE;
             }
         }

@@ -32,7 +32,7 @@ namespace Bplus::Strings
             for (int_fast8_t bitI = 7; bitI >= 0; --bitI)
             {
                 auto bit = (byte >> bitI) & 1;
-                BPAssert(bit == 0 || bit == 1, "Bit is not a bit");
+                BP_ASSERT(bit == 0 || bit == 1, "Bit is not a bit");
                 result += (bit == 0) ? '0' : '1';
             }
         }
@@ -68,7 +68,7 @@ namespace Bplus::Strings
         {
             case NumberBases::Hex: formatStr = "%X"; break;
             case NumberBases::Octal: formatStr = "%o"; break;
-            default: BPAssert(false, "Unknown NumberBases"); break;
+            default: BP_ASSERT(false, "Unknown NumberBases"); break;
         }
 
         //Start with the prefix.
@@ -84,8 +84,8 @@ namespace Bplus::Strings
         result.resize(result.size() + nDigits);
         size_t nActualDigits = snprintf(&result[startI], nDigits + 1,
                                         formatStr, value);
-        BPAssert(nActualDigits <= nDigits, "nDigits estimate is too small in ToBaseString()");
-        BPAssert(nActualDigits > 0, "error using snprintf() in ToBaseString()");
+        BP_ASSERT(nActualDigits <= nDigits, "nDigits estimate is too small in ToBaseString()");
+        BP_ASSERT(nActualDigits > 0, "error using snprintf() in ToBaseString()");
 
         //Remove the empty characters at the end of the buffer.
         size_t nWastedDigits = nDigits - nActualDigits;

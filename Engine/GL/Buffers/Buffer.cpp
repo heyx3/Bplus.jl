@@ -33,7 +33,7 @@ namespace
             {
                 //Make sure all buffers have been cleaned up.
                 //TODO: Use OpenGL's debug utilities to give the buffers names and provide more info here.
-                BPAssert(threadData.buffersByOglPtr.size() == 0,
+                BP_ASSERT(threadData.buffersByOglPtr.size() == 0,
                          "Buffer memory leaks!");
 
                 threadData.buffersByOglPtr.clear();
@@ -101,7 +101,7 @@ Buffer::Buffer(Buffer&& src)
 
     //Update the static reference to this buffer.
     auto found = threadData.buffersByOglPtr.find(glPtr);
-    BPAssert(found != threadData.buffersByOglPtr.end(),
+    BP_ASSERT(found != threadData.buffersByOglPtr.end(),
              "Un-indexed Buffer detected");
     found->second = this;
 }
@@ -120,11 +120,11 @@ Buffer& Buffer::operator=(Buffer&& src)
 
 void Buffer::SetBytes(const std::byte* data, Math::IntervalUL range)
 {
-    BPAssert(canChangeData,
+    BP_ASSERT(canChangeData,
              "Can't change this buffer's data after creation");
     
     range = ProcessDefaultRange(range, byteSize);
-    BPAssert(range.GetMaxCornerInclusive().x < byteSize,
+    BP_ASSERT(range.GetMaxCornerInclusive().x < byteSize,
              "Trying to set data past the end of this buffer");
 
     glNamedBufferSubData(glPtr.Get(),
@@ -135,7 +135,7 @@ void Buffer::SetBytes(const std::byte* data, Math::IntervalUL range)
 void Buffer::GetBytes(std::byte* data, Math::IntervalUL range) const
 {
     range = ProcessDefaultRange(range, byteSize);
-    BPAssert(range.GetMaxCornerInclusive().x < byteSize,
+    BP_ASSERT(range.GetMaxCornerInclusive().x < byteSize,
              "Trying to read data past the end of this buffer");
 
     glGetNamedBufferSubData(glPtr.Get(),
@@ -148,9 +148,9 @@ void Buffer::CopyBytes(Buffer& dest,
                        uint64_t destOffset) const
 {
     srcRange = ProcessDefaultRange(srcRange, byteSize);
-    BPAssert(srcRange.GetMaxCornerInclusive().x < byteSize,
+    BP_ASSERT(srcRange.GetMaxCornerInclusive().x < byteSize,
              "Trying to copy data past the end of the source buffer");
-    BPAssert(destOffset + srcRange.Size.x < dest.byteSize,
+    BP_ASSERT(destOffset + srcRange.Size.x < dest.byteSize,
              "Trying to copy data past the end of the destination buffer");
 
     glCopyNamedBufferSubData(glPtr.Get(), dest.glPtr.Get(),

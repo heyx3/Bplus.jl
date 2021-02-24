@@ -78,14 +78,14 @@ CompiledShader::CompiledShader(RenderState renderSettings,
         {
             //If any CompiledShaders haven't been cleaned up yet,
             //    it's a memory leak.
-            BPAssert(threadData.shadersByHandle.size() == 0,
+            BP_ASSERT(threadData.shadersByHandle.size() == 0,
                      "Some CompiledShader instances haven't been cleaned up");
             threadData.shadersByHandle.clear();
         });
     }
 
 
-    BPAssert(threadData.shadersByHandle.find(programHandle) == threadData.shadersByHandle.end(),
+    BP_ASSERT(threadData.shadersByHandle.find(programHandle) == threadData.shadersByHandle.end(),
              "A CompiledShader already exists with this program");
     threadData.shadersByHandle[programHandle] = this;
 
@@ -113,9 +113,9 @@ CompiledShader::CompiledShader(CompiledShader&& src)
 {
     src.programHandle = OglPtr::ShaderProgram();
 
-    BPAssert(threadData.shadersByHandle.find(programHandle) != threadData.shadersByHandle.end(),
+    BP_ASSERT(threadData.shadersByHandle.find(programHandle) != threadData.shadersByHandle.end(),
              "CompiledShader is missing from 'shadersByHandle'");
-    BPAssert(threadData.shadersByHandle[programHandle] == &src,
+    BP_ASSERT(threadData.shadersByHandle[programHandle] == &src,
              "Some other CompiledShader owns this program handle");
     threadData.shadersByHandle[programHandle] = this;
 }
@@ -126,9 +126,9 @@ CompiledShader& CompiledShader::operator=(CompiledShader&& src)
 
     src.programHandle = OglPtr::ShaderProgram();
     
-    BPAssert(threadData.shadersByHandle.find(programHandle) != threadData.shadersByHandle.end(),
+    BP_ASSERT(threadData.shadersByHandle.find(programHandle) != threadData.shadersByHandle.end(),
              "CompiledShader is missing from 'shadersByHandle'");
-    BPAssert(threadData.shadersByHandle[programHandle] == &src,
+    BP_ASSERT(threadData.shadersByHandle[programHandle] == &src,
              "Some other CompiledShader owns this program handle");
     threadData.shadersByHandle[programHandle] = this;
 

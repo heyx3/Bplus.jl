@@ -101,7 +101,7 @@ void ImgHandle::Activate()
 
 void TexHandle::Deactivate()
 {
-    BPAssert(activeCount > 0,
+    BP_ASSERT(activeCount > 0,
              "Deactivate() called too many times");
 
     activeCount -= 1;
@@ -110,7 +110,7 @@ void TexHandle::Deactivate()
 }
 void ImgHandle::Deactivate()
 {
-    BPAssert(activeCount > 0,
+    BP_ASSERT(activeCount > 0,
              "Deactivate() called too many times");
 
     activeCount -= 1;
@@ -142,7 +142,7 @@ TexView& TexView::operator=(const TexView& cpy)
     //Otherwise, just assert that they are exactly equal.
     else
     {
-        BPAssert(GlPtr == cpy.GlPtr, "GlPtr fields don't match up in TexView");
+        BP_ASSERT(GlPtr == cpy.GlPtr, "GlPtr fields don't match up in TexView");
     }
 
     return *this;
@@ -168,7 +168,7 @@ ImgView& ImgView::operator=(const ImgView& cpy)
     //Otherwise, just assert that they are exactly equal.
     else
     {
-        BPAssert(GlPtr == cpy.GlPtr, "GlPtr fields don't match up in ImgView");
+        BP_ASSERT(GlPtr == cpy.GlPtr, "GlPtr fields don't match up in ImgView");
     }
 
     return *this;
@@ -187,10 +187,10 @@ Texture::Texture(Types _type, Format _format, uint_mipLevel_t nMips,
       swizzling({ SwizzleSources::Red, SwizzleSources::Green, SwizzleSources::Blue, SwizzleSources::Alpha }),
       depthStencilMode(std::nullopt)
 {
-    BPAssert(format.GetOglEnum() != GL_NONE, "OpenGL format is invalid");
-    BPAssert(!customDepthStencilMode.has_value() || format.IsDepthAndStencil(),
+    BP_ASSERT(format.GetOglEnum() != GL_NONE, "OpenGL format is invalid");
+    BP_ASSERT(!customDepthStencilMode.has_value() || format.IsDepthAndStencil(),
              "Can't give a depth/stencil sampling mode to a texture that isn't depth/stencil");
-    BPAssert(customDepthStencilMode.has_value() || !format.IsDepthAndStencil(),
+    BP_ASSERT(customDepthStencilMode.has_value() || !format.IsDepthAndStencil(),
              "Must give a depth/stencil sampling mode if a texture is depth/stencil");
 
     //Create the texture handle.
@@ -225,7 +225,7 @@ Texture::Texture(Texture&& src)
 
 void Texture::RecomputeMips()
 {
-    BPAssert(!format.IsCompressed(),
+    BP_ASSERT(!format.IsCompressed(),
              "Can't compute mipmaps for a compressed texture!");
 
     glGenerateTextureMipmap(glPtr.Get());
@@ -254,7 +254,7 @@ void Texture::SetSwizzling(const SwizzleRGBA& newSwizzling)
 }
 void Texture::SetDepthStencilSource(DepthStencilSources newSource)
 {
-    BPAssert(format.IsDepthAndStencil(),
+    BP_ASSERT(format.IsDepthAndStencil(),
              "Can only set DepthStencil mode for a Depth/Stencil hybrid texture");
 
     if (newSource != depthStencilMode)
@@ -272,9 +272,9 @@ TexView Texture::GetViewFull(std::optional<Sampler<3>> customSampler) const
                             depthStencilMode == +DepthStencilSources::Stencil,
          isDepthSampler = format.IsDepthOnly() ||
                           depthStencilMode == +DepthStencilSources::Depth;
-    BPAssert(!isStencilSampler || sampler.PixelFilter == +PixelFilters::Rough,
+    BP_ASSERT(!isStencilSampler || sampler.PixelFilter == +PixelFilters::Rough,
              "Can't use 'Smooth' filtering on a stencil texture sampler -- the values are integers");
-    BPAssert(isDepthSampler || !sampler.DepthComparisonMode.has_value(),
+    BP_ASSERT(isDepthSampler || !sampler.DepthComparisonMode.has_value(),
              "Can't use a depth comparison sampler (a.k.a. 'shadow sampler') on a non-depth texture");
 
     auto found = texHandles.find(sampler);

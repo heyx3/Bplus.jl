@@ -56,7 +56,7 @@ PreCompiledShader::PreCompiledShader(OglPtr::ShaderProgram program)
 {
     GLint byteSize;
     glGetProgramiv(program.Get(), GL_PROGRAM_BINARY_LENGTH, &byteSize);
-    BPAssert(byteSize > 0, "Program isn't successfully compiled");
+    BP_ASSERT(byteSize > 0, "Program isn't successfully compiled");
 
     Data.resize(byteSize);
     glGetProgramBinary(program.Get(), byteSize, nullptr, &Header, Data.data());

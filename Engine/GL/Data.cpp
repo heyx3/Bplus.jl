@@ -72,7 +72,7 @@ toml::Value GL::StencilTest::ToToml() const
     tomlData["Test"] = Test._to_string();
     tomlData["RefValue"] = RefValue;
 
-    BPAssert((int64_t)Mask == Mask,
+    BP_ASSERT((int64_t)Mask == Mask,
              "Unable to serialize Mask; need to add native uint support to tinyTOML");
     tomlData["Mask"] = (int64_t)Mask;
     return tomlData;

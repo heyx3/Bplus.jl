@@ -441,7 +441,7 @@ namespace Bplus::ST
 
                 void next(const MyIter_t* tr)
                 {
-                    BPAssert(!isDone, "Trying to iterate past the end of a TreeBFS");
+                    BP_ASSERT(!isDone, "Trying to iterate past the end of a TreeBFS");
 
                     //Check out the node right here, and see if it has kids.
                     if (!doesNextDepthExist)
@@ -472,7 +472,7 @@ namespace Bplus::ST
                         else
                         {
                             //Update the current depth of the DFS.
-                            BPAssert((depthDelta >= 0) | (((uint_fast32_t)(-depthDelta) > currentDFSDepth)),
+                            BP_ASSERT((depthDelta >= 0) | (((uint_fast32_t)(-depthDelta) > currentDFSDepth)),
                                      "An iteration of the DFS just took it above the root");
                             currentDFSDepth += depthDelta;
                         }

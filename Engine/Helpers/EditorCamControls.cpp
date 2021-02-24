@@ -47,7 +47,7 @@ void EditorCamControls::Update(float deltaT)
             default:
                 std::string errorMsg = "Unhandled CameraUpModes::";
                 errorMsg += UpMode._to_string();
-                BPAssert(false, errorMsg.c_str());
+                BP_ASSERT(false, errorMsg.c_str());
             break;
         }
     }

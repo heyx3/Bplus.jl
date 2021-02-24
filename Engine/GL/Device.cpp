@@ -20,7 +20,7 @@ Device* Device::GetContextDevice()
     if (Context::GetCurrentContext() == nullptr)
     {
         //If there is no context, make sure there is no Device either.
-        BPAssert(threadData.Device == nullptr,
+        BP_ASSERT(threadData.Device == nullptr,
                  "There is a device despite there being no context!");
     }
     //If there IS a context, but there is no Device yet, create it.
@@ -34,15 +34,15 @@ Device* Device::GetContextDevice()
 
 Device::Device(Context& context)
 {
-    BPAssert(Context::GetCurrentContext() != nullptr,
+    BP_ASSERT(Context::GetCurrentContext() != nullptr,
              "Device created before context!");
 
     GLint tempI;
 
     #define LOAD_UINT(oglEnum, description, var) \
         glGetIntegerv(oglEnum, &tempI); \
-        BPAssert(tempI >= 0, "'" description "' is negative??"); \
-        BPAssert((decltype(var))tempI <= std::numeric_limits<decltype(var)>().max(), \
+        BP_ASSERT(tempI >= 0, "'" description "' is negative??"); \
+        BP_ASSERT((decltype(var))tempI <= std::numeric_limits<decltype(var)>().max(), \
                  "'" description "' is larger than its type can fit"); \
         var = (decltype(var))tempI
 

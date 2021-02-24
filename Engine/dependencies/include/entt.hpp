@@ -15809,7 +15809,7 @@ public:
     [[nodiscard]] basic_view<Entity, exclude_t<Exclude...>, Component...> view(exclude_t<Exclude...> = {}) const {
         static_assert(sizeof...(Component) > 0, "Exclusion-only views are not supported");
         using view_type = basic_view<Entity, exclude_t<Exclude...>, Component...>;
-        return [](auto *... cpools) { return (cpools && ...) ? view_type{*cpools...} : view_type{}; }(assure<std::decay_t<Component>>()..., assure<Exclude>()...);
+        return [](auto *... cpools) -> view_type { return (cpools && ...) ? view_type{*cpools...} : view_type{}; }(assure<std::decay_t<Component>>()..., assure<Exclude>()...);
     }
 
     /*! @copydoc view */

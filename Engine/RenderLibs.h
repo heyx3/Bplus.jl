@@ -26,7 +26,7 @@
 
 
 //EnTT, the Entity-Component System.
-#define ENTT_ASSERT(condition) BPAssert(condition, "[internal EnTT assert]")
+#define ENTT_ASSERT(condition) BP_ASSERT(condition, "[internal EnTT assert]")
 #include <entt.hpp>
 
 //In order to avoid warnings, the use of EnTT "hashed strings" must go through the below macro.

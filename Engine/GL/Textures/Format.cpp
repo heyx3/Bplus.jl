@@ -14,7 +14,7 @@ using namespace Bplus::GL::Textures;
     default: { \
         std::string errMsg = "Unknown: " #enumName "::"; \
         errMsg += enumVal._to_string(); \
-        BPAssert(false, errMsg.c_str()); \
+        BP_ASSERT(false, errMsg.c_str()); \
     }
 
 namespace
@@ -123,7 +123,7 @@ std::string Bplus::GL::Textures::ToString(const Format& format)
         return format.AsDepthStencil()._to_string();
     else
     {
-        BPAssert(false, "Unexpected format type");
+        BP_ASSERT(false, "Unexpected format type");
         return "";
     }
 }
@@ -276,7 +276,7 @@ std::optional<FormatTypes> Format::GetComponentType() const
     {
         std::string errMsg = "Unknown format type, index ";
         errMsg += std::to_string(data.index());
-        BPAssert(false, errMsg.c_str());
+        BP_ASSERT(false, errMsg.c_str());
         return std::nullopt;
     }
 }
@@ -358,7 +358,7 @@ bool Format::IsInteger() const
     {
         std::string errMsg = "Unknown format type, index ";
         errMsg += std::to_string(data.index());
-        BPAssert(false, errMsg.c_str());
+        BP_ASSERT(false, errMsg.c_str());
         return false;
     }
 }
@@ -426,7 +426,7 @@ bool Format::StoresChannel(AllChannels c) const
         if (IsDepthOnly() | IsDepthAndStencil())
             return c == +AllChannels::Depth;
 
-        BPAssert(IsDepthOnly() | IsDepthAndStencil(),
+        BP_ASSERT(IsDepthOnly() | IsDepthAndStencil(),
                  "Not Depth, Stencil, or hybrid!?");
         return c == +AllChannels::Stencil;
     }
@@ -434,7 +434,7 @@ bool Format::StoresChannel(AllChannels c) const
     {
         std::string errMsg = "Unknown format type, index ";
         errMsg += std::to_string(data.index());
-        BPAssert(false, errMsg.c_str());
+        BP_ASSERT(false, errMsg.c_str());
         return false;
     }
 }
@@ -451,7 +451,7 @@ uint8_t Format::GetNChannels() const
 uint_fast8_t Format::GetChannelBitSize(std::optional<AllChannels> channel) const
 {
     #define COMPUTE_SEPARATE_OUTPUT(format, r, g, b, a, d, s) \
-        { BPAssert(channel.has_value(), "Channel not given for an uneven format: " format); \
+        { BP_ASSERT(channel.has_value(), "Channel not given for an uneven format: " format); \
         switch (channel.value()) { \
             case AllChannels::Red: return r; \
             case AllChannels::Green: return g; \
@@ -568,7 +568,7 @@ uint_fast8_t Format::GetChannelBitSize(std::optional<AllChannels> channel) const
             #undef DSF_CASE
 
             case DepthStencilFormats::Depth24U_Stencil8:
-                BPAssert(channel.has_value(), "Depth24U_Stencil8 is not uniform");
+                BP_ASSERT(channel.has_value(), "Depth24U_Stencil8 is not uniform");
                 switch (channel.value())
                 {
                     case AllChannels::Depth: return 24;
@@ -579,7 +579,7 @@ uint_fast8_t Format::GetChannelBitSize(std::optional<AllChannels> channel) const
                 }
 
             case DepthStencilFormats::Depth32F_Stencil8:
-                BPAssert(channel.has_value(), "Depth32F_Stencil8 is not uniform");
+                BP_ASSERT(channel.has_value(), "Depth32F_Stencil8 is not uniform");
                 switch (channel.value())
                 {
                     case AllChannels::Depth: return 32;
@@ -597,7 +597,7 @@ uint_fast8_t Format::GetChannelBitSize(std::optional<AllChannels> channel) const
     {
         std::string errMsg = "Unknown format type, index ";
         errMsg += std::to_string(data.index());
-        BPAssert(false, errMsg.c_str());
+        BP_ASSERT(false, errMsg.c_str());
         return 0;
     }
 
@@ -694,7 +694,7 @@ uint_fast32_t Format::GetByteSize(const glm::uvec3& textureSize) const
     {
         std::string errMsg = "Unknown format type, index ";
         errMsg += std::to_string(data.index());
-        BPAssert(false, errMsg.c_str());
+        BP_ASSERT(false, errMsg.c_str());
         return false;
     }
 }
@@ -831,7 +831,7 @@ GLenum Format::GetOglEnum() const
     {
         std::string errMsg = "Unknown format type, index ";
         errMsg += std::to_string(data.index());
-        BPAssert(false, errMsg.c_str());
+        BP_ASSERT(false, errMsg.c_str());
         return GL_NONE;
     }
 }

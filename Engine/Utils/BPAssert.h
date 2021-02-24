@@ -3,31 +3,34 @@
 #include "../Platform.h"
 
 
-#pragma region BPDebug, BPRelease, BPIsDebug
+#pragma region BP_DEBUG, BP_RELEASE, BPIsDebug
 
-//This boolean is true if in debug mode, and false if in release mode.
-constexpr inline bool BPIsDebug =
-        #ifdef NDEBUG
-            false
-        #else
-            true
-        #endif
-    ;
+namespace Bplus
+{
+    //This boolean is true if in debug mode, and false if in release mode.
+    constexpr inline bool BPIsDebug =
+            #ifdef NDEBUG
+                false
+            #else
+                true
+            #endif
+        ;
+}
     
-//BPDebug passes through the input if in debug mode,
+//BP_DEBUG passes through the input if in debug mode,
 //    or replaces it with nothing in release mode.
 #ifdef NDEBUG
-    #define BPDebug(...)
+    #define BP_DEBUG(...)
 #else
-    #define BPDebug(...) __VA_ARGS__
+    #define BP_DEBUG(...) __VA_ARGS__
 #endif
 
-//BPRelease passes through the input if in release mode,
+//BP_RELEASE passes through the input if in release mode,
 //    or replaces it with nothing in debug mode.
 #ifdef NDEBUG
-    #define BPRelease(...) __VA_ARGS__
+    #define BP_RELEASE(...) __VA_ARGS__
 #else
-    #define BPRelease(...)
+    #define BP_RELEASE(...)
 #endif
 
 #pragma endregion
@@ -44,9 +47,9 @@ constexpr inline bool BPIsDebug =
 //Custom assert macro that can be configured by users of this engine.
 //Doesn't do anything in release builds.
 //TODO: Switch from plain C-style string to a std::string.
-#define BPAssert(expr, msg) \
-    BPRelease(BP_NOOP) \
-    BPDebug(BP_CHECK(expr, msg))
+#define BP_ASSERT(expr, msg) \
+    BP_RELEASE(BP_NOOP) \
+    BP_DEBUG(BP_CHECK(expr, msg))
 
 //TODO: Add a BP_LOG.
 

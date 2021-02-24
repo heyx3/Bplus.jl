@@ -24,7 +24,7 @@ void Bplus::DefaultAssertFunc(bool expr, const char* msg)
 {
     if (!expr)
     {
-        printf("BPAssert failed: ");
+        printf("BP_ASSERT failed: ");
         printf(msg);
         printf("\n");
 

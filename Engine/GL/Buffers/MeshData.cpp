@@ -88,7 +88,7 @@ MeshData::MeshData(PrimitiveTypes primType, IndexDataTypes _indexType,
         }
         else //Must be an FVector.
         {
-            BPAssert(fieldType.GetLogicalFormat() == +VertexData::LogicalFormats::Vector,
+            BP_ASSERT(fieldType.GetLogicalFormat() == +VertexData::LogicalFormats::Vector,
                      "FieldType isn't known");
             glVertexArrayAttribFormat(glPtr.Get(), vertAttribI,
                                       fieldType.GetNComponents(), fieldType.GetOglEnum(),

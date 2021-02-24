@@ -23,7 +23,7 @@ VertexData::LogicalTypes VertexData::Type::GetLogicalType() const
     }
     else
     {
-        BPAssert(false, "Unknown Bplus::GL::Buffers::VertexData::LogicalTypes");
+        BP_ASSERT(false, "Unknown Bplus::GL::Buffers::VertexData::LogicalTypes");
         return LogicalTypes::Float32;
     }
 }
@@ -41,7 +41,7 @@ VertexData::LogicalFormats VertexData::Type::GetLogicalFormat() const
     }
     else
     {
-        BPAssert(false, "Unknown Bplus::GL::Buffers::VertexData::LogicalFormats");
+        BP_ASSERT(false, "Unknown Bplus::GL::Buffers::VertexData::LogicalFormats");
         return LogicalFormats::Vector;
     }
 }
@@ -63,7 +63,7 @@ VertexData::VectorSizes VertexData::Type::GetNComponents() const
             default: {
                 std::string errMsg = "Unexpected Bplus::GL::Buffers::VertexData::PackedFVectorTypes ";
                 errMsg += AsPackedFVector()._to_string();
-                BPAssert(false, errMsg.c_str());
+                BP_ASSERT(false, errMsg.c_str());
                 return VectorSizes::X;
             }
         }
@@ -76,7 +76,7 @@ VertexData::VectorSizes VertexData::Type::GetNComponents() const
                 std::string errMsg = "Unexpected Bplus::GL::Buffers::VertexData::"
                                         "PackedConvertedFVectorTypes ";
                 errMsg += AsPackedConvertedFVector().VectorType._to_string();
-                BPAssert(false, errMsg.c_str());
+                BP_ASSERT(false, errMsg.c_str());
                 return VectorSizes::X;
             }
         }
@@ -86,7 +86,7 @@ VertexData::VectorSizes VertexData::Type::GetNComponents() const
         return AsDVector().Size;
     else
     {
-        BPAssert(false, "Unknown Bplus::GL::Buffers::VertexData::Type case");
+        BP_ASSERT(false, "Unknown Bplus::GL::Buffers::VertexData::Type case");
         return VectorSizes::X;
     }
 }
@@ -100,7 +100,7 @@ uint8_t VertexData::Type::GetNAttributes() const
         return 1;
     else
     {
-        BPAssert(false, "Unknown Bplus::GL::Buffers::VertexData::Type case");
+        BP_ASSERT(false, "Unknown Bplus::GL::Buffers::VertexData::Type case");
         return 255;
     }
 }
@@ -124,7 +124,7 @@ GLenum VertexData::Type::GetOglEnum() const
         return GL_DOUBLE;
     else
     {
-        BPAssert(false, "Unknown Bplus::GL::Buffers::VertexData::Type case");
+        BP_ASSERT(false, "Unknown Bplus::GL::Buffers::VertexData::Type case");
         return GL_NONE;
     }
 }

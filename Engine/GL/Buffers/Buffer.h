@@ -62,7 +62,7 @@ namespace Bplus::GL::Buffers
         template<typename T>
         uint64_t GetSize() const
         {
-            BPAssert((byteSize % sizeof(T)) == 0,
+            BP_ASSERT((byteSize % sizeof(T)) == 0,
                      "Byte-size of this Buffer isn't a multiple of the element size");
             return byteSize / sizeof(T);
         }

@@ -100,7 +100,7 @@ namespace Simple
         //If the event is bad, make it an error.
         //Otherwise, just print it to stdout.
         if (isFatal)
-            BPAssert(false, generatedMsg.c_str());
+            BP_ASSERT(false, generatedMsg.c_str());
         else
             std::cout << "\t\t" << generatedMsg << "\n";
     }
@@ -208,7 +208,7 @@ namespace Simple
              std::function<void(float)> onRender,
              std::function<void()> onQuit)
     {
-        //Swap out the BPAssert function with something that hooks into acutest.
+        //Swap out the BP_ASSERT function with something that hooks into acutest.
         auto oldAssertFunc = Bplus::GetAssertFunc();
         Bplus::SetAssertFunc([](bool condition, const char* msg)
         {
@@ -219,7 +219,7 @@ namespace Simple
 
             if (!condition)
             {
-                std::string errorMsg = "BPAssert failed: ";
+                std::string errorMsg = "BP_ASSERT failed: ";
                 errorMsg += msg;
                 throw std::exception(errorMsg.c_str());
             }

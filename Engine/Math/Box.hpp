@@ -33,7 +33,7 @@ namespace Bplus::Math
         static Box<N, T> MakeMinMax(const vec_t& minCorner, const vec_t& maxCorner)
         {
             if constexpr(std::is_unsigned_v<T>)
-                BPAssert(glm::all(glm::greaterThanEqual(maxCorner, minCorner)),
+                BP_ASSERT(glm::all(glm::greaterThanEqual(maxCorner, minCorner)),
                          "Box with unsigned number type can't have negative size");
 
             return { minCorner, maxCorner - minCorner };

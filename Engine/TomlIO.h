@@ -312,7 +312,7 @@ namespace Bplus::IO::internal
 
         //Note that we're assuming the value is valid for this type,
         //    checked via the above "glmVectorCheckToml()".
-        BPAssert(v.size() == L,
+        BP_ASSERT(v.size() == L,
                  "Expected size to match up");
 
         if (v.type() == toml::Value::ARRAY_TYPE)
@@ -341,7 +341,7 @@ namespace Bplus::IO::internal
                         break;
                     }
 
-                    BPAssert(m != 3, "Couldn't find a component");
+                    BP_ASSERT(m != 3, "Couldn't find a component");
                 }
 
                 result[i] = c;
@@ -351,7 +351,7 @@ namespace Bplus::IO::internal
         }
         else
         {
-            BPAssert(v.size() == 1, "Expected 1D vector value");
+            BP_ASSERT(v.size() == 1, "Expected 1D vector value");
             return glmVec_t(v.as<T>());
         }
     }
@@ -438,7 +438,7 @@ namespace Bplus::IO::internal
         }
         else
         {
-            BPAssert(C == 1 && R == 1 && v.is<T>(),
+            BP_ASSERT(C == 1 && R == 1 && v.is<T>(),
                      "Invalid single-element matrix");
             return glm::mat<C, R, T>(v.as<T>());
         }

@@ -32,7 +32,7 @@ bool TargetOutput::IsLayered() const
         return false;
     else
     {
-        BPAssert(false, "Unknown TargetOutput type");
+        BP_ASSERT(false, "Unknown TargetOutput type");
         return false;
     }
 }
@@ -44,7 +44,7 @@ bool TargetOutput::IsFlat() const
         return false;
     else
     {
-        BPAssert(false, "Unknown TargetOutput type");
+        BP_ASSERT(false, "Unknown TargetOutput type");
         return false;
     }
 }
@@ -62,7 +62,7 @@ Texture* TargetOutput::GetTex() const
         return std::get<TextureCube*>(GetTexCubeFace());
     else
     {
-        BPAssert(false, "Unknown type for TargetOutput");
+        BP_ASSERT(false, "Unknown type for TargetOutput");
         return nullptr;
     }
 }
@@ -82,13 +82,13 @@ glm::uvec2 TargetOutput::GetSize() const
         return std::get<0>(GetTex3DSlice())->GetSize();
     else
     {
-        BPAssert(false, "Unknown type for TargetOutput");
+        BP_ASSERT(false, "Unknown type for TargetOutput");
         return glm::uvec2{ 0 };
     }
 }
 uint32_t TargetOutput::GetLayer() const
 {
-    BPAssert(!IsLayered(),
+    BP_ASSERT(!IsLayered(),
              "Trying to get the specific layer from a multi-layered output");
 
     if (IsTex1D() || IsTex2D())
@@ -98,10 +98,10 @@ uint32_t TargetOutput::GetLayer() const
     else if (IsTexCubeFace())
         return (uint32_t)std::get<1>(GetTexCubeFace())._to_index();
     else if (IsTex3D() || IsTexCube())
-        { BPAssert(false, "Shouldn't ever get here"); return -1; }
+        { BP_ASSERT(false, "Shouldn't ever get here"); return -1; }
     else
     {
-        BPAssert(false, "Unknown TargetOutput type");
+        BP_ASSERT(false, "Unknown TargetOutput type");
         return -1;
     }
 }
@@ -115,7 +115,7 @@ uint32_t TargetOutput::GetLayerCount() const
         return 6;
     else
     {
-        BPAssert(false, "Unknown TargetOutput type");
+        BP_ASSERT(false, "Unknown TargetOutput type");
         return 1;
     }
 }
@@ -147,7 +147,7 @@ namespace
             {
                 //Make sure all targets have been cleaned up.
                 //TODO: Use OpenGL's debug utilities to give the targets names and provide more info here.
-                BPAssert(threadData.targetsByOglPtr.size() == 0,
+                BP_ASSERT(threadData.targetsByOglPtr.size() == 0,
                          "Target memory leaks!");
 
                 threadData.targetsByOglPtr.clear();
@@ -178,8 +178,8 @@ Target::Target(TargetStates& outStatus,
     CheckInit();
     threadData.targetsByOglPtr[glPtr] = this;
 
-    BPAssert(size.x > 0, "Target's width can't be 0");
-    BPAssert(size.y > 0, "Target's height can't be 0");
+    BP_ASSERT(size.x > 0, "Target's width can't be 0");
+    BP_ASSERT(size.y > 0, "Target's height can't be 0");
 
     glNamedFramebufferParameteri(glPtr.Get(), GL_FRAMEBUFFER_DEFAULT_WIDTH, (GLint)size.x);
     glNamedFramebufferParameteri(glPtr.Get(), GL_FRAMEBUFFER_DEFAULT_HEIGHT, (GLint)size.y);
@@ -225,9 +225,9 @@ Target::Target(TargetStates& outStatus,
              glm::min(color.GetSize(), depthStencil.GetSize()),
              std::min(color.GetLayerCount(), depthStencil.GetLayerCount()))
 {
-    BPAssert(depthStencil.GetSize() == color.GetSize(),
+    BP_ASSERT(depthStencil.GetSize() == color.GetSize(),
              "Color and depth aren't same size");
-    BPAssert(depthStencil.GetTex()->GetFormat().IsDepthStencil(),
+    BP_ASSERT(depthStencil.GetTex()->GetFormat().IsDepthStencil(),
              "Depth/stencil texture isn't a depth or stencil format");
 
     AttachTexture(GL_COLOR_ATTACHMENT0, color);
@@ -313,7 +313,7 @@ Target::Target(TargetStates& outStatus,
     if (depthOutput.has_value())
     {
         auto format = depthOutput.value().GetTex()->GetFormat();
-        BPAssert(format.IsDepthStencil(), "Depth attachment isn't a depth/stencil format");
+        BP_ASSERT(format.IsDepthStencil(), "Depth attachment isn't a depth/stencil format");
 
         AttachTexture(GetAttachmentType(format.AsDepthStencil()), depthOutput.value());
         tex_depth = depthOutput.value();
@@ -378,7 +378,7 @@ Target::Target(Target&& from)
 
     //Update the static reference to this buffer.
     auto found = threadData.targetsByOglPtr.find(glPtr);
-    BPAssert(found != threadData.targetsByOglPtr.end(),
+    BP_ASSERT(found != threadData.targetsByOglPtr.end(),
              "Un-indexed Target detected");
     found->second = this;
 }
@@ -410,7 +410,7 @@ TargetStates Target::GetStatus() const
     {
         std::string errMsg = "Unexpected glCheckFramebufferStatus code: ";
         errMsg += IO::ToHex(status);
-        BPAssert(false, errMsg.c_str());
+        BP_ASSERT(false, errMsg.c_str());
         return TargetStates::Unknown;
     }
 }
@@ -464,7 +464,7 @@ void Target::AttachTexture(GLenum attachment, const TargetOutput& output)
 }
 void Target::AttachBuffer(DepthStencilFormats format)
 {
-    BPAssert(!tex_stencil.has_value(),
+    BP_ASSERT(!tex_stencil.has_value(),
              "Can't use a stencil texture and a depth buffer separately; they must be the same texture");
 
     //Create a new renderbuffer if we need it.
@@ -478,7 +478,7 @@ void Target::AttachBuffer(DepthStencilFormats format)
     else if (IsDepthAndStencil(format))
         attachment = GL_DEPTH_STENCIL_ATTACHMENT;
     else
-        BPAssert(false, "Attaching Renderbuffer for FBO, but format isn't supported");
+        BP_ASSERT(false, "Attaching Renderbuffer for FBO, but format isn't supported");
     glNamedFramebufferRenderbuffer(glPtr.Get(), attachment,
                                    GL_RENDERBUFFER, depthBuffer.value().GetOglPtr().Get());
 }
@@ -515,9 +515,9 @@ const TargetOutput* Target::GetOutput_Color(uint32_t index) const
 
 void Target::ClearColor(const glm::fvec4& rgba, uint32_t index)
 {
-    BPAssert(index < GetNColorOutputs(), "Not enough color outputs to reach this index");
-    BPAssert(GetOutput_Color(index) != nullptr, "No color output at this index");
-    BPAssert(!GetOutput_Color(index)->GetTex()->GetFormat().IsInteger(),
+    BP_ASSERT(index < GetNColorOutputs(), "Not enough color outputs to reach this index");
+    BP_ASSERT(GetOutput_Color(index) != nullptr, "No color output at this index");
+    BP_ASSERT(!GetOutput_Color(index)->GetTex()->GetFormat().IsInteger(),
              "Trying to clear an int/uint texture with a float value");
 
     //Currently there's a bug in GLEW where the rgba array in the below OpenGL call
@@ -532,8 +532,8 @@ void Target::ClearColor(const glm::fvec4& rgba, uint32_t index)
 }
 void Target::ClearColor(const glm::uvec4& rgba, uint32_t index)
 {
-    BPAssert(index < GetNColorOutputs(), "Not enough color outputs to clear");
-    BPAssert(GetOutput_Color(index)->GetTex()->GetFormat().GetComponentType() ==
+    BP_ASSERT(index < GetNColorOutputs(), "Not enough color outputs to clear");
+    BP_ASSERT(GetOutput_Color(index)->GetTex()->GetFormat().GetComponentType() ==
                  +FormatTypes::UInt,
              "Trying to clear a non-UInt texture with a uint value");
 
@@ -541,8 +541,8 @@ void Target::ClearColor(const glm::uvec4& rgba, uint32_t index)
 }
 void Target::ClearColor(const glm::ivec4& rgba, uint32_t index)
 {
-    BPAssert(index < GetNColorOutputs(), "Not enough color outputs to clear");
-    BPAssert(GetOutput_Color(index)->GetTex()->GetFormat().GetComponentType() ==
+    BP_ASSERT(index < GetNColorOutputs(), "Not enough color outputs to clear");
+    BP_ASSERT(GetOutput_Color(index)->GetTex()->GetFormat().GetComponentType() ==
                  +FormatTypes::Int,
              "Trying to clear a non-Int texture with an int value");
 
@@ -579,7 +579,7 @@ GLenum Target::GetAttachmentType(DepthStencilFormats format)
         return GL_STENCIL_ATTACHMENT;
     else
     {
-        BPAssert(IsDepthAndStencil(format),
+        BP_ASSERT(IsDepthAndStencil(format),
                  "Format is not depth, stencil, or both. How is that possible?");
         return GL_DEPTH_STENCIL_ATTACHMENT;
     }

@@ -20,7 +20,7 @@ TextureCube::TextureCube(uint32_t _size, Format format,
                        size, size);
 
     //Cubemaps should always use clamping.
-    BPAssert(GetSampler().GetWrapping() == +WrapModes::Clamp,
+    BP_ASSERT(GetSampler().GetWrapping() == +WrapModes::Clamp,
              "Only Clamp wrapping is supported for cubemap textures");
     //Make sure all cubemaps sample nicely around the edges.
     //From what I understand, virtually all implementations can easily do this nowadays.
@@ -102,7 +102,7 @@ void TextureCube::SetData(const void* data,
 
     for (glm::length_t d = 0; d < 2; ++d)
     {
-        BPAssert(range.GetMaxCornerInclusive()[d] < sizeAtMip[d],
+        BP_ASSERT(range.GetMaxCornerInclusive()[d] < sizeAtMip[d],
                  "GetData() call would go past the texture bounds");
     }
 
@@ -127,7 +127,7 @@ void TextureCube::GetData(void* data, size_t dataPixelSize,
     auto range = params.GetRange(sizeAtMip);
 
     for (glm::length_t d = 0; d < 2; ++d)
-        BPAssert(range.GetMaxCornerInclusive()[d] < sizeAtMip[d],
+        BP_ASSERT(range.GetMaxCornerInclusive()[d] < sizeAtMip[d],
                  "GetData() call would go past the texture bounds");
 
     //Note that B+ always uses tighty-packed byte data --
@@ -155,7 +155,7 @@ void TextureCube::Set_Compressed(const std::byte* compressedData,
     //Process default arguments.
     if (glm::all(glm::equal(destPixelRange.Size, glm::uvec2{ 0 })))
         destPixelRange = Math::Box2Du::MakeSize(texSize);
-    BPAssert(glm::all(glm::lessThan(destPixelRange.GetMaxCornerInclusive(), texSize)),
+    BP_ASSERT(glm::all(glm::lessThan(destPixelRange.GetMaxCornerInclusive(), texSize)),
              "Block range goes beyond the texture's size");
 
 
@@ -182,7 +182,7 @@ void TextureCube::Get_Compressed(std::byte* compressedData,
     //Process default arguments.
     if (glm::all(glm::equal(pixelRange.Size, glm::uvec2{ 0 })))
         pixelRange = Math::Box2Du::MakeSize(texSize);
-    BPAssert(glm::all(glm::lessThan(pixelRange.GetMaxCornerInclusive(), texSize)),
+    BP_ASSERT(glm::all(glm::lessThan(pixelRange.GetMaxCornerInclusive(), texSize)),
              "Block range goes beyond the texture's size");
 
     //Download.

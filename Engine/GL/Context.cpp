@@ -20,17 +20,17 @@ DrawMeshMode_Basic::DrawMeshMode_Basic(const Buffers::MeshData& mesh,
         if (mesh.HasIndexData())
         {
             auto indexData = mesh.GetIndexData().value();
-            BPAssert(indexData.DataStructSize ==
+            BP_ASSERT(indexData.DataStructSize ==
                          GetByteSize(mesh.GetIndexDataType().value()),
                      "Listed byte-size of the data in the index buffer doesn't match the size expected by the mesh");
 
-            BPAssert(indexData.Buf->GetByteSize() % indexData.DataStructSize == 0,
+            BP_ASSERT(indexData.Buf->GetByteSize() % indexData.DataStructSize == 0,
                      "Index buffer's size isn't divisible by the byte size of one element");
             nElements = (uint32_t)(indexData.Buf->GetByteSize() / indexData.DataStructSize);
         }
         else
         {
-            BPAssert(false, "Can't deduce the Count from a non-indexed MeshData automatically!");
+            BP_ASSERT(false, "Can't deduce the Count from a non-indexed MeshData automatically!");
         }
     }
 
@@ -112,7 +112,7 @@ Context::~Context()
     {
         SDL_GL_DeleteContext(sdlContext);
 
-        BPAssert(contextThreadData.Instance == this,
+        BP_ASSERT(contextThreadData.Instance == this,
                  "More than one initialized Context in this thread");
         contextThreadData.Instance = nullptr;
     }
@@ -315,7 +315,7 @@ void Context::Draw(const DrawMeshMode_Basic& mesh, const CompiledShader& shader,
     {
         auto indices = _indices.value();
 
-        BPAssert(mesh.Data.HasIndexData(),
+        BP_ASSERT(mesh.Data.HasIndexData(),
                  "Can't do indexed drawing for a mesh with no index data");
 
         //Configure the "primitive restart" special index, if desired.
@@ -402,9 +402,9 @@ void Context::Draw(const Buffers::MeshData& mesh, Buffers::PrimitiveTypes primit
         auto indexType = mesh.GetIndexDataType().value();
         auto indexByteSize = GetByteSize(indexType);
 
-        BPAssert(mesh.HasIndexData(),
+        BP_ASSERT(mesh.HasIndexData(),
                  "Can't do indexed multi-draw for a mesh with no index data");
-        BPAssert(indices.ValueOffsets.size() == subsets.size(),
+        BP_ASSERT(indices.ValueOffsets.size() == subsets.size(),
                  "indices.ValueOffsets doesn't have exactly one element for each subset");
 
         //Re-format more multi-draw data for OpenGL.
@@ -455,7 +455,7 @@ void Context::Draw(const DrawMeshMode_Basic& mesh, const CompiledShader& shader,
     shader.Activate();
     mesh.Data.Activate();
 
-    BPAssert(mesh.Data.HasIndexData(),
+    BP_ASSERT(mesh.Data.HasIndexData(),
              "Can't do indexed multi-draw for a mesh with no index data");
 
     auto primitive = (GLenum)mesh.Primitive;
@@ -605,7 +605,7 @@ BlendStateRGBA Context::GetBlending() const
     BlendStateAlpha colorBlendTest{ state.ColorBlending.Src, state.ColorBlending.Dest,
                                     state.ColorBlending.Op,
                                     state.AlphaBlending.Constant };
-    BPAssert(state.AlphaBlending == colorBlendTest,
+    BP_ASSERT(state.AlphaBlending == colorBlendTest,
              "Alpha blend state and color blend state do not match up");
 
     return BlendStateRGBA{ state.ColorBlending.Src, state.ColorBlending.Dest,
@@ -668,7 +668,7 @@ void Context::SetAlphaBlending(const BlendStateAlpha& blendState)
 const StencilTest& Context::GetStencilTest() const
 {
     //Make sure the same settings are being used for both front- and back-faces.
-    BPAssert(state.StencilTestFront == state.StencilTestBack,
+    BP_ASSERT(state.StencilTestFront == state.StencilTestBack,
              "Front-face stencil test and back-face stencil test don't match");
     return state.StencilTestFront;
 }
@@ -704,7 +704,7 @@ void Context::SetStencilTestBackFaces(const StencilTest& test)
 const StencilResult& Context::GetStencilResult() const
 {
     //Make sure the same settings are being used for both front- and back-faces.
-    BPAssert(state.StencilResultFront == state.StencilResultBack,
+    BP_ASSERT(state.StencilResultFront == state.StencilResultBack,
              "Front-face stencil result and back-face stencil result don't match");
     return state.StencilResultFront;
 }
@@ -747,7 +747,7 @@ void Context::SetStencilResultBackFaces(const StencilResult& result)
 GLuint Context::GetStencilMask() const
 {
     //Make sure the same settings are being used for both front- and back-faces.
-    BPAssert(state.StencilMaskFront == state.StencilMaskBack,
+    BP_ASSERT(state.StencilMaskFront == state.StencilMaskBack,
              "Front-face stencil mask and back-face stencil mask don't match up");
     return state.StencilMaskFront;
 }

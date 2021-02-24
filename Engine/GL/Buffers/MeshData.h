@@ -81,7 +81,7 @@ namespace Bplus::GL::Buffers
         case IndexDataTypes::UInt8: return 1;
         case IndexDataTypes::UInt16: return 2;
         case IndexDataTypes::UInt32: return 4;
-        default: BPAssert(false, d._to_string()); return 0;
+        default: BP_ASSERT(false, d._to_string()); return 0;
     } }
 
     template<typename UInt_t>

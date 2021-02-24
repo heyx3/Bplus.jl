@@ -19,7 +19,7 @@ namespace Bplus
         template<typename... Args>
         void Create(Args&&... args)
         {
-            BPAssert(!isCreated, "Already created this!");
+            BP_ASSERT(!isCreated, "Already created this!");
             isCreated = true;
             new (&itemBytes[0]) T(std::forward<Args>(args)...);
         }
@@ -44,13 +44,13 @@ namespace Bplus
         //Gets the underlying data, assuming it's already been created.
         const T& Cast() const
         {
-            BPAssert(isCreated, "Accessed before creation");
+            BP_ASSERT(isCreated, "Accessed before creation");
             return PlainCast();
         }
         //Gets the underlying data, assuming it's already been created.
         T& Cast()
         {
-            BPAssert(isCreated, "Accessed before creation");
+            BP_ASSERT(isCreated, "Accessed before creation");
             return PlainCast();
         }
 

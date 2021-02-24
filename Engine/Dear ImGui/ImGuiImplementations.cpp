@@ -401,7 +401,7 @@ void OGLImpl_BPlus::PrepareRenderState(ImDrawData& drawData, glm::ivec2 framebuf
         { (R+L)/(L-R),  (T+B)/(B-T),  0.0f,   1.0f },
     };
     bool success = shader->SetUniform("ProjMtx", glm::make_mat4<float>(&ortho_projection[0][0]));
-    BPAssert(success, "Failed to set projection matrix for ImGUI renderer");
+    BP_ASSERT(success, "Failed to set projection matrix for ImGUI renderer");
 
     //Give the font texture to the shader.
     shader->SetUniform("Texture", fontTextureView.value());

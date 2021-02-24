@@ -80,7 +80,7 @@ namespace Bplus
             static std::unordered_map<std::string, size_t> agnosticLookup;
             if (!preserveCase.has_value())
             {
-                BPAssert(!preserveUnderscores.has_value(), "One but not the other??");
+                BP_ASSERT(!preserveUnderscores.has_value(), "One but not the other??");
 
                 preserveCase = false;
                 preserveUnderscores = false;
@@ -133,7 +133,7 @@ namespace Bplus
 
                 #pragma region Generate agnosticLookup
 
-                BPAssert(agnosticLookup.size() == 0, "Uninitialized but it has values??");
+                BP_ASSERT(agnosticLookup.size() == 0, "Uninitialized but it has values??");
                 for (size_t i = 0; i < BetterEnum_t::_size(); ++i)
                 {
                     auto eVal = BetterEnum_t::_from_index(i);

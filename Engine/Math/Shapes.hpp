@@ -18,9 +18,9 @@ namespace Bplus::Math
         MakeBasis(const glm::vec<3, F>& up,
                   glm::vec<3, F> forward = { 1, 0, 0 })
     {
-        BPAssert(std::abs(glm::length2(forward) - 1) < (F)0.0001,
+        BP_ASSERT(std::abs(glm::length2(forward) - 1) < (F)0.0001,
                  "Forward vector isn't normalized");
-        BPAssert(std::abs(glm::length2(  up   ) - 1) < (F)0.0001,
+        BP_ASSERT(std::abs(glm::length2(  up   ) - 1) < (F)0.0001,
                  "Up vector isn't normalized");
 
         //If forward and up are equal, fabricate a new forward.

@@ -130,7 +130,7 @@ template<typename T>
 void TestTextureGetSetColors(Format texFormat, PixelIOChannels components,
                              glm::uvec3 size, const T* data)
 {
-    BPAssert(!texFormat.IsDepthStencil(),
+    BP_ASSERT(!texFormat.IsDepthStencil(),
              "TextTextureGetSetColor() isn't for depth/stencil textures");
 
     //Test a Texture2D with the given format, size, and data.
@@ -214,7 +214,7 @@ void TestTextureGetSetSingleAllChannels(SimpleFormat texFormat,
         case SimpleFormatComponents::RG:   dataComponentFormat = PixelIOChannels::RG  ; break;
         case SimpleFormatComponents::RGB:  dataComponentFormat = PixelIOChannels::RGB ; break;
         case SimpleFormatComponents::RGBA: dataComponentFormat = PixelIOChannels::RGBA; break;
-        default: BPAssert(false, "Unexpected Bplus::GL::Textures::SimpleFormatComponents"); break;
+        default: BP_ASSERT(false, "Unexpected Bplus::GL::Textures::SimpleFormatComponents"); break;
     }
     
     glm::bvec4 usedChannels = { UsesChannel(dataComponentFormat, ColorChannels::Red),

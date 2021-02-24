@@ -49,7 +49,7 @@ namespace Bplus::GL
         //Gets the stencil test, assuming it's the same for both front and back faces.
         StencilTest GetStencilTest() const
         {
-            BPAssert(StencilTestFront == StencilTestBack,
+            BP_ASSERT(StencilTestFront == StencilTestBack,
                      "Using different stencil tests for front vs back faces");
             return StencilTestFront;
         }
@@ -63,7 +63,7 @@ namespace Bplus::GL
         //Gets the stencil test response, assuming it's the same for both front and back faces.
         StencilResult GetStencilResult() const
         {
-            BPAssert(StencilResultFront == StencilResultBack,
+            BP_ASSERT(StencilResultFront == StencilResultBack,
                 "Using different stencil results for front vs back faces");
             return StencilResultFront;
         }
@@ -77,7 +77,7 @@ namespace Bplus::GL
         //Gets the stencil mask, assuming it's the same for both front and back faces.
         GLuint GetStencilMask() const
         {
-            BPAssert(StencilMaskFront == StencilMaskBack,
+            BP_ASSERT(StencilMaskFront == StencilMaskBack,
                      "Using different stencil masks for front vs back faces");
             return StencilMaskFront;
         }

@@ -94,7 +94,7 @@ namespace Bplus::GL
                 case UniformStates::Exists:       return GetUniform<Value_t>(uniformStatus.Uniform);
 
                 default:
-                    BPAssert(false, "Unknown uniform ptr state");
+                    BP_ASSERT(false, "Unknown uniform ptr state");
                     return std::nullopt;
             }
         }
@@ -120,7 +120,7 @@ namespace Bplus::GL
                     return GetUniform({ ptr.Get() + index });
 
                 default:
-                    BPAssert(false, "Unknown uniform ptr state");
+                    BP_ASSERT(false, "Unknown uniform ptr state");
                     return std::nullopt;
             }
         }
@@ -154,7 +154,7 @@ namespace Bplus::GL
                     return true;
 
                 default:
-                    BPAssert(false, "Unknown uniform ptr state");
+                    BP_ASSERT(false, "Unknown uniform ptr state");
                     return false;
             }
         }
@@ -181,7 +181,7 @@ namespace Bplus::GL
                     return true;
 
                 default:
-                    BPAssert(false, "Unknown uniform ptr state");
+                    BP_ASSERT(false, "Unknown uniform ptr state");
                     return false;
             }
         }
@@ -208,7 +208,7 @@ namespace Bplus::GL
                     return true;
 
                 default:
-                    BPAssert(false, "Unknown uniform ptr state");
+                    BP_ASSERT(false, "Unknown uniform ptr state");
                     return false;
             }
         }
@@ -240,7 +240,7 @@ namespace Bplus::GL
                     return true;
 
                 default:
-                    BPAssert(false, "Unknown uniform ptr state");
+                    BP_ASSERT(false, "Unknown uniform ptr state");
                     return false;
             }
         }
@@ -267,7 +267,7 @@ namespace Bplus::GL
         template<typename Value_t>
         auto GetUniform(OglPtr::ShaderUniform ptr) const
         {
-            BPAssert(!ptr.IsNull(), "Given an null uniform location!");
+            BP_ASSERT(!ptr.IsNull(), "Given an null uniform location!");
             return _GetUniform<Value_t>(ptr);
         }
         #pragma region _GetUniform()
@@ -387,7 +387,7 @@ namespace Bplus::GL
                 return nullptr;
 
             auto found = texViews.find(viewPtr);
-            BPAssert(found != texViews.end(),
+            BP_ASSERT(found != texViews.end(),
                      "Can't find TexView uniform value");
             return &found->second;
         }
@@ -401,7 +401,7 @@ namespace Bplus::GL
                 return nullptr;
 
             auto found = imgViews.find(viewPtr);
-            BPAssert(found != imgViews.end(),
+            BP_ASSERT(found != imgViews.end(),
                      "Can't find ImgView uniform value");
             return &found->second;
         }
@@ -419,7 +419,7 @@ namespace Bplus::GL
         template<typename Value_t>
         void SetUniform(OglPtr::ShaderUniform ptr, const Value_t& value)
         {
-            BPAssert(ptr != OglPtr::ShaderUniform::null, "Given a null uniform location!");
+            BP_ASSERT(ptr != OglPtr::ShaderUniform::null, "Given a null uniform location!");
             _SetUniform<Value_t>(ptr, value);
         }
         #pragma region _SetUniform()

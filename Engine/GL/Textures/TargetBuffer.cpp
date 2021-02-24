@@ -10,9 +10,9 @@ TargetBuffer::TargetBuffer(const Format& _format,
     : glPtr(OglPtr::TargetBuffer::null),
       size(_size), format(_format)
 {
-    BPAssert(_format.GetOglEnum() != GL_NONE,
+    BP_ASSERT(_format.GetOglEnum() != GL_NONE,
              "Invalid format for TargetBuffer");
-    BPAssert(!_format.IsCompressed(),
+    BP_ASSERT(!_format.IsCompressed(),
              "Can't render to compressed formats");
 
     glCreateRenderbuffers(1, &glPtr.Get());

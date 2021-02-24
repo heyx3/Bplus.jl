@@ -49,17 +49,17 @@ namespace Bplus::GL::Textures
                 case MipFilters::Off: return GL_NEAREST;
                 case MipFilters::Rough: return GL_NEAREST_MIPMAP_NEAREST;
                 case MipFilters::Smooth: return GL_NEAREST_MIPMAP_LINEAR;
-                default: BPAssert(false, "Unknown mip filter mode"); return GL_NONE;
+                default: BP_ASSERT(false, "Unknown mip filter mode"); return GL_NONE;
             }
 
             case PixelFilters::Smooth: switch (mipFilter) {
                 case MipFilters::Off: return GL_LINEAR;
                 case MipFilters::Rough: return GL_LINEAR_MIPMAP_NEAREST;
                 case MipFilters::Smooth: return GL_LINEAR_MIPMAP_LINEAR;
-                default: BPAssert(false, "Unknown mip filter mode"); return GL_NONE;
+                default: BP_ASSERT(false, "Unknown mip filter mode"); return GL_NONE;
             }
 
-            default: BPAssert(false, "Unknown pixel filter mode"); return GL_NONE;
+            default: BP_ASSERT(false, "Unknown pixel filter mode"); return GL_NONE;
         }
     }
     
@@ -147,7 +147,7 @@ namespace Bplus::GL::Textures
         //Get the wrapping mode for all axes, assuming they're all the same.
         WrapModes GetWrapping() const
         {
-            BPAssert(std::all_of(Wrapping.begin(), Wrapping.end(),
+            BP_ASSERT(std::all_of(Wrapping.begin(), Wrapping.end(),
                                  [&](WrapModes w) { return w == Wrapping[0]; }),
                      "Sampler's axes have different wrap modes");
 
