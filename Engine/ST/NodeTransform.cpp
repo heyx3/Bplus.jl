@@ -2,7 +2,6 @@
 
 #include <glm/gtx/matrix_decompose.hpp>
 
-
 using namespace Bplus::ST;
 
 
@@ -249,13 +248,16 @@ void NodeTransform::InvalidateWorldMatrix(bool includeRot) const
     }
 
     //Assert that our parent is already invalidated, since we are about to be.
-    if (BPIsDebug && parent != entt::null)
+    if constexpr (BPIsDebug)
     {
-        const auto& parentNode = world->get<NodeTransform>(parent);
-        BPAssert(!parentNode.cachedWorldMatrix.has_value(),
-                 "Parent node's cached world matrix is still valid while this node's is being invalidated");
-        BPAssert((!includeRot) | (!parentNode.cachedWorldRot.has_value()),
-                 "Parent node's cached world rotation is still valid while this node's is being invalidated");
+        if (parent != entt::null)
+        {
+            const auto& parentNode = world->get<NodeTransform>(parent);
+            BPAssert(!parentNode.cachedWorldMatrix.has_value(),
+                     "Parent node's cached world matrix is still valid while this node's is being invalidated");
+            BPAssert((!includeRot) | (!parentNode.cachedWorldRot.has_value()),
+                     "Parent node's cached world rotation is still valid while this node's is being invalidated");
+        }
     }
 
     //Invalidate this node's caches.

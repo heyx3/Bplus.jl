@@ -43,9 +43,6 @@
       <Filter>Dear ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Utils.h" />
-    <ClInclude Include="Math\Math.h">
-      <Filter>Math</Filter>
-    </ClInclude>
     <ClInclude Include="Math\Box.hpp">
       <Filter>Math</Filter>
     </ClInclude>
@@ -141,6 +138,9 @@
     </ClInclude>
     <ClInclude Include="ST\Scene.h">
       <Filter>ST</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\Math.hpp">
+      <Filter>Math</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

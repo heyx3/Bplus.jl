@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Math/Math.h"
+#include "../Math/Math.hpp"
 
 #include "Scene.h"
 
@@ -18,12 +18,12 @@ namespace Bplus::ST
     BETTER_ENUM(Spaces, uint8_t,
         World, Local
     );
-
-
+    
     //A node in the scene tree,
     //    with a position, rotation, and scale relative to its parent.
-    //Note that the ECS "world" is stored as a persistent pointer,
-    //    and cannot move until all nodes are destroyed.
+    //Note that the Scene is stored in here as a pointer,
+    //    and so it cannot move until all nodes are destroyed.
+    //TODO: Support both 2- and 3-dimensional scene graphs using a template.
     struct BP_API NodeTransform
     {
         NodeTransform(Scene& world,
@@ -120,6 +120,7 @@ namespace Bplus::ST
         //Changes this node's parent, and leaves its local-space OR
         //    world-space transform unchanged.
         //Preserving local-space is much faster than world-space.
+        //This node will be inserted at the beginning of the child list.
         void SetParent(NodeID newValue, Spaces preserve = Spaces::Local);
         //Disconnects this node from its parent, turning it into a root node.
         //Preserves either its world-space or local-space position.
@@ -148,11 +149,18 @@ namespace Bplus::ST
         auto IterParents() const;
 
         //Returns an iterable object representing all nodes underneath this node.
-        //Supports both depth-first and breadth-first.
-        auto IterTree(bool includeSelf, bool breadthFirst = true);
+        //Runs in breadth-first mode.
+        auto IterTreeBreadth(bool includeSelf);
         //Returns an iterable object representing all nodes underneath this node.
-        //Supports both depth-first and breadth-first.
-        auto IterTree(bool includeSelf, bool breadthFirst = true) const;
+        //Runs in breadth-first mode.
+        auto IterTreeBreadth(bool includeSelf) const;
+
+        //Returns an iterable object representing all nodes underneath this node.
+        //Runs in depth-first mode.
+        auto IterTreeDepth(bool includeSelf);
+        //Returns an iterable object representing all nodes underneath this node.
+        //Runs in depth-first mode.
+        auto IterTreeDepth(bool includeSelf) const;
 
         #pragma endregion
 
@@ -217,6 +225,7 @@ namespace Bplus::ST
                       
                 bool cmp(const Impl& other) const
                 {
+                    //Use memcmp if possible, for speed.
                     if constexpr (sizeof(Impl) == (sizeof(decltype(scene)) + sizeof(decltype(currentChild))))
                     {
                         return memcmp(this, &other, sizeof(Impl)) == 0;
@@ -261,6 +270,7 @@ namespace Bplus::ST
                       
                 bool cmp(const Impl& other) const
                 {
+                    //Use memcmp if possible, for speed.
                     if constexpr (sizeof(Impl) == (sizeof(decltype(scene)) + sizeof(decltype(currentParent))))
                     {
                         return memcmp(this, &other, sizeof(Impl)) == 0;
@@ -281,16 +291,16 @@ namespace Bplus::ST
 
 
         //Iterates everything underneath a node, including children, grand-children, etc.
-        struct BP_API Tree
+        //Iterates in depth-first order.
+        struct BP_API TreeDFS
         {
             const NodeTransform* Root;
             bool IncludeSelf = true;
-            bool BreadthFirst = true; //If false, then depth-first
 
             #pragma region Implementation
 
             //Type-defs to make copy-pasting less dangerous.
-            using MyIter_t = Bplus::ST::Iterators::Tree;
+            using MyIter_t = Bplus::ST::Iterators::TreeDFS;
 
             struct Impl
             {
@@ -309,26 +319,58 @@ namespace Bplus::ST
                 }
                 void end(const MyIter_t* tr)
                 {
-                    begin(tr); //Set up the first two fields
+                    begin(tr); //Set up the first few fields
+
                     currentNodeID = entt::null;
                 }
 
-                void next(const MyIter_t* tr)
+                //Returns the change in depth from this iteration.
+                //E.x. if we moved to an "uncle" node, then -1 is returned.
+                //If we moved to a "child" node, +1 is returned.
+                int_fast32_t next(const MyIter_t* tr)
                 {
-                    //TODO: Implement
-                }
-                void prev(const MyIter_t* tr)
-                {
-                    //TODO: Implement
+                    auto* prevNode = &scene->get<NodeTransform>(currentNodeID);
+                    auto prevNodeID = currentNodeID;
+
+                    int_fast32_t depthDelta = 0;
+
+                    //If the current node has a child, use that.
+                    //Otherwise, try a sibling.
+
+                    currentNodeID = prevNode->GetFirstChild();
+                    depthDelta += 1;
+
+                    //Make sure not to look at siblings/parents if we're already at the root node.
+                    if ((currentNodeID == entt::null) & (prevNodeID != rootNodeID))
+                    {
+                        currentNodeID = prevNode->GetNextSibling();
+                        depthDelta -= 1;
+
+                        //If there's no next sibling, go up one level and try the "uncle".
+                        //Keep moving up until we find one, or we hit the root node.
+                        while ((currentNodeID == entt::null) & (prevNode->GetParent() != rootNodeID))
+                        {
+                            //Move up one level.
+                            prevNodeID = prevNode->GetParent();
+                            prevNode = &scene->get<NodeTransform>(prevNodeID);
+                            depthDelta -= 1;
+
+                            //Try to select the "uncle".
+                            currentNodeID = prevNode->GetNextSibling();
+                        }
+                    }
                 }
 
                 const NodeID get(const MyIter_t* tr) const { return currentNodeID; }
-                      NodeID get(MyIter_t* tr)       { return currentNodeID; }
+                      NodeID get(      MyIter_t* tr)       { return currentNodeID; }
 
                 bool cmp(const Impl& other) const
                 {
+                    //Use memcmp if possible, for speed.
                     if constexpr (sizeof(Impl) ==
-                                  (sizeof(decltype(scene)) + sizeof(decltype(rootNodeID)) + sizeof(decltype(currentNodeID))))
+                                  (sizeof(decltype(scene)) +
+                                   sizeof(decltype(rootNodeID)) +
+                                   sizeof(decltype(currentNodeID))))
                     {
                         return memcmp(this, &other, sizeof(Impl)) == 0;
                     }
@@ -343,22 +385,132 @@ namespace Bplus::ST
 
             VGSI_STL_TYPEDEFS(NodeID);
             VGSI_SETUP_ITERATORS(MyIter_t, NodeID, Impl);
-            VGSI_SETUP_REVERSE_ITERATORS(MyIter_t, NodeID, Impl);
+
+            #pragma endregion
+        };
+
+        //Iterates everything underneath a node, including children, grand-children, etc.
+        //Iterates in breadth-first order.
+        struct BP_API TreeBFS
+        {
+            //TODO: Also provide a queue-based BFS, which may be faster for deep trees. Do some profiling once we have a realistic test case.
+
+            const NodeTransform* Root;
+            bool IncludeSelf = true;
+            
+            #pragma region Implementation
+
+            //Type-defs to make copy-pasting less dangerous.
+            using MyIter_t = Bplus::ST::Iterators::TreeBFS;
+
+            struct Impl
+            {
+                //The implementation is based on Iterative-Deepening,
+                //    which is a DFS-based search that ends up acting like BFS.
+                //It visits nodes more often than necessary, but does not require heap memory.
+                TreeDFS::Impl dfs;
+                uint_fast32_t currentTargetDepth, currentDFSDepth;
+                bool isDone;
+
+                //As we iterate across a depth level, we keep track of
+                //    whether any more children exist at the next depth.
+                bool doesNextDepthExist;
+
+
+                void begin(const MyIter_t* tr)
+                {
+                    TreeDFS dfsVersion{ tr->Root, tr->IncludeSelf };
+                    dfs.begin(&dfsVersion);
+                    
+                    isDone = dfs.currentNodeID != entt::null;
+                    if (isDone)
+                        return;
+
+                    currentTargetDepth = tr->IncludeSelf ? 0 : 1;
+                    currentDFSDepth = currentTargetDepth;
+
+                    //Assume the next depth is not there until we find an example.
+                    doesNextDepthExist = false;
+                }
+                void end(const MyIter_t* tr)
+                {
+                    isDone = true;
+
+                    //None of the other fields matter.
+                }
+
+                void next(const MyIter_t* tr)
+                {
+                    BPAssert(!isDone, "Trying to iterate past the end of a TreeBFS");
+
+                    //Check out the node right here, and see if it has kids.
+                    if (!doesNextDepthExist)
+                        doesNextDepthExist = dfs.scene->get<NodeTransform>(dfs.currentNodeID).GetNChildren() > 0;
+
+                    //Keep iterating the DFS until we find a node at the target depth.
+                    //If the iterator finishes, restart it one level deeper.
+                    do {
+                        auto depthDelta = dfs.next(nullptr);
+                        if (dfs.currentNodeID == entt::null)
+                        {
+                            //If we know there's nothing deeper, we're done the whole search.
+                            if (!doesNextDepthExist)
+                            {
+                                isDone = true;
+                                return;
+                            }
+                            else
+                            {
+                                TreeDFS dfsTree{ tr->Root, false }; //We know we can skip the root node at this point
+                                dfs.begin(&dfsTree);
+
+                                currentDFSDepth = 1;
+                                doesNextDepthExist = false;
+                                currentTargetDepth += 1;
+                            }
+                        }
+                        else
+                        {
+                            //Update the current depth of the DFS.
+                            BPAssert((depthDelta >= 0) | (((uint_fast32_t)(-depthDelta) > currentDFSDepth)),
+                                     "An iteration of the DFS just took it above the root");
+                            currentDFSDepth += depthDelta;
+                        }
+                    } while (currentDFSDepth != currentTargetDepth);
+                }
+
+                const NodeID get(const MyIter_t* tr) const { return dfs.get(nullptr); }
+                      NodeID get(      MyIter_t* tr)       { return dfs.get(nullptr); }
+
+                bool cmp(const Impl& other) const
+                {
+                    return (isDone & other.isDone) ||
+                           ((!isDone) & (!other.isDone) &
+                            dfs.cmp(other.dfs) &
+                            (currentTargetDepth == other.currentDFSDepth));
+                }
+            };
+
+            VGSI_STL_TYPEDEFS(NodeID);
+            VGSI_SETUP_ITERATORS(MyIter_t, NodeID, Impl);
 
             #pragma endregion
         };
     }
 
-    auto NodeTransform::IterChildren()       { return Iterators::Children{ this }; }
-    auto NodeTransform::IterChildren() const { return Iterators::Children{ this }; }
+    BP_API auto NodeTransform::IterChildren()       { return Iterators::Children{ this }; }
+    BP_API auto NodeTransform::IterChildren() const { return Iterators::Children{ this }; }
 
-    auto NodeTransform::IterParents()       { return Iterators::Parents{ this }; }
-    auto NodeTransform::IterParents() const { return Iterators::Parents{ this }; }
-
-    auto NodeTransform::IterTree(bool includeSelf, bool breadthFirst)       { return Iterators::Tree{ this, includeSelf, breadthFirst }; }
-    auto NodeTransform::IterTree(bool includeSelf, bool breadthFirst) const { return Iterators::Tree{ this, includeSelf, breadthFirst }; }
+    BP_API auto NodeTransform::IterParents()       { return Iterators::Parents{ this }; }
+    BP_API auto NodeTransform::IterParents() const { return Iterators::Parents{ this }; }
+    
+    BP_API auto NodeTransform::IterTreeBreadth(bool includeSelf)       { return Iterators::TreeBFS{ this, includeSelf }; }
+    BP_API auto NodeTransform::IterTreeBreadth(bool includeSelf) const { return Iterators::TreeBFS{ this, includeSelf }; }
+    BP_API auto NodeTransform::IterTreeDepth(bool includeSelf)         { return Iterators::TreeDFS{ this, includeSelf }; }
+    BP_API auto NodeTransform::IterTreeDepth(bool includeSelf)   const { return Iterators::TreeDFS{ this, includeSelf }; }
 
     #pragma endregion
+
     //TODO: An iterator for all nodes that are "direct children" in terms of a specific component type.
 
 

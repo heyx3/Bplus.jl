@@ -4,6 +4,7 @@
 #include <algorithm>
 
 #include <glm/glm.hpp>
+#include <glm/fwd.hpp>
 
 namespace Bplus::Math
 {
@@ -75,5 +76,11 @@ namespace Bplus::Math
     {
         auto point4 = mat * glm::vec<4, T, Q>(point, 0);
         return glm::vec<3, T, Q>(point4.x, point4.y, point4.z);
+    }
+
+    template<typename T, enum glm::qualifier Q = glm::packed_highp>
+    glm::vec<3, T, Q> ApplyRotation(const glm::qua<T, Q>& rotation, const glm::vec<3, T, Q>& inPoint)
+    {
+        return rotation * inPoint;
     }
 }

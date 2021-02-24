@@ -104,7 +104,7 @@
       <ConformanceMode>false</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <DisableSpecificWarnings>4996;4251;26495;6011;26812</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4996;4251;26495;6011;26812;26819</DisableSpecificWarnings>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessKeepComments>false</PreprocessKeepComments>
@@ -170,7 +170,7 @@ exit 0</Command>
       <ConformanceMode>false</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <DisableSpecificWarnings>4996;4251;26495;6011;26812</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4996;4251;26495;6011;26812;26819</DisableSpecificWarnings>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessKeepComments>false</PreprocessKeepComments>
@@ -238,7 +238,7 @@ exit 0</Command>
       <ConformanceMode>false</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <DisableSpecificWarnings>4996;4251;26495;6011;26812</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4996;4251;26495;6011;26812;26819</DisableSpecificWarnings>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessKeepComments>false</PreprocessKeepComments>
       <TreatSpecificWarningsAsErrors>4715;4172</TreatSpecificWarningsAsErrors>
@@ -308,7 +308,7 @@ exit 0</Command>
       <ConformanceMode>false</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <DisableSpecificWarnings>4996;4251;26495;6011;26812</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4996;4251;26495;6011;26812;26819</DisableSpecificWarnings>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessKeepComments>false</PreprocessKeepComments>
       <TreatSpecificWarningsAsErrors>4715;4172</TreatSpecificWarningsAsErrors>
@@ -428,7 +428,7 @@ exit 0</Command>
     <ClInclude Include="GL\Textures\TextureD.hpp" />
     <ClInclude Include="GL\Textures\TexturesData.h" />
     <ClInclude Include="Helpers\EditorCamControls.h" />
-    <ClInclude Include="Math\Math.h" />
+    <ClInclude Include="Math\Math.hpp" />
     <ClInclude Include="Math\Box.hpp" />
     <ClInclude Include="Math\Ray.hpp" />
     <ClInclude Include="Math\Shapes.hpp" />
