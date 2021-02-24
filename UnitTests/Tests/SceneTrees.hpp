@@ -51,8 +51,7 @@ void ST_BasicManipulation()
 
     TEST_CASE("Messing with positions from top to bottom");
 
-    for (NodeID entity : scene.view())
-    {
+    scene.each([&](NodeID entity) {
         auto& node = scene.get<NodeTransform>(entity);
         TEST_CHECK_(node.GetLocalPos() == glm::zero<glm::fvec3>(),
                     "Node %i isn't at local origin anymore", (int)entity);
@@ -60,7 +59,7 @@ void ST_BasicManipulation()
                     "Node %i has non-unit scale somehow", (int)entity);
         TEST_CHECK_(node.GetLocalRot() == Bplus::Math::RotIdentity<float>(),
                     "Node %i has non-zero local rotation somehow", (int)entity);
-    }
+    });
 
     n1.SetLocalPos({ 1.5f, 9.45f, -200.0f });
     TEST_CHECK_(glm::all(glm::epsilonEqual(n1.GetLocalPos(), { 1.5f, 9.45f, -200.0f }, 0.001f)),
