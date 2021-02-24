@@ -1007,7 +1007,7 @@ void main()
                 TargetOutput(std::make_tuple(skyTex, CubeFaces::NegZ))
             };
             skyNoiseTarget = new Target(targetState,
-                                        skyNoiseOutputs.data(), skyNoiseOutputs.size());
+                                        skyNoiseOutputs.data(), (uint32_t)skyNoiseOutputs.size());
 
             #pragma endregion
 

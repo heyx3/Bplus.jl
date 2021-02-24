@@ -22,6 +22,9 @@ TEST_LIST = {
     { "Toml <=> BETTER_ENUM",     TomlEnums      },
     { "Toml <=> GLM",             TomlGLM        },
 
+    { "Math: Plain Number-crunching",    PlainMath },
+    { "Math: GLM Helpers",               GLMHelpers },
+
     { "Bplus::GL::Buffers::Buffer basic",     BufferBasic   },
     { "Bplus::GL::Buffers::Buffer get/set data", BufferGetSetData },
 
@@ -32,10 +35,12 @@ TEST_LIST = {
 
     { "Shader #pragma include preprocessor", TestShaderIncludeCommand },
 
+    { "SceneTree basic manipulation", ST_BasicManipulation },
+
     //The below tests are interactive apps, so they're normally disabled to simplify testing.
     //{ "Simple App", SimpleApp },
     //{ "Basic Rendering App", BasicRenderApp },
-    { "Advanced Textures App", AdvancedTexturesApp },
+    //{ "Advanced Textures App", AdvancedTexturesApp },
 
     { NULL, NULL }
 };

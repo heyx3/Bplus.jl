@@ -26,11 +26,13 @@
     <ClInclude Include="Tests\ShaderCompilation.hpp">
       <Filter>Tests</Filter>
     </ClInclude>
-    <ClInclude Include="Tests\Strings.h">
-      <Filter>Tests</Filter>
-    </ClInclude>
     <ClInclude Include="Tests\SimpleApps.hpp">
       <Filter>Tests</Filter>
     </ClInclude>
+    <ClInclude Include="Tests\Strings.hpp">
+      <Filter>Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="Tests\SceneTrees.hpp" />
+    <ClInclude Include="Tests\Math.hpp" />
   </ItemGroup>
 </Project>
