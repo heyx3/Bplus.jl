@@ -26,6 +26,11 @@
 
 //Modified by William Manning to add "--pause" and "test_pause_at_end_",
 //    providing the option to manually pause the console after tests are done.
+//Also created the TEST_STARTUP macro to allow some initial startup code to run at the beginning of main(),
+//    so that I can replace the default BP_ASSERT behavior.
+//Also allowed for custom definitions of TEST_EXCEPTION
+//    so that BP_ASSERT can trigger it without actually throwing an exception,
+//    in case we're in a 'noexcept' section.
 
 
 #ifndef ACUTEST_H__
@@ -35,6 +40,14 @@
 /************************
  *** Public interface ***
  ************************/
+
+/*
+ * Macro to provide extra behavior at startup.
+ * Redefine this macro before #including this file.
+ */
+#ifndef TEST_STARTUP
+#define TEST_STARTUP()
+#endif
 
 /* By default, "acutest.h" provides the main program entry point (function
  * main()). However, if the test suite is composed of multiple source files
@@ -129,22 +142,10 @@
  * If the function throws anything incompatible with ExpectedExceptionType
  * (or if it does not thrown an exception at all), the check fails.
  */
-#define TEST_EXCEPTION(code, exctype)                                          \
-    do {                                                                       \
-        bool exc_ok__ = false;                                                 \
-        const char *msg__ = NULL;                                              \
-        try {                                                                  \
-            code;                                                              \
-            msg__ = "No exception thrown.";                                    \
-        } catch(exctype const&) {                                              \
-            exc_ok__= true;                                                    \
-        } catch(...) {                                                         \
-            msg__ = "Unexpected exception thrown.";                            \
-        }                                                                      \
-        test_check__(exc_ok__, __FILE__, __LINE__, #code " throws " #exctype); \
-        if(msg__ != NULL)                                                      \
-            test_message__("%s", msg__);                                       \
-    } while(0)
+#define TEST_EXCEPTION(code, exctype) \
+    TEST_EXCEPTION_(code, exctype, #code " throws " #exctype)
+
+#ifndef TEST_EXCEPTION_
 #define TEST_EXCEPTION_(code, exctype, ...)                                    \
     do {                                                                       \
         bool exc_ok__ = false;                                                 \
@@ -161,6 +162,8 @@
         if(msg__ != NULL)                                                      \
             test_message__("%s", msg__);                                       \
     } while(0)
+#endif  /* #ifdef TEST_EXCEPTION_ */
+
 #endif  /* #ifdef __cplusplus */
 
 
@@ -1556,6 +1559,8 @@ test_is_tracer_present__(void)
 int
 main(int argc, char** argv)
 {
+    TEST_STARTUP();
+
     int i;
     test_argv0__ = argv[0];
 

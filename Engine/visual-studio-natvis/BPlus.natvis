@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+    <Type Name="Bplus::ST::NodeID">
+        <DisplayString Condition="((uint32_t)Value &amp; 0xFFFFF) == 0xFFFFF">
+            null
+        </DisplayString>
+        <DisplayString Condition="((uint32_t)Value &amp; 0xFFFFF) != 0xFFFFF">ID: {(uint32_t)Value}</DisplayString>
+    </Type>
+</AutoVisualizer>

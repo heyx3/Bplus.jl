@@ -32,7 +32,11 @@
     <ClInclude Include="Tests\Strings.hpp">
       <Filter>Tests</Filter>
     </ClInclude>
-    <ClInclude Include="Tests\SceneTrees.hpp" />
-    <ClInclude Include="Tests\Math.hpp" />
+    <ClInclude Include="Tests\Math.hpp">
+      <Filter>Tests</Filter>
+    </ClInclude>
+    <ClInclude Include="Tests\SceneTrees.hpp">
+      <Filter>Tests</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

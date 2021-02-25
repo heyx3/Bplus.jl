@@ -260,8 +260,18 @@
     <Filter Include="ST">
       <UniqueIdentifier>{251c1afe-5580-482e-83b7-a6bf08415e0c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="MSVC Files">
+      <UniqueIdentifier>{34823ca9-761e-42b3-80d1-2389b74e2796}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="cpp.hint" />
+    <None Include="cpp.hint">
+      <Filter>MSVC Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="visual-studio-natvis\BPlus.natvis">
+      <Filter>MSVC Files</Filter>
+    </Natvis>
   </ItemGroup>
 </Project>
