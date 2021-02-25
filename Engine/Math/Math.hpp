@@ -2,6 +2,7 @@
 
 #include <array>
 #include <algorithm>
+#include <optional>
 
 #include <glm/glm.hpp>
 #include <glm/fwd.hpp>
@@ -49,6 +50,46 @@ namespace Bplus::Math
     {
         using std::log10;
         return log10(x) / log10(base);
+    }
+
+    //Checks whether an integer value is within range of another integer type.
+    template<typename SmallerInt_t, typename Int_t>
+    bool IsInRange(Int_t i)
+    {
+        static_assert(!std::is_same_v<SmallerInt_t, Int_t>,
+                      "The input type and desired type are the same!"
+                        " We don't allow that to make sure this behavior is intentional.");
+        return (i >= std::numeric_limits<SmallerInt_t>::min()) &
+               (i <= std::numeric_limits<SmallerInt_t>::max());
+    }
+
+    //Addition that protects against overflow and underflow.
+    template<typename Int_t>
+    std::optional<Int_t> SafeAdd(Int_t a, Int_t b)
+    {
+        constexpr auto maxVal = std::numeric_limits<Int_t>().max(),
+                       minVal = std::numeric_limits<Int_t>().min();
+        if (((a > 0) & (maxVal - a < b)) |
+            ((a < 0) & (minVal - a > b)))
+        {
+            return std::nullopt;
+        }
+        
+        return a + b;
+    }
+    //Subtraction that protects against overflow and underflow.
+    template<typename Int_t>
+    std::optional<Int_t> SafeSub(Int_t a, Int_t b)
+    {
+        constexpr auto maxVal = std::numeric_limits<Int_t>().max(),
+                       minVal = std::numeric_limits<Int_t>().min();
+        if (((b < 0) & (maxVal + b < a)) |
+            ((b > 0) & (minVal + b > a)))
+        {
+            return std::nullopt;
+        }
+
+        return a - b;
     }
 
 

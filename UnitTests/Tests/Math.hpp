@@ -23,6 +23,58 @@ void PlainMath()
     TEST_CHECK_(result1 == glm::uvec4{ 0 BP_COMMA 5 BP_COMMA 5 BP_COMMA 10 },
                 "PadI({ 0, 2, 5, 8 }, 5) should be { 0, 5, 5, 10 }, but it's { %i, %i, %i, %i }",
                 result1.x, result1.y, result1.z, result1.w);
+
+    TEST_CASE("IsInRange() for uint8_t");
+    TEST_ASSERT_(!Math::IsInRange<uint8_t>(256), "256 isn't in range of uint8_t");
+    TEST_ASSERT_(!Math::IsInRange<uint8_t>(5000), "5000 isn't in range of uint8_t");
+    TEST_ASSERT_(!Math::IsInRange<uint8_t>(-1), "-1 isn't in range of uint8_t");
+    TEST_ASSERT_(Math::IsInRange<uint8_t>(255), "255 is in range of uint8_t");
+    TEST_ASSERT_(Math::IsInRange<uint8_t>(0), "0 is in range of uint8_t");
+    TEST_ASSERT_(Math::IsInRange<uint8_t>(11), "11 is in range of uint8_t");
+    TEST_CASE("IsInRange() for int8_t");
+    TEST_ASSERT_(!Math::IsInRange<int8_t>(128), "128 isn't in range of int8_t");
+    TEST_ASSERT_(!Math::IsInRange<int8_t>(5000), "5000 isn't in range of int8_t");
+    TEST_ASSERT_(!Math::IsInRange<int8_t>(-5000), "-5000 isn't in range of int8_t");
+    TEST_ASSERT_(Math::IsInRange<int8_t>(-1), "-1 is in range of int8_t");
+    TEST_ASSERT_(Math::IsInRange<int8_t>(127), "127 is in range of int8_t");
+    TEST_ASSERT_(Math::IsInRange<int8_t>(0), "0 is in range of int8_t");
+    TEST_ASSERT_(Math::IsInRange<int8_t>(11), "11 is in range of int8_t");
+    TEST_ASSERT_(Math::IsInRange<int8_t>(-128), "-128 is in range of int8_t");
+
+    TEST_CASE("Overflow-/Underflow-safe Add and Sub");
+    for (uint16_t _u = 0; _u <= std::numeric_limits<uint8_t>().max(); ++_u)
+    {
+        auto u = (uint8_t)_u;
+
+        for (uint8_t uLess = 0; uLess < u; ++uLess)
+        {
+            TEST_ASSERT_(Math::SafeSub(u, uLess).has_value(),
+                         "Should be able to subtract uints %i from %i", uLess, u);
+            TEST_ASSERT_(!Math::SafeSub(uLess, u).has_value(),
+                         "Should not be able to subtract uints %i from %i", u, uLess);
+
+            if (Math::IsInRange<uint8_t>(_u + uLess))
+                TEST_ASSERT_(Math::SafeAdd(u, uLess).has_value(),
+                             "Should not be able to add UInt8's %i and %i", u, uLess);
+            else
+                TEST_ASSERT_(!Math::SafeAdd(u, uLess).has_value(),
+                             "Should be able to add UInt8's %i and %i", u, uLess);
+        }
+    }
+    for (int16_t _i = std::numeric_limits<int8_t>().min(); _i <= std::numeric_limits<int8_t>().max(); ++_i)
+    {
+        auto i = (int8_t)_i;
+
+        for (int8_t iLess = std::numeric_limits<int8_t>().min(); iLess < i; ++iLess)
+        {
+            TEST_ASSERT_(Math::SafeSub(i, iLess).has_value() == Math::IsInRange<int8_t>(_i - iLess),
+                         "Subtracting int8 %i from %i. Expected to work: %s",
+                         i, iLess, Math::IsInRange<int8_t>(_i - iLess) ? "yes" : "no");
+            TEST_ASSERT_(Math::SafeAdd(i, iLess).has_value() == Math::IsInRange<int8_t>(_i + iLess),
+                         "Adding int8 %i + %i. Expected to work: %s",
+                         i, iLess, Math::IsInRange<int8_t>(_i + iLess) ? "yes" : "no");
+        }
+    }
 }
 
 void GLMHelpers()
