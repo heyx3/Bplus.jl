@@ -724,9 +724,6 @@ template<typename Type>
 template<typename Type, auto = stripped_type_name<Type>().find_first_of('.')>
 [[nodiscard]] static constexpr id_type type_hash(int) ENTT_NOEXCEPT {
     constexpr auto stripped = stripped_type_name<Type>();
-#if defined(_MSC_VER)
-    __pragma(warning(suppress:4307))
-#endif
     constexpr auto value = hashed_string::value(stripped.data(), stripped.size());
     return value;
 }
@@ -15809,7 +15806,7 @@ public:
     [[nodiscard]] basic_view<Entity, exclude_t<Exclude...>, Component...> view(exclude_t<Exclude...> = {}) const {
         static_assert(sizeof...(Component) > 0, "Exclusion-only views are not supported");
         using view_type = basic_view<Entity, exclude_t<Exclude...>, Component...>;
-        return [](auto *... cpools) -> view_type { return (cpools && ...) ? view_type{*cpools...} : view_type{}; }(assure<std::decay_t<Component>>()..., assure<Exclude>()...);
+        return [](auto *... cpools) { return (cpools && ...) ? view_type{*cpools...} : view_type{}; }(assure<std::decay_t<Component>>()..., assure<Exclude>()...);
     }
 
     /*! @copydoc view */
