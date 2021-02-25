@@ -142,6 +142,12 @@
     <ClInclude Include="Math\Math.hpp">
       <Filter>Math</Filter>
     </ClInclude>
+    <ClInclude Include="Assets\Loader.h">
+      <Filter>Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="Assets\CommonLoaderTypes.hpp">
+      <Filter>Assets</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
@@ -259,6 +265,9 @@
     </Filter>
     <Filter Include="ST">
       <UniqueIdentifier>{251c1afe-5580-482e-83b7-a6bf08415e0c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Assets">
+      <UniqueIdentifier>{975aaad5-4119-4769-b29a-6484a746da6c}</UniqueIdentifier>
     </Filter>
     <Filter Include="MSVC Files">
       <UniqueIdentifier>{34823ca9-761e-42b3-80d1-2389b74e2796}</UniqueIdentifier>

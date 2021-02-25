@@ -400,6 +400,8 @@ exit 0</Command>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App.h" />
+    <ClInclude Include="Assets\CommonLoaderTypes.hpp" />
+    <ClInclude Include="Assets\Loader.h" />
     <ClInclude Include="Dear ImGui\imconfig.h" />
     <ClInclude Include="Dear ImGui\imgui.h" />
     <ClInclude Include="Dear ImGui\ImGuiAddons.h" />
