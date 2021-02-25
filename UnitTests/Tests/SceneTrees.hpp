@@ -22,10 +22,14 @@ void ST_BasicManipulation()
            e4 = scene.create();
 
     TEST_CASE("Creating NodeTransform components");
-    NodeTransform &n1 = scene.emplace<NodeTransform>(e1),
-                  &n2 = scene.emplace<NodeTransform>(e2),
-                  &n3 = scene.emplace<NodeTransform>(e3),
-                  &n4 = scene.emplace<NodeTransform>(e4);
+    scene.emplace<NodeTransform>(e1, scene);
+    scene.emplace<NodeTransform>(e2, scene);
+    scene.emplace<NodeTransform>(e3, scene);
+    scene.emplace<NodeTransform>(e4, scene);
+    NodeTransform &n1 = scene.get<NodeTransform>(e1),
+                  &n2 = scene.get<NodeTransform>(e2),
+                  &n3 = scene.get<NodeTransform>(e3),
+                  &n4 = scene.get<NodeTransform>(e4);
 
     TEST_CASE("Arranging hierarchy");
     /*
@@ -73,7 +77,7 @@ void ST_BasicManipulation()
     TEST_CHECK_(glm::all(glm::epsilonEqual(n2.GetWorldPos(), (n1.GetLocalPos() + n2.GetLocalPos()), 0.001f)),
                 "Node 2's world position is wrong; it should be { %f, %f, %f } but it's { %f, %f, %f }",
                 (n1.GetLocalPos().x + n2.GetLocalPos().x),
-                (n1.GetLocalPos().y, + n2.GetLocalPos().y),
+                (n1.GetLocalPos().y + n2.GetLocalPos().y),
                 (n1.GetLocalPos().z + n2.GetLocalPos().z),
                 n2.GetWorldPos().x, n2.GetWorldPos().y, n2.GetWorldPos().z);
 

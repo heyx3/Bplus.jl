@@ -83,4 +83,14 @@ namespace Bplus::Math
     {
         return rotation * inPoint;
     }
+
+    //Makes a quaternion to rotate a point around the given axis
+    //    by the given angle, clockwise when looking along the axis.
+    //This function exists because glm is frustratingly vague about these details.
+    template<typename T, enum glm::qualifier Q = glm::packed_highp>
+    glm::qua<T, Q> MakeRotation(const glm::vec<3, T, Q>& axis,
+                                T clockwiseDegrees)
+    {
+        return glm::angleAxis<T, Q>(glm::radians(clockwiseDegrees), axis);
+    }
 }

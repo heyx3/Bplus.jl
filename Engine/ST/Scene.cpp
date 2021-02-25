@@ -8,5 +8,5 @@ using namespace Bplus::ST;
 
 Scene::Scene()
 {
-   on_destroy<NodeTransform>().connect<entt::invoke<&NodeTransform::_DisconnectParent>>();
+    on_destroy<NodeTransform>().connect<entt::invoke<&NodeTransform::_DisconnectParent, NodeID>>();
 }

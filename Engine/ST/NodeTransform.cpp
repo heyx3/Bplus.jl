@@ -126,17 +126,13 @@ void NodeTransform::SetParent(NodeID newParentID, Spaces preserve)
         world->emplace<NodeRoot>(myID);
 
     //Get the parents so we can let them know about the change.
-    NodeTransform* currentParent = (parent != entt::null) ?
-                                     world->try_get<NodeTransform>(parent) :
-                                     nullptr;
-    NodeTransform* newParent = (newParentID != entt::null) ?
-                                   world->try_get<NodeTransform>(parent) :
-                                   nullptr;
+    NodeTransform *currentParent = world->try_get<NodeTransform>(parent);
+    NodeTransform *newParent = world->try_get<NodeTransform>(newParentID);
      
     //Update the parents/siblings.
     if (parent != entt::null)
     {
-        _DisconnectParent(myID, currentParent);
+        DisconnectParent(myID, currentParent);
     }
     if (newParentID != entt::null)
     {
@@ -189,16 +185,8 @@ void NodeTransform::SetParent(NodeID newParentID, Spaces preserve)
     }
 }
 
-void NodeTransform::_DisconnectParent(NodeID myID, NodeTransform* parentPtr)
+void NodeTransform::DisconnectParent(NodeID myID, NodeTransform* parentPtr)
 {
-    //Find the parent.
-    if (parentPtr == nullptr)
-    {
-        parentPtr = (parent != entt::null) ?
-                        world->try_get<NodeTransform>(parent) :
-                        nullptr;
-    }
-
     //Handle the parent.
     if (parentPtr != nullptr && parentPtr->firstChild == myID)
     {
@@ -236,7 +224,7 @@ void NodeTransform::InvalidateWorldMatrix(bool includeRot) const
         {
             for (NodeID childID : IterChildren())
             {
-                auto child = world->get<NodeTransform>(childID);
+                const auto& child = world->get<NodeTransform>(childID);
                 BP_ASSERT(!child.cachedWorldMatrix.has_value(),
                          "Child node has a valid world matrix while the direct parent has an invalid one");
                 BP_ASSERT((!includeRot) | (!child.cachedWorldRot.has_value()),

@@ -10,9 +10,9 @@ namespace Bplus::ST
     //An empty component that simply marks a node as being a "root" (i.e. it has no parent).
     using NodeRoot = entt::tag<ENTT_SYMBOL("B+ Node Root")>;
 
-    inline auto AllRootNodes(const Scene& world) { return world.view<NodeRoot>(); }
-    inline auto AllRootNodes(      Scene& world) { return world.view<NodeRoot>(); }
-
+    inline auto AllRootNodes(const Scene& world) { return world.view<const NodeRoot>(); }
+    inline auto AllRootNodes(      Scene& world) { return world.view<      NodeRoot>(); }
+    
 
     //An enum distinguishing world-space from local-space.
     BETTER_ENUM(Spaces, uint8_t,
@@ -168,10 +168,9 @@ namespace Bplus::ST
     private:
         Scene* world; //Is a pointer instead of a reference so we can have move assignment.
 
-        NodeID parent = entt::null;
-        NodeID nextSibling = entt::null,
-               prevSibling = entt::null;
-        NodeID firstChild = entt::null;
+        NodeID parent;
+        NodeID nextSibling, prevSibling;
+        NodeID firstChild;
         uint_fast32_t nChildren = 0;
 
         glm::fvec3 localPos, localScale;
@@ -185,9 +184,18 @@ namespace Bplus::ST
         void InvalidateWorldMatrix(bool includeRot) const;
 
 
+        void DisconnectParent(NodeID myID, NodeTransform* myParent);
+        
+
         //A callback that is automatically hooked into by the ECS
         //    for when this component is destroyed.
-        void _DisconnectParent(NodeID myID, NodeTransform* cachedParent = nullptr);
+        inline void _DisconnectParent(entt::basic_registry<NodeID>& s, NodeID myID)
+        {
+            DisconnectParent(myID,
+                             parent == entt::null ?
+                                 nullptr :
+                                 &s.get<NodeTransform>(GetParent()));
+        }
 
         //Allow the ECS to hook into _DisconnectParent()
         friend Scene;
@@ -228,12 +236,13 @@ namespace Bplus::ST
                     //Use memcmp if possible, for speed.
                     if constexpr (sizeof(Impl) == (sizeof(decltype(scene)) + sizeof(decltype(currentChild))))
                     {
-                        return memcmp(this, &other, sizeof(Impl)) == 0;
+                        return memcmp(this, &other, sizeof(Impl)) != 0;
                     }
                     else
                     {
-                        return (scene == other.scene) &
-                               (currentChild == other.currentChild);
+                        bool areEqual = (scene == other.scene) &
+                                        (currentChild == other.currentChild);
+                        return !areEqual;
                     }
                 }
             };
@@ -260,10 +269,19 @@ namespace Bplus::ST
                 const Scene* scene;
                 NodeID currentParent;
 
-                void begin(const MyIter_t* tr) { *this = { &tr->Start->GetScene(), tr->Start->GetParent() }; }
-                void end(const MyIter_t* tr) { *this = { &tr->Start->GetScene(), entt::null }; }
+                void begin(const MyIter_t* tr)
+                {
+                    *this = { &tr->Start->GetScene(), tr->Start->GetParent() };
+                }
+                void end(const MyIter_t* tr)
+                {
+                    *this = { &tr->Start->GetScene(), entt::null };
+                }
 
-                void next(const MyIter_t* tr) { currentParent = scene->get<NodeTransform>(currentParent).GetParent(); }
+                void next(const MyIter_t* tr)
+                {
+                    currentParent = scene->get<NodeTransform>(currentParent).GetParent();
+                }
 
                 const NodeID get(const MyIter_t* tr) const { return currentParent; }
                       NodeID get(      MyIter_t* tr)       { return currentParent; }
@@ -273,12 +291,13 @@ namespace Bplus::ST
                     //Use memcmp if possible, for speed.
                     if constexpr (sizeof(Impl) == (sizeof(decltype(scene)) + sizeof(decltype(currentParent))))
                     {
-                        return memcmp(this, &other, sizeof(Impl)) == 0;
+                        return memcmp(this, &other, sizeof(Impl)) != 0;
                     }
                     else
                     {
-                        return (scene == other.scene) &
-                               (currentParent == other.currentParent);
+                        bool result = (scene == other.scene) &
+                                      (currentParent == other.currentParent);
+                        return !result;
                     }
                 }
             };
@@ -372,13 +391,13 @@ namespace Bplus::ST
                                    sizeof(decltype(rootNodeID)) +
                                    sizeof(decltype(currentNodeID))))
                     {
-                        return memcmp(this, &other, sizeof(Impl)) == 0;
+                        return memcmp(this, &other, sizeof(Impl)) != 0;
                     }
                     else
                     {
-                        return (scene == other.scene) &
-                               (rootNodeID == other.rootNodeID) &
-                               (currentNodeID == other.currentNodeID);
+                        return !((scene == other.scene) &
+                                 (rootNodeID == other.rootNodeID) &
+                                 (currentNodeID == other.currentNodeID));
                     }
                 }
             };
@@ -484,10 +503,11 @@ namespace Bplus::ST
 
                 bool cmp(const Impl& other) const
                 {
-                    return (isDone & other.isDone) ||
-                           ((!isDone) & (!other.isDone) &
-                            dfs.cmp(other.dfs) &
-                            (currentTargetDepth == other.currentDFSDepth));
+                    bool areEqual = (isDone & other.isDone) ||
+                                    ((!isDone) & (!other.isDone) &
+                                     dfs.cmp(other.dfs) &
+                                     (currentTargetDepth == other.currentDFSDepth));
+                    return !areEqual;
                 }
             };
 
@@ -498,16 +518,16 @@ namespace Bplus::ST
         };
     }
 
-    BP_API auto NodeTransform::IterChildren()       { return Iterators::Children{ this }; }
-    BP_API auto NodeTransform::IterChildren() const { return Iterators::Children{ this }; }
+    inline BP_API auto NodeTransform::IterChildren()       { return Iterators::Children{ this }; }
+    inline BP_API auto NodeTransform::IterChildren() const { return Iterators::Children{ this }; }
 
-    BP_API auto NodeTransform::IterParents()       { return Iterators::Parents{ this }; }
-    BP_API auto NodeTransform::IterParents() const { return Iterators::Parents{ this }; }
+    inline BP_API auto NodeTransform::IterParents()       { return Iterators::Parents{ this }; }
+    inline BP_API auto NodeTransform::IterParents() const { return Iterators::Parents{ this }; }
     
-    BP_API auto NodeTransform::IterTreeBreadth(bool includeSelf)       { return Iterators::TreeBFS{ this, includeSelf }; }
-    BP_API auto NodeTransform::IterTreeBreadth(bool includeSelf) const { return Iterators::TreeBFS{ this, includeSelf }; }
-    BP_API auto NodeTransform::IterTreeDepth(bool includeSelf)         { return Iterators::TreeDFS{ this, includeSelf }; }
-    BP_API auto NodeTransform::IterTreeDepth(bool includeSelf)   const { return Iterators::TreeDFS{ this, includeSelf }; }
+    inline BP_API auto NodeTransform::IterTreeBreadth(bool includeSelf)       { return Iterators::TreeBFS{ this, includeSelf }; }
+    inline BP_API auto NodeTransform::IterTreeBreadth(bool includeSelf) const { return Iterators::TreeBFS{ this, includeSelf }; }
+    inline BP_API auto NodeTransform::IterTreeDepth(bool includeSelf)         { return Iterators::TreeDFS{ this, includeSelf }; }
+    inline BP_API auto NodeTransform::IterTreeDepth(bool includeSelf)   const { return Iterators::TreeDFS{ this, includeSelf }; }
 
     #pragma endregion
 
