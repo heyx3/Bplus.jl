@@ -5,6 +5,8 @@
 #include <B+/App.h>
 #include <B+/TomlIO.h>
 
+namespace fs = std::filesystem;
+
 #define TEST_NO_MAIN
 #include <acutest.h>
 

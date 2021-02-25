@@ -11,13 +11,14 @@
 #include <unordered_set>
 
 #include <filesystem>
-namespace fs = std::filesystem;
 
 #include "Utils.h"
 
 
 namespace Bplus
 {
+    namespace fs = std::filesystem;
+
     //TODO: Refactor into a more robust logging system.
     using ErrorCallback = std::function<void(const std::string& msg)>;
 
@@ -36,17 +37,25 @@ namespace Bplus
         };
 
 
-        //Returns whether it was successful.
+        //Writes text to a file and returns whether it was successful.
         bool BP_API WriteEntireFile(const fs::path& path, const std::string& contents, bool append);
+        //Writes bytes to a file and returns whether it was successful.
+        bool BP_API WriteEntireFile(const fs::path& path, const std::byte* data, size_t dataSize, bool append);
 
         //Reads the contents of the given text file
         //    and writes them into the given output string,
         //    returning whether or not it was successful.
         bool BP_API LoadEntireFile(const fs::path& path, std::string& output);
+        //Reads the contents of the given binary file
+        //    and appends them into the given output vector,
+        //    returning whether or not it was successful.
+        bool BP_API LoadEntireFile(const fs::path& path, std::vector<std::byte>& output);
+
         //Reads the contents of the given text file and returns them as a string,
         //    or returns the given fallback if the file couldn't be read.
         std::string BP_API ReadEntireFile(const fs::path& path,
                                           const std::string& defaultIfMissing);
+
 
         void BP_API ToLowercase(std::string& str);
         std::string BP_API ToLowercase(const char* str);

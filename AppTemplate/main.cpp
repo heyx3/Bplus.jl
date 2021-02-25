@@ -1,6 +1,8 @@
 #include <B+/App.h>
 #include <B+/TomlIO.h>
 
+namespace fs = std::filesystem;
+
 //A template command-line + window app based on B+ and SDL.
 //Command-line arguments:
 //    -noWriteConfig to not update the config file on exit
