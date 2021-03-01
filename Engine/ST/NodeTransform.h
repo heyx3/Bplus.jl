@@ -26,7 +26,7 @@ namespace Bplus::ST
     //TODO: Support both 2- and 3-dimensional scene graphs using a template.
     struct BP_API NodeTransform
     {
-        NodeTransform(Scene& world,
+        NodeTransform(Scene& world, NodeID myID,
                       glm::fvec3 localPos = { 0, 0, 0 },
                       glm::fquat localRot = Math::RotIdentity<float>(),
                       glm::fvec3 localScale = { 1, 1, 1 },
@@ -70,8 +70,7 @@ namespace Bplus::ST
 
         #pragma region World-space getters/setters
 
-
-              glm::fvec3  GetWorldPos() const { return Math::ApplyToPoint(GetWorldMatrix(), GetLocalPos()); }
+              glm::fvec3  GetWorldPos() const { return Math::ApplyToPoint(GetWorldMatrix(), {0, 0, 0}); }
         const glm::fquat& GetWorldRot() const;
         //TODO: Create "GetWorldScale()", by chopping out the relevant bits of glm::decompose()
 

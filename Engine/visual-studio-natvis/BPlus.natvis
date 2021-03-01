@@ -6,4 +6,18 @@
         </DisplayString>
         <DisplayString Condition="((uint32_t)Value &amp; 0xFFFFF) != 0xFFFFF">ID: {(uint32_t)Value}</DisplayString>
     </Type>
+    <Type Name="glm::vec&lt;1, *, *&gt;">
+        <DisplayString>{{ {x} }}</DisplayString>
+    </Type>
+    <Type Name="glm::vec&lt;2, *, *&gt;">
+        <DisplayString>{{ {x}, {y} }}</DisplayString>
+    </Type>
+    <Type Name="glm::vec&lt;3, *, *&gt;">
+        <DisplayString>{{ {x}, {y}, {z} }}</DisplayString>
+    </Type>
+    <Type Name="glm::vec&lt;4, *, *&gt;">
+        <DisplayString>{{ {x}, {y}, {z}, {w} }}</DisplayString>
+    </Type>
+    
+    <!-- TODO: Quaterions, matrices -->
 </AutoVisualizer>

@@ -5,13 +5,16 @@
 using namespace Bplus::ST;
 
 
-NodeTransform::NodeTransform(Scene& _world,
+NodeTransform::NodeTransform(Scene& _world, NodeID myID,
                              glm::fvec3 localPos, glm::fquat localRot, glm::fvec3 localScale,
                              NodeID desiredParent)
     : localPos(localPos), localRot(localRot), localScale(localScale),
       world(&_world)
 {
-    SetParent(desiredParent);
+    if (desiredParent == entt::null)
+        world->emplace<NodeRoot>(myID);
+    else
+        SetParent(desiredParent);
 }
 
 

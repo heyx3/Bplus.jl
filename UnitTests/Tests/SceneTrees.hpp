@@ -22,10 +22,10 @@ void ST_BasicManipulation()
            e4 = scene.create();
 
     TEST_CASE("Creating NodeTransform components");
-    scene.emplace<NodeTransform>(e1, scene);
-    scene.emplace<NodeTransform>(e2, scene);
-    scene.emplace<NodeTransform>(e3, scene);
-    scene.emplace<NodeTransform>(e4, scene);
+    scene.emplace<NodeTransform>(e1, scene, e1);
+    scene.emplace<NodeTransform>(e2, scene, e2);
+    scene.emplace<NodeTransform>(e3, scene, e3);
+    scene.emplace<NodeTransform>(e4, scene, e4);
     NodeTransform &n1 = scene.get<NodeTransform>(e1),
                   &n2 = scene.get<NodeTransform>(e2),
                   &n3 = scene.get<NodeTransform>(e3),
