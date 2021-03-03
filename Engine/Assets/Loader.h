@@ -25,7 +25,7 @@ namespace Bplus::Assets
 
 
         //Checks the path, so we can avoid trying to load the asset if the path isn't valid.
-        virtual bool IsPathValid() = 0;
+        virtual bool IsPathValid() const = 0;
 
         //Executes the first step of the asset load, assuming IsPathValid() is true.
         //Returns whether it succeeded.
@@ -48,6 +48,8 @@ namespace Bplus::Assets
     template<typename Asset_t>
     class BP_API Loader : public LoaderBase
     {
+    public:
+
         //The loaded asset.
         std::optional<Asset_t> Output;
     };

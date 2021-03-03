@@ -214,8 +214,7 @@ namespace Bplus::GL::Textures
         TextureCube(uint32_t size, Format format,
                     uint_mipLevel_t nMipLevels = 0,
                     Sampler_t sampler = { },
-                    SwizzleRGBA swizzling = { SwizzleSources::Red, SwizzleSources::Green,
-                                              SwizzleSources::Blue, SwizzleSources::Alpha },
+                    SwizzleRGBA swizzling = DefaultSwizzling(),
                     std::optional<DepthStencilSources> depthStencilMode = std::nullopt);
 
         //Note that the copy constructor/operator is automatically deleted via the parent class.

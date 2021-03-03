@@ -187,8 +187,7 @@ namespace Bplus::GL::Textures
 
         Texture(Types type, Format format, uint_mipLevel_t nMipLevels,
                 const Sampler<3>& sampler3D,
-                SwizzleRGBA swizzling = { SwizzleSources::Red, SwizzleSources::Green,
-                                          SwizzleSources::Blue, SwizzleSources::Alpha },
+                SwizzleRGBA swizzling = DefaultSwizzling(),
                 std::optional<DepthStencilSources> depthStencilMode = std::nullopt);
 
         virtual ~Texture();

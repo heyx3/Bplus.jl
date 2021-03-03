@@ -81,6 +81,10 @@ namespace Bplus::GL::Textures
         One = GL_ONE
     );
     using SwizzleRGBA = std::array<SwizzleSources, 4>;
+    inline constexpr SwizzleRGBA DefaultSwizzling() { return std::array{
+        +SwizzleSources::Red, SwizzleSources::Green, SwizzleSources::Blue,
+        SwizzleSources::Alpha
+    }; }
 
 
     //The different ways a depth/stencil hybrid texture can be sampled.

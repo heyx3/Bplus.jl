@@ -41,10 +41,17 @@
 #include <iterator_tpl.h>
 
 
-//DevIL, the image loading/saving library.
-#include <DevIL/il.h>
-#include <DevIL/ilu.h>
-#include <DevIL/ilut.h>
+//Image libraries:
+#include <turboJPEG/jpeglib.h>
+//Custom error handler for TurboJPEG that uses BP_ASSERT:
+namespace Bplus {
+    TurboJPEGErrorHandler
+}
+#define PNG_USE_DLL 1
+#include <libPNG/png.h>
+//TODO: Replace EasyBMP with my own BMP library; this one has a loooot of issues
+#define EASY_BMP_API BP_API
+#include "Images/EasyBMP/EasyBMP.h"
 
 //TODO: Libraries for Block-Compression of textures (see below):
 //        * https://github.com/richgel999/bc7enc16

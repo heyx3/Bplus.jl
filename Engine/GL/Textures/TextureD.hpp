@@ -41,8 +41,7 @@ namespace Bplus::GL::Textures
         TextureD(const uVec_t& _size, Format _format,
                  uint_mipLevel_t _nMipLevels = 0,
                  Sampler_t sampler = { },
-                 SwizzleRGBA swizzling = { SwizzleSources::Red, SwizzleSources::Green,
-                                           SwizzleSources::Blue, SwizzleSources::Alpha },
+                 SwizzleRGBA swizzling = DefaultSwizzling(),
                  std::optional<DepthStencilSources> depthStencilMode = std::nullopt)
             : size(_size),
               Texture(GetClassType(), _format,

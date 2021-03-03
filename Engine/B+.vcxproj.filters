@@ -145,8 +145,23 @@
     <ClInclude Include="Assets\Loader.h">
       <Filter>Assets</Filter>
     </ClInclude>
-    <ClInclude Include="Assets\CommonLoaderTypes.hpp">
+    <ClInclude Include="Assets\CommonLoaderTypes.h">
       <Filter>Assets</Filter>
+    </ClInclude>
+    <ClInclude Include="Images\EasyBMP\EasyBMP_BMP.h">
+      <Filter>Images\EasyBMP</Filter>
+    </ClInclude>
+    <ClInclude Include="Images\EasyBMP\EasyBMP_DataStructures.h">
+      <Filter>Images\EasyBMP</Filter>
+    </ClInclude>
+    <ClInclude Include="Images\EasyBMP\EasyBMP_VariousBMPutilities.h">
+      <Filter>Images\EasyBMP</Filter>
+    </ClInclude>
+    <ClInclude Include="Images\EasyBMP\EasyBMP.h">
+      <Filter>Images\EasyBMP</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Streams.hpp">
+      <Filter>Utils</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -234,6 +249,12 @@
     <ClCompile Include="ST\Scene.cpp">
       <Filter>ST</Filter>
     </ClCompile>
+    <ClCompile Include="Assets\CommonLoaderTypes.cpp">
+      <Filter>Assets</Filter>
+    </ClCompile>
+    <ClCompile Include="Images\EasyBMP\EasyBMP.cpp">
+      <Filter>Images\EasyBMP</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Native File Dialog">
@@ -269,18 +290,24 @@
     <Filter Include="Assets">
       <UniqueIdentifier>{975aaad5-4119-4769-b29a-6484a746da6c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="MSVC Files">
+    <Filter Include="msvc-files">
       <UniqueIdentifier>{34823ca9-761e-42b3-80d1-2389b74e2796}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Images">
+      <UniqueIdentifier>{70285e5d-caf3-41ef-9d49-8dd96b708f03}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Images\EasyBMP">
+      <UniqueIdentifier>{b141ceef-5a27-4851-88ee-365fe2182ed3}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint">
-      <Filter>MSVC Files</Filter>
+      <Filter>msvc-files</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="visual-studio-natvis\BPlus.natvis">
-      <Filter>MSVC Files</Filter>
+      <Filter>msvc-files</Filter>
     </Natvis>
   </ItemGroup>
 </Project>

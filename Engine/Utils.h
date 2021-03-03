@@ -14,6 +14,7 @@
 #include "Utils/Lazy.h"
 #include "Utils/Bool.h"
 #include "Utils/Strings.h"
+#include "Utils/Streams.hpp"
 #include "Utils/BPAssert.h"
 
 
