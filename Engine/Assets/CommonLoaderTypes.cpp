@@ -83,6 +83,7 @@ bool ImageLoader::ProcessAfterRetrieve(std::vector<std::byte>&& diskData)
             if (!bmp.ReadFromStream(inStream))
                 return false;
 
+            pixelSize = { (glm::u32)bmp.TellWidth(), (glm::u32)bmp.TellHeight() };
             pixelFormat = SimpleFormat(FormatTypes::NormalizedUInt,
                                        SimpleFormatComponents::RGB,
                                        SimpleFormatBitDepths::B8);
@@ -100,9 +101,13 @@ bool ImageLoader::ProcessAfterRetrieve(std::vector<std::byte>&& diskData)
         } break;
             
         case ImageLoaderFormats::PNG: {
+            auto [pngStruct, pngInfo] = FindLibPNG();
+            //TODO: Implement.
         } break;
 
         case ImageLoaderFormats::JPEG: {
+            auto jpeg = FindTurboJPEG();
+            //TODO: Implement.
         } break;
 
         default:
