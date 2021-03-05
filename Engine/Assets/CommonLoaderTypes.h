@@ -56,9 +56,15 @@ namespace Bplus::Assets
     #pragma region Image loader
 
     BETTER_ENUM(ImageLoaderFormats, uint8_t,
-        PNG, JPEG, BMP
-        //TODO: More formats.
+        PNG, JPEG
+        //TODO: Add BMP, with a custom converter (make separate repo for it)
+        //TODO: Add PNM: https://github.com/dmilos/PNM
+        //TODO: TIFF, Targa, raw?
     );
+    #pragma region Add hashing for ImageLoaderFormats
+    } BETTER_ENUMS_DECLARE_STD_HASH(Bplus::Assets::ImageLoaderFormats)
+    namespace Bplus::Assets {
+    #pragma endregion
     
     //A lookup of the default file extensions for each type of ImageLoader format.
     //The extension strings are NOT preceded by a dot.
@@ -66,8 +72,7 @@ namespace Bplus::Assets
     {
         static auto value = std::unordered_map<ImageLoaderFormats, std::vector<const char*>>{
             { ImageLoaderFormats::PNG, { "png" } },
-            { ImageLoaderFormats::JPEG, { "jpg", "jpeg", "jpe" } },
-            { ImageLoaderFormats::BMP, { "bmp" } }
+            { ImageLoaderFormats::JPEG, { "jpg", "jpeg", "jpe" } }
         };
         return value;
     }
@@ -83,11 +88,14 @@ namespace Bplus::Assets
     {
     public:
 
-        //If true, the texture is loaded as a one-component depth texture.
-        bool LoadAsDepth = false;
+        Bplus::GL::Textures::Format PixelFormat =
+            Bplus::GL::Textures::SimpleFormat(Bplus::GL::Textures::FormatTypes::NormalizedUInt,
+                                              Bplus::GL::Textures::SimpleFormatComponents::RGBA,
+                                              Bplus::GL::Textures::SimpleFormatBitDepths::B8);
+
         //If set, the loader will assume the file is in this format
         //    instead of determining the format from the extension.
-        std::optional<ImageLoaderFormats> ForcedFormat = std::nullopt;
+        std::optional<ImageLoaderFormats> ForcedFileFormat = std::nullopt;
 
         //The number of mip levels.
         // 0 means that mips are calculated automatically.
@@ -110,7 +118,8 @@ namespace Bplus::Assets
 
         glm::uvec2 pixelSize;
         std::vector<std::byte> pixelData;
-        Textures::Format pixelFormat;
+        Bplus::GL::Textures::PixelIOChannels pixelDataChannels;
+        Bplus::GL::Textures::PixelIOTypes pixelDataType;
     };
 
     #pragma endregion

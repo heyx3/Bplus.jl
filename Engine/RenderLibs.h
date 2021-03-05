@@ -43,15 +43,9 @@
 
 //Image libraries:
 #include <turboJPEG/jpeglib.h>
-//Custom error handler for TurboJPEG that uses BP_ASSERT:
-namespace Bplus {
-    TurboJPEGErrorHandler
-}
+//TODO: Set up a custom error handler for TurboJPEG that uses BP_ASSERT
 #define PNG_USE_DLL 1
 #include <libPNG/png.h>
-//TODO: Replace EasyBMP with my own BMP library; this one has a loooot of issues
-#define EASY_BMP_API BP_API
-#include "Images/EasyBMP/EasyBMP.h"
 
 //TODO: Libraries for Block-Compression of textures (see below):
 //        * https://github.com/richgel999/bc7enc16

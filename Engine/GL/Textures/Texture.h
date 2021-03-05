@@ -252,94 +252,10 @@ namespace Bplus::GL::Textures
         //    finds the corresponding OpenGL enum value.
         GLenum GetOglChannels(PixelIOChannels components) const
         {
-            //If the pixel format isn't integer (i.e. it's float or normalized integer),
-            //    we can directly use the enum values.
-            //Otherwise, we should be sending the "integer" enum values.
             if (!format.IsInteger())
                 return (GLenum)components;
-            else switch (components)
-            {
-                case PixelIOChannels::Red: return GL_RED_INTEGER;
-                case PixelIOChannels::Green: return GL_GREEN_INTEGER;
-                case PixelIOChannels::Blue: return GL_BLUE_INTEGER;
-                case PixelIOChannels::RG: return GL_RG_INTEGER;
-                case PixelIOChannels::RGB: return GL_RGB_INTEGER;
-                case PixelIOChannels::BGR: return GL_BGR_INTEGER;
-                case PixelIOChannels::RGBA: return GL_RGBA_INTEGER;
-                case PixelIOChannels::BGRA: return GL_BGRA_INTEGER;
-
-                default:
-                    std::string msg = "Unexpected data component type: ";
-                    msg += components._to_string();
-                    BP_ASSERT(false, msg.c_str());
-                    return GL_NONE;
-            }
-        }
-
-        //Given a type T, finds the corresponding GLenum for that type of data.
-        //    bool types are interpreted as unsigned integers of the same size.
-        template<typename T>
-        GLenum GetOglInputFormat() const
-        {
-            //Deduce the "type" argument for OpenGL, representing
-            //    the size of each channel being sent in.
-            GLenum type = GL_NONE;
-            if constexpr (std::is_same_v<T, bool>) {
-                if constexpr (sizeof(bool) == 1) {
-                    type = GL_UNSIGNED_BYTE;
-                } else if constexpr (sizeof(bool) == 2) {
-                    type = GL_UNSIGNED_SHORT;
-                } else if constexpr (sizeof(bool) == 4) {
-                    type = GL_UNSIGNED_INT;
-                } else {
-                    static_assert(false, "Unexpected value for sizeof(bool)");
-                }
-            } else if constexpr (std::is_same_v<T, glm::u8>) {
-                type = GL_UNSIGNED_BYTE;
-            } else if constexpr (std::is_same_v<T, glm::u16>) {
-                type = GL_UNSIGNED_SHORT;
-            } else if constexpr (std::is_same_v<T, glm::u32>) {
-                type = GL_UNSIGNED_INT;
-            } else if constexpr (std::is_same_v<T, glm::i8>) {
-                type = GL_BYTE;
-            } else if constexpr (std::is_same_v<T, glm::i16>) {
-                type = GL_SHORT;
-            } else if constexpr (std::is_same_v<T, glm::i32>) {
-                type = GL_INT;
-            } else if constexpr (std::is_same_v<T, glm::f32>) {
-                type = GL_FLOAT;
-            } else {
-                T ta;
-                ta.aslflskjflsjf4444 = 4;
-                static_assert(false, "T is an unexpected type");
-            }
-
-            return type;
-        }
-
-        //Given a number of channels, and a switch for reversed (BGR) ordering,
-        //    finds the corresponding enum value for pixel data IO.
-        //Assumes by default that single-channel data is Red.
-        template<glm::length_t L>
-        PixelIOChannels GetComponents(bool bgrOrdering,
-                                      PixelIOChannels valueFor1D = PixelIOChannels::Red) const
-        {
-            if constexpr (L == 1) {
-                return PixelIOChannels::Red;
-            } else if constexpr (L == 2) {
-                return PixelIOChannels::RG;
-            } else if constexpr (L == 3) {
-                return (bgrOrdering ?
-                            PixelIOChannels::BGR :
-                            PixelIOChannels::RGB);
-            } else if constexpr (L == 4) {
-                return (bgrOrdering ?
-                            PixelIOChannels::BGRA :
-                            PixelIOChannels::RGBA);
-            } else {
-                static_assert(false, "L should be between 1 and 4");
-                return PixelIOChannels::Greyscale;
-            }
+            else
+                return GetIntegerVersion(components);
         }
 
 

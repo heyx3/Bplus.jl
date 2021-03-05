@@ -1,3 +1,6 @@
+//Modified to avoid re-defining macros that are already defined.
+//Some of them conflict with SDL macros  >:(
+
 #define JPEG_LIB_VERSION  62
 #define LIBJPEG_TURBO_VERSION  2.0.6
 #define LIBJPEG_TURBO_VERSION_NUMBER  2000006
@@ -9,8 +12,13 @@
 
 #define BITS_IN_JSAMPLE  8      /* use 8 or 12 */
 
+#ifndef HAVE_STDDEF_H
 #define HAVE_STDDEF_H
+#endif
+#ifndef HAVE_STDLIB_H
 #define HAVE_STDLIB_H
+#endif
+
 #undef NEED_SYS_TYPES_H
 #undef NEED_BSD_STRINGS
 

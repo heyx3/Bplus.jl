@@ -89,6 +89,8 @@ TEST_LIST = {
 
     { "SceneTree basic manipulation", ST_BasicManipulation },
 
+    //TODO: Tests for image asset loading, and Utils/Streams.hpp
+
     //The below tests are interactive apps, so they're normally disabled to simplify testing.
     //{ "Simple App", SimpleApp },
     //{ "Basic Rendering App", BasicRenderApp },

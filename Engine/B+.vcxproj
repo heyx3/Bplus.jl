@@ -113,7 +113,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;assimp.lib;jpeg-static.lib;turbojpeg-static.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;assimp.lib;jpeg.lib;turbojpeg.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -179,7 +179,7 @@ exit 0</Command>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;assimp.lib;jpeg-static.lib;turbojpeg-static.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;assimp.lib;jpeg.lib;turbojpeg.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -249,7 +249,7 @@ exit 0</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;assimp.lib;jpeg-static.lib;turbojpeg-static.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;assimp.lib;jpeg.lib;turbojpeg.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -319,7 +319,7 @@ exit 0</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;assimp.lib;jpeg-static.lib;turbojpeg-static.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;assimp.lib;jpeg.lib;turbojpeg.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -390,7 +390,6 @@ exit 0</Command>
     <ClCompile Include="GL\Textures\TextureCube.cpp" />
     <ClCompile Include="GL\Textures\TexturesData.cpp" />
     <ClCompile Include="Helpers\EditorCamControls.cpp" />
-    <ClCompile Include="Images\EasyBMP\EasyBMP.cpp" />
     <ClCompile Include="IO.cpp" />
     <ClCompile Include="NativeFileDialog\nfd_common.c" />
     <ClCompile Include="NativeFileDialog\nfd_win.cpp" />
@@ -432,10 +431,6 @@ exit 0</Command>
     <ClInclude Include="GL\Textures\TextureD.hpp" />
     <ClInclude Include="GL\Textures\TexturesData.h" />
     <ClInclude Include="Helpers\EditorCamControls.h" />
-    <ClInclude Include="Images\EasyBMP\EasyBMP.h" />
-    <ClInclude Include="Images\EasyBMP\EasyBMP_BMP.h" />
-    <ClInclude Include="Images\EasyBMP\EasyBMP_DataStructures.h" />
-    <ClInclude Include="Images\EasyBMP\EasyBMP_VariousBMPutilities.h" />
     <ClInclude Include="Math\Math.hpp" />
     <ClInclude Include="Math\Box.hpp" />
     <ClInclude Include="Math\Ray.hpp" />

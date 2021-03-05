@@ -82,8 +82,8 @@ namespace Bplus::GL::Textures
     );
     using SwizzleRGBA = std::array<SwizzleSources, 4>;
     inline constexpr SwizzleRGBA DefaultSwizzling() { return std::array{
-        +SwizzleSources::Red, SwizzleSources::Green, SwizzleSources::Blue,
-        SwizzleSources::Alpha
+        +SwizzleSources::Red, +SwizzleSources::Green, +SwizzleSources::Blue,
+        +SwizzleSources::Alpha
     }; }
 
 

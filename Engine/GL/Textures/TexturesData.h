@@ -11,9 +11,7 @@
 
 namespace Bplus::GL::Textures
 {
-    //Subsets of color channels when uploading/downloading pixel data,
-    //    in byte order.
-    //TODO: Rename "PixelIOChannels"
+    //Subsets of color channels when uploading/downloading pixel data, in byte order.
     BETTER_ENUM(PixelIOChannels, GLenum,
         Red = GL_RED,
         Green = GL_GREEN,
@@ -27,6 +25,78 @@ namespace Bplus::GL::Textures
     uint8_t BP_API GetNChannels(PixelIOChannels data);
     bool BP_API UsesChannel(PixelIOChannels components, ColorChannels channel);
     uint8_t BP_API GetChannelIndex(PixelIOChannels components, ColorChannels channel);
+
+    //Gets the OpenGL enum representing an integer-type version of the given components.
+    GLenum GetIntegerVersion(PixelIOChannels components);
+
+    //Determines the subset of components that match a GLM vector of the given number of dimensions.
+    //For example, L=2 means fvec2, which results in PixelIOChannels::RG.
+    template<glm::length_t L>
+    inline PixelIOChannels GetPixelIOChannels(bool bgrOrdering,
+                                              PixelIOChannels valueFor1D = PixelIOChannels::Red)
+    {
+        if constexpr (L == 1) {
+            return PixelIOChannels::Red;
+        } else if constexpr (L == 2) {
+            return PixelIOChannels::RG;
+        } else if constexpr (L == 3) {
+            return (bgrOrdering ?
+                        PixelIOChannels::BGR :
+                        PixelIOChannels::RGB);
+        } else if constexpr (L == 4) {
+            return (bgrOrdering ?
+                        PixelIOChannels::BGRA :
+                        PixelIOChannels::RGBA);
+        } else {
+            static_assert(false, "L should be between 1 and 4");
+            return PixelIOChannels::Greyscale;
+        }
+    }
+
+
+    //Data types that GPU pixel data can be uploaded/downloaded in.
+    BETTER_ENUM(PixelIOTypes, GLenum,
+        UInt8 = GL_UNSIGNED_BYTE,
+        UInt16 = GL_UNSIGNED_SHORT,
+        UInt32 = GL_UNSIGNED_INT,
+        Int8 = GL_BYTE,
+        Int16 = GL_SHORT,
+        Int32 = GL_INT,
+        Float32 = GL_FLOAT
+    );
+    //Compile-time determination of a type for GPU texture upload/download.
+    template<typename T>
+    inline PixelIOTypes GetPixelIOType()
+    {
+        if constexpr (std::is_same_v<T, bool>) {
+            if constexpr (sizeof(bool) == 1) {
+                return PixelIOTypes::UInt8;
+            } else if constexpr (sizeof(bool) == 2) {
+                return PixelIOTypes::UInt16;
+            } else if constexpr (sizeof(bool) == 4) {
+                return PixelIOTypes::UInt32;
+            } else {
+                static_assert(false, "Unexpected value for sizeof(bool)");
+            }
+        } else if constexpr (std::is_same_v<T, glm::u8>) {
+            return PixelIOTypes::UInt8;
+        } else if constexpr (std::is_same_v<T, glm::u16>) {
+            return PixelIOTypes::UInt16;
+        } else if constexpr (std::is_same_v<T, glm::u32>) {
+            return PixelIOTypes::UInt32;
+        } else if constexpr (std::is_same_v<T, glm::i8>) {
+            return PixelIOTypes::Int8;
+        } else if constexpr (std::is_same_v<T, glm::i16>) {
+            return PixelIOTypes::Int16;
+        } else if constexpr (std::is_same_v<T, glm::i32>) {
+            return PixelIOTypes::Int32;
+        } else if constexpr (std::is_same_v<T, glm::f32>) {
+            return PixelIOTypes::Float32;
+        } else {
+            static_assert(false, "T is an unexpected type");
+            return PixelIOTypes::UInt32;
+        }
+    }
 
     //The different modes that an ImgView can be used in.
     BETTER_ENUM(ImageAccessModes, GLenum,

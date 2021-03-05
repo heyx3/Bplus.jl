@@ -97,3 +97,25 @@ uint8_t Bplus::GL::Textures::GetChannelIndex(PixelIOChannels components,
             return 0;
     }
 }
+
+GLenum Bplus::GL::Textures::GetIntegerVersion(PixelIOChannels components)
+{
+    switch (components)
+    {
+        case PixelIOChannels::Red: return GL_RED_INTEGER;
+        case PixelIOChannels::Green: return GL_GREEN_INTEGER;
+        case PixelIOChannels::Blue: return GL_BLUE_INTEGER;
+
+        case PixelIOChannels::RG: return GL_RG_INTEGER;
+        case PixelIOChannels::RGB: return GL_RGB_INTEGER;
+        case PixelIOChannels::BGR: return GL_BGR_INTEGER;
+        case PixelIOChannels::RGBA: return GL_RGBA_INTEGER;
+        case PixelIOChannels::BGRA: return GL_BGRA_INTEGER;
+
+        default:
+            std::string errMsg = "Unknown :  Bplus::GL::Textures::PixelIOChannels.";
+            errMsg += components._to_string();
+            BP_ASSERT(false, errMsg.c_str());
+            return 0;
+    }
+}

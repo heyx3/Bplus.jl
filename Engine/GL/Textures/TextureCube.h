@@ -260,8 +260,8 @@ namespace Bplus::GL::Textures
                 BP_ASSERT(!GetFormat().IsInteger(), "Can't clear an integer texture to a non-integer value");
 
             ClearData(glm::value_ptr(value),
-                      GetOglChannels(GetComponents<L>(bgrOrdering)),
-                      GetOglInputFormat<T>(),
+                      GetPixelIOChannels<L>(bgrOrdering),
+                      GetPixelIOType<T>(),
                       optionalParams);
         }
 
@@ -274,7 +274,7 @@ namespace Bplus::GL::Textures
             BP_ASSERT(GetFormat().IsDepthOnly(),
                      "Trying to clear depth value in a color, stencil, or depth-stencil texture");
 
-            ClearData(&depth, GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
+            ClearData(&depth, GL_DEPTH_COMPONENT, GetPixelIOType<T>(),
                       optionalParams);
         }
 
@@ -285,7 +285,7 @@ namespace Bplus::GL::Textures
                      "Trying to clear the stencil value in a color, depth, or depth-stencil texture");
 
             ClearData(&stencil,
-                      GL_STENCIL_INDEX, GetOglInputFormat<uint8_t>(),
+                      GL_STENCIL_INDEX, (GLenum)PixelIOTypes::UInt8,
                       optionalParams);
         }
 
@@ -340,16 +340,10 @@ namespace Bplus::GL::Textures
         void Set_Color(const T* data, PixelIOChannels components,
                        SetDataCubeParams optionalParams = { })
         {
-            BP_ASSERT(!GetFormat().IsCompressed(),
-                     "Can't set a compressed texture with Set_Color()! Use Set_Compressed()");
-            BP_ASSERT(!GetFormat().IsDepthStencil(),
-                     "Can't set a depth/stencil texture with Set_Color()!");
             if constexpr (!std::is_integral_v<T>)
                 BP_ASSERT(!GetFormat().IsInteger(), "Can't set an integer texture with non-integer data");
 
-            SetData((const void*)data,
-                    GetOglChannels(components), GetOglInputFormat<T>(),
-                    optionalParams);
+            Set_Color((const std::byte*)data, components, GetPixelIOType<T>(), optionalParams);
         }
 
         //Sets any kind of color texture with the given data.
@@ -365,8 +359,31 @@ namespace Bplus::GL::Textures
                        SetDataCubeParams optionalParams = { })
         {
             Set_Color<T>(glm::value_ptr(*pixels),
-                         GetComponents<L>(bgrOrdering),
+                         GetPixelIOChannels<L>(bgrOrdering),
                          optionalParams);
+        }
+
+        //Sets this color texture with the given data.
+        //Not allowed for compressed-format textures.
+        //If the texture's format is an Integer-type, then the input data must be as well.
+        //Note that the upload to the GPU will be slower if
+        //    the data doesn't exactly match the texture's pixel format.
+        void Set_Color(const std::byte* data,
+                       PixelIOChannels components, PixelIOTypes componentType,
+                       SetDataCubeParams optionalParams = { })
+        {
+            //Technically, the OpenGL standard does allow you to set compressed textures
+            //    with normal RGBA values.
+            //However, the implementation qualities vary widely so we prohibit it.
+            BP_ASSERT(!GetFormat().IsCompressed(),
+                     "Can't set a compressed texture with Set_Color()! Use Set_Compressed()");
+
+            BP_ASSERT(!GetFormat().IsDepthStencil(),
+                     "Can't set a depth/stencil texture with Set_Color()!");
+
+            SetData((const void*)data,
+                    GetOglChannels(components), (GLenum)componentType,
+                    optionalParams);
         }
 
         //Directly sets block-compressed data for the texture, on one or all faces,
@@ -385,11 +402,16 @@ namespace Bplus::GL::Textures
         template<typename T>
         void Set_Depth(const T* pixels, SetDataCubeParams optionalParams = { })
         {
+            Set_Depth((const std::byte*)pixels, GetPixelIOType<T>(), optionalParams);
+        }
+        //Sets part or all of this depth texture to the given value.
+        void Set_Depth(const std::byte* pixelData, PixelIOTypes dataType,
+                       SetDataCubeParams optionalParams = { })
+        {
             BP_ASSERT(GetFormat().IsDepthOnly(),
                      "Trying to set depth data for a non-depth texture");
 
-            SetData((const void*)pixels, GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
-                    optionalParams);
+            SetData((const void*)pixelData, GL_DEPTH_COMPONENT, (GLenum)dataType, optionalParams);
         }
 
         //Sets part or all of this stencil texture to the given value.
@@ -399,7 +421,7 @@ namespace Bplus::GL::Textures
                      "Trying to set the stencil values in a color, depth, or depth-stencil texture");
 
             SetData((const void*)pixels,
-                    GL_STENCIL_INDEX, GetOglInputFormat<uint8_t>(),
+                    GL_STENCIL_INDEX, (GLenum)PixelIOTypes::UInt8,
                     optionalParams);
         }
 
@@ -450,15 +472,12 @@ namespace Bplus::GL::Textures
         void Get_Color(T* data, PixelIOChannels components,
                        GetDataCubeParams optionalParams = { }) const
         {
-            BP_ASSERT(!GetFormat().IsDepthStencil(),
-                     "Can't read a depth/stencil texture with Get_Color()!");
             if constexpr (!std::is_integral_v<T>)
                 BP_ASSERT(!GetFormat().IsInteger(), "Can't read an integer texture as non-integer data");
 
-            GetData((void*)data,
-                    sizeof(decltype(data[0])) * GetNChannels(components),
-                    GetOglChannels(components), GetOglInputFormat<T>(),
-                    optionalParams);
+            Get_Color((std::byte*)data, sizeof(decltype(data[0])),
+                      components, GetPixelIOType<T>(),
+                      optionalParams);
         }
 
         //Gets any kind of color texture data, writing it into the given buffer.
@@ -477,6 +496,20 @@ namespace Bplus::GL::Textures
                          optionalParams);
         }
 
+        //Gets any kind of color texture data, writing it into the given buffer.
+        void Get_Color(std::byte* data, size_t pixelByteSize,
+                       PixelIOChannels components, PixelIOTypes componentType,
+                       GetDataCubeParams optionalParams = { }) const
+        {
+            BP_ASSERT(!GetFormat().IsDepthStencil(),
+                     "Can't read a depth/stencil texture with Get_Color()!");
+
+            GetData((void*)data,
+                    pixelByteSize * GetNChannels(components),
+                    GetOglChannels(components), componentType,
+                    optionalParams);
+        }
+
         //Directly reads block-compressed data from the texture, on one or all faces,
         //    based on its current format.
         //This is a fast, direct copy of the byte data stored in the texture.
@@ -492,11 +525,20 @@ namespace Bplus::GL::Textures
         template<typename T>
         void Get_Depth(T* pixels, GetDataCubeParams optionalParams = { })
         {
+            Get_Depth((std::byte*)pixels,
+                      GetPixelIOType<T>(), sizeof(decltype(pixels[0])),
+                      optionalParams);
+        }
+        //Gets part or all of this depth texture, writing it into the given buffer.
+        void Get_Depth(std::byte* pixelData,
+                       PixelIOTypes dataType, size_t pixelByteSize,
+                       GetDataCubeParams optionalParams = { })
+        {
             BP_ASSERT(GetFormat().IsDepthOnly(),
                      "Trying to get depth data for a non-depth texture");
 
-            GetData((void*)pixels, sizeof(decltype(pixels[0])),
-                    GL_DEPTH_COMPONENT, GetOglInputFormat<T>(),
+            GetData((void*)pixelData, pixelByteSize,
+                    GL_DEPTH_COMPONENT, (GLenum)dataType,
                     optionalParams);
         }
 
@@ -507,7 +549,7 @@ namespace Bplus::GL::Textures
                      "Trying to get the stencil values in a color, depth, or depth-stencil texture");
 
             GetData((void*)pixels, sizeof(decltype(pixels[0])),
-                    GL_STENCIL_INDEX, GetOglInputFormat<uint8_t>(),
+                    GL_STENCIL_INDEX, (GLenum)PixelIOTypes::UInt8,
                     optionalParams);
         }
 
