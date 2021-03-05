@@ -151,6 +151,9 @@
     <ClInclude Include="Utils\Streams.hpp">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="Math\PRNG.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />

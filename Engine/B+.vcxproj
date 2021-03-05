@@ -433,6 +433,7 @@ exit 0</Command>
     <ClInclude Include="Helpers\EditorCamControls.h" />
     <ClInclude Include="Math\Math.hpp" />
     <ClInclude Include="Math\Box.hpp" />
+    <ClInclude Include="Math\PRNG.hpp" />
     <ClInclude Include="Math\Ray.hpp" />
     <ClInclude Include="Math\Shapes.hpp" />
     <ClInclude Include="Math\Sphere.hpp" />
