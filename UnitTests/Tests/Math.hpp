@@ -1,6 +1,7 @@
 #pragma once
 
 #include <B+/Math/Math.hpp>
+#include <B+/Math/PRNG.hpp>
 
 #define TEST_NO_MAIN
 #include <acutest.h>
@@ -75,6 +76,57 @@ void PlainMath()
                          i, iLess, Math::IsInRange<int8_t>(_i + iLess) ? "yes" : "no");
         }
     }
+}
+
+void PRNG()
+{
+    Bplus::Math::PRNG myRNG;
+    const size_t nTrials = 10000000;
+    const float fMin = 45,
+                fMax = 67.85f;
+    const uint32_t uMin = 3,
+                   uMax = 9999;
+
+    //Use a very rough estimate of randomness:
+    //    about half the values should be above the midpoint.
+    size_t nFloatsAboveMidpoint = 0,
+           nUintsAboveMidpoint = 0;
+
+    for (size_t i = 0; i < nTrials; ++i)
+    {
+        float rF = myRNG.NextFloat_1_2();
+        if (rF > 1.5f)
+            nFloatsAboveMidpoint += 1;
+        TEST_CHECK_(rF >= 1 && rF < 2,
+                   "PRNG::Next_1_2() is outside the expected range: %f", rF);
+
+        decltype(myRNG) oldState = myRNG;
+        rF = myRNG.NextFloat(fMin, fMax);
+        TEST_CHECK_(rF >= fMin && rF <= fMax, //Note that we use <=max instead of <max due to floating-point error
+                   "PRNG::Next(%f, %f) is outside the expected range: %f",
+                   fMin, fMax, rF);
+
+        uint32_t rU = myRNG.NextUInt();
+        if (rU > std::numeric_limits<uint32_t>::max() / 2)
+            nUintsAboveMidpoint += 1;
+
+        rU = myRNG.NextUInt(uMin, uMax);
+        TEST_CHECK_(rU >= uMin && rU < uMax,
+                    "PRNG::NextUInt(%u, %u) is outside the expected range: %u",
+                    uMin, uMax, rU);
+    }
+
+    double floatRatio = (double)nFloatsAboveMidpoint / nTrials,
+           intRatio = (double)nUintsAboveMidpoint / nTrials;
+    double epsilon = 0.01;
+    TEST_CHECK_(floatRatio >= (0.5 - epsilon) && floatRatio < (0.5 + epsilon),
+                "Rough randomness test for PRNG floats has failed: values were above"
+                   " the expected midpoint %.1f%% of the time, instead of the expected 50%% (give or take %.1f)",
+                floatRatio * 100, epsilon * 100);
+    TEST_CHECK_(intRatio >= (0.5 - epsilon) && intRatio < (0.5 + epsilon),
+                "Rough randomness test for PRNG UInts has failed: values were above"
+                   " the expected midpoint %.1f%% of the time, instead of the expected 50%% (give or take %.1f)",
+                intRatio * 100, epsilon * 100);
 }
 
 void GLMHelpers()

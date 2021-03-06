@@ -75,6 +75,7 @@ TEST_LIST = {
     { "Toml <=> GLM",             TomlGLM        },
 
     { "Math: Plain Number-crunching",    PlainMath },
+    { "Math: PRNG",                      PRNG },
     { "Math: GLM Helpers",               GLMHelpers },
 
     { "Bplus::GL::Buffers::Buffer basic",     BufferBasic   },
