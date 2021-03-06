@@ -22,7 +22,16 @@ Bplus::AssertFuncSignature Bplus::GetAssertFunc()
 
 void Bplus::DefaultAssertFunc(bool expr, const char* msg)
 {
-    if (!expr)
+    //NOTE: If we ever upgrade to C++ 20, we should use [[unlikely]]
+    //    to hint to the compiler that these asserts usually pass.
+    //For now, we exploit the fact that most compilers will
+    //    assume the 'else' statement is less likely.
+    if (expr)
+    {
+        //For completeness:
+        assert(true);
+    }
+    else
     {
         printf("BP_ASSERT failed: ");
         printf(msg);
@@ -30,10 +39,5 @@ void Bplus::DefaultAssertFunc(bool expr, const char* msg)
 
         assert(false);
         throw std::exception(msg);
-    }
-    else
-    {
-        //For completeness:
-        assert(true);
     }
 }

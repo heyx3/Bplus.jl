@@ -9,43 +9,95 @@ using namespace Bplus::GL::Textures;
 
 
 namespace {
-    thread_local std::optional<jpeg_decompress_struct> turboJPEGThreadInstance = std::nullopt;
-    auto FindTurboJPEG()
+    #pragma region RAII wrappers for image decompressors
+
+    struct TurboJpegDecompressor
+    {
+        jpeg_decompress_struct Data;
+        TurboJpegDecompressor()
+        {
+            jpeg_create_decompress(&Data);
+        }
+        ~TurboJpegDecompressor()
+        {
+            jpeg_destroy_decompress(&Data);
+        }
+    };
+
+    struct LibPngDecompressor
+    {
+        png_structp Struct;
+        png_infop Info;
+        LibPngDecompressor(bool& out_DidFail)
+        {
+            out_DidFail = true;
+
+            Struct = png_create_read_struct(PNG_LIBPNG_VER_STRING,
+                                            nullptr, nullptr, nullptr);
+            if (Struct == nullptr)
+            {
+                BP_ASSERT(false, "Unable to initialize a libPNG reader");
+                return;
+            }
+
+            Info = png_create_info_struct(Struct);
+            if (Info == nullptr)
+            {
+                png_destroy_read_struct(&Struct, nullptr, nullptr);
+                Struct = nullptr;
+
+                BP_ASSERT(false, "Unable to initialize a libPNG 'info' struct for reading");
+                return;
+            }
+
+            out_DidFail = false;
+        }
+        ~LibPngDecompressor()
+        {
+            if (Struct != nullptr)
+            {
+                png_destroy_read_struct(&Struct,
+                                        Info ? (&Info) : nullptr,
+                                        nullptr);
+            }
+        }
+    };
+
+    #pragma endregion
+
+    thread_local std::optional<TurboJpegDecompressor> turboJPEGThreadInstance = std::nullopt;
+    thread_local std::optional<LibPngDecompressor> libPNGThreadInstance = std::nullopt;
+
+    auto* FindTurboJPEG()
     {
         //Refer to: https://raw.githubusercontent.com/libjpeg-turbo/libjpeg-turbo/master/example.txt
         //          https://raw.githubusercontent.com/libjpeg-turbo/libjpeg-turbo/master/libjpeg.txt
 
         auto& threadReference = turboJPEGThreadInstance;
-        if (!threadReference.has_value())
-        {
-            threadReference = jpeg_decompress_struct();
-            threadReference->err = jpeg_std_error(threadReference->err);
-            jpeg_create_decompress(&threadReference.value());
-        }
-        return *threadReference;
-    }
 
-    thread_local std::optional<png_structp> libPNGThreadInstance_struct = std::nullopt;
-    thread_local png_infop libPNGThreadInstance_info = nullptr;
+        if (!threadReference.has_value())
+            threadReference.emplace();
+
+        return &threadReference->Data;
+    }
     auto FindLibPNG()
     {
         //Refer to: https://github.com/glennrp/libpng/blob/libpng16/libpng-manual.txt
 
-        auto& threadRef_struct = libPNGThreadInstance_struct;
-        auto& threadRef_info = libPNGThreadInstance_info;
+        auto& threadReference = libPNGThreadInstance;
 
-        if (!threadRef_struct.has_value())
+        if (!threadReference.has_value())
         {
-            threadRef_struct = png_create_read_struct(PNG_LIBPNG_VER_STRING,
-                                                      nullptr, nullptr, nullptr);
-            BP_ASSERT(*threadRef_struct != nullptr, "Unable to initialize a libPNG reader");
-
-            threadRef_info = png_create_info_struct(*threadRef_struct);
-            BP_ASSERT(threadRef_info != nullptr,
-                      "Unable to initialize a libPNG 'info' struct for reading");
+            bool failed = false;
+            threadReference.emplace(failed);
+            if (failed)
+            {
+                threadReference.reset();
+                BP_ASSERT(false, "TurboPNG didn't initialize properly");
+            }
         }
 
-        return std::make_tuple(*threadRef_struct, threadRef_info);
+        return std::make_tuple(threadReference->Struct, threadReference->Info);
     }
 }
 
@@ -180,8 +232,34 @@ bool ImageLoader::ProcessAfterRetrieve(std::vector<std::byte>&& diskData)
         } break;
 
         case ImageLoaderFormats::JPEG: {
+            //Start reading the JPEG.
             auto jpeg = FindTurboJPEG();
-            //TODO: Implement. https://raw.githubusercontent.com/libjpeg-turbo/libjpeg-turbo/master/libjpeg.txt
+            jpeg_mem_src(jpeg, (const unsigned char*)diskData.data(), diskData.size());
+            jpeg_read_header(jpeg, true);
+            jpeg_start_decompress(jpeg);
+
+            //Prepare the output pixel buffer.
+            pixelSize = { jpeg->output_width, jpeg->output_height };
+            auto rowByteSize = (size_t)pixelSize.x * jpeg->output_components;
+            pixelData.resize(rowByteSize * pixelSize.y);
+
+            //Read the data row by row.
+            //JPEG standard is top-to-bottom, while OpenGL is bottom-to-top,
+            //    so we have to invert the row order.
+            //Fortunately, JPEG operates on each row individually
+            //    by taking an array of row pointers, so it's easy to flip the data.
+            std::vector<JSAMPROW> rowPtrs(pixelSize.y);
+            for (uint32_t row = 0; row < pixelSize.y; ++row)
+            {
+                auto row_idx = pixelSize.y - row - 1;
+                rowPtrs[row] = (JSAMPROW)(&pixelData[row_idx * rowByteSize]);
+            }
+            //We have to continuously read the rows in a loop
+            //    until we're sure all of them have been read.
+            while (jpeg->output_scanline < pixelSize.y)
+                jpeg_read_scanlines(jpeg, rowPtrs.data(), pixelSize.y);
+
+            jpeg_finish_decompress(jpeg);
         } break;
 
         default:
