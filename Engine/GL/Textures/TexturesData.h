@@ -64,6 +64,28 @@ namespace Bplus::GL::Textures
         Int32 = GL_INT,
         Float32 = GL_FLOAT
     );
+    //Gets the byte-size of the given pixel data type.
+    inline uint_fast32_t GetByteSize(PixelIOTypes channelDataType)
+    {
+        switch (channelDataType)
+        {
+            case PixelIOTypes::UInt8:
+            case PixelIOTypes::Int8:
+                return 1;
+            case PixelIOTypes::UInt16:
+            case PixelIOTypes::Int16:
+                return 2;
+            case PixelIOTypes::UInt32:
+            case PixelIOTypes::Int32:
+            case PixelIOTypes::Float32:
+                return 4;
+            default:
+                std::string errMsg = "Unexpected Bplus::GL::Textures::PixelIOTypes::";
+                errMsg += channelDataType._to_string();
+                BP_ASSERT(false, errMsg.c_str());
+                return 1;
+        }
+    }
     //Compile-time determination of a type for GPU texture upload/download.
     template<typename T>
     inline PixelIOTypes GetPixelIOType()

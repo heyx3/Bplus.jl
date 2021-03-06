@@ -37,8 +37,9 @@ namespace Bplus
 
     //Safe type-punning: reinterprets input A's byte-data as an instance of B
     //    by making a copy on the stack.
+    //TODO: List the return value type first for convenience.
     template<typename A, typename B>
-    B Reinterpret(const A& a)
+    constexpr B Reinterpret(const A& a)
     {
         static_assert(sizeof(A) >= sizeof(B),
                       "Can't Reinterpret() these two types; destination is larger than source");

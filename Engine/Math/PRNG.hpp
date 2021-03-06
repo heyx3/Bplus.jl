@@ -19,10 +19,13 @@ namespace Bplus::Math
               State(0xf1ea5eed)
         {
             //Run some iterations before-hand.
-            //I think this is to weed out any strange initial behavior for some seeds.
+            //I think this is to weed out any strange initial behavior,
+            //    especially given that we initialize 3 of the 4 state variables
+            //    to the same value.
             for (int i = 0; i < 20; ++i)
                 NextUInt();
         }
+
 
         uint32_t NextUInt()
         {
@@ -35,7 +38,51 @@ namespace Bplus::Math
 
             return Seed3;
         }
-        //TODO: NextFloat()
+        uint32_t NextUInt(uint32_t maxExclusive)
+        {
+            return NextUInt() % maxExclusive;
+        }
+        uint32_t NextUInt(uint32_t min, uint32_t maxExclusive)
+        {
+            return NextUInt(maxExclusive - min) + min;
+        }
+
+        //Generates a random float in the range [0, 1).
+        float NextFloat()
+        {
+            return NextFloat_1_2() - 1;
+        }
+        //Generates a random float in the given half-open range.
+        float NextFloat(float min, float maxExclusive)
+        {
+            float t = NextFloat();
+            return ((1 - t) * min) + (t * maxExclusive);
+        }
+        //Generates a random float given a midpoint value and a range.
+        float NextFloat_MidAndRange(float midpoint, float range)
+        {
+            float t = NextFloat();
+            return (t * range) + (midpoint - 0.5f);
+        }
+        //Efficiently generates a random float in the range [1, 2).
+        //This is the low-level RNG function for generating floats;
+        //    this other ones are just this plus some extra work.
+        float NextFloat_1_2()
+        {
+            //Generate a random integer, then overwrite some of the bits
+            //    to guarantee a float in the range [1, 2).
+
+            static_assert(std::numeric_limits<float>::is_iec559,
+                          "The platform doesn't use standard IEEE floats, which means"
+                            " Bplus::Math::PRNG::NextFloat_1_2() needs to use different code"
+                            " to generate its values");
+
+            constexpr uint32_t header      = 0b00111111100000000000000000000000;
+            constexpr uint32_t intBitsMask = 0b00000000011111111111111111111111;
+            
+            uint32_t outputU = header | (NextUInt() & intBitsMask);
+            return Reinterpret<uint32_t, float>(outputU);
+        }
 
 
     private:

@@ -472,7 +472,7 @@ namespace Bplus::GL::Textures
         }
 
         //Gets any kind of color texture data, writing it into the given buffer.
-        void Get_Color(std::byte* data, size_t pixelByteSize,
+        void Get_Color(std::byte* data, size_t channelByteSize,
                        PixelIOChannels components, PixelIOTypes componentType,
                        GetDataParams<D> optionalParams = { }) const
         {
@@ -480,7 +480,7 @@ namespace Bplus::GL::Textures
                      "Can't read a depth/stencil texture with Get_Color()!");
 
             GetData((void*)data,
-                    pixelByteSize * GetNChannels(components),
+                    channelByteSize * GetNChannels(components),
                     GetOglChannels(components), componentType,
                     optionalParams);
         }
@@ -530,7 +530,7 @@ namespace Bplus::GL::Textures
             BP_ASSERT(GetFormat().IsDepthOnly(),
                      "Trying to get depth data for a non-depth texture");
 
-            GetData((void*)pixels, sizeof(decltype(pixels[0])),
+            GetData((void*)pixels, GetByteSize(dataType),
                     GL_DEPTH_COMPONENT, (GLenum)dataType,
                     optionalParams);
         }

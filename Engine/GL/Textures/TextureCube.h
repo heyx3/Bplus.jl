@@ -525,19 +525,16 @@ namespace Bplus::GL::Textures
         template<typename T>
         void Get_Depth(T* pixels, GetDataCubeParams optionalParams = { })
         {
-            Get_Depth((std::byte*)pixels,
-                      GetPixelIOType<T>(), sizeof(decltype(pixels[0])),
-                      optionalParams);
+            Get_Depth((std::byte*)pixels, GetPixelIOType<T>(), optionalParams);
         }
         //Gets part or all of this depth texture, writing it into the given buffer.
-        void Get_Depth(std::byte* pixelData,
-                       PixelIOTypes dataType, size_t pixelByteSize,
+        void Get_Depth(std::byte* pixelData, PixelIOTypes dataType,
                        GetDataCubeParams optionalParams = { })
         {
             BP_ASSERT(GetFormat().IsDepthOnly(),
                      "Trying to get depth data for a non-depth texture");
 
-            GetData((void*)pixelData, pixelByteSize,
+            GetData((void*)pixelData, GetByteSize(dataType),
                     GL_DEPTH_COMPONENT, (GLenum)dataType,
                     optionalParams);
         }
