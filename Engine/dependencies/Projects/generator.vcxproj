@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="us-ascii"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGUID>{21E17C6F-C851-408A-84AC-3DBB934D8D56}</ProjectGUID>
+    <Keyword>Win32Proj</Keyword>
+    <Platform>x64</Platform>
+    <ProjectName>GeomGenerator</ProjectName>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
+    <OutDir>$(ProjectDir)..\..\..\build\$(Platform)-$(Configuration)\$(ProjectName)\</OutDir>
+    <IntDir>$(ProjectDir)..\..\..\build\temp\$(Platform)-$(Configuration)\$(ProjectName)\</IntDir>
+    <TargetName>GeomGenerator</TargetName>
+    <TargetExt>.lib</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(ProjectDir)GeometryGenerator\include;$(ProjectDir)..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>Debug/</AssemblerListingLocation>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <Optimization>Disabled</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;GENERATOR_USE_GLM;GLM_ENABLE_EXPERIMENTAL;CMAKE_INTDIR="Debug";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;GENERATOR_USE_GLM;GLM_ENABLE_EXPERIMENTAL;CMAKE_INTDIR=\"Debug\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)GeometryGenerator\include;$(ProjectDir)..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>$(ProjectDir)GeometryGenerator\include;$(ProjectDir)..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(ProjectDir)GeometryGenerator\include;$(ProjectDir)..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AssemblerListingLocation>Release/</AssemblerListingLocation>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <Optimization>MaxSpeed</Optimization>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;GENERATOR_USE_GLM;GLM_ENABLE_EXPERIMENTAL;CMAKE_INTDIR="Release";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;GENERATOR_USE_GLM;GLM_ENABLE_EXPERIMENTAL;CMAKE_INTDIR=\"Release\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)GeometryGenerator\include;$(ProjectDir)..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Midl>
+      <AdditionalIncludeDirectories>$(ProjectDir)GeometryGenerator\include;$(ProjectDir)..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OutputDirectory>$(IntDir)</OutputDirectory>
+      <HeaderFileName>%(Filename).h</HeaderFileName>
+      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
+      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>
+      <ProxyFileName>%(Filename)_p.c</ProxyFileName>
+    </Midl>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\AnyGenerator.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\AnyMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\AnyPath.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\AnyShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\AxisFlipMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\Axis.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\AxisSwapMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\AxisSwapPath.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\AxisSwapShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\BezierMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\BezierShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\BoxMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\CappedConeMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\CappedCylinderMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\CappedTubeMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\CapsuleMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\CircleShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\ConeMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\ConvexPolygonMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\CylinderMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\DiskMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\DodecahedronMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\Edge.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\EmptyMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\EmptyPath.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\EmptyShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\ExtrudeMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\FlipMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\FlipPath.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\FlipShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\generator.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\GridShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\HelixPath.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\IcosahedronMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\IcoSphereMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\Iterator.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\KnotPath.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\LatheMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\LinePath.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\LineShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\math.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\MergeMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\MergePath.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\MergeShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\MeshVertex.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\MirrorMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\ObjWriter.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\ParametricMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\ParametricPath.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\ParametricShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\PathVertex.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\PlaneMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\RectangleShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\RepeatMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\RepeatPath.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\RepeatShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\RotateMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\RotatePath.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\RotateShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\RoundedBoxMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\RoundedRectangleShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\ScaleMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\ScalePath.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\ScaleShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\ShapeToPath.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\ShapeVertex.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\SphereMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\SphericalConeMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\SphericalTriangleMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\SpherifyMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\SpringMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\SubdivideMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\SubdividePath.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\SubdivideShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\SvgWriter.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\TeapotMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\TorusKnotMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\TorusMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\TransformMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\TransformPath.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\TransformShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\TranslateMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\TranslatePath.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\TranslateShape.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\Triangle.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\TriangleMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\TubeMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\utils.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\UvFlipMesh.hpp" />
+    <ClInclude Include="$(ProjectDir)GeometryGenerator\include\generator\UvSwapMesh.hpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\AnyMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\AnyPath.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\AnyShape.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\BoxMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\CappedConeMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\CappedCylinderMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\CappedTubeMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\CapsuleMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\CircleShape.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\ConeMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\ConvexPolygonMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\CylinderMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\DiskMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\DodecahedronMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\EmptyMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\EmptyPath.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\EmptyShape.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\GridShape.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\HelixPath.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\IcosahedronMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\IcoSphereMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\KnotPath.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\LinePath.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\LineShape.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\ObjWriter.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\RectangleShape.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\SphereMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\SphericalConeMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\SphericalTriangleMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\SpringMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\SvgWriter.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\ParametricMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\ParametricPath.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\ParametricShape.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\PlaneMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\RoundedBoxMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\RoundedRectangleShape.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\TeapotMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\TorusKnotMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\TorusMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\TriangleMesh.cpp" />
+    <ClCompile Include="$(ProjectDir)GeometryGenerator\src\TubeMesh.cpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

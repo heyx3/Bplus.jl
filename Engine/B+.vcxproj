@@ -75,24 +75,28 @@
     <OutDir>$(SolutionDir)build\$(Platform)-$(Configuration)\$(ProjectName)\</OutDir>
     <IntDir>$(SolutionDir)build\temp\$(Platform)-$(Configuration)\$(ProjectName)\</IntDir>
     <IncludePath>$(ProjectDir)dependencies\include;$(ProjectDir)dependencies\Full Source\;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)build\$(Platform)-$(Configuration)\GeomGenerator;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)build\$(Platform)-$(Configuration)\$(ProjectName)\</OutDir>
     <IntDir>$(SolutionDir)build\temp\$(Platform)-$(Configuration)\$(ProjectName)\</IntDir>
     <IncludePath>$(ProjectDir)dependencies\include;$(ProjectDir)dependencies\Full Source\;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)build\$(Platform)-$(Configuration)\GeomGenerator;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)build\$(Platform)-$(Configuration)\$(ProjectName)\</OutDir>
     <IntDir>$(SolutionDir)build\temp\$(Platform)-$(Configuration)\$(ProjectName)\</IntDir>
     <IncludePath>$(ProjectDir)dependencies\include;$(ProjectDir)dependencies\Full Source\;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)build\$(Platform)-$(Configuration)\GeomGenerator;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)build\$(Platform)-$(Configuration)\$(ProjectName)\</OutDir>
     <IntDir>$(SolutionDir)build\temp\$(Platform)-$(Configuration)\$(ProjectName)\</IntDir>
     <IncludePath>$(ProjectDir)dependencies\include;$(ProjectDir)dependencies\Full Source\;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)build\$(Platform)-$(Configuration)\GeomGenerator;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -113,7 +117,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;assimp.lib;jpeg.lib;turbojpeg.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;assimp.lib;jpeg.lib;turbojpeg.lib;libpng16.lib;GeomGenerator.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -179,7 +183,7 @@ exit 0</Command>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;assimp.lib;jpeg.lib;turbojpeg.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;assimp.lib;jpeg.lib;turbojpeg.lib;libpng16.lib;GeomGenerator.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -249,7 +253,7 @@ exit 0</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;assimp.lib;jpeg.lib;turbojpeg.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;assimp.lib;jpeg.lib;turbojpeg.lib;libpng16.lib;GeomGenerator.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -319,7 +323,7 @@ exit 0</Command>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;assimp.lib;jpeg.lib;turbojpeg.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;SDL2.lib;SDL2main.lib;assimp.lib;jpeg.lib;turbojpeg.lib;libpng16.lib;GeomGenerator.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)dependencies\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
