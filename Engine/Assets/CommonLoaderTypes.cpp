@@ -196,9 +196,10 @@ bool ImageLoader::ProcessAfterRetrieve(std::vector<std::byte>&& diskData)
                 break;
 
                 default:
-                    std::string errorMsg = "Unknown LibPNG color type ";
-                    errorMsg += std::to_string(colorType) + " (" + IO::ToHex(colorType) + ")";
-                    BP_ASSERT(false, errorMsg.c_str());
+                    BP_ASSERT_STR(false,
+                                  "Unknown LibPNG color type: " +
+                                     std::to_string(colorType) +
+                                     " (" + IO::ToHex(colorType) + ")");
                     return false;
             }
             switch (bitDepth)
@@ -211,9 +212,8 @@ bool ImageLoader::ProcessAfterRetrieve(std::vector<std::byte>&& diskData)
                     break;
 
                 default:
-                    std::string errorMsg = "Unexpected LibPNG channel bit depth: ";
-                    errorMsg += std::to_string(bitDepth);
-                    BP_ASSERT(false, errorMsg.c_str());
+                    BP_ASSERT_STR(false,
+                                  "Unexpected LibPNG channel bit depth: " + std::to_string(bitDepth));
                     return false;
             }
 
@@ -263,9 +263,9 @@ bool ImageLoader::ProcessAfterRetrieve(std::vector<std::byte>&& diskData)
         } break;
 
         default:
-            std::string errMsg = "Unknown ImageLoaderFormats::";
-            errMsg += GetFormat()->_to_string();
-            BP_ASSERT(false, errMsg.c_str());
+            BP_ASSERT_STR(false,
+                          "Unknown ImageLoaderFormats::" +
+                              GetFormat()->_to_string());
             return false;
     }
 

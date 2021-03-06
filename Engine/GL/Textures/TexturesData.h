@@ -80,9 +80,9 @@ namespace Bplus::GL::Textures
             case PixelIOTypes::Float32:
                 return 4;
             default:
-                std::string errMsg = "Unexpected Bplus::GL::Textures::PixelIOTypes::";
-                errMsg += channelDataType._to_string();
-                BP_ASSERT(false, errMsg.c_str());
+                BP_ASSERT_STR(false,
+                              "Unexpected Bplus::GL::Textures::PixelIOTypes::" +
+                                  channelDataType._to_string());
                 return 1;
         }
     }

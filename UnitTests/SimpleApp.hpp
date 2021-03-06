@@ -102,7 +102,7 @@ namespace Simple
         //If the event is bad, make it an error.
         //Otherwise, just print it to stdout.
         if (isFatal)
-            BP_ASSERT(false, generatedMsg.c_str());
+            BP_ASSERT_STR(false, generatedMsg)
         else
             std::cout << "\t\t" << generatedMsg << "\n";
     }

@@ -180,10 +180,7 @@ void NodeTransform::SetParent(NodeID newParentID, Spaces preserve)
 
         default: {
             parent = newParentID;
-
-            std::string errMsg = "Unknown space mode ";
-            errMsg += preserve._to_string();
-            BP_ASSERT(false, errMsg.c_str());
+            BP_ASSERT_STR(false, "Unknown space mode " + preserve._to_string());
         } break;
     }
 }

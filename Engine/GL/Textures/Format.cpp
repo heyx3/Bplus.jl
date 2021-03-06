@@ -12,9 +12,7 @@ using namespace Bplus::GL::Textures;
 //This macro helps a lot with ensuring we don't silently fall though any missed cases.
 #define SWITCH_DEFAULT(enumName, enumVal) \
     default: { \
-        std::string errMsg = "Unknown: " #enumName "::"; \
-        errMsg += enumVal._to_string(); \
-        BP_ASSERT(false, errMsg.c_str()); \
+        BP_ASSERT_STR(false, "Unknown: " #enumName "::" + enumVal._to_string()); \
     }
 
 namespace
@@ -274,9 +272,7 @@ std::optional<FormatTypes> Format::GetComponentType() const
     }
     else
     {
-        std::string errMsg = "Unknown format type, index ";
-        errMsg += std::to_string(data.index());
-        BP_ASSERT(false, errMsg.c_str());
+        BP_ASSERT_STR(false, "Unkonwn format type, index " + std::to_string(data.index()))
         return std::nullopt;
     }
 }
@@ -356,9 +352,7 @@ bool Format::IsInteger() const
         }
     else
     {
-        std::string errMsg = "Unknown format type, index ";
-        errMsg += std::to_string(data.index());
-        BP_ASSERT(false, errMsg.c_str());
+        BP_ASSERT_STR(false, "Unknown format type, index " + std::to_string(data.index()));
         return false;
     }
 }
@@ -432,9 +426,7 @@ bool Format::StoresChannel(AllChannels c) const
     }
     else
     {
-        std::string errMsg = "Unknown format type, index ";
-        errMsg += std::to_string(data.index());
-        BP_ASSERT(false, errMsg.c_str());
+        BP_ASSERT_STR(false, "Unknown format type, index " + std::to_string(data.index()));
         return false;
     }
 }
@@ -595,9 +587,7 @@ uint_fast8_t Format::GetChannelBitSize(std::optional<AllChannels> channel) const
     }
     else
     {
-        std::string errMsg = "Unknown format type, index ";
-        errMsg += std::to_string(data.index());
-        BP_ASSERT(false, errMsg.c_str());
+        BP_ASSERT_STR(false, "Unknown format type, index " + std::to_string(data.index()));
         return 0;
     }
 
@@ -692,9 +682,7 @@ uint_fast32_t Format::GetByteSize(const glm::uvec3& textureSize) const
     }
     else
     {
-        std::string errMsg = "Unknown format type, index ";
-        errMsg += std::to_string(data.index());
-        BP_ASSERT(false, errMsg.c_str());
+        BP_ASSERT_STR(false, "Unknown format type, index " + std::to_string(data.index()));
         return false;
     }
 }
@@ -829,9 +817,7 @@ GLenum Format::GetOglEnum() const
     }
     else
     {
-        std::string errMsg = "Unknown format type, index ";
-        errMsg += std::to_string(data.index());
-        BP_ASSERT(false, errMsg.c_str());
+        BP_ASSERT_STR(false, "Unknown format type, index " + std::to_string(data.index()));
         return GL_NONE;
     }
 }

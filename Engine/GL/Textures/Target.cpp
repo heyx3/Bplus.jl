@@ -408,9 +408,7 @@ TargetStates Target::GetStatus() const
     //All other errors should have been handled by the logic in this class.
     else
     {
-        std::string errMsg = "Unexpected glCheckFramebufferStatus code: ";
-        errMsg += IO::ToHex(status);
-        BP_ASSERT(false, errMsg.c_str());
+        BP_ASSERT_STR(false, "Unexpected glCheckFramebufferStatus code: " + IO::ToHex(status));
         return TargetStates::Unknown;
     }
 }

@@ -61,9 +61,9 @@ VertexData::VectorSizes VertexData::Type::GetNComponents() const
             case PackedFVectorTypes::UFloat_B10_GR11:
                 return VectorSizes::XYZ;
             default: {
-                std::string errMsg = "Unexpected Bplus::GL::Buffers::VertexData::PackedFVectorTypes ";
-                errMsg += AsPackedFVector()._to_string();
-                BP_ASSERT(false, errMsg.c_str());
+                BP_ASSERT_STR(false,
+                              "Unexpected Bplus::GL::Buffers::VertexData::PackedFVectorTypes : " +
+                                  AsPackedFVector()._to_string());
                 return VectorSizes::X;
             }
         }
@@ -73,10 +73,9 @@ VertexData::VectorSizes VertexData::Type::GetNComponents() const
             case PackedConvertedFVectorTypes::Int_A2_BGR10:
                 return VectorSizes::XYZW;
             default: {
-                std::string errMsg = "Unexpected Bplus::GL::Buffers::VertexData::"
-                                        "PackedConvertedFVectorTypes ";
-                errMsg += AsPackedConvertedFVector().VectorType._to_string();
-                BP_ASSERT(false, errMsg.c_str());
+                BP_ASSERT_STR(false,
+                              "Unexpected Bplus::GL::Buffers::VertexData::PackedConvertedFVectorTypes : " +
+                                  AsPackedConvertedFVector().VectorType._to_string());
                 return VectorSizes::X;
             }
         }

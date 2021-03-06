@@ -25,9 +25,8 @@ uint8_t Bplus::GL::Textures::GetNChannels(PixelIOChannels data)
             return 4;
 
         default:
-            std::string errMsg = "Unknown :  Bplus::GL::Textures::PixelIOChannels.";
-            errMsg += data._to_string();
-            BP_ASSERT(false, errMsg.c_str());
+            BP_ASSERT_STR(false,
+                          "Unknown Bplus::GL::Textures::PixelIOChannels : " + data._to_string());
             return 0;
     }
 }
@@ -51,9 +50,8 @@ bool Bplus::GL::Textures::UsesChannel(PixelIOChannels components, ColorChannels 
             return true;
 
         default:
-            std::string errMsg = "Unknown :  Bplus::GL::Textures::PixelIOChannels.";
-            errMsg += components._to_string();
-            BP_ASSERT(false, errMsg.c_str());
+            BP_ASSERT_STR(false,
+                          "Unknown Bplus::GL::Textures::PixelIOChannels : " + components._to_string());
             return 0;
     }
 }
@@ -91,9 +89,8 @@ uint8_t Bplus::GL::Textures::GetChannelIndex(PixelIOChannels components,
                    ((channel == +ColorChannels::Red) ? 2 : 3));
 
         default:
-            std::string errMsg = "Unknown :  Bplus::GL::Textures::PixelIOChannels.";
-            errMsg += components._to_string();
-            BP_ASSERT(false, errMsg.c_str());
+            BP_ASSERT_STR(false,
+                "Unknown Bplus::GL::Textures::PixelIOChannels : " + components._to_string());
             return 0;
     }
 }
@@ -113,9 +110,8 @@ GLenum Bplus::GL::Textures::GetIntegerVersion(PixelIOChannels components)
         case PixelIOChannels::BGRA: return GL_BGRA_INTEGER;
 
         default:
-            std::string errMsg = "Unknown :  Bplus::GL::Textures::PixelIOChannels.";
-            errMsg += components._to_string();
-            BP_ASSERT(false, errMsg.c_str());
+            BP_ASSERT_STR(false,
+                "Unknown Bplus::GL::Textures::PixelIOChannels : " + components._to_string());
             return 0;
     }
 }

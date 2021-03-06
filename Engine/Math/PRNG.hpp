@@ -14,7 +14,7 @@ namespace Bplus::Math
         uint32_t State;
 
         PRNG() : PRNG((uint32_t)time(nullptr)) { }
-        PRNG(uint32_t seed)
+        constexpr PRNG(uint32_t seed)
             : Seed1(seed), Seed2(seed), Seed3(seed),
               State(0xf1ea5eed)
         {
@@ -27,7 +27,7 @@ namespace Bplus::Math
         }
 
 
-        uint32_t NextUInt()
+        constexpr uint32_t NextUInt()
         {
             uint32_t seed4 = State - Rotate(Seed1, 27);
             
@@ -38,28 +38,28 @@ namespace Bplus::Math
 
             return Seed3;
         }
-        uint32_t NextUInt(uint32_t maxExclusive)
+        constexpr uint32_t NextUInt(uint32_t maxExclusive)
         {
             return NextUInt() % maxExclusive;
         }
-        uint32_t NextUInt(uint32_t min, uint32_t maxExclusive)
+        constexpr uint32_t NextUInt(uint32_t min, uint32_t maxExclusive)
         {
             return NextUInt(maxExclusive - min) + min;
         }
 
         //Generates a random float in the range [0, 1).
-        float NextFloat()
+        constexpr float NextFloat()
         {
             return NextFloat_1_2() - 1;
         }
         //Generates a random float in the given half-open range.
-        float NextFloat(float min, float maxExclusive)
+        constexpr float NextFloat(float min, float maxExclusive)
         {
             float t = NextFloat();
             return ((1 - t) * min) + (t * maxExclusive);
         }
         //Generates a random float given a midpoint value and a range.
-        float NextFloat_MidAndRange(float midpoint, float range)
+        constexpr float NextFloat_MidAndRange(float midpoint, float range)
         {
             float t = NextFloat();
             return (t * range) + (midpoint - 0.5f);
@@ -67,7 +67,7 @@ namespace Bplus::Math
         //Efficiently generates a random float in the range [1, 2).
         //This is the low-level RNG function for generating floats;
         //    this other ones are just this plus some extra work.
-        float NextFloat_1_2()
+        constexpr float NextFloat_1_2()
         {
             //Generate a random integer, then overwrite some of the bits
             //    to guarantee a float in the range [1, 2).
@@ -86,7 +86,7 @@ namespace Bplus::Math
 
 
     private:
-        static uint32_t Rotate(uint32_t val, uint32_t amount)
+        constexpr static uint32_t Rotate(uint32_t val, uint32_t amount)
         {
             return (val << amount) |
                    (val >> (32 - amount));

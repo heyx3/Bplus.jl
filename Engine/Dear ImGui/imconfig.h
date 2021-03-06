@@ -17,7 +17,7 @@
 #define IMGUI_API BP_API
 
 #include <string.h>
-#define IM_ASSERT(_EXPR) BP_ASSERT(_EXPR, (std::string("[ImGui internal assert ") + #_EXPR + "]").c_str())
+#define IM_ASSERT(_EXPR) BP_ASSERT(_EXPR, "[ImGui internal assert " #_EXPR "]")
 
 //---- Define assertion handler. Defaults to calling assert().
 //#define IM_ASSERT(_EXPR)  MyAssert(_EXPR)

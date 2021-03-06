@@ -51,6 +51,16 @@ namespace Bplus
     BP_RELEASE(BP_NOOP) \
     BP_DEBUG(BP_CHECK(expr, msg))
 
+//A variant of BP_ASSERT that constructs a temporary std::string message.
+#define BP_ASSERT_STR(expr, msg) { \
+    if constexpr (Bplus::BPIsDebug) { \
+        if (!expr) { \
+            std::string msgStr; \
+            msgStr += std::string() + msg; \
+            BP_ASSERT(false, msgStr.c_str()); \
+        } \
+    } }
+
 //TODO: Add a BP_LOG.
 
 namespace Bplus
