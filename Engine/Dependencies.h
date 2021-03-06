@@ -1,7 +1,5 @@
 #pragma once
 
-//TODO: Rename to "Dependencies.h"
-
 //Basic B+ platform/macro stuff:
 #include "Platform.h"
 #include "Utils/BPAssert.h"

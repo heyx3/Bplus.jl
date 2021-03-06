@@ -445,7 +445,7 @@ exit 0</Command>
     <ClInclude Include="NativeFileDialog\nfd.h" />
     <ClInclude Include="NativeFileDialog\nfd_common.h" />
     <ClInclude Include="Platform.h" />
-    <ClInclude Include="RenderLibs.h" />
+    <ClInclude Include="Dependencies.h" />
     <ClInclude Include="IO.h" />
     <ClInclude Include="ST\Scene.h" />
     <ClInclude Include="ST\NodeTransform.h" />

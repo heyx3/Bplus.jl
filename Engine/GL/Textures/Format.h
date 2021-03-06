@@ -2,7 +2,7 @@
 
 #include <variant>
 
-#include "../../RenderLibs.h"
+#include "../../Dependencies.h"
 #include "../Data.h"
 
 namespace Bplus::GL::Textures

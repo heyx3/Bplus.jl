@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Utils.h"
-#include "../RenderLibs.h"
+#include "../Dependencies.h"
 
 namespace Bplus::Helpers
 {
