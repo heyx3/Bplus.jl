@@ -12,7 +12,7 @@
 #TODO: Geometry shader.
 
 
-type = "Basic"
+type = "B+ Basic"
 
 faceCull = "off" # Options are On, Off, and Backwards
 

@@ -47,6 +47,9 @@ namespace Bplus::GL
         //Reads the file from the given path and appends its contents to the given buffer.
         //Returns whether the file was successfully loaded.
         bool GetFile(const fs::path& relativePath, std::stringstream& output);
+        
+        //Turn this class into a functor for loading files.
+        bool operator()(const fs::path& relativePath, std::stringstream& output) { return GetFile(relativePath, output); }
 
 
     private:
@@ -92,6 +95,8 @@ namespace Bplus::GL
 
         //A pre-compiled version of this shader which this instance can attempt to use first.
         //The shader source code is still needed as a fallback.
+        //To get the pre-compiled shader binary after the job is run,
+        //    first set this field to an empty
         std::optional<PreCompiledShader> CachedBinary;
 
 

@@ -154,6 +154,15 @@
     <ClInclude Include="Math\PRNG.hpp">
       <Filter>Math</Filter>
     </ClInclude>
+    <ClInclude Include="GL\Materials\Factory.h">
+      <Filter>GL\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Materials\Material.h">
+      <Filter>GL\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Materials\UniformStorage.h">
+      <Filter>GL\Materials</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
@@ -242,6 +251,9 @@
     </ClCompile>
     <ClCompile Include="Assets\CommonLoaderTypes.cpp">
       <Filter>Assets</Filter>
+    </ClCompile>
+    <ClCompile Include="GL\Materials\Material.cpp">
+      <Filter>GL\Materials</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
