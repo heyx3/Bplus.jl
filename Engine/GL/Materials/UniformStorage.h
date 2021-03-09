@@ -20,8 +20,15 @@ namespace Bplus::GL::Materials
         //    * Buffers (i.e. a pointer or reference to GL::Buffers::Buffer)
         //Any functions that are templated on a type of uniform should accept any of these.
 
+        //TODO: Track uniform pointers per-program, maybe in an unordered_map<OglPtr::ShaderProgram, unordered_map<...>>
         //TODO: Load all uniforms in constructor, from a shader program: https://stackoverflow.com/questions/440144/in-opengl-is-there-a-way-to-get-a-list-of-all-uniforms-attribs-used-by-a-shade
-        //TODO: Offer a function to add in more uniforms from another given shader program, for when new variants are compiled. Make sure to check 'futureValues' afterwards!
+
+        //Loads uniforms from the given program.
+        UniformStorage(OglPtr::ShaderProgram shader) { AddFromShader(shader); }
+        
+
+        //Loads uniforms from the given program.
+        void AddFromShader(OglPtr::ShaderProgram shader); //TODO: Make sure to check 'futureValues' afterwards!
 
 
         //Gets the pointer for a uniform. Returns Null if it doesn't exist/was optimized out.
@@ -239,6 +246,11 @@ namespace Bplus::GL::Materials
         }
 
         #pragma endregion
+
+        //Loads the given uniform from the given program,
+        //    and adds it to this storage.
+        void LoadUniform(OglPtr::ShaderProgram shader, OglPtr::ShaderUniform location,
+                         const std::string& name, GLenum type);
 
 
         std::unordered_map<std::string, OglPtr::ShaderUniform> valuePtrsByName;

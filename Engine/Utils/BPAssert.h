@@ -61,6 +61,19 @@ namespace Bplus
         } \
     } }
 
+//Begins a block of assertion code that returns "std::nullopt" if everything went fine,
+//    or a std::string error message if the assert failed.
+//The code you write inside this block will be run within a lambda.
+#define BP_ASSERT_BLOCK_BEGIN { \
+    if constexpr (Bplus::BPIsDebug) { \
+        auto checkRunner = [&]() -> std::optional<std::string> {
+#define BP_ASSERT_BLOCK_END \
+        }; \
+        auto result = checkRunner(); \
+        if (result.has_value()) \
+            BP_ASSERT_STR(false, *result); \
+    } }
+
 //TODO: Add a BP_LOG.
 
 namespace Bplus

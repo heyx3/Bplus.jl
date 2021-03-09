@@ -255,6 +255,9 @@
     <ClCompile Include="GL\Materials\Material.cpp">
       <Filter>GL\Materials</Filter>
     </ClCompile>
+    <ClCompile Include="GL\Materials\UniformStorage.cpp">
+      <Filter>GL\Materials</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Native File Dialog">
