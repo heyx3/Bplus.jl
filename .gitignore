@@ -94,7 +94,8 @@ Build
 **/*.VC.VC.db
 **/*.VC.opendb
 **/*.VC.VC.opendb
-.vs
+**/.vs/
+**/.vscode/
 **/*.vcxproj.user
 
 # Other/test files
