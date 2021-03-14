@@ -25,18 +25,53 @@ namespace Bplus::Math
             else
                 return std::numeric_limits<T>::epsilon();
         }
+        static constexpr T EpsilonNext(T current)
+        {
+            if constexpr (std::is_integral_v<T>)
+                return current + 1;
+            else
+                return std::nextafter(current, std::numeric_limits<T>().infinity());
+        }
+        static constexpr vec_t EpsilonNext(vec_t current)
+        {
+            for (glm::length_t n = 0; n < N; ++n)
+                current[n] = EpsilonNext(current[n]);
+            return current;
+        }
+        static constexpr T EpsilonPrevious(T current)
+        {
+            static_assert(std::numeric_limits<float>::is_iec559,
+                          "IEEE 754 required to construct -Inf the way we do");
+
+            if constexpr (std::is_integral_v<T>)
+                return current - 1;
+            else
+                return std::nextafter(current, -std::numeric_limits<T>().infinity());
+        }
+        static constexpr vec_t EpsilonPrevious(vec_t current)
+        {
+            for (glm::length_t n = 0; n < N; ++n)
+                current[n] = EpsilonPrevious(current[n]);
+            return current;
+        }
 
         vec_t MinCorner, Size;
 
 
         //Constructors with different types of inputs.
-        static Box<N, T> MakeMinMax(const vec_t& minCorner, const vec_t& maxCorner)
+        static Box<N, T> MakeMinMax(const vec_t& minCorner, const vec_t& maxCornerExclusive)
         {
-            if constexpr(std::is_unsigned_v<T>)
-                BP_ASSERT(glm::all(glm::greaterThanEqual(maxCorner, minCorner)),
+            if constexpr (std::is_unsigned_v<T>)
+            {
+                BP_ASSERT(glm::all(glm::greaterThanEqual(maxCornerExclusive, minCorner)),
                          "Box with unsigned number type can't have negative size");
+            }
 
-            return { minCorner, maxCorner - minCorner };
+            return { minCorner, maxCornerExclusive - minCorner };
+        }
+        static Box<N, T> MakeMinMaxIncl(const vec_t& minCorner, const vec_t& maxCornerInclusive)
+        {
+            return MakeMinMax(minCorner, EpsilonNext(maxCornerInclusive));
         }
         static Box<N, T> MakeCenterSize(const vec_t& center, const vec_t& size)
         {
@@ -70,7 +105,8 @@ namespace Bplus::Math
         
         //Gets the exclusive max corner of this rectangle.
         vec_t GetMaxCorner() const { return MinCorner + Size; }
-        vec_t GetMaxCornerInclusive() const { return MinCorner + Size - Epsilon(); }
+        //Gets the inclusive max corner of this rectangle.
+        vec_t GetMaxCornerInclusive() const { return EpsilonPrevious(MinCorner + Size); }
 
         //Gets half the size of this rectangle.
         vec_t GetHalfSize() const { return Size / (T)2; }

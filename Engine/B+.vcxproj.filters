@@ -163,6 +163,15 @@
     <ClInclude Include="GL\Materials\UniformStorage.h">
       <Filter>GL\Materials</Filter>
     </ClInclude>
+    <ClInclude Include="GL\Materials\UniformDataStructures.h">
+      <Filter>GL\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="Helpers\GuiData.hpp">
+      <Filter>Helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\Bezier.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />

@@ -305,10 +305,10 @@ namespace Bplus::IO::internal
         }
     }
 
-    template<glm::length_t L, typename T>
+    template<glm::length_t L, typename T, enum glm::qualifier Q = glm::packed_highp>
     glm::vec<L, T> glmVectorFromToml(const toml::Value& v)
     {
-        using glmVec_t = glm::vec<L, T>;
+        using glmVec_t = glm::vec<L, T, Q>;
 
         //Note that we're assuming the value is valid for this type,
         //    checked via the above "glmVectorCheckToml()".
@@ -356,7 +356,7 @@ namespace Bplus::IO::internal
         }
     }
 
-    template<glm::length_t L, typename T>
+    template<glm::length_t L, typename T, enum glm::qualifier Q = glm::packed_highp>
     const char* glmVectorTypeName()
     {
         static std::optional<std::string> name;
@@ -382,12 +382,12 @@ namespace Bplus::IO::internal
     }
 }
 
-TOML_MAKE_PARSEABLE(glm::vec<L BP_COMMA T>,
-                    glm::length_t L BP_COMMA typename T,
-                    glm::vec<L BP_COMMA T>,
-                    Bplus::IO::internal::glmVectorCheckToml<glm::vec<L BP_COMMA T>>(V),
-                    Bplus::IO::internal::glmVectorFromToml<L BP_COMMA T>(V),
-                    Bplus::IO::internal::glmVectorTypeName<L BP_COMMA T>(),
+TOML_MAKE_PARSEABLE(glm::vec<L BP_COMMA T BP_COMMA Q>,
+                    glm::length_t L BP_COMMA typename T BP_COMMA enum glm::qualifier Q,
+                    glm::vec<L BP_COMMA T BP_COMMA Q>,
+                    Bplus::IO::internal::glmVectorCheckToml<glm::vec<L BP_COMMA T BP_COMMA Q>>(V),
+                    Bplus::IO::internal::glmVectorFromToml<L BP_COMMA T BP_COMMA Q>(V),
+                    Bplus::IO::internal::glmVectorTypeName<L BP_COMMA T BP_COMMA Q>(),
                     value);
 
 #pragma endregion
@@ -397,7 +397,7 @@ TOML_MAKE_PARSEABLE(glm::vec<L BP_COMMA T>,
 //Define helper functions for pulling a matrix from a TOML Value.
 namespace Bplus::IO::internal
 {
-    template<glm::length_t C, glm::length_t R, typename T>
+    template<glm::length_t C, glm::length_t R, typename T, enum glm::qualifier Q = glm::packed_highp>
     bool glmMatrixCheckToml(const toml::Value& v)
     {
         if (v.type() == toml::Value::Type::ARRAY_TYPE)
@@ -408,7 +408,7 @@ namespace Bplus::IO::internal
             for (size_t r = 0; r < R; ++r)
             {
                 auto row = *v.find(r);
-                if (!row.is<glm::mat<C, R, T>::row_type>())
+                if (!row.is<glm::mat<C, R, T, Q>::row_type>())
                     return false;
             }
 
@@ -421,10 +421,10 @@ namespace Bplus::IO::internal
         }
     }
 
-    template<glm::length_t C, glm::length_t R, typename T>
-    glm::mat<C, R, T> glmMatrixFromToml(const toml::Value& v)
+    template<glm::length_t C, glm::length_t R, typename T, enum glm::qualifier Q = glm::packed_highp>
+    glm::mat<C, R, T, Q> glmMatrixFromToml(const toml::Value& v)
     {
-        using mat_t = glm::mat<C, R, T>;
+        using mat_t = glm::mat<C, R, T, Q>;
 
         if (v.type() == toml::Value::Type::ARRAY_TYPE)
         {
@@ -440,11 +440,11 @@ namespace Bplus::IO::internal
         {
             BP_ASSERT(C == 1 && R == 1 && v.is<T>(),
                      "Invalid single-element matrix");
-            return glm::mat<C, R, T>(v.as<T>());
+            return glm::mat<C, R, T, Q>(v.as<T>());
         }
     }
     
-    template<glm::length_t C, glm::length_t R, typename T>
+    template<glm::length_t C, glm::length_t R, typename T, enum glm::qualifier Q = glm::packed_highp>
     const char* glmMatrixTypeName()
     {
         static std::optional<std::string> name;
@@ -470,12 +470,12 @@ namespace Bplus::IO::internal
     }
 }
 
-TOML_MAKE_PARSEABLE(glm::mat<C BP_COMMA R BP_COMMA T>,
-                    glm::length_t C BP_COMMA glm::length_t R BP_COMMA typename T,
-                    glm::mat<C BP_COMMA R BP_COMMA T>,
-                    Bplus::IO::internal::glmMatrixCheckToml<C BP_COMMA R BP_COMMA T>(V),
-                    Bplus::IO::internal::glmMatrixFromToml<C BP_COMMA R BP_COMMA T>(V),
-                    Bplus::IO::internal::glmMatrixTypeName<C BP_COMMA R BP_COMMA T>(),
+TOML_MAKE_PARSEABLE(glm::mat<C BP_COMMA R BP_COMMA T BP_COMMA Q>,
+                    glm::length_t C BP_COMMA glm::length_t R BP_COMMA typename T BP_COMMA enum glm::qualifier Q,
+                    glm::mat<C BP_COMMA R BP_COMMA T BP_COMMA Q>,
+                    Bplus::IO::internal::glmMatrixCheckToml<C BP_COMMA R BP_COMMA T BP_COMMA Q>(V),
+                    Bplus::IO::internal::glmMatrixFromToml<C BP_COMMA R BP_COMMA T BP_COMMA Q>(V),
+                    Bplus::IO::internal::glmMatrixTypeName<C BP_COMMA R BP_COMMA T BP_COMMA Q>(),
                     value);
 
 #pragma endregion

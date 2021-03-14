@@ -430,6 +430,7 @@ exit 0</Command>
     <ClInclude Include="GL\Materials\Factory.h" />
     <ClInclude Include="GL\Materials\Material.h" />
     <ClInclude Include="GL\Materials\ShaderCompileJob.h" />
+    <ClInclude Include="GL\Materials\UniformDataStructures.h" />
     <ClInclude Include="GL\Materials\UniformStorage.h" />
     <ClInclude Include="GL\Textures\Format.h" />
     <ClInclude Include="GL\Textures\Sampler.h" />
@@ -440,6 +441,8 @@ exit 0</Command>
     <ClInclude Include="GL\Textures\TextureD.hpp" />
     <ClInclude Include="GL\Textures\TexturesData.h" />
     <ClInclude Include="Helpers\EditorCamControls.h" />
+    <ClInclude Include="Helpers\GuiData.hpp" />
+    <ClInclude Include="Math\Bezier.hpp" />
     <ClInclude Include="Math\Math.hpp" />
     <ClInclude Include="Math\Box.hpp" />
     <ClInclude Include="Math\PRNG.hpp" />

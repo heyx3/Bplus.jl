@@ -7,6 +7,7 @@
 #include <acutest.h>
 
 using namespace Bplus;
+using namespace Bplus::Math;
 
 
 void PlainMath()
@@ -76,6 +77,14 @@ void PlainMath()
                          i, iLess, Math::IsInRange<int8_t>(_i + iLess) ? "yes" : "no");
         }
     }
+}
+
+void Box()
+{
+    //TODO: More.
+
+    TEST_CHECK_(Box<2, float>().IsEmpty(),
+                "Default box should be empty");
 }
 
 void PRNG()
@@ -168,5 +177,12 @@ void GLMHelpers()
                 point3Rot90X.x, point3Rot90X.y, point3Rot90X.z);
 
 
-    TEST_CASE("");
+    TEST_CASE("5+ dimensional GLM");
+    glm::vec<5, float> fV5 = { 1, 2, 3, 4, 5 };
+    for (glm::length_t n = 0; n < fV5.size(); ++n)
+        TEST_CHECK_(fV5[n] == n + 1, "Accessing elements of a 'fvec5'");
+    fV5 *= 2;
+    for (glm::length_t n = 0; n < fV5.size(); ++n)
+        TEST_CHECK_(fV5[n] == (n + 1) * 2, "Modifying an 'fvec5'");
+    //TODO: Test glm::length() as well
 }

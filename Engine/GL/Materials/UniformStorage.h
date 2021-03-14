@@ -10,6 +10,8 @@
 namespace Bplus::GL::Materials
 {
     //Manages the storage of shader parameters, a.k.a. "uniforms".
+    //For high-level representation and management of uniform data,
+    //    see "UniformManager".
     class BP_API UniformStorage
     {
         //The valid "uniform" types for a shader are as follows:

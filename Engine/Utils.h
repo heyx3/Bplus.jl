@@ -28,6 +28,7 @@
 //
 //Before including the file, I'm adding a custom modification to enable
 //    default constructors for these enum values:
+//NOTE: If you get a "macro redefinition" warning/error here, it probably means you have a circular inclusion somewhere.
 #define BETTER_ENUMS_DEFAULT_CONSTRUCTOR(Enum) public: Enum() = default;
 //
 #include <better_enums.h>
