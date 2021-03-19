@@ -45,8 +45,59 @@ vec3  H_PRNG_Rand(inout ivec3);
 vec4  H_PRNG_Rand(inout ivec4);
 
 
-//TODO: More utilities.
-
+//There are other versions of the above functions which handle asymmetric input and output sizes.
+//These versions put the size of the output at the end of their name.
+//Hash uints:
+uint H_PRNG_Hash1(uvec2 v) { return H_PRNG_Hash(v.x ^ v.y); }
+uint H_PRNG_Hash1(uvec3 v) { return H_PRNG_Hash1(v.xy ^ v.z); }
+uint H_PRNG_Hash1(uvec4 v) { return H_PRNG_Hash1(v.xy ^ v.zw); }
+uvec2 H_PRNG_Hash2(uint u) { uint u1 = H_PRNG_Hash(u); return uvec2(u1, H_PRNG_Hash(u1)); }
+uvec2 H_PRNG_Hash2(uvec3 v) { return H_PRNG_Hash(v.xy ^ v.z); }
+uvec2 H_PRNG_Hash2(uvec4 v) { return H_PRNG_Hash(v.xy ^ v.zw); }
+uvec3 H_PRNG_Hash3(uint u) { uint u1 = H_PRNG_Hash(u), u2 = H_PRNG_Hash(u1); return uvec3(u1, u2, H_PRNG_Hash(u2)); }
+uvec3 H_PRNG_Hash3(uvec2 v) { return H_PRNG_Hash(uvec3(v.xy, v.x * v.y)); }
+uvec3 H_PRNG_Hash3(uvec4 v) { return H_PRNG_Hash(v.xyz ^ v.w); }
+uvec4 H_PRNG_Hash4(uint u) { uint u1 = H_PRNG_Hash(u), u2 = H_PRNG_Hash(u1), u3 = H_PRNG_Hash(u2); return uvec4(u1, u2, u3, H_PRNG_Hash(u3)); }
+uvec4 H_PRNG_Hash4(uvec2 v) { return H_PRNG_Hash(uvec3(v.xy, v.x + v.y, v.x ^ (~v.y))); }
+uvec4 H_PRNG_Hash4(uvec3 v) { return H_PRNG_Hash(v.xyz ^ v.w); }
+//Hash ints:
+int H_PRNG_Hash1(ivec2 v) { return H_PRNG_Hash(v.x ^ v.y); }
+int H_PRNG_Hash1(ivec3 v) { return H_PRNG_Hash1(v.xy ^ v.z); }
+int H_PRNG_Hash1(ivec4 v) { return H_PRNG_Hash1(v.xy ^ v.zw); }
+ivec2 H_PRNG_Hash2(int i) { int i1 = H_PRNG_Hash(i); return ivec2(i1, H_PRNG_Hash(i1)); }
+ivec2 H_PRNG_Hash2(ivec3 v) { return H_PRNG_Hash(v.xy ^ v.z); }
+ivec2 H_PRNG_Hash2(ivec4 v) { return H_PRNG_Hash(v.xy ^ v.zw); }
+ivec3 H_PRNG_Hash3(int i) { int i1 = H_PRNG_Hash(i), i2 = H_PRNG_Hash(i1); return ivec3(i1, i2, H_PRNG_Hash(i2)); }
+ivec3 H_PRNG_Hash3(ivec2 v) { return H_PRNG_Hash(ivec3(v.xy, v.x * v.y)); }
+ivec3 H_PRNG_Hash3(ivec4 v) { return H_PRNG_Hash(v.xyz ^ v.w); }
+ivec4 H_PRNG_Hash4(int i) { int i1 = H_PRNG_Hash(i), i2 = H_PRNG_Hash(i1), i3 = H_PRNG_Hash(i2); return ivec4(i1, i2, i3, H_PRNG_Hash(i3)); }
+ivec4 H_PRNG_Hash4(ivec2 v) { return H_PRNG_Hash(ivec3(v.xy, v.x + v.y, v.x ^ (~v.y))); }
+ivec4 H_PRNG_Hash4(ivec3 v) { return H_PRNG_Hash(v.xyz ^ v.w); }
+//Rand:
+float H_PRNG_Rand1(uvec2 v) { return H_PRNG_Rand(H_PRNG_Hash1(v)); }
+float H_PRNG_Rand1(uvec3 v) { return H_PRNG_Rand(H_PRNG_Hash1(v)); }
+float H_PRNG_Rand1(uvec4 v) { return H_PRNG_Rand(H_PRNG_Hash1(v)); }
+vec2 H_PRNG_Rand2(uint u) { return H_PRNG_Rand(H_PRNG_Hash2(u)); }
+vec2 H_PRNG_Rand2(uvec3 u) { return H_PRNG_Rand(H_PRNG_Hash2(v)); }
+vec2 H_PRNG_Rand2(uvec4 u) { return H_PRNG_Rand(H_PRNG_Hash2(v)); }
+vec3 H_PRNG_Rand3(uint u) { return H_PRNG_Rand(H_PRNG_Hash3(u)); }
+vec3 H_PRNG_Rand3(uvec2 u) { return H_PRNG_Rand(H_PRNG_Hash3(v)); }
+vec3 H_PRNG_Rand3(uvec4 u) { return H_PRNG_Rand(H_PRNG_Hash3(v)); }
+vec4 H_PRNG_Rand4(uint u) { return H_PRNG_Rand(H_PRNG_Hash4(u)); }
+vec4 H_PRNG_Rand4(uvec2 u) { return H_PRNG_Rand(H_PRNG_Hash4(v)); }
+vec4 H_PRNG_Rand4(uvec3 u) { return H_PRNG_Rand(H_PRNG_Hash4(v)); }
+float H_PRNG_Rand1(ivec2 v) { return H_PRNG_Rand(H_PRNG_Hash1(v)); }
+float H_PRNG_Rand1(ivec3 v) { return H_PRNG_Rand(H_PRNG_Hash1(v)); }
+float H_PRNG_Rand1(ivec4 v) { return H_PRNG_Rand(H_PRNG_Hash1(v)); }
+vec2 H_PRNG_Rand2(int i) { return H_PRNG_Rand(H_PRNG_Hash2(i)); }
+vec2 H_PRNG_Rand2(ivec3 i) { return H_PRNG_Rand(H_PRNG_Hash2(v)); }
+vec2 H_PRNG_Rand2(ivec4 i) { return H_PRNG_Rand(H_PRNG_Hash2(v)); }
+vec3 H_PRNG_Rand3(int i) { return H_PRNG_Rand(H_PRNG_Hash3(i)); }
+vec3 H_PRNG_Rand3(ivec2 i) { return H_PRNG_Rand(H_PRNG_Hash3(v)); }
+vec3 H_PRNG_Rand3(ivec4 i) { return H_PRNG_Rand(H_PRNG_Hash3(v)); }
+vec4 H_PRNG_Rand4(int i) { return H_PRNG_Rand(H_PRNG_Hash4(i)); }
+vec4 H_PRNG_Rand4(ivec2 i) { return H_PRNG_Rand(H_PRNG_Hash4(v)); }
+vec4 H_PRNG_Rand4(ivec3 i) { return H_PRNG_Rand(H_PRNG_Hash4(v)); }
 
 
 
@@ -184,3 +235,7 @@ H_PRNG_DEF_RAND(vec2, vec2)
 H_PRNG_DEF_RAND(vec3, vec3)
 H_PRNG_DEF_RAND(vec4, vec4)
 #undef H_PRNG_DEF_RAND
+
+
+//======================================
+//======================================

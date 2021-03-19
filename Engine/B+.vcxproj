@@ -388,6 +388,7 @@ exit 0</Command>
     <ClCompile Include="GL\Materials\CompiledShader.cpp" />
     <ClCompile Include="GL\Materials\Material.cpp" />
     <ClCompile Include="GL\Materials\ShaderCompileJob.cpp" />
+    <ClCompile Include="GL\Materials\UniformDataStructures.cpp" />
     <ClCompile Include="GL\Materials\UniformStorage.cpp" />
     <ClCompile Include="GL\Textures\Format.cpp" />
     <ClCompile Include="GL\Textures\Target.cpp" />

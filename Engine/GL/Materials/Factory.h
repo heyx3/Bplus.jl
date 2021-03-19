@@ -14,6 +14,7 @@ namespace Bplus::GL::Materials
         virtual ~Factory() { }
     };
 
+    //TODO: Allow materials to reference other materials, so that uniform/struct definitions can be copied over
 
     //A shader Factory that generates variants
     //    based on the contents of a particular data structure.

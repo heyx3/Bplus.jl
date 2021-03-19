@@ -3,12 +3,13 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_access.hpp>
 
-#include "../Textures/Sampler.h"
-#include "../Textures/Format.h"
 #include "../../Helpers/GuiData.hpp"
+#include "../Textures/TexturesData.h"
 
-namespace Bplus::GL::Materials::Uniforms
+namespace Bplus::GL::Uniforms
 {
+    #pragma region Enums
+
     //The allowable dimensionality of OpenGL vectors.
     BETTER_ENUM(VectorSizes, glm::length_t,
         One = 1,
@@ -31,7 +32,8 @@ namespace Bplus::GL::Materials::Uniforms
         Bool
     );
 
-    //The types of texture samplers available.
+    //The types of texture samplers available,
+    //    in terms of the data types that come from sampling the texture.
     BETTER_ENUM(SamplerTypes, uint8_t,
         //Texture data comes out as a float. This is the norm.
         Float,
@@ -41,6 +43,9 @@ namespace Bplus::GL::Materials::Uniforms
         Shadow
     );
 
+    #pragma endregion
+
+    #pragma region Uniform data types
 
     //Scalar/vector uniform data.
     struct Vector
@@ -97,11 +102,23 @@ namespace Bplus::GL::Materials::Uniforms
         SamplerTypes SamplingType = SamplerTypes::Float;
     };
 
+    //TODO: SSBO buffer definition. Very similar to a struct definition,
+    //    but with additional "memory qualifiers"
+    //    and the last element can be a dynamically-sized array.
+    //    https://www.khronos.org/opengl/wiki/Shader_Storage_Buffer_Object
+
+
     //A reference to a struct, by its type-name.
     strong_typedef_start(StructInstance, std::string, BP_API)
         strong_typedef_equatable
         strong_typedef_defaultConstructor(StructInstance, std::string())
     strong_typedef_end
+
+    #pragma endregion
+
+
+    //TODO: Define "static" uniform data types, a.k.a. types that decide compile-time parameters.
+
 
 
     //The main definition for a uniform.
@@ -111,24 +128,35 @@ namespace Bplus::GL::Materials::Uniforms
         //    this field provides its size.
         //Otherwise, this value is 0.
         uint32_t ArrayCount = 0;
-
+        
         std::variant<Vector, Matrix, Color, TexSampler, StructInstance> ElementType;
 
         bool IsArray() const { return ArrayCount == 0; }
     };
     
-    //A definition of a struct, which can then be used as a uniform type.
-    struct UniformStructDef
+
+    //A struct is defined by its fields.
+    //The fields are well-ordered.
+    using UniformStructDef = std::vector<std::pair<std::string, UniformType>>;
+
+
+    //A set of uniform definitions for a shader.
+    struct BP_API UniformDefinitions
     {
-        std::string Name;
-        //A list instead of a dictionary, so that they're ordered.
-        std::vector<std::pair<std::string, UniformType>> Fields;
+        std::unordered_map<std::string, UniformStructDef> Structs;
+        std::unordered_map<std::string, UniformType> Uniforms;
+
+        //Tries to add the given uniforms/structs to this instance.
+        //Returns an error message, or an empty string if everything went fine.
+        std::string Import(const UniformDefinitions& newDefs);
     };
 }
 
 //TODO: Toml IO helpers
+//TODO: ImGui helpers
 
 //Add hashes for some of the data structures:
-BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Materials::Uniforms::VectorSizes);
-BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Materials::Uniforms::MatrixSizes);
-strong_typedef_hashable(Bplus::GL::Materials::Uniforms::StructInstance);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Uniforms::VectorSizes);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Uniforms::MatrixSizes);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Uniforms::SamplerTypes);
+strong_typedef_hashable(Bplus::GL::Uniforms::StructInstance);

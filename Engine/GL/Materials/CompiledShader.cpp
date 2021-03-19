@@ -4,47 +4,7 @@
 
 
 using namespace Bplus::GL;
-
-
-//Hook into the thread rendering context's "RefreshState()" function
-//    to refresh the currently-active shader.
-namespace
-{
-    thread_local struct
-    {
-        const CompiledShader* currentShader = nullptr;
-        bool initializedYet = false;
-
-        std::unordered_map<OglPtr::ShaderProgram, const CompiledShader*> shadersByHandle =
-            std::unordered_map<OglPtr::ShaderProgram, const CompiledShader*>();
-
-        //Annoyingly, OpenGL booleans have to be sent in as 32-bit integers.
-        //This buffer stores the booleans, converted to integers to be sent to OpenGL.
-        std::vector<GLuint> uniformBoolBuffer;
-    } threadData;
-
-
-    //Returns the error message, or an empty string if everything is fine.
-    std::string TryCompile(GLuint shaderObject)
-    {
-        glCompileShader(shaderObject);
-
-        GLint isCompiled = 0;
-        glGetShaderiv(shaderObject, GL_COMPILE_STATUS, &isCompiled);
-        if (isCompiled == GL_FALSE)
-        {
-            GLint msgLength = 0;
-            glGetShaderiv(shaderObject, GL_INFO_LOG_LENGTH, &msgLength);
-
-            std::vector<char> msgBuffer(msgLength);
-            glGetShaderInfoLog(shaderObject, msgLength, &msgLength, msgBuffer.data());
-
-            return std::string(msgBuffer.data());
-        }
-
-        return "";
-    }
-}
+using namespace Bplus::GL::Materials;
 
 
 CompiledShader::CompiledShader(RenderState renderSettings,
@@ -141,13 +101,7 @@ const CompiledShader* CompiledShader::GetCurrentActive()
 }
 void CompiledShader::Activate() const
 {
-    Context::GetCurrentContext()->SetState(RenderSettings);
-
-    if (threadData.currentShader == this)
-        return;
-
     glUseProgram(programHandle.Get());
-    threadData.currentShader = this;
 }
 
 const CompiledShader* CompiledShader::Find(OglPtr::ShaderProgram ptr)

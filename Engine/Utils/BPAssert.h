@@ -54,7 +54,7 @@ namespace Bplus
 //A variant of BP_ASSERT that constructs a temporary std::string message.
 #define BP_ASSERT_STR(expr, msg) { \
     if constexpr (Bplus::BPIsDebug) { \
-        if (!expr) { \
+        if (!(expr)) { \
             std::string msgStr; \
             msgStr += std::string() + msg; \
             BP_ASSERT(false, msgStr.c_str()); \
