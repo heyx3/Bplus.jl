@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../Platform.h"
-#include "../Math/Math.hpp"
 
 #include "BPAssert.h"
 #include "Functions.h"

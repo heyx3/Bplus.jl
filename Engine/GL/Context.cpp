@@ -301,7 +301,7 @@ void Context::ClearScreen(float depth)
 #pragma warning(push)
 #pragma warning(disable: 4312)
 
-void Context::Draw(const DrawMeshMode_Basic& mesh, const CompiledShader& shader,
+void Context::Draw(const DrawMeshMode_Basic& mesh, const Materials::CompiledShader& shader,
                    std::optional<DrawMeshMode_Indexed> _indices,
                    std::optional<Math::IntervalU> _instancing) const
 {
@@ -379,7 +379,7 @@ void Context::Draw(const DrawMeshMode_Basic& mesh, const CompiledShader& shader,
     }
 }
 void Context::Draw(const Buffers::MeshData& mesh, Buffers::PrimitiveTypes primitive,
-                   const CompiledShader& shader,
+                   const Materials::CompiledShader& shader,
                    const std::vector<Math::IntervalU>& subsets,
                    std::optional<DrawMeshMode_IndexedSubset> _indices) const
 {
@@ -448,7 +448,7 @@ void Context::Draw(const Buffers::MeshData& mesh, Buffers::PrimitiveTypes primit
                           (GLsizei)subsets.size());
     }
 }
-void Context::Draw(const DrawMeshMode_Basic& mesh, const CompiledShader& shader,
+void Context::Draw(const DrawMeshMode_Basic& mesh, const Materials::CompiledShader& shader,
                    const DrawMeshMode_Indexed& indices,
                    const Math::IntervalU& knownVertexRange) const
 {

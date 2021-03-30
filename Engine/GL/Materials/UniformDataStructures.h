@@ -61,7 +61,7 @@ namespace Bplus::GL::Uniforms
 
         std::variant<GuiData::VectorDataRange<double>,
                      GuiData::VectorDataRange<int64_t>>
-            Range = GuiData::VectorChannelDataRange<double>{ std::nullopt };
+            Range = GuiData::NumberRange<double>{ std::nullopt };
     };
 
     //A float or double matrix, from 2x2 to 4x4 in size.
@@ -117,10 +117,6 @@ namespace Bplus::GL::Uniforms
     #pragma endregion
 
 
-    //TODO: Define "static" uniform data types, a.k.a. types that decide compile-time parameters.
-
-
-
     //The main definition for a uniform.
     struct UniformType
     {
@@ -159,4 +155,4 @@ namespace Bplus::GL::Uniforms
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Uniforms::VectorSizes);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Uniforms::MatrixSizes);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Uniforms::SamplerTypes);
-strong_typedef_hashable(Bplus::GL::Uniforms::StructInstance);
+strong_typedef_hashable(Bplus::GL::Uniforms::StructInstance, BP_API);

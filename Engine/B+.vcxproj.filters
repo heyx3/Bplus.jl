@@ -139,9 +139,6 @@
     <ClInclude Include="ST\Scene.h">
       <Filter>ST</Filter>
     </ClInclude>
-    <ClInclude Include="Math\Math.hpp">
-      <Filter>Math</Filter>
-    </ClInclude>
     <ClInclude Include="Assets\Loader.h">
       <Filter>Assets</Filter>
     </ClInclude>
@@ -171,6 +168,12 @@
     </ClInclude>
     <ClInclude Include="Math\Bezier.hpp">
       <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Materials\StaticUniforms.h">
+      <Filter>GL\Materials</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Math.hpp">
+      <Filter>Utils</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -268,6 +271,9 @@
       <Filter>GL\Materials</Filter>
     </ClCompile>
     <ClCompile Include="GL\Materials\UniformDataStructures.cpp">
+      <Filter>GL\Materials</Filter>
+    </ClCompile>
+    <ClCompile Include="GL\Materials\StaticUniforms.cpp">
       <Filter>GL\Materials</Filter>
     </ClCompile>
   </ItemGroup>

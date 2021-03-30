@@ -234,7 +234,7 @@ bool ImageLoader::ProcessAfterRetrieve(std::vector<std::byte>&& diskData)
         case ImageLoaderFormats::JPEG: {
             //Start reading the JPEG.
             auto jpeg = FindTurboJPEG();
-            jpeg_mem_src(jpeg, (const unsigned char*)diskData.data(), diskData.size());
+            jpeg_mem_src(jpeg, (const unsigned char*)diskData.data(), (unsigned long)diskData.size());
             jpeg_read_header(jpeg, true);
             jpeg_start_decompress(jpeg);
 

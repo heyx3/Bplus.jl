@@ -17,7 +17,7 @@ namespace Bplus::GL
     //TODO: Give various object names with glObjectLabel
 
     //Forward declarations:
-    class BP_API CompiledShader;
+    namespace Materials { class BP_API CompiledShader; }
 
     //Represents OpenGL's global state, like the current blend mode and stencil test.
     //Does not include some things like bound objects, shader uniforms, etc.
@@ -229,7 +229,7 @@ namespace Bplus::GL
         //Draws the given mesh with the given shader, into the current active Target.
         //Optionally draws in indexed mode.
         //Optionally draws multiple instances of the mesh data.
-        void Draw(const DrawMeshMode_Basic& mesh, const CompiledShader& shader,
+        void Draw(const DrawMeshMode_Basic& mesh, const Materials::CompiledShader& shader,
                   std::optional<DrawMeshMode_Indexed> indices = std::nullopt,
                   std::optional<Math::IntervalU> instancing = std::nullopt) const;
 
@@ -237,7 +237,7 @@ namespace Bplus::GL
         //    drawing into the current active Target.
         //Optionally draws in indexed mode.
         void Draw(const Buffers::MeshData& mesh, Buffers::PrimitiveTypes primitive,
-                  const CompiledShader& shader,
+                  const Materials::CompiledShader& shader,
                   const std::vector<Math::IntervalU>& subsets,
                   std::optional<DrawMeshMode_IndexedSubset> indices = std::nullopt) const;
 
@@ -245,7 +245,7 @@ namespace Bplus::GL
         //    drawing into the current active Target.
         //Also tells the graphics driver which subset of the mesh's vertices
         //    are actually used, so it can optimize memory access.
-        void Draw(const DrawMeshMode_Basic& mesh, const CompiledShader& shader,
+        void Draw(const DrawMeshMode_Basic& mesh, const Materials::CompiledShader& shader,
                   const DrawMeshMode_Indexed& indices,
                   const Math::IntervalU& knownVertexRange) const;
 

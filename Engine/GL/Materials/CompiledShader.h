@@ -4,15 +4,13 @@
 #include <memory>
 
 #include "UniformDataStructures.h"
+#include "StaticUniforms.h"
 #include "ShaderCompileJob.h"
-
-//Provides a way to access a matrix/vector as an array of floats.
-#include <glm/gtc/type_ptr.hpp>
 
 //TODO: Integrate this project: https://github.com/dfranx/ShaderDebugger
 
 
-//The valid "uniform" types for a shader are as follows:
+//The valid "uniform" types for a CompiledShader are as follows:
 //    * Primitive types int32_t, uint32_t, float, double, and bool/Bool
 //    * A GLM vector of the above primitive types (up to 4D)
 //    * A GLM matrix of floats or doubles (up to 4x4)
@@ -25,7 +23,7 @@ namespace Bplus::GL::Materials
 {
     //The base class for B-plus shader definitions.
     //Knows how to create instances of CompiledShader.
-    class Factory;
+    class BP_API Factory;
 
 
     //A specific compiled shader, plus its "uniforms" (a.k.a. parameters).
@@ -44,9 +42,11 @@ namespace Bplus::GL::Materials
                 >;
 
 
-        //Creates a new instance that manages the given shader program with RAII.
-        CompiledShader(OglPtr::ShaderProgram compiledProgramHandle,
-                       Factory& owner);
+        //Creates a new instance that manages a given shader program through RAII.
+        //Nulls out the input handle after taking ownership of its contents.
+        CompiledShader(Factory& owner,
+                       OglPtr::ShaderProgram&& compiledProgramHandle,
+                       const Uniforms::UniformDefinitions& uniforms);
 
         ~CompiledShader();
 
@@ -266,84 +266,98 @@ namespace Bplus::GL::Materials
             auto found = uniformValues.find(ptr);
             BP_ASSERT_STR(found != uniformValues.end(),
                           "Nonexistent uniform pointer: " + std::to_string(ptr.Get()));
-            return _GetUniform<Value_t>(found);
+            return _GetUniform<Value_t>()(found);
         }
         #pragma region _GetUniform()
 
+        //Gets a uniform's value, templated on the type of uniform data.
         //The non-specialized version gives you a compile error
         //    about using an incorrect template type.
+        //Implemented as a functor class instead of a function,
+        //    to get partial template specialization.
         template<typename Value_t>
-        Value_t _GetUniform(const UniformValueEntry_const& ptr) const
+        struct _GetUniform
         {
-            static_assert(false, "Invalid 'T' for GetUniform<T>()");
-        }
+            Value_t operator()(const UniformValueEntry_const& ptr)
+            {
+                static_assert(false, "Invalid 'T' for GetUniform<T>()");
+            }
+        };
 
 
     #define GET_UNIFORM_FOR(Type) \
-        template<> Type _GetUniform<Type>(const UniformValueEntry_const& ptr) const
+        template<> struct _GetUniform<Type> { Type operator()(const UniformValueEntry_const& ptr) const {
+    #define GET_UNIFORM_FOR_END } };
 
         #pragma region Primitives and vectors
         
-        template<glm::length_t L, typename T, glm::qualifier Q = glm::packed_highp>
-        glm::vec<L, T, Q> _GetUniform<glm::vec<L, T, Q>>(const UniformValueEntry_const& ptr) const
+        template<glm::length_t L, typename T, glm::qualifier Q>
+        struct _GetUniform<glm::vec<L, T, Q>>
         {
-            using Output_t = glm::vec<L, T, Q>;
-            using Storage_t = glm::vec<4, T>;
+            glm::vec<L, T, Q> operator()(const UniformValueEntry_const& ptr) const
+            {
+                using Output_t = glm::vec<L, T, Q>;
+                using Storage_t = glm::vec<4, T>;
 
-            BP_ASSERT(std::holds_alternative<Storage_t>(ptr->second),
-                      "Uniform isn't the expected primitive/vector type");
+                BP_ASSERT(std::holds_alternative<Storage_t>(ptr->second),
+                          "Uniform isn't the expected primitive/vector type");
 
-            return (Output_t)std::get<Storage_t>(ptr->second);
-        }
+                return (Output_t)std::get<Storage_t>(ptr->second);
+            }
+        };
         
         //The primitive versions just call into the 1D vector versions.
-        GET_UNIFORM_FOR(float)    { return _GetUniform<glm::fvec1>(ptr).x; }
-        GET_UNIFORM_FOR(double)   { return _GetUniform<glm::dvec1>(ptr).x; }
-        GET_UNIFORM_FOR(glm::i32) { return _GetUniform<glm::ivec1>(ptr).x; }
-        GET_UNIFORM_FOR(glm::u32) { return _GetUniform<glm::uvec1>(ptr).x; }
-        GET_UNIFORM_FOR(bool)     { return _GetUniform<glm::bvec1>(ptr).x; }
-        GET_UNIFORM_FOR(Bool)      { return _GetUniform<glm::bvec1>(ptr).x; }
+        GET_UNIFORM_FOR(float)    return _GetUniform<glm::fvec1>()(ptr).x; GET_UNIFORM_FOR_END
+        GET_UNIFORM_FOR(double)   return _GetUniform<glm::dvec1>()(ptr).x; GET_UNIFORM_FOR_END
+        GET_UNIFORM_FOR(glm::i32) return _GetUniform<glm::ivec1>()(ptr).x; GET_UNIFORM_FOR_END
+        GET_UNIFORM_FOR(glm::u32) return _GetUniform<glm::uvec1>()(ptr).x; GET_UNIFORM_FOR_END
+        GET_UNIFORM_FOR(bool)     return _GetUniform<glm::bvec1>()(ptr).x; GET_UNIFORM_FOR_END
+        GET_UNIFORM_FOR(Bool)     return _GetUniform<glm::bvec1>()(ptr).x; GET_UNIFORM_FOR_END
 
         #pragma endregion
 
         #pragma region Matrices
         
         template<glm::length_t C, glm::length_t R, typename T>
-        glm::mat<C, R, T> _GetUniform<glm::mat<C, R, T>>(const UniformValueEntry_const& ptr) const
+        struct _GetUniform<glm::mat<C, R, T>>
         {
-            using Storage_t = glm::mat<4, 4, T>;
+            glm::mat<C, R, T> operator()(const UniformValueEntry_const& ptr) const
+            {
+                using Storage_t = glm::mat<4, 4, T>;
 
-            BP_ASSERT(std::holds_alternative<Storage_t>(ptr->second),
-                      "Uniform isn't the expected matrix type");
+                BP_ASSERT(std::holds_alternative<Storage_t>(ptr->second),
+                          "Uniform isn't the expected matrix type");
 
-            return Math::Resize<C, R>(std::get<Storage_t>(ptr->second);
-        }
+                return Math::Resize<C, R>(std::get<Storage_t>(ptr->second));
+            }
+        };
 
         #pragma endregion
 
         #pragma region Textures and Buffers
         
         GET_UNIFORM_FOR(OglPtr::View)
-        {
             BP_ASSERT(std::holds_alternative<OglPtr::View>(ptr->second),
                       "Uniform isn't a texture (or image) as expected");
 
             return std::get<OglPtr::View>(ptr->second);
-        }
+        GET_UNIFORM_FOR_END
+
         GET_UNIFORM_FOR(OglPtr::Buffer)
-        {
             BP_ASSERT(std::holds_alternative<OglPtr::Buffer>(ptr->second),
                       "Uniform isn't a buffer as expected");
 
             return std::get<OglPtr::Buffer>(ptr->second);
-        }
+        GET_UNIFORM_FOR_END
 
         #pragma endregion
 
     #undef GET_UNIFORM_FOR
+    #undef GET_UNIFORM_FOR_END
 
         #pragma endregion
 
+        //TODO: Convert SetUniform() like GetUniform().
         template<typename Value_t>
         void SetUniform(OglPtr::ShaderUniform ptr, const Value_t& value)
         {
@@ -398,6 +412,7 @@ namespace Bplus::GL::Materials
                                                                                value[1] ? 1 : 0,
                                                                                value[2] ? 1 : 0,
                                                                                value[3] ? 1 : 0 }); }
+        
         #pragma endregion
 
         #pragma region Matrices

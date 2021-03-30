@@ -388,6 +388,7 @@ exit 0</Command>
     <ClCompile Include="GL\Materials\CompiledShader.cpp" />
     <ClCompile Include="GL\Materials\Material.cpp" />
     <ClCompile Include="GL\Materials\ShaderCompileJob.cpp" />
+    <ClCompile Include="GL\Materials\StaticUniforms.cpp" />
     <ClCompile Include="GL\Materials\UniformDataStructures.cpp" />
     <ClCompile Include="GL\Materials\UniformStorage.cpp" />
     <ClCompile Include="GL\Textures\Format.cpp" />
@@ -431,6 +432,7 @@ exit 0</Command>
     <ClInclude Include="GL\Materials\Factory.h" />
     <ClInclude Include="GL\Materials\Material.h" />
     <ClInclude Include="GL\Materials\ShaderCompileJob.h" />
+    <ClInclude Include="GL\Materials\StaticUniforms.h" />
     <ClInclude Include="GL\Materials\UniformDataStructures.h" />
     <ClInclude Include="GL\Materials\UniformStorage.h" />
     <ClInclude Include="GL\Textures\Format.h" />
@@ -444,7 +446,6 @@ exit 0</Command>
     <ClInclude Include="Helpers\EditorCamControls.h" />
     <ClInclude Include="Helpers\GuiData.hpp" />
     <ClInclude Include="Math\Bezier.hpp" />
-    <ClInclude Include="Math\Math.hpp" />
     <ClInclude Include="Math\Box.hpp" />
     <ClInclude Include="Math\PRNG.hpp" />
     <ClInclude Include="Math\Ray.hpp" />
@@ -465,6 +466,7 @@ exit 0</Command>
     <ClInclude Include="Utils\Functions.h" />
     <ClInclude Include="Utils\Hashing.h" />
     <ClInclude Include="Utils\Lazy.h" />
+    <ClInclude Include="Utils\Math.hpp" />
     <ClInclude Include="Utils\Streams.hpp" />
     <ClInclude Include="Utils\Strings.h" />
     <ClInclude Include="Utils\StrongTypedef.h" />

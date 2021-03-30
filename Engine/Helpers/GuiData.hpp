@@ -1,7 +1,9 @@
 #pragma once
 
-#include "../Dependencies.h"
-#include "../Math/Math.hpp"
+#include <variant>
+
+#include "../Utils.h"
+#include "../Math/Box.hpp"
 
 
 //Defines data structures that are useful for building a GUI,
@@ -18,12 +20,12 @@ namespace Bplus::GuiData
     );
 
     //Data for a slider.
-    template<typename Number_t, typename Float_t = double> //Not much harm in using maximum precision
+    template<typename Number_t, typename Float_t = double> //It's worth the effort of using maximum precision
                                                            //  for GUI sliders that do so much exponential math.
     struct SliderRange
     {
-        Number_t Min = (Number_t)0,
-                 Max = (Number_t)1;
+        Number_t Min = Number_t{0},
+                 Max = Number_t{1};
 
         //An exponent which curves the slider range to provide finer control
         //    within a certain part of the range between Min and Max.
@@ -62,11 +64,10 @@ namespace Bplus::GuiData
         //Get the value for this slider at the given position (from 0 to 1).
         inline Number_t GetValue(Float_t t) const
         {
-            Float_t distFromMidpoint = t - PowerMidpoint;
-            
-            //Calculte the direction from t to PowerMidpoint,
+            //Calculate the direction from t to PowerMidpoint,
             //    as well as the largest-possible magnitude it could have.
-            auto signToPowerMid = (int_fast8_t)glm::sign(powerMidDistance);
+            Float_t distFromMidpoint = t - PowerMidpoint;
+            auto signToPowerMid = (int_fast8_t)glm::sign(distFromMidpoint);
             if (signToPowerMid == 0)
                 signToPowerMid = 1;
             Float_t maxPowerDistance = (signToPowerMid > 0) ?
@@ -81,7 +82,7 @@ namespace Bplus::GuiData
                                  signToPowerMid);
 
             //Calculate the slider's value.
-            Float_t valF = glm::lerp((Float_t)Min, (Float_t)Max, t);
+            Float_t valF = Math::Lerp(Float_t{Min}, Float_t{Max}, t);
             if constexpr (std::is_integral_v<Number_t>)
             {
                 valF = glm::round(valF);
@@ -92,13 +93,13 @@ namespace Bplus::GuiData
     
 
     //Data for any kind of clamped number/vector value.
-    template<typename Number_t>
+    template<typename Data_t>
     struct ValueRange
     {
-        std::optional<Number_b> Min = 0,
-                                Max = std::nullopt;
+        std::optional<Data_t> Min = Data_t{ 0 },
+                              Max = std::nullopt;
 
-        inline Number_t Apply(Number_t input) const
+        inline Data_t Apply(Data_t input) const
         {
             if (Min.has_value())
                 input = glm::max(*Min, input);
@@ -109,16 +110,18 @@ namespace Bplus::GuiData
         }
     };
 
-    //Represents the settings for a vector field,
+    //Represents the allowed range of values for some kind of number data.
+    template<typename Number_t, typename Float_t = double>
+    using NumberRange = std::variant<std::nullopt_t,
+                                     GuiData::SliderRange<Number_t, Float_t>,
+                                     GuiData::ValueRange<Number_t>>;
+
+    //Represents the settings for a vector field's allowed range of values,
     //    which may be nonexistent, per-component, or global.
     template<typename Number_t, typename Float_t = double>
-    using VectorChannelDataRange = std::variant<std::nullopt_t,
-                                                GuiData::SliderRange<Number_t, Float_t>,
-                                                GuiData::ValueRange<Number_t>>;
-    template<typename Number_t, typename Float_t = double>
-    using VectorDataRange = std::variant<VectorChannelDataRange<Number_t, Float_t>,
-                                         std::array<VectorChannelDataRange<Number_t, Float_t>,
-                                                    4>>;
+    using VectorDataRange = std::variant<NumberRange<Number_t, Float_t>,
+                                         std::array<NumberRange<Number_t, Float_t>, 4>>;
+
 
     template<glm::length_t D,  //D is the dimensionality of the data (1D to 4D).
              typename Channel_t, //Channel_t is the type of each "channel" in the data.
@@ -126,34 +129,37 @@ namespace Bplus::GuiData
     struct Curve
     {
         using Value_t = glm::vec<D, Channel_t>;
+        using ValueF_t = glm::vec<D, Float_t>;
 
         struct Key
         {
             Float_t Pos;
             Value_t Value;
+
             //A tangent direction of 1 means to point towards the next value.
             //A tangent direction of 0 means to point towards "no change" at all.
             //A tangent direction of -1 means to point away from the next value.
-            Value_t InTangentDir = 1,
-                    OutTangentDir = 1;
+            ValueF_t InTangentDir = ValueF_t{ Float_t{1} },
+                     OutTangentDir = ValueF_t{ Float_t{1} };
+
             //Tangent strength affects the influence of the above "tangent direction" fields.
-            Value_t InTangentStrength = 0.5f,
-                    OutTangentStrength = 0.5f;
+            Float_t InTangentStrength = Float_t{0.5},
+                    OutTangentStrength = Float_t{0.5};
         };
 
         //Assumed to be in order by their position.
         std::vector<Key> Keys;
         //The default value if no Keys exist in this curve.
-        Value_t Default = { 0 };
+        Value_t Default = Value_t{ Channel_t{0} };
 
         Curve(Value_t constant)
             : Keys({ { 0, constant } })
         {
 
         }
-        Curve(Value_t start, Value_t end, Float_t slope = 1, Float_t range = 1)
-            : Keys({ { (Float_t)0, start, 0,                             slope * (end - start) / range,   0.5f, 0.5f },
-                     { range,      end,   slope * (start - end) / range, 0,                               0.5f, 0.5f } })
+        Curve(Value_t start, Value_t end, Float_t slope = {1}, Float_t range = {1})
+            : Keys({ Key{ Float_t{0}, start, ValueF_t{ Float_t{0} },                  ValueF_t{end - start} *slope / range,   Float_t{0.5}, Float_t{0.5} },
+                     Key{ range,      end,   ValueF_t{start - end} * slope / range,   ValueF_t{Float_t{0}},                   Float_t{0.5}, Float_t{0.5} } })
         {
 
         }
@@ -165,7 +171,8 @@ namespace Bplus::GuiData
         Math::Interval<Float_t> GetRange() const
         {
             if (Keys.size() > 0)
-                return Math::Interval<Float_t>::MinMaxInclusive(Keys[0].Pos, Keys.back().Pos);
+                return Math::Interval<Float_t>::MakeMinMaxIncl(glm::vec<1, Float_t>{ Keys[0].Pos },
+                                                               glm::vec<1, Float_t>{ Keys.back().Pos });
             else
                 return Math::Interval<Float_t>();
         }
@@ -199,6 +206,7 @@ namespace Bplus::GuiData
                 //Model the movement between key1 and key2 using
                 //    a (N+1)-dimensional Bezier curve.
                 //TODO: Finish.
+                return Default;
             }
             else
             {

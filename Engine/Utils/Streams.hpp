@@ -9,8 +9,9 @@
 //Defines new types of istream and ostream,
 //    such as ones that work with existing memory.
 
-namespace Bplus
+namespace Bplus::IO
 {
+    //Used by InputMemoryStream.
     struct InputMemoryBuffer : std::streambuf
     {
         InputMemoryBuffer(const std::byte* data, size_t size)
@@ -21,6 +22,7 @@ namespace Bplus
             setg(ptr, ptr, ptr + size);
         }
     };
+    //An std::istream that reads its data from memory.
     struct InputMemoryStream : virtual InputMemoryBuffer, std::istream
     {
         InputMemoryStream(const std::byte* data, size_t size)
@@ -30,7 +32,7 @@ namespace Bplus
         }
     };
 
-
+    //Used by OutputMemoryStream.
     struct OutputMemoryBuffer : std::streambuf
     {
         OutputMemoryBuffer(std::byte* data, size_t size)
@@ -39,6 +41,7 @@ namespace Bplus
             setp(ptr, ptr + size);
         }
     };
+    //An std::ostream that writes data to memory.
     struct OutputMemoryStream : virtual OutputMemoryBuffer, std::ostream
     {
         OutputMemoryStream(std::byte* data, size_t size)

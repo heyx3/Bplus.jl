@@ -1,7 +1,9 @@
 #include "Format.h"
 
+#include "../../Dependencies.h"
+
 #include <glm/gtx/component_wise.hpp>
-#include "../../Math/Math.hpp"
+
 
 using namespace Bplus;
 using namespace Bplus::GL;

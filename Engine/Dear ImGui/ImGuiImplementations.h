@@ -73,7 +73,7 @@ namespace Bplus
         std::optional<Bplus::GL::Textures::TexView> fontTextureView;
         std::optional<Bplus::GL::Textures::Texture2D> fontTexture;
         std::optional<Bplus::GL::Buffers::Buffer> verticesBuffer, indicesBuffer;
-        std::optional<Bplus::GL::CompiledShader> shader;
+        std::optional<Bplus::GL::Materials::CompiledShader> shader;
         std::optional<Bplus::GL::Buffers::MeshData> meshData;
     };
 

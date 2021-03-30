@@ -4,10 +4,6 @@
 
 namespace Bplus::GL::Materials
 {
-    //TODO: Add uniform tracking at the Material level that calls into CompiledShader uniform support.
-    //TODO: Move all buffer/texture-handling up to Material, so that CompiledShader just takes a bare OglPtr.
-    //TODO: Make CompiledShader more of a helper class that belongs to Material, no static tracking of stuff. Unit test apps will have to be updated.
-
     //A shader program, combined with parmeter values.
     //More precisely, a set of swappable shader programs that have
     //    different compile-time flags.

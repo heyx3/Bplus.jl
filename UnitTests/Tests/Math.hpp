@@ -185,4 +185,6 @@ void GLMHelpers()
     for (glm::length_t n = 0; n < fV5.size(); ++n)
         TEST_CHECK_(fV5[n] == (n + 1) * 2, "Modifying an 'fvec5'");
     //TODO: Test glm::length() as well
+
+    //TODO: Test Lerp() and InverseLerp(), making sure SFINAE works correctly for all overloads (scalar value + vector t, vector value + scalar t, etc)
 }

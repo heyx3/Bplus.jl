@@ -4,9 +4,6 @@
 #include <algorithm>
 #include <optional>
 
-#include "../Dependencies.h"
-#include <glm/gtc/matrix_access.hpp>
-
 
 namespace Bplus::Math
 {
@@ -61,6 +58,17 @@ namespace Bplus::Math
         return log10(x) / log10(base);
     }
 
+    //Performs "lerp", both for GLM data and for regular numbers.
+    template<typename Number_t, typename Float_t = AppropriateFloat_t<Number_t>>
+    inline Number_t Lerp(Number_t a, Number_t b, Float_t t)
+    {
+        return Number_t{ (t * Float_t{b}) + ((1 - t) * Float_t{a}) };
+    }
+    //The GLM vector versions of Lerp() are defined
+    //    in the same file that GLM itself is imported from, "Dependencies.h".
+    //The interpolant can be a single number or a vector,
+    //    and same goes for the start/end values.
+
     //Performs an inverse lerp on the given numbers.
     //The result is undefined if 'a' and 'b' are equal.
     template<typename T, typename Float_t = AppropriateFloat_t<T>>
@@ -68,19 +76,8 @@ namespace Bplus::Math
     {
         return ((Float_t)x - (Float_t)a) / ((Float_t)b - (Float_t)a);
     }
-    //Performs an inverse lerp on the given GLM vectors.
-    //The result is undefined if 'a' and 'b' are equal in at least one component.
-    template<glm::length_t L, typename T, enum glm::qualifier Q = glm::packed_highp,
-             typename Float_t = AppropriateFloat_t<T>>
-    inline glm::vec<L, Float_t, Q> InverseLerp(const glm::vec<L, T, Q>& a,
-                                               const glm::vec<L, T, Q>& b,
-                                               const glm::vec<L, T, Q>& x)
-    {
-        glm::vec<L, Float_t, Q> _a(a),
-                                _b(b),
-                                _x(x);
-        return (x - a) / (b - a);
-    }
+    //The GLM vector versions of InverseLerp() are defined
+    //    in the same file that GLM itself is imported from, "Dependencies.h".
 
     //Checks whether an integer value is within range of another integer type.
     template<typename SmallerInt_t, typename Int_t>
@@ -120,62 +117,5 @@ namespace Bplus::Math
         }
 
         return a - b;
-    }
-
-
-    //GLM helpers:
-
-    //For some reason, this isn't clearly exposed in GLM's interface.
-    template<typename T, enum glm::qualifier Q = glm::packed_highp>
-    glm::qua<T, Q> RotIdentity() { return glm::qua<T, Q>(1, 0, 0, 0); }
-
-    //Applies two transforms (matrices or quaternions) in the given order.
-    template<typename glm_t>
-    glm_t ApplyTransform(glm_t firstTransform, glm_t secondTransform)
-    {
-        return secondTransform * firstTransform;
-    }
-
-    template<typename T, enum glm::qualifier Q = glm::packed_highp>
-    glm::vec<3, T, Q> ApplyToPoint(const glm::mat<4, 4, T, Q>& mat, const glm::vec<3, T, Q>& point)
-    {
-        auto point4 = mat * glm::vec<4, T, Q>(point, 1);
-        return glm::vec<3, T, Q>(point4.x, point4.y, point4.z) / point4.w;
-    }
-    template<typename T, enum glm::qualifier Q = glm::packed_highp>
-    glm::vec<3, T, Q> ApplyToVector(const glm::mat<4, 4, T, Q>& mat, const glm::vec<3, T, Q>& point)
-    {
-        auto point4 = mat * glm::vec<4, T, Q>(point, 0);
-        return glm::vec<3, T, Q>(point4.x, point4.y, point4.z);
-    }
-
-    template<typename T, enum glm::qualifier Q = glm::packed_highp>
-    glm::vec<3, T, Q> ApplyRotation(const glm::qua<T, Q>& rotation, const glm::vec<3, T, Q>& inPoint)
-    {
-        return rotation * inPoint;
-    }
-
-    //Makes a quaternion to rotate a point around the given axis
-    //    by the given angle, clockwise when looking along the axis.
-    //This function exists because glm is frustratingly vague about these details.
-    template<typename T, enum glm::qualifier Q = glm::packed_highp>
-    glm::qua<T, Q> MakeRotation(const glm::vec<3, T, Q>& axis,
-                                T clockwiseDegrees)
-    {
-        return glm::angleAxis<T, Q>(glm::radians(clockwiseDegrees), axis);
-    }
-
-    //Resizes the given matrix.
-    //New rows/columns are filled with zero.
-    template<glm::length_t COut, glm::length_t ROut,
-             glm::length_t CIn, glm::length_t RIn,
-             typename T,
-             enum glm::qualifier Q = glm::packed_highp>
-    glm::mat<COut, ROut, T, Q> Resize(const glm::mat<CIn, RIn, T, Q>& mIn)
-    {
-        glm::mat<COut, ROut, T, Q> mOut;
-        for (glm::length_t col = 0; col < COut; ++col)
-            glm::column(mOut, col, glm::column(mIn, col));
-        return mOut;
     }
 }

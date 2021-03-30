@@ -9,12 +9,15 @@
 
 namespace Bplus::Math
 {
+
     //An axis-aligned, N-dimensional rectangle represented with coordinates of type T.
     //T should be a float or an integer (or any custom number type
     //    that implements comparisons and std::numeric_limits).
     template<glm::length_t N, typename T>
     struct Box
     {
+        //TODO: Figure out how to simplify 1D boxes (a.k.a. "intervals"), with removal of (or implicit casting to) glm::vec<1, L>
+
         using vec_t = glm::vec<N, T>;
         static constexpr T Epsilon()
         {
