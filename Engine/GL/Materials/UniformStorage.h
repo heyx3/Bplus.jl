@@ -9,6 +9,7 @@
 
 namespace Bplus::GL::Materials
 {
+    /*
     //Manages the storage of shader parameters, a.k.a. "uniforms".
     //For high-level representation and management of uniform data,
     //    see "UniformManager".
@@ -263,4 +264,5 @@ namespace Bplus::GL::Materials
         //    from a different shader variant that will eventually be compiled.
         std::unordered_map<std::string, UniformStorageValue> futureValues;
     };
+    */
 }

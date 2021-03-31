@@ -171,7 +171,7 @@ namespace Bplus::GL::Materials
                 case UniformStates::OptimizedOut: return true;
 
                 case UniformStates::Exists:
-                    _SetUniform(uniformStatus.Uniform, value);
+                    SetUniform(uniformStatus.Uniform, value);
                     return true;
 
                 default:
@@ -197,7 +197,7 @@ namespace Bplus::GL::Materials
                 case UniformStates::Exists:
                     OglPtr::ShaderUniform elementPtr{ uniformStatus.Uniform.Get() +
                                                         (OglPtr::ShaderUniform::Data_t)index };
-                    _SetUniform(elementPtr, value);
+                    SetUniform(elementPtr, value);
                     return true;
 
                 default:
@@ -226,7 +226,7 @@ namespace Bplus::GL::Materials
                     {
                         OglPtr::ShaderUniform elementPtr{ uniformStatus.Uniform.Get() +
                                                             (OglPtr::ShaderUniform::Data_t)i };
-                        _SetUniform(elementPtr, data[i]);
+                        SetUniform(elementPtr, data[i]);
                     }
                     return true;
 
@@ -365,7 +365,7 @@ namespace Bplus::GL::Materials
             auto found = uniformValues.find(ptr);
             BP_ASSERT_STR(found != uniformValues.end(),
                           "Nonexistent uniform pointer: " + std::to_string(ptr.Get()));
-            _SetUniform<Value_t>(found, programHandle, value);
+            _SetUniform<Value_t>()(found, programHandle, value);
         }
         #pragma region _SetUniform()
 

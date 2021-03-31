@@ -1,4 +1,6 @@
 #include "UniformStorage.h"
+ 
+/*
 
 using namespace Bplus;
 using namespace Bplus::GL;
@@ -339,3 +341,5 @@ void UniformStorage::LoadUniform(OglPtr::ShaderProgram shader, OglPtr::ShaderUni
         #pragma endregion
     }
 }
+
+*/

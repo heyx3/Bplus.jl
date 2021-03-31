@@ -1,7 +1,5 @@
 #pragma once
 
-#include "../Math/Math.hpp"
-
 #include "Scene.h"
 
 
