@@ -357,41 +357,47 @@ namespace Bplus::GL::Materials
 
         #pragma endregion
 
-        //TODO: Convert SetUniform() like GetUniform().
         template<typename Value_t>
         void SetUniform(OglPtr::ShaderUniform ptr, const Value_t& value)
         {
-            BP_ASSERT(ptr != OglPtr::ShaderUniform::null, "Given a null uniform location!");
+            BP_ASSERT(!ptr.IsNull(), "Given a null uniform location!");
 
             auto found = uniformValues.find(ptr);
             BP_ASSERT_STR(found != uniformValues.end(),
                           "Nonexistent uniform pointer: " + std::to_string(ptr.Get()));
-            _SetUniform<Value_t>(found, value);
+            _SetUniform<Value_t>(found, programHandle, value);
         }
         #pragma region _SetUniform()
 
         //The non-specialized version gives you a compile error
         //    about using an incorrect template type.
+        //Implemented as a functor class instead of a function,
+        //    to get partial template specialization.
         template<typename Value_t>
-        void _SetUniform(UniformValueEntry& ptr, const Value_t& value)
+        struct _SetUniform
         {
-            static_assert(false, "Invalid type used for SetUniform()");
-        }
-
-
-        //Use macros to more easily define the specializations.
+            void operator()(const UniformValueEntry& ptr,
+                            OglPtr::ShaderProgram programHandle,
+                            const Value_t& value)
+            {
+                static_assert(false, "Invalid type used for SetUniform()");
+            }
+        };
 
     #define SET_UNIFORM_FOR(Type) \
-        template<> void _SetUniform<Type>(UniformValueEntry& ptr, const Type& value)
+        template<> struct _SetUniform<Type> { void operator()(const UniformValueEntry& ptr, \
+                                                              OglPtr::ShaderProgram programHandle, \
+                                                              const Type& value) const {
+    #define SET_UNIFORM_FOR_END } };
 
         #pragma region Primitives and Vectors
 
     #define SET_UNIFORM_VECTORS(PrimitiveType, glFuncLetters) \
-        SET_UNIFORM_FOR(PrimitiveType                     ) { glProgramUniform1##glFuncLetters(programHandle.Get(), ptr->first.Get(), value); } \
-        SET_UNIFORM_FOR(glm::vec<1 BP_COMMA PrimitiveType>) { glProgramUniform1##glFuncLetters(programHandle.Get(), ptr->first.Get(), value.x); } \
-        SET_UNIFORM_FOR(glm::vec<2 BP_COMMA PrimitiveType>) { glProgramUniform2##glFuncLetters(programHandle.Get(), ptr->first.Get(), value.x, value.y); } \
-        SET_UNIFORM_FOR(glm::vec<3 BP_COMMA PrimitiveType>) { glProgramUniform3##glFuncLetters(programHandle.Get(), ptr->first.Get(), value.x, value.y, value.z); } \
-        SET_UNIFORM_FOR(glm::vec<4 BP_COMMA PrimitiveType>) { glProgramUniform4##glFuncLetters(programHandle.Get(), ptr->first.Get(), value.x, value.y, value.z, value.w); }
+        SET_UNIFORM_FOR(PrimitiveType                     ) glProgramUniform1##glFuncLetters(programHandle.Get(), ptr->first.Get(), value); SET_UNIFORM_FOR_END \
+        SET_UNIFORM_FOR(glm::vec<1 BP_COMMA PrimitiveType>) glProgramUniform1##glFuncLetters(programHandle.Get(), ptr->first.Get(), value.x); SET_UNIFORM_FOR_END \
+        SET_UNIFORM_FOR(glm::vec<2 BP_COMMA PrimitiveType>) glProgramUniform2##glFuncLetters(programHandle.Get(), ptr->first.Get(), value.x, value.y); SET_UNIFORM_FOR_END \
+        SET_UNIFORM_FOR(glm::vec<3 BP_COMMA PrimitiveType>) glProgramUniform3##glFuncLetters(programHandle.Get(), ptr->first.Get(), value.x, value.y, value.z); SET_UNIFORM_FOR_END \
+        SET_UNIFORM_FOR(glm::vec<4 BP_COMMA PrimitiveType>) glProgramUniform4##glFuncLetters(programHandle.Get(), ptr->first.Get(), value.x, value.y, value.z, value.w); SET_UNIFORM_FOR_END
 
         SET_UNIFORM_VECTORS(glm::u32, ui);
         SET_UNIFORM_VECTORS(glm::i32, i);
@@ -401,31 +407,31 @@ namespace Bplus::GL::Materials
     #undef SET_UNIFORM_VECTORS
 
         //Bool, bool, and vectors of those:
-        SET_UNIFORM_FOR(bool) { _SetUniform<glm::u32>(ptr, value ? 1 : 0); }
-        SET_UNIFORM_FOR(Bool) { _SetUniform<glm::u32>(ptr, value ? 1 : 0); }
-        SET_UNIFORM_FOR(glm::bvec2) { _SetUniform<glm::uvec2>(ptr, glm::uvec2{ value[0] ? 1 : 0,
-                                                                               value[1] ? 1 : 0 }); }
-        SET_UNIFORM_FOR(glm::bvec3) { _SetUniform<glm::uvec3>(ptr, glm::uvec3{ value[0] ? 1 : 0,
-                                                                               value[1] ? 1 : 0,
-                                                                               value[2] ? 1 : 0 }); }
-        SET_UNIFORM_FOR(glm::bvec4) { _SetUniform<glm::uvec4>(ptr, glm::uvec4{ value[0] ? 1 : 0,
-                                                                               value[1] ? 1 : 0,
-                                                                               value[2] ? 1 : 0,
-                                                                               value[3] ? 1 : 0 }); }
+        SET_UNIFORM_FOR(bool) _SetUniform<glm::u32>()(ptr, programHandle, value ? 1 : 0); SET_UNIFORM_FOR_END
+        SET_UNIFORM_FOR(Bool) _SetUniform<glm::u32>()(ptr, programHandle, value ? 1 : 0); SET_UNIFORM_FOR_END
+        SET_UNIFORM_FOR(glm::bvec2) _SetUniform<glm::uvec2>()(ptr, programHandle, glm::uvec2{ value[0] ? 1 : 0,
+                                                                                              value[1] ? 1 : 0 }); SET_UNIFORM_FOR_END
+        SET_UNIFORM_FOR(glm::bvec3) _SetUniform<glm::uvec3>()(ptr, programHandle, glm::uvec3{ value[0] ? 1 : 0,
+                                                                                              value[1] ? 1 : 0,
+                                                                                              value[2] ? 1 : 0 }); SET_UNIFORM_FOR_END
+        SET_UNIFORM_FOR(glm::bvec4) _SetUniform<glm::uvec4>()(ptr, programHandle, glm::uvec4{ value[0] ? 1 : 0,
+                                                                                              value[1] ? 1 : 0,
+                                                                                              value[2] ? 1 : 0,
+                                                                                              value[3] ? 1 : 0 }); SET_UNIFORM_FOR_END
         
         #pragma endregion
 
         #pragma region Matrices
 
     #define SET_UNIFORM_MATRICES(NCols, NRows, glRowCol) \
-        SET_UNIFORM_FOR(glm::mat<NCols BP_COMMA NRows BP_COMMA float>) { \
+        SET_UNIFORM_FOR(glm::mat<NCols BP_COMMA NRows BP_COMMA float>) \
             glProgramUniformMatrix##glRowCol##fv(programHandle.Get(), ptr->first.Get(), \
                                                  1, GL_FALSE, glm::value_ptr(value)); \
-        } \
-        SET_UNIFORM_FOR(glm::mat<NCols BP_COMMA NRows BP_COMMA double>) { \
+        SET_UNIFORM_FOR_END \
+        SET_UNIFORM_FOR(glm::mat<NCols BP_COMMA NRows BP_COMMA double>) \
             glProgramUniformMatrix##glRowCol##dv(programHandle.Get(), ptr->first.Get(), \
                                                  1, GL_FALSE, glm::value_ptr(value)); \
-        }
+        SET_UNIFORM_FOR_END
         
         SET_UNIFORM_MATRICES(2, 2, 2)
         SET_UNIFORM_MATRICES(2, 3, 2x3)
@@ -443,14 +449,18 @@ namespace Bplus::GL::Materials
         #pragma region Textures and Buffers
 
         SET_UNIFORM_FOR(OglPtr::View)
-        {
             glProgramUniform1ui64ARB(programHandle.Get(), ptr->first.Get(),
                                      value.Get());
-        }
+        SET_UNIFORM_FOR_END
+
+        SET_UNIFORM_FOR(OglPtr::Buffer)
+            glProgramUniform1ui64ARB(programHandle.Get(), ptr->first.Get(), value.Get());
+        SET_UNIFORM_FOR_END
 
         #pragma endregion
 
     #undef SET_UNIFORM_FOR
+    #undef SET_UNIFORM_FOR_END
 
         #pragma endregion
     };
