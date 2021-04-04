@@ -19,13 +19,27 @@
 //Any functions that are templated on a type of uniform will accept any of these.
 
 
+#pragma region Forward declarations
+
+namespace Bplus::GL::Uniforms
+{
+    //Manages GPU resources for shader uniforms.
+    //For example, a "gradient" needs to be sent to the GPU as a Texture1D.
+    class BP_API UniformStorage;
+}
+
 namespace Bplus::GL::Materials
 {
     //The base class for B-plus shader definitions.
     //Knows how to create instances of CompiledShader.
     class BP_API Factory;
+}
+
+#pragma endregion
 
 
+namespace Bplus::GL::Materials
+{
     //A specific compiled shader, plus its "uniforms" (a.k.a. parameters).
     class BP_API CompiledShader
     {
@@ -46,7 +60,8 @@ namespace Bplus::GL::Materials
         //Nulls out the input handle after taking ownership of its contents.
         CompiledShader(Factory& owner,
                        OglPtr::ShaderProgram&& compiledProgramHandle,
-                       const Uniforms::UniformDefinitions& uniforms);
+                       const Uniforms::UniformDefinitions& uniforms,
+                       const Uniforms::UniformStorage& storage);
 
         ~CompiledShader();
 
@@ -365,6 +380,7 @@ namespace Bplus::GL::Materials
             auto found = uniformValues.find(ptr);
             BP_ASSERT_STR(found != uniformValues.end(),
                           "Nonexistent uniform pointer: " + std::to_string(ptr.Get()));
+            
             _SetUniform<Value_t>()(found, programHandle, value);
         }
         #pragma region _SetUniform()
@@ -384,20 +400,35 @@ namespace Bplus::GL::Materials
             }
         };
 
-    #define SET_UNIFORM_FOR(Type) \
+    #define SET_UNIFORM_FOR(Type, valueToStorage) \
         template<> struct _SetUniform<Type> { void operator()(const UniformValueEntry& ptr, \
                                                               OglPtr::ShaderProgram programHandle, \
-                                                              const Type& value) const {
+                                                              const Type& value) const { \
+            ptr->second = valueToStorage;
     #define SET_UNIFORM_FOR_END } };
 
         #pragma region Primitives and Vectors
 
+        //Wouldn't have to be this ugly if OpenGL had one function for all sizes of vectors...
+        //    ...and/or all types of vectors...
     #define SET_UNIFORM_VECTORS(PrimitiveType, glFuncLetters) \
-        SET_UNIFORM_FOR(PrimitiveType                     ) glProgramUniform1##glFuncLetters(programHandle.Get(), ptr->first.Get(), value); SET_UNIFORM_FOR_END \
-        SET_UNIFORM_FOR(glm::vec<1 BP_COMMA PrimitiveType>) glProgramUniform1##glFuncLetters(programHandle.Get(), ptr->first.Get(), value.x); SET_UNIFORM_FOR_END \
-        SET_UNIFORM_FOR(glm::vec<2 BP_COMMA PrimitiveType>) glProgramUniform2##glFuncLetters(programHandle.Get(), ptr->first.Get(), value.x, value.y); SET_UNIFORM_FOR_END \
-        SET_UNIFORM_FOR(glm::vec<3 BP_COMMA PrimitiveType>) glProgramUniform3##glFuncLetters(programHandle.Get(), ptr->first.Get(), value.x, value.y, value.z); SET_UNIFORM_FOR_END \
-        SET_UNIFORM_FOR(glm::vec<4 BP_COMMA PrimitiveType>) glProgramUniform4##glFuncLetters(programHandle.Get(), ptr->first.Get(), value.x, value.y, value.z, value.w); SET_UNIFORM_FOR_END
+        SET_UNIFORM_FOR(PrimitiveType,  glm::vec<4 BP_COMMA PrimitiveType>(value) ) \
+            glProgramUniform1##glFuncLetters(programHandle.Get(), ptr->first.Get(), value); \
+        SET_UNIFORM_FOR_END \
+        SET_UNIFORM_FOR(glm::vec<1 BP_COMMA PrimitiveType>,    glm::vec<4 BP_COMMA PrimitiveType>(value) ) \
+            glProgramUniform1##glFuncLetters(programHandle.Get(), ptr->first.Get(), value.x); \
+        SET_UNIFORM_FOR_END \
+        SET_UNIFORM_FOR(glm::vec<2 BP_COMMA PrimitiveType>, \
+                        glm::vec<4 BP_COMMA PrimitiveType>(value BP_COMMA PrimitiveType{0} BP_COMMA PrimitiveType{0}) ) \
+            glProgramUniform2##glFuncLetters(programHandle.Get(), ptr->first.Get(), value.x, value.y); \
+        SET_UNIFORM_FOR_END \
+        SET_UNIFORM_FOR(glm::vec<3 BP_COMMA PrimitiveType>, \
+                        glm::vec<4 BP_COMMA PrimitiveType>(value BP_COMMA PrimitiveType{0}) ) \
+            glProgramUniform3##glFuncLetters(programHandle.Get(), ptr->first.Get(), value.x, value.y, value.z); \
+        SET_UNIFORM_FOR_END \
+        SET_UNIFORM_FOR(glm::vec<4 BP_COMMA PrimitiveType>,    value) \
+            glProgramUniform4##glFuncLetters(programHandle.Get(), ptr->first.Get(), value.x, value.y, value.z, value.w); \
+        SET_UNIFORM_FOR_END
 
         SET_UNIFORM_VECTORS(glm::u32, ui);
         SET_UNIFORM_VECTORS(glm::i32, i);
@@ -407,28 +438,40 @@ namespace Bplus::GL::Materials
     #undef SET_UNIFORM_VECTORS
 
         //Bool, bool, and vectors of those:
-        SET_UNIFORM_FOR(bool) _SetUniform<glm::u32>()(ptr, programHandle, value ? 1 : 0); SET_UNIFORM_FOR_END
-        SET_UNIFORM_FOR(Bool) _SetUniform<glm::u32>()(ptr, programHandle, value ? 1 : 0); SET_UNIFORM_FOR_END
-        SET_UNIFORM_FOR(glm::bvec2) _SetUniform<glm::uvec2>()(ptr, programHandle, glm::uvec2{ value[0] ? 1 : 0,
-                                                                                              value[1] ? 1 : 0 }); SET_UNIFORM_FOR_END
-        SET_UNIFORM_FOR(glm::bvec3) _SetUniform<glm::uvec3>()(ptr, programHandle, glm::uvec3{ value[0] ? 1 : 0,
-                                                                                              value[1] ? 1 : 0,
-                                                                                              value[2] ? 1 : 0 }); SET_UNIFORM_FOR_END
-        SET_UNIFORM_FOR(glm::bvec4) _SetUniform<glm::uvec4>()(ptr, programHandle, glm::uvec4{ value[0] ? 1 : 0,
-                                                                                              value[1] ? 1 : 0,
-                                                                                              value[2] ? 1 : 0,
-                                                                                              value[3] ? 1 : 0 }); SET_UNIFORM_FOR_END
+        SET_UNIFORM_FOR(bool, glm::bvec4(value))
+            _SetUniform<glm::u32>()(ptr, programHandle, value ? 1 : 0);
+        SET_UNIFORM_FOR_END
+        SET_UNIFORM_FOR(Bool, glm::bvec4(value))
+            _SetUniform<glm::u32>()(ptr, programHandle, value ? 1 : 0);
+        SET_UNIFORM_FOR_END
+        SET_UNIFORM_FOR(glm::bvec2, glm::bvec4(value BP_COMMA false BP_COMMA false))
+            _SetUniform<glm::uvec2>()(ptr, programHandle, glm::uvec2{ value[0] ? 1 : 0,
+                                                                      value[1] ? 1 : 0 });
+        SET_UNIFORM_FOR_END
+        SET_UNIFORM_FOR(glm::bvec3, glm::bvec4(value BP_COMMA false))
+            _SetUniform<glm::uvec3>()(ptr, programHandle, glm::uvec3{ value[0] ? 1 : 0,
+                                                                      value[1] ? 1 : 0,
+                                                                      value[2] ? 1 : 0 });
+        SET_UNIFORM_FOR_END
+        SET_UNIFORM_FOR(glm::bvec4, value)
+            _SetUniform<glm::uvec4>()(ptr, programHandle, glm::uvec4{ value[0] ? 1 : 0,
+                                                                      value[1] ? 1 : 0,
+                                                                      value[2] ? 1 : 0,
+                                                                      value[3] ? 1 : 0 });
+        SET_UNIFORM_FOR_END
         
         #pragma endregion
 
         #pragma region Matrices
 
     #define SET_UNIFORM_MATRICES(NCols, NRows, glRowCol) \
-        SET_UNIFORM_FOR(glm::mat<NCols BP_COMMA NRows BP_COMMA float>) \
+        SET_UNIFORM_FOR(glm::mat<NCols BP_COMMA NRows BP_COMMA float>, \
+                        Math::Resize<4 BP_COMMA 4>(value)) \
             glProgramUniformMatrix##glRowCol##fv(programHandle.Get(), ptr->first.Get(), \
                                                  1, GL_FALSE, glm::value_ptr(value)); \
         SET_UNIFORM_FOR_END \
-        SET_UNIFORM_FOR(glm::mat<NCols BP_COMMA NRows BP_COMMA double>) \
+        SET_UNIFORM_FOR(glm::mat<NCols BP_COMMA NRows BP_COMMA double>, \
+                        Math::Resize<4 BP_COMMA 4>(value)) \
             glProgramUniformMatrix##glRowCol##dv(programHandle.Get(), ptr->first.Get(), \
                                                  1, GL_FALSE, glm::value_ptr(value)); \
         SET_UNIFORM_FOR_END
@@ -448,12 +491,12 @@ namespace Bplus::GL::Materials
 
         #pragma region Textures and Buffers
 
-        SET_UNIFORM_FOR(OglPtr::View)
+        SET_UNIFORM_FOR(OglPtr::View, value)
             glProgramUniform1ui64ARB(programHandle.Get(), ptr->first.Get(),
                                      value.Get());
         SET_UNIFORM_FOR_END
 
-        SET_UNIFORM_FOR(OglPtr::Buffer)
+        SET_UNIFORM_FOR(OglPtr::Buffer, value)
             glProgramUniform1ui64ARB(programHandle.Get(), ptr->first.Get(), value.Get());
         SET_UNIFORM_FOR_END
 

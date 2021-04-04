@@ -138,6 +138,19 @@ namespace Bplus::Math
             glm::column(mOut, col, glm::column(mIn, col));
         return mOut;
     }
+
+    //Converts a vector of one size into a vector of another size.
+    //New components are filled with 0.
+    template<glm::length_t LOut,
+             glm::length_t LIn, typename T,
+             enum glm::qualifier Q = glm::packed_highp>
+    glm::vec<LOut, T, Q> Resize(const glm::vec<LIn, T, Q>& vIn)
+    {
+        glm::vec<LOut, T, Q> vOut(T{0});
+        for (glm::length_t i = 0; i < LIn; ++i)
+            vOut[i] = vIn[i];
+        return vOut;
+    }
 }
 #pragma endregion
 

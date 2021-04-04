@@ -79,6 +79,7 @@ namespace Bplus::GL::Textures
         SimpleFormatComponents Components;
         SimpleFormatBitDepths ChannelBitSize;
 
+        SimpleFormat() { }
         SimpleFormat(FormatTypes type,
                      SimpleFormatComponents components,
                      SimpleFormatBitDepths channelBitSize)

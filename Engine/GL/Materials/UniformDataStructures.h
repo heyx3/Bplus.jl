@@ -8,6 +8,8 @@
 
 namespace Bplus::GL::Uniforms
 {
+    //TODO: Separate "Uniform" code files from "Material" ones.
+
     #pragma region Enums
 
     //The allowable dimensionality of OpenGL vectors.
@@ -74,7 +76,7 @@ namespace Bplus::GL::Uniforms
         bool IsDouble = false;
     };
 
-    //Color data (greyscale, RG, RGB, or RGBA).
+    //Color data.
     struct Color
     {
         Textures::SimpleFormatComponents Channels = Textures::SimpleFormatComponents::RGBA;
@@ -82,11 +84,18 @@ namespace Bplus::GL::Uniforms
         bool IsHDR = false;
     };
 
-    struct Gradient : public GuiData::Curve<4, float>
+    using GradientValue_t = GuiData::Curve<4, float>;
+    struct Gradient
     {
-        Textures::SimpleFormatComponents Channels = Textures::SimpleFormatComponents::RGBA;
-        bool IsHDR = false;
+        Textures::SimpleFormat Format = Textures::SimpleFormat{Textures::FormatTypes::NormalizedUInt,
+                                                               Textures::SimpleFormatComponents::RGBA,
+                                                               Textures::SimpleFormatBitDepths::B8};
         uint16_t Resolution = 128;
+
+        GradientValue_t Default = GradientValue_t(glm::fvec4(0, 0, 0, 1),
+                                                  glm::fvec4(1, 1, 1, 1));
+
+        bool IsHDR() const { return Format.Type == +Textures::FormatTypes::Float; }
     };
 
     //A texture/sampler.
@@ -98,6 +107,8 @@ namespace Bplus::GL::Uniforms
         //The full 3-dimensional sampler settings are stored here,
         //    even if the texture is less than 3-dimensional.
         std::optional<Textures::Sampler<3>> FullSampler;
+
+        //TODO: A utility class that provides standard default textures like "red", "gray", etc. of all Textures::Types, which this struct can reference
 
         SamplerTypes SamplingType = SamplerTypes::Float;
     };
@@ -125,26 +136,33 @@ namespace Bplus::GL::Uniforms
         //Otherwise, this value is 0.
         uint32_t ArrayCount = 0;
         
-        std::variant<Vector, Matrix, Color, TexSampler, StructInstance> ElementType;
+        std::variant<Vector, Matrix, Color,
+                     Gradient, TexSampler, StructInstance>
+            ElementType;
 
         bool IsArray() const { return ArrayCount == 0; }
     };
+    //Gets a human-readable description of the given uniform type.
+    std::string BP_API GetDescription(const UniformType& uniformType);
     
 
     //A struct is defined by its fields.
     //The fields are well-ordered.
-    using UniformStructDef = std::vector<std::pair<std::string, UniformType>>;
+    using StructDef = std::vector<std::pair<std::string, UniformType>>;
 
 
     //A set of uniform definitions for a shader.
     struct BP_API UniformDefinitions
     {
-        std::unordered_map<std::string, UniformStructDef> Structs;
+        std::unordered_map<std::string, StructDef> Structs;
         std::unordered_map<std::string, UniformType> Uniforms;
 
         //Tries to add the given uniforms/structs to this instance.
         //Returns an error message, or an empty string if everything went fine.
         std::string Import(const UniformDefinitions& newDefs);
+        //Executes the given function on every individual uniform element.
+        //For example, it iterates over each element of an array, and each field of a struct.
+        void VisitAllUniforms(std::function<void(const std::string&, const UniformType&)> visitor) const;
     };
 }
 
