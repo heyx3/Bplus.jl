@@ -388,6 +388,7 @@ exit 0</Command>
     <ClCompile Include="GL\Materials\CompiledShader.cpp" />
     <ClCompile Include="GL\Materials\Material.cpp" />
     <ClCompile Include="GL\Materials\ShaderCompileJob.cpp" />
+    <ClCompile Include="GL\Materials\ShaderDefinition.cpp" />
     <ClCompile Include="GL\Textures\Format.cpp" />
     <ClCompile Include="GL\Textures\Target.cpp" />
     <ClCompile Include="GL\Textures\TargetBuffer.cpp" />
@@ -432,6 +433,7 @@ exit 0</Command>
     <ClInclude Include="GL\Materials\Factory.h" />
     <ClInclude Include="GL\Materials\Material.h" />
     <ClInclude Include="GL\Materials\ShaderCompileJob.h" />
+    <ClInclude Include="GL\Materials\ShaderDefinition.h" />
     <ClInclude Include="GL\Textures\Format.h" />
     <ClInclude Include="GL\Textures\Sampler.h" />
     <ClInclude Include="GL\Textures\Target.h" />

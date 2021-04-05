@@ -175,6 +175,9 @@
     <ClInclude Include="GL\Uniforms\Storage.h">
       <Filter>GL\Uniforms</Filter>
     </ClInclude>
+    <ClInclude Include="GL\Materials\ShaderDefinition.h">
+      <Filter>GL\Materials</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IO.cpp" />
@@ -275,6 +278,9 @@
     </ClCompile>
     <ClCompile Include="GL\Uniforms\StaticUniforms.cpp">
       <Filter>GL\Uniforms</Filter>
+    </ClCompile>
+    <ClCompile Include="GL\Materials\ShaderDefinition.cpp">
+      <Filter>GL\Materials</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

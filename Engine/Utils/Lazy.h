@@ -26,7 +26,7 @@ namespace Bplus
 
         
         //Gets the underlying data, creating it with the default constructor if necessary.
-        const T& Get() const
+        const T& Get() const //TODO: Make this non-const, and remove the extra crap inside.
         {
             //If not created already, the instance should be created now.
             //However, this operation is supposed to be a const op that returns a const instance,
@@ -36,8 +36,10 @@ namespace Bplus
 
             return Cast();
         }
+        //Gets the underlying data, creating it with the default constructor if necessary.
         T& Get()
         {
+            //Call the const version, then cast away the const.
             return const_cast<T&>(const_cast<const Lazy<T>*>(this)->Get());
         }
 

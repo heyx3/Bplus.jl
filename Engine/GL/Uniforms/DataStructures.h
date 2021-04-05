@@ -154,6 +154,8 @@ namespace Bplus::GL::Uniforms
     //A set of uniform definitions for a shader.
     struct BP_API Definitions
     {
+        //TODO: Separate struct definitions from uniform definitions.
+
         std::unordered_map<std::string, StructDef> Structs;
         std::unordered_map<std::string, Type> Uniforms;
 
