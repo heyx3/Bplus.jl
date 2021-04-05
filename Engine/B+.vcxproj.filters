@@ -157,23 +157,23 @@
     <ClInclude Include="GL\Materials\Material.h">
       <Filter>GL\Materials</Filter>
     </ClInclude>
-    <ClInclude Include="GL\Materials\UniformStorage.h">
-      <Filter>GL\Materials</Filter>
-    </ClInclude>
-    <ClInclude Include="GL\Materials\UniformDataStructures.h">
-      <Filter>GL\Materials</Filter>
-    </ClInclude>
     <ClInclude Include="Helpers\GuiData.hpp">
       <Filter>Helpers</Filter>
     </ClInclude>
     <ClInclude Include="Math\Bezier.hpp">
       <Filter>Math</Filter>
     </ClInclude>
-    <ClInclude Include="GL\Materials\StaticUniforms.h">
-      <Filter>GL\Materials</Filter>
-    </ClInclude>
     <ClInclude Include="Utils\Math.hpp">
       <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Uniforms\StaticUniforms.h">
+      <Filter>GL\Uniforms</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Uniforms\DataStructures.h">
+      <Filter>GL\Uniforms</Filter>
+    </ClInclude>
+    <ClInclude Include="GL\Uniforms\Storage.h">
+      <Filter>GL\Uniforms</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -267,14 +267,14 @@
     <ClCompile Include="GL\Materials\Material.cpp">
       <Filter>GL\Materials</Filter>
     </ClCompile>
-    <ClCompile Include="GL\Materials\UniformStorage.cpp">
-      <Filter>GL\Materials</Filter>
+    <ClCompile Include="GL\Uniforms\DataStructures.cpp">
+      <Filter>GL\Uniforms</Filter>
     </ClCompile>
-    <ClCompile Include="GL\Materials\UniformDataStructures.cpp">
-      <Filter>GL\Materials</Filter>
+    <ClCompile Include="GL\Uniforms\Storage.cpp">
+      <Filter>GL\Uniforms</Filter>
     </ClCompile>
-    <ClCompile Include="GL\Materials\StaticUniforms.cpp">
-      <Filter>GL\Materials</Filter>
+    <ClCompile Include="GL\Uniforms\StaticUniforms.cpp">
+      <Filter>GL\Uniforms</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -316,6 +316,9 @@
     </Filter>
     <Filter Include="Images">
       <UniqueIdentifier>{70285e5d-caf3-41ef-9d49-8dd96b708f03}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GL\Uniforms">
+      <UniqueIdentifier>{6b355631-465e-4fd5-bbf0-432221396155}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

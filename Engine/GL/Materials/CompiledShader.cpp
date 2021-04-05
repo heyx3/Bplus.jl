@@ -1,7 +1,7 @@
 #include "CompiledShader.h"
 
 #include "Factory.h"
-#include "UniformStorage.h"
+#include "../Uniforms/Storage.h"
 
 
 using namespace Bplus;
@@ -11,15 +11,15 @@ using namespace Bplus::GL::Materials;
 
 CompiledShader::CompiledShader(Factory& owner,
                                OglPtr::ShaderProgram&& compiledProgramHandle,
-                               const Uniforms::UniformDefinitions& uniforms,
-                               const Uniforms::UniformStorage& storage)
+                               const Uniforms::Definitions& uniforms,
+                               const Uniforms::Storage& storage)
     : programHandle(compiledProgramHandle), owner(&owner)
 {
     compiledProgramHandle = OglPtr::ShaderProgram::Null();
 
     //Build the map of uniforms and their current values.
     uniforms.VisitAllUniforms([&](const std::string& uName,
-                                 const Uniforms::UniformType& uType)
+                                 const Uniforms::Type& uType)
     {
         BP_ASSERT_STR(uniformPtrs.find(uName) == uniformPtrs.end(),
                       "Uniform '" + uName +

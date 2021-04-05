@@ -129,7 +129,7 @@ namespace Bplus::GL::Uniforms
 
 
     //The main definition for a uniform.
-    struct UniformType
+    struct Type
     {
         //If this uniform is an array,
         //    this field provides its size.
@@ -143,26 +143,26 @@ namespace Bplus::GL::Uniforms
         bool IsArray() const { return ArrayCount == 0; }
     };
     //Gets a human-readable description of the given uniform type.
-    std::string BP_API GetDescription(const UniformType& uniformType);
+    std::string BP_API GetDescription(const Type& uniformType);
     
 
     //A struct is defined by its fields.
     //The fields are well-ordered.
-    using StructDef = std::vector<std::pair<std::string, UniformType>>;
+    using StructDef = std::vector<std::pair<std::string, Type>>;
 
 
     //A set of uniform definitions for a shader.
-    struct BP_API UniformDefinitions
+    struct BP_API Definitions
     {
         std::unordered_map<std::string, StructDef> Structs;
-        std::unordered_map<std::string, UniformType> Uniforms;
+        std::unordered_map<std::string, Type> Uniforms;
 
         //Tries to add the given uniforms/structs to this instance.
         //Returns an error message, or an empty string if everything went fine.
-        std::string Import(const UniformDefinitions& newDefs);
+        std::string Import(const Definitions& newDefs);
         //Executes the given function on every individual uniform element.
         //For example, it iterates over each element of an array, and each field of a struct.
-        void VisitAllUniforms(std::function<void(const std::string&, const UniformType&)> visitor) const;
+        void VisitAllUniforms(std::function<void(const std::string&, const Type&)> visitor) const;
     };
 }
 

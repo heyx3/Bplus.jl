@@ -1,4 +1,4 @@
-#include "UniformStorage.h"
+#include "Storage.h"
  
 using namespace Bplus;
 using namespace Bplus::GL;
@@ -27,9 +27,9 @@ namespace
 }
 
 
-UniformStorage::UniformStorage(const UniformDefinitions& defs)
+Storage::Storage(const Definitions& defs)
 {
-    defs.VisitAllUniforms([&](const std::string& uName, const UniformType& uType)
+    defs.VisitAllUniforms([&](const std::string& uName, const Type& uType)
     {
         if (std::holds_alternative<Uniforms::Gradient>(uType.ElementType))
         {
@@ -48,15 +48,15 @@ UniformStorage::UniformStorage(const UniformDefinitions& defs)
     });
 }
 
-void UniformStorage::SetGradient(const std::string& name,
-                                 const Uniforms::GradientValue_t& newValue)
+void Storage::SetGradient(const std::string& name,
+                          const Uniforms::GradientValue_t& newValue)
 {
     BP_ASSERT_STR(gradients.find(name) != gradients.end(),
                   "Can't find storage for gradient uniform '" + name + "'");
     
     FillGradient(gradients[name], bufferRGBA, newValue);
 }
-const Textures::Texture1D& UniformStorage::GetGradient(const std::string& name) const
+const Textures::Texture1D& Storage::GetGradient(const std::string& name) const
 {
     BP_ASSERT_STR(gradients.find(name) != gradients.end(),
                   "Can't find storage for gradient uniform '" + name + "'");

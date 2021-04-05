@@ -5,7 +5,7 @@
 #include <glm/gtc/matrix_access.hpp>
 
 #include "../Context.h"
-#include "UniformDataStructures.h"
+#include "DataStructures.h"
 #include "../Textures/TextureD.hpp"
 
 
@@ -13,11 +13,11 @@ namespace Bplus::GL::Uniforms
 {
     //Manages GPU resources for shader uniforms.
     //For example, a "gradient" needs to be sent to the GPU as a Texture1D.
-    class BP_API UniformStorage
+    class BP_API Storage
     {
     public:
 
-        UniformStorage(const UniformDefinitions& uniforms);
+        Storage(const Definitions& uniforms);
 
 
         const Textures::Texture1D& GetGradient(const std::string& name) const;

@@ -3,8 +3,8 @@
 #include <tuple>
 #include <memory>
 
-#include "UniformDataStructures.h"
-#include "StaticUniforms.h"
+#include "../Uniforms/DataStructures.h"
+#include "../Uniforms/StaticUniforms.h"
 #include "ShaderCompileJob.h"
 
 //TODO: Integrate this project: https://github.com/dfranx/ShaderDebugger
@@ -25,7 +25,7 @@ namespace Bplus::GL::Uniforms
 {
     //Manages GPU resources for shader uniforms.
     //For example, a "gradient" needs to be sent to the GPU as a Texture1D.
-    class BP_API UniformStorage;
+    class BP_API Storage;
 }
 
 namespace Bplus::GL::Materials
@@ -44,24 +44,13 @@ namespace Bplus::GL::Materials
     class BP_API CompiledShader
     {
     public:
-        
-        //A union of the different types of basic uniform data.
-        //Matrix and vector data are stored in the highest-dimensional form
-        //    just to keep the variant types simple.
-        using UniformElement_t = std::variant<
-                  glm::fvec4, glm::dvec4,
-                  glm::ivec4, glm::uvec4, glm::bvec4,
-                  glm::fmat4x4, glm::dmat4x4,
-                  OglPtr::View, OglPtr::Buffer
-                >;
-
 
         //Creates a new instance that manages a given shader program through RAII.
         //Nulls out the input handle after taking ownership of its contents.
         CompiledShader(Factory& owner,
                        OglPtr::ShaderProgram&& compiledProgramHandle,
-                       const Uniforms::UniformDefinitions& uniforms,
-                       const Uniforms::UniformStorage& storage);
+                       const Uniforms::Definitions& uniforms,
+                       const Uniforms::Storage& storage);
 
         ~CompiledShader();
 
@@ -254,6 +243,17 @@ namespace Bplus::GL::Materials
         #pragma endregion
 
     private:
+
+        //A union of the different types of basic uniform data.
+        //Matrix and vector data are stored in the highest-dimensional form
+        //    just to keep the variant types simple.
+        using UniformElement_t = std::variant<
+            glm::fvec4, glm::dvec4,
+            glm::ivec4, glm::uvec4, glm::bvec4,
+            glm::fmat4x4, glm::dmat4x4,
+            OglPtr::View, OglPtr::Buffer
+        >;
+
 
         OglPtr::ShaderProgram programHandle;
         Factory* owner;

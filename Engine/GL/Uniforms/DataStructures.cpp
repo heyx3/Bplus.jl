@@ -1,4 +1,4 @@
-#include "UniformDataStructures.h"
+#include "DataStructures.h"
 
 #include <unordered_set>
 
@@ -9,10 +9,10 @@ using namespace Bplus::GL::Uniforms;
 
 namespace
 {
-    void VisitUniform(std::function<void(const std::string&, const UniformType&)> func,
+    void VisitUniform(std::function<void(const std::string&, const Type&)> func,
                       const std::string& uName,
-                      const UniformType& uType,
-                      const UniformDefinitions& defs,
+                      const Type& uType,
+                      const Definitions& defs,
                       std::unordered_set<std::string>& usedStructs,
                       bool iterateArrays = false)
     {
@@ -61,7 +61,7 @@ namespace
 }
 
 
-std::string Bplus::GL::Uniforms::GetDescription(const UniformType& type)
+std::string Bplus::GL::Uniforms::GetDescription(const Type& type)
 {
     std::string output;
 
@@ -156,7 +156,7 @@ std::string Bplus::GL::Uniforms::GetDescription(const UniformType& type)
 }
 
 
-std::string UniformDefinitions::Import(const UniformDefinitions& newDefs)
+std::string Definitions::Import(const Definitions& newDefs)
 {
     for (const auto& [structName, structDef] : newDefs.Structs)
     {
@@ -174,7 +174,7 @@ std::string UniformDefinitions::Import(const UniformDefinitions& newDefs)
 
     return "";
 }
-void UniformDefinitions::VisitAllUniforms(std::function<void(const std::string&, const UniformType&)> visitor) const
+void Definitions::VisitAllUniforms(std::function<void(const std::string&, const Type&)> visitor) const
 {
     std::unordered_set<std::string> usedStructs;
     for (const auto& [uName, uType] : Uniforms)
