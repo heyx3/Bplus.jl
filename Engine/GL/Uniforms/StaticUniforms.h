@@ -11,6 +11,8 @@
 
 namespace Bplus::GL::Uniforms
 {
+    //TODO: Should statics have a prefix too?
+
     #pragma region Static Uniform Definitions
 
     //Implies one of a set of #define statements in the shader code
@@ -18,6 +20,8 @@ namespace Bplus::GL::Uniforms
     struct StaticEnum
     {
         //Different suffixes for the #define-d token.
+        //E.x. the static uniform "USE_PARALLAX" with value "on"
+        //    leads to "#define USE_PARALLAX_on 1".
         std::vector<std::string> Values = { "On", "Off" };
 
         //The default value, as an index into the "Values" field.

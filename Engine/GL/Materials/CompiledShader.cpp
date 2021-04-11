@@ -1,7 +1,8 @@
 #include "CompiledShader.h"
 
-#include "Factory.h"
 #include "../Uniforms/Storage.h"
+#include "Factory.h"
+#include "ShaderDefinition.h"
 
 
 using namespace Bplus;
@@ -19,14 +20,15 @@ CompiledShader::CompiledShader(Factory& owner,
 
     //Build the map of uniforms and their current values.
     uniforms.VisitAllUniforms([&](const std::string& uName,
-                                 const Uniforms::Type& uType)
+                                  const Uniforms::Type& uType)
     {
         BP_ASSERT_STR(uniformPtrs.find(uName) == uniformPtrs.end(),
                       "Uniform '" + uName +
                           "' has already been defined. New definition is of type " +
                           GetDescription(uType));
 
-        OglPtr::ShaderUniform ptr(glGetUniformLocation(programHandle.Get(), uName.c_str()));
+        auto uShaderName = ShaderDefinition::Prefix_Uniforms() + uName;
+        OglPtr::ShaderUniform ptr(glGetUniformLocation(programHandle.Get(), uShaderName.c_str()));
         uniformPtrs[uName] = ptr;
         
         //Set up the default value for this uniform.

@@ -19,6 +19,11 @@
 //Any functions that are templated on a type of uniform will accept any of these.
 
 
+//Note that all uniforms are expected to be prefixed with "u_" in the shader,
+//    but not in the public interface of CompiledShader;
+//    the "u_" is appended internally as needed.
+
+
 #pragma region Forward declarations
 
 namespace Bplus::GL::Uniforms

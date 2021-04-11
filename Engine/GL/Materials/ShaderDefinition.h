@@ -13,6 +13,13 @@ namespace Bplus::GL::Materials
     {
     public:
 
+        //The below prefixes are used inside shaders,
+        //    but are mostly hidden from the public API of Bplus::GL classes.
+
+        static const char* Prefix_Structs() { return "S_"; }
+        static const char* Prefix_Uniforms() { return "u_"; }
+
+
         ShaderDefinition() { }
         ShaderDefinition(Uniforms::StaticUniformDefs&& statics,
                          Uniforms::Definitions&& uniforms,
@@ -41,7 +48,11 @@ namespace Bplus::GL::Materials
         std::string ProcessIncludes(LoaderFunc tryLoad,
                                     std::unordered_set<std::string>* usedIncludes = nullptr);
 
-        //TODO: A "GenerateCode()" function.
+        //Generates shader code for this instance's data.
+        //Does NOT include the "include" statements;
+        //    call 'ProcessIncludes()' first to merge them into this instance.
+        void GenerateCode(const Uniforms::StaticUniformValues& staticUniforms,
+                          std::string& outCode) const;
 
     private:
 
