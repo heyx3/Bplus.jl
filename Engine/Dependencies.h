@@ -125,20 +125,6 @@ namespace Bplus::Math
         return glm::angleAxis<T, Q>(glm::radians(clockwiseDegrees), axis);
     }
 
-    //Resizes the given matrix.
-    //New rows/columns are filled with zero.
-    template<glm::length_t COut, glm::length_t ROut,
-             glm::length_t CIn, glm::length_t RIn,
-             typename T,
-             enum glm::qualifier Q = glm::packed_highp>
-    glm::mat<COut, ROut, T, Q> Resize(const glm::mat<CIn, RIn, T, Q>& mIn)
-    {
-        glm::mat<COut, ROut, T, Q> mOut;
-        for (glm::length_t col = 0; col < COut; ++col)
-            glm::column(mOut, col, glm::column(mIn, col));
-        return mOut;
-    }
-
     //Converts a vector of one size into a vector of another size.
     //New components are filled with 0.
     template<glm::length_t LOut,
@@ -150,6 +136,20 @@ namespace Bplus::Math
         for (glm::length_t i = 0; i < LIn; ++i)
             vOut[i] = vIn[i];
         return vOut;
+    }
+
+    //Resizes the given matrix.
+    //New rows/columns are filled with zero.
+    template<glm::length_t COut, glm::length_t ROut,
+             glm::length_t CIn, glm::length_t RIn,
+             typename T,
+             enum glm::qualifier Q = glm::packed_highp>
+    glm::mat<COut, ROut, T, Q> Resize(const glm::mat<CIn, RIn, T, Q>& mIn)
+    {
+        glm::mat<COut, ROut, T, Q> mOut;
+        for (glm::length_t col = 0; col < COut; ++col)
+            glm::column(mOut, col, Resize<ROut>(glm::column(mIn, col)));
+        return mOut;
     }
 }
 #pragma endregion
