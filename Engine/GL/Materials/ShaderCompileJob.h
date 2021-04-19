@@ -87,7 +87,7 @@ namespace Bplus::GL
         //Shader source codes (any empty ones are considered nonexistent):
         std::string VertexSrc, FragmentSrc,
                     GeometrySrc;
-        //TODO: ComputeSource?
+        //TODO: ComputeSource? Make sure to include it in Clear().
         
         //When a "#pragma include" statement appears in the shader code,
         //    this function loads the file's contents.
@@ -96,7 +96,7 @@ namespace Bplus::GL
         //A pre-compiled version of this shader which this instance can attempt to use first.
         //The shader source code is still needed as a fallback.
         //To get the pre-compiled shader binary after the job is run,
-        //    first set this field to an empty
+        //    first set this field to an empty buffer.
         std::optional<PreCompiledShader> CachedBinary;
 
 
@@ -104,9 +104,14 @@ namespace Bplus::GL
         ShaderCompileJob(std::function<FileContentsLoader> includeHandler)
             : IncludeImplementation(includeHandler) { }
 
+        //Clears this compile job's buffers, in preparation for a new compile job.
+        //If 'removeCachedBinary' is false, then the 'CachedBinary' field is not deleted
+        //    but merely has its buffers cleared if it exists.
+        void Clear(bool removeCachedBinary = false);
+
 
         //Pre-processes the given shader source to execute any "#pragma include(...)" statements.
-        //Edits the string in-place.
+        //Edits the given string in-place.
         void PreProcessIncludes(std::string& sourceStr) const;
         //Pre-processes all this instance's shader strings to execute any "#pragma include(...)" statements.
         //The strings are edited in-place.

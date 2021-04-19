@@ -14,10 +14,9 @@ namespace Bplus::GL::Materials
     public:
 
         //The below prefixes are used inside shaders,
-        //    but are mostly hidden from the public API of Bplus::GL classes.
-
-        static const char* Prefix_Structs() { return "S_"; }
-        static const char* Prefix_Uniforms() { return "u_"; }
+        //    but are mostly hidden from the public API of classes in this namespace.
+        static inline const char* Prefix_Structs() { return "S_"; }
+        static inline const char* Prefix_Uniforms() { return "u_"; }
 
 
         ShaderDefinition() { }

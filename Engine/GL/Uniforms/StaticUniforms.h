@@ -52,8 +52,18 @@ namespace Bplus::GL::Uniforms
     };
 
     //Stores the values of shader-compile-time parameters.
-    using StaticUniformValues = std::unordered_map<std::string,
-                                                   std::variant<int64_t, std::string>>;
+    //Is hashable.
+    struct BP_API StaticUniformValues
+    {
+        //Needed for hashing.
+        StaticUniformDefs Definitions;
+
+        //The values, either integer or enum, for each uniform.
+        std::unordered_map<std::string, std::variant<int64_t, std::string>>
+            Values;
+    };
+
+    #pragma region Static value expressions
 
     //TODO: Implement these int and bool expressions so we can have custom rules for rendering states in each CompiledShader
     
@@ -132,4 +142,14 @@ namespace Bplus::GL::Uniforms
     using StaticBoolExpr = _StaticBoolExpr;
 
     #endif
+
+    #pragma endregion
 }
+
+//Make the "static uniform values" struct hashable.
+BP_HASHABLE_START(Bplus::GL::Uniforms::StaticUniformValues)
+    size_t hashed = 1234567890;
+    for (const auto& sName : d.Definitions.Ordering)
+        hashed = Bplus::MultiHash(hashed, d.Values.at(sName));
+    return hashed;
+BP_HASHABLE_END

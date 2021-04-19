@@ -12,15 +12,18 @@ namespace
                       std::vector<glm::fvec4>& buffer,
                       const GradientValue_t& gradient)
     {
+        //Given that we want the first pixel to map to t=0,
+        //    and the last pixel to map to t=1,
+        //    I'm pretty sure that:
+        //  * We use (width - 1) to calculate the texel size
+        //  * We do NOT add a half-pixel offset to each pixel's T value.
+
         uint32_t width = tex.GetSize().x;
-        float texel = 1.0f / width;
         buffer.resize(width);
 
+        float texel = 1.0f / (width - 1);
         for (uint32_t x = 0; x < width; ++x)
-        {
-            float u = (x + 0.5f) * texel;
-            buffer[x] = gradient.Get(u);
-        }
+            buffer[x] = gradient.Get(x * texel);
 
         tex.Set_Color(buffer.data());
     }

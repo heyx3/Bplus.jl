@@ -65,6 +65,18 @@ PreCompiledShader::PreCompiledShader(OglPtr::ShaderProgram program)
 
 size_t ShaderCompileJob::MaxIncludesPerFile = 100;
 
+void ShaderCompileJob::Clear(bool removeCachedBinary)
+{
+    VertexSrc.clear();
+    GeometrySrc.clear();
+    FragmentSrc.clear();
+
+    if (removeCachedBinary)
+        CachedBinary.reset();
+    else if (CachedBinary.has_value())
+        CachedBinary->Data.clear();
+}
+
 void ShaderCompileJob::PreProcessIncludes()
 {
     if (!VertexSrc.empty())

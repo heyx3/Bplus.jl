@@ -7,6 +7,7 @@
 #include "../Uniforms/StaticUniforms.h"
 #include "ShaderCompileJob.h"
 
+
 //TODO: Integrate this project: https://github.com/dfranx/ShaderDebugger
 
 
@@ -24,24 +25,6 @@
 //    the "u_" is appended internally as needed.
 
 
-#pragma region Forward declarations
-
-namespace Bplus::GL::Uniforms
-{
-    //Manages GPU resources for shader uniforms.
-    //For example, a "gradient" needs to be sent to the GPU as a Texture1D.
-    class BP_API Storage;
-}
-
-namespace Bplus::GL::Materials
-{
-    //The base class for B-plus shader definitions.
-    //Knows how to create instances of CompiledShader.
-    class BP_API Factory;
-}
-
-#pragma endregion
-
 
 namespace Bplus::GL::Materials
 {
@@ -52,10 +35,8 @@ namespace Bplus::GL::Materials
 
         //Creates a new instance that manages a given shader program through RAII.
         //Nulls out the input handle after taking ownership of its contents.
-        CompiledShader(Factory& owner,
-                       OglPtr::ShaderProgram&& compiledProgramHandle,
-                       const Uniforms::Definitions& uniforms,
-                       const Uniforms::Storage& storage);
+        CompiledShader(OglPtr::ShaderProgram&& compiledProgramHandle,
+                       const Uniforms::Definitions& uniforms);
 
         ~CompiledShader();
 
@@ -261,7 +242,6 @@ namespace Bplus::GL::Materials
 
 
         OglPtr::ShaderProgram programHandle;
-        Factory* owner;
 
         //Stores "null" for uniforms that have been optimized out.
         //This allows the class to distinguish between incorrect uniform names

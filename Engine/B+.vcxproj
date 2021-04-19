@@ -386,6 +386,7 @@ exit 0</Command>
     <ClCompile Include="GL\Data.cpp" />
     <ClCompile Include="GL\Device.cpp" />
     <ClCompile Include="GL\Materials\CompiledShader.cpp" />
+    <ClCompile Include="GL\Materials\Factory.cpp" />
     <ClCompile Include="GL\Materials\Material.cpp" />
     <ClCompile Include="GL\Materials\ShaderCompileJob.cpp" />
     <ClCompile Include="GL\Materials\ShaderDefinition.cpp" />

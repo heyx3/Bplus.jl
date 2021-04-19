@@ -10,11 +10,9 @@ using namespace Bplus::GL;
 using namespace Bplus::GL::Materials;
 
 
-CompiledShader::CompiledShader(Factory& owner,
-                               OglPtr::ShaderProgram&& compiledProgramHandle,
-                               const Uniforms::Definitions& uniforms,
-                               const Uniforms::Storage& storage)
-    : programHandle(compiledProgramHandle), owner(&owner)
+CompiledShader::CompiledShader(OglPtr::ShaderProgram&& compiledProgramHandle,
+                               const Uniforms::Definitions& uniforms)
+    : programHandle(compiledProgramHandle)
 {
     compiledProgramHandle = OglPtr::ShaderProgram::Null();
 
@@ -191,7 +189,8 @@ CompiledShader::CompiledShader(Factory& owner,
         {
             const auto& gData = std::get<Uniforms::Gradient>(uType.ElementType);
 
-            SetUniform(ptr, storage.GetGradient(uName).GetView().GlPtr);
+            //TODO: Once we have a singleton for common textures, default to using a texture from there.
+            SetUniform(ptr, OglPtr::View::Null());
         }
         else if (std::holds_alternative<Uniforms::TexSampler>(uType.ElementType))
         {
@@ -218,7 +217,7 @@ CompiledShader::~CompiledShader()
 }
 
 CompiledShader::CompiledShader(CompiledShader&& src)
-    : owner(src.owner), programHandle(src.programHandle),
+    : programHandle(src.programHandle),
       uniformPtrs(std::move(src.uniformPtrs)),
       uniformValues(std::move(src.uniformValues))
 {
