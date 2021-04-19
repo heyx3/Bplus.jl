@@ -78,6 +78,8 @@ TEST_LIST = {
     { "Math: PRNG",                      PRNG },
     { "Math: GLM Helpers",               GLMHelpers },
 
+    //TODO: Test the custom hashes for STD types (e.x. std::array, std::tuple)
+
     { "Bplus::GL::Buffers::Buffer basic",     BufferBasic   },
     { "Bplus::GL::Buffers::Buffer get/set data", BufferGetSetData },
 
