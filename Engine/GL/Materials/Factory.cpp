@@ -28,18 +28,18 @@ CompiledShader* Factory::Compile(const Uniforms::StaticUniformValues& statics) c
     auto processShader = [&](const std::string& mainShaderCode, std::string& outField,
                              const char* typeName)
     {
-        if (!mainShaderCode.empty())
-        {
-            outField = shaderStr;
+        if (mainShaderCode.empty())
+            return;
 
-            outField += "\n\n===============================\n"
-                            "==       ";
-            outField +=               typeName;
-            outField +=                      " Shader     ==\n"
-                            "===============================\n\n";
+        outField = shaderStr;
 
-            outField += mainShaderCode;
-        }
+        outField += "\n\n===============================\n"
+                        "==       ";
+        outField +=               typeName;
+        outField +=                      " Shader     ==\n"
+                        "===============================\n\n";
+
+        outField += mainShaderCode;
     };
     processShader(vertShader, shaderCompiler.VertexSrc, "Vertex");
     processShader(geomShader, shaderCompiler.GeometrySrc, "Geometry");

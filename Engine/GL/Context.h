@@ -204,6 +204,8 @@ namespace Bplus::GL
         void SetActiveTarget(OglPtr::Target t);
         void ClearActiveTarget(bool resetViewport = true, bool resetScissor = true);
 
+        OglPtr::ShaderProgram GetActiveShader() const { return activeShader; }
+
         #pragma region Clear operations
 
         //Clears the default framebuffer's color and depth.
@@ -231,7 +233,7 @@ namespace Bplus::GL
         //Optionally draws multiple instances of the mesh data.
         void Draw(const DrawMeshMode_Basic& mesh, const Materials::CompiledShader& shader,
                   std::optional<DrawMeshMode_Indexed> indices = std::nullopt,
-                  std::optional<Math::IntervalU> instancing = std::nullopt) const;
+                  std::optional<Math::IntervalU> instancing = std::nullopt);
 
         //Draws multiple subsets of the given mesh using the given shader,
         //    drawing into the current active Target.
@@ -239,7 +241,7 @@ namespace Bplus::GL
         void Draw(const Buffers::MeshData& mesh, Buffers::PrimitiveTypes primitive,
                   const Materials::CompiledShader& shader,
                   const std::vector<Math::IntervalU>& subsets,
-                  std::optional<DrawMeshMode_IndexedSubset> indices = std::nullopt) const;
+                  std::optional<DrawMeshMode_IndexedSubset> indices = std::nullopt);
 
         //Draws the given mesh using indexed rendering, with the given shader,
         //    drawing into the current active Target.
@@ -247,7 +249,7 @@ namespace Bplus::GL
         //    are actually used, so it can optimize memory access.
         void Draw(const DrawMeshMode_Basic& mesh, const Materials::CompiledShader& shader,
                   const DrawMeshMode_Indexed& indices,
-                  const Math::IntervalU& knownVertexRange) const;
+                  const Math::IntervalU& knownVertexRange);
 
 
         //The notes I took when preparing the draw calls interface:
@@ -392,5 +394,6 @@ namespace Bplus::GL
         VsyncModes vsync;
         
         OglPtr::Target activeRT;
+        OglPtr::ShaderProgram activeShader;
     };
 }

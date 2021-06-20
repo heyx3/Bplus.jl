@@ -3,14 +3,30 @@
 #include "../Platform.h"
 
 
-//A type-safe form of typedef, that wraps the underlying data into a struct.
+//A type-safe form of typedef, which wraps the underlying data into a struct.
 //Based on: https://foonathan.net/2016/10/strong-typedefs/
 
+
 #define strong_typedef_start(Tag, UnderlyingType, classAttrs) \
-    struct classAttrs Tag : Bplus::_strong_typedef<Tag, UnderlyingType> { \
+    struct classAttrs Tag : Bplus::_strong_typedef<Tag, UnderlyingType> \
+    { \
+    public: \
         using Data_t = UnderlyingType; \
         using Me_t = Tag; \
-        using _strong_typedef::_strong_typedef; /* Make the constructors available */
+        /* Constructors from a value: */ \
+        explicit Tag(const Data_t& value) \
+            : Bplus::_strong_typedef<Tag, UnderlyingType>(value) { } \
+        explicit Tag(Data_t&& value) \
+            : Bplus::_strong_typedef<Tag, UnderlyingType>(std::move(value)) { } \
+        /* Constructors from another instance: */ \
+        Tag(const Me_t&  value) : Bplus::_strong_typedef<Tag, UnderlyingType>(value.Get()) { } \
+        Tag(      Me_t&& value) : Bplus::_strong_typedef<Tag, UnderlyingType>(std::move(value.Get())) { } \
+        /* Define assignment operators */ \
+        Me_t& operator=(const Me_t&    t) { new (this) Me_t(t.Get());            return *this; } \
+        Me_t& operator=(      Me_t&&   t) { new (this) Me_t(std::move(t.Get())); return *this; } \
+        Me_t& operator=(const Data_t&  t) { new (this) Me_t(t);                  return *this; } \
+        Me_t& operator=(      Data_t&& t) { new (this) Me_t(std::move(t));       return *this; }
+
 
 #define strong_typedef_end \
     };
@@ -27,17 +43,20 @@
 
 
 //Adds a default constructor initializing to the given value.
+//You should not add this if you've already added the "null" value.
 //NOTE that this MUST be placed between 'strong_typedef_start' and 'strong_typedef_end'!
 #define strong_typedef_defaultConstructor(Tag, defaultVal) \
     Tag() : Tag(defaultVal) { }
 
 
 //Adds a "Null" value, given its actual integer value.
+//Also adds a default constructor which uses that value.
 //NOTE that this MUST be placed between 'strong_typedef_start' and 'strong_typedef_end'!
-#define strong_typedef_null(intValue) \
+#define strong_typedef_null(Tag, intValue) \
     static const Data_t null = intValue; \
     static const Me_t Null() { return Me_t{null}; } \
-    bool IsNull() const { return Get() == null; }
+    bool IsNull() const { return Get() == null; } \
+    strong_typedef_defaultConstructor(Tag, null)
 
 
 //Defines a default hash implementation for the type,
@@ -57,13 +76,12 @@ namespace Bplus
     template <class Tag, typename T>
     struct _strong_typedef
     {
-        _strong_typedef() = default; //Normally deleted thanks to the below constructors
+    public:
 
-        explicit _strong_typedef(const T& value) : value_(value) { }
-        explicit _strong_typedef(T&& value)
-            noexcept(std::is_nothrow_move_constructible<T>::value)
-            : value_(std::move(value)) { }
+        _strong_typedef(const T& val) : value_(val) { }
+        _strong_typedef(T&& val) : value_(std::move(val)) { }
 
+        //Explicit cast to the underlying data:
         explicit operator T&() noexcept { return value_; }
         explicit operator const T&() const noexcept { return value_; }
         
@@ -76,7 +94,7 @@ namespace Bplus
             swap(static_cast<T&>(a), static_cast<T&>(b));
         }
 
-    private:
+    protected:
         T value_;
     };
 }

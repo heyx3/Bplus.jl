@@ -4,18 +4,17 @@
 
 namespace Bplus::GL::Materials
 {
-    //A shader program, combined with parmeter values.
-    //More precisely, a set of swappable shader programs that have
-    //    different compile-time flags.
+    //A specific instance of a shader, with custom parameter values.
+    //The shader is loaded from a Factory.
     class Material
     {
     public:
 
-        //Gets the factory that compiles this material's shader variants.
-        Factory& GetOrigin() const { return *origin; }
+        //Gets the factory that manages this Material's shader variants.
+        Factory& GetFactory() const { return *factory; }
 
 
-        Material(Factory& origin) : origin(&origin), currentVariant(nullptr), isActive(false) { }
+        Material(Factory& factory) : factory(&factory), currentVariant(nullptr), isActive(false) { }
         virtual ~Material() { }
 
 
@@ -26,7 +25,7 @@ namespace Bplus::GL::Materials
     private:
 
         CompiledShader* currentVariant;
-        Factory* origin;
+        Factory* factory;
 
         //Whether this Material is currently the one that all drawing is done in.
         bool isActive;

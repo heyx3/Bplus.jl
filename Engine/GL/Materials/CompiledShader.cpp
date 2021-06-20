@@ -234,11 +234,6 @@ CompiledShader& Bplus::GL::Materials::CompiledShader::operator=(CompiledShader&&
     return *this;
 }
 
-void CompiledShader::Activate() const
-{
-    glUseProgram(programHandle.Get());
-}
-
 CompiledShader::UniformAndStatus CompiledShader::CheckUniform(const std::string& name) const
 {
     //Check whether the name exists.

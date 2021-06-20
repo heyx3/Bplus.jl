@@ -75,4 +75,8 @@ namespace Bplus::GL::Materials
         //    and returns it (or null if compilation failed).
         CompiledShader* Compile(const Uniforms::StaticUniformValues& statics) const;
     };
+
+    //The standard way to store a Factory is to use unique_ptr
+    //    so that we don't have to worry about them being moved around.
+    using FactoryPtr = std::unique_ptr<Factory>;
 }

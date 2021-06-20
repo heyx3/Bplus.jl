@@ -235,6 +235,12 @@ void Context::RefreshState()
         writeMask = (GLuint)tempI;
     }
 
+    //Get the active Target and shader.
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &tempI);
+    activeRT = (OglPtr::Target::Data_t)tempI;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &tempI);
+    activeShader = (OglPtr::ShaderProgram::Data_t)tempI;
+
     //Update other systems that want to refresh.
     for (auto& f : contextThreadData.RefreshCallbacks)
         f();
@@ -303,9 +309,13 @@ void Context::ClearScreen(float depth)
 
 void Context::Draw(const DrawMeshMode_Basic& mesh, const Materials::CompiledShader& shader,
                    std::optional<DrawMeshMode_Indexed> _indices,
-                   std::optional<Math::IntervalU> _instancing) const
+                   std::optional<Math::IntervalU> _instancing)
 {
-    shader.Activate();
+    if (activeShader != shader.GetOglPtr())
+    {
+        activeShader = shader.GetOglPtr();
+        glUseProgram(activeShader.Get());
+    }
     mesh.Data.Activate();
 
     auto primitive = (GLenum)mesh.Primitive;
@@ -381,9 +391,13 @@ void Context::Draw(const DrawMeshMode_Basic& mesh, const Materials::CompiledShad
 void Context::Draw(const Buffers::MeshData& mesh, Buffers::PrimitiveTypes primitive,
                    const Materials::CompiledShader& shader,
                    const std::vector<Math::IntervalU>& subsets,
-                   std::optional<DrawMeshMode_IndexedSubset> _indices) const
+                   std::optional<DrawMeshMode_IndexedSubset> _indices)
 {
-    shader.Activate();
+    if (activeShader != shader.GetOglPtr())
+    {
+        activeShader = shader.GetOglPtr();
+        glUseProgram(activeShader.Get());
+    }
     mesh.Activate();
 
     bool useIndexedRendering = _indices.has_value();
@@ -450,9 +464,13 @@ void Context::Draw(const Buffers::MeshData& mesh, Buffers::PrimitiveTypes primit
 }
 void Context::Draw(const DrawMeshMode_Basic& mesh, const Materials::CompiledShader& shader,
                    const DrawMeshMode_Indexed& indices,
-                   const Math::IntervalU& knownVertexRange) const
+                   const Math::IntervalU& knownVertexRange)
 {
-    shader.Activate();
+    if (activeShader != shader.GetOglPtr())
+    {
+        activeShader = shader.GetOglPtr();
+        glUseProgram(activeShader.Get());
+    }
     mesh.Data.Activate();
 
     BP_ASSERT(mesh.Data.HasIndexData(),

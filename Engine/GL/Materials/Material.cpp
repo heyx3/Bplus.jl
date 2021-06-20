@@ -9,8 +9,6 @@ void Material::ChangeVariant(CompiledShader& newVariant)
 {
     if (isActive)
     {
-        newVariant.Activate();
-
         //TODO: Update uniforms for the new variant.
     }
 

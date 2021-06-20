@@ -301,12 +301,11 @@ BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::BlendOps);
 #pragma region OpenGL handle typedefs
 
 //Creates a type-safe wrapper around a raw OpenGL integer value.
-//MUST be invoked in the global namespace!
+//MUST be invoked in the global namespace due to the std::hash implementation!
 #define MAKE_GL_STRONG_TYPEDEF(NewName, glName, nullValue) \
     namespace Bplus::GL::OglPtr { \
         strong_typedef_start(NewName, glName, BP_API) \
-            strong_typedef_null(nullValue) \
-            strong_typedef_defaultConstructor(NewName, null) \
+            strong_typedef_null(NewName, nullValue) \
             strong_typedef_equatable \
         strong_typedef_end \
     } \

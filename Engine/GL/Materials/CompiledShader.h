@@ -49,9 +49,7 @@ namespace Bplus::GL::Materials
         CompiledShader& operator=(CompiledShader&& src);
 
 
-        //Sets this shader as the active one, meaning that
-        //    all future rendering operations are done with it.
-        void Activate() const;
+        OglPtr::ShaderProgram GetOglPtr() const { return programHandle; }
 
         //Gets whether the given uniform was optimized out of the shader.
         bool WasOptimizedOut(const std::string& uniformName) const
