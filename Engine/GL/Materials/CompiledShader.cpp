@@ -17,8 +17,8 @@ CompiledShader::CompiledShader(OglPtr::ShaderProgram&& compiledProgramHandle,
     compiledProgramHandle = OglPtr::ShaderProgram::Null();
 
     //Build the map of uniforms and their current values.
-    uniforms.VisitAllUniforms([&](const std::string& uName,
-                                  const Uniforms::Type& uType)
+    uniforms.VisitAllUniforms(false,
+    [&](const std::string& uName, const Uniforms::Type& uType)
     {
         BP_ASSERT_STR(uniformPtrs.find(uName) == uniformPtrs.end(),
                       "Uniform '" + uName +
@@ -196,9 +196,10 @@ CompiledShader::CompiledShader(OglPtr::ShaderProgram&& compiledProgramHandle,
         {
             const auto& tData = std::get<Uniforms::TexSampler>(uType.ElementType);
             
-            //For now, textures default to null. There's a note elsewhere for adding default texture values.
+            //TODO: Once we have a singleton for common textures, default to using a texture from there.
             SetUniform(ptr, OglPtr::View::Null());
         }
+        //TODO: Once we support buffers, we should provide default buffers filled with 0 values.
         else
         {
             BP_ASSERT_STR(false,

@@ -14,19 +14,24 @@ namespace
                       const Type& uType,
                       const Definitions& defs,
                       std::unordered_set<std::string>& usedStructs,
+                      bool iterateSimpleArrayElements,
                       bool iterateArrays = false)
     {
         BP_ASSERT(!iterateArrays || !uType.IsArray(),
                   "Passed the 'iterate array' flag on a uniform that isn't an array");
 
         //If this is a new array uniform, iterate its elements.
-        if (!iterateArrays && uType.IsArray())
+        //Unless it's an array of simple (non-struct) data, and 'iterateSimpleArrayElements' is false.
+        bool encounteredArray = uType.IsArray() && !iterateArrays,
+             shouldIterateArray = iterateSimpleArrayElements ||
+                                  std::holds_alternative<StructInstance>(uType.ElementType);
+        if (encounteredArray && shouldIterateArray)
         {
             for (uint32_t i = 0; i < uType.ArrayCount; ++i)
             {
                 VisitUniform(func,
                              uName + "[" + std::to_string(i) + "]", uType,
-                             defs, usedStructs, true);
+                             defs, usedStructs, iterateSimpleArrayElements, true);
             }
         }
         //Otherwise, if this is a struct uniform, iterate its fields.
@@ -37,7 +42,8 @@ namespace
             //Avoid infinite loops of struct A containing struct B containing struct A...
             BP_ASSERT_STR(
                 usedStructs.find(structName) == usedStructs.end(),
-                "Nested reference to a struct in a struct in a struct, etc. With struct '" + structName + "'"
+                "Nested reference to a struct in a struct in a struct, etc. "
+                  "Involving struct '" + structName + "'"
             );
             usedStructs.insert(structName);
 
@@ -49,7 +55,7 @@ namespace
             for (const auto& [fieldName, fieldType] : structInfo->second)
             {
                 VisitUniform(func, uName + "." + fieldName,
-                             fieldType, defs, usedStructs);
+                             fieldType, defs, usedStructs, iterateSimpleArrayElements);
             }
         }
         //Otherwise, we've found an "atomic" uniform field.
@@ -174,12 +180,14 @@ std::string Definitions::Import(const Definitions& newDefs)
 
     return "";
 }
-void Definitions::VisitAllUniforms(std::function<void(const std::string&, const Type&)> visitor) const
+void Definitions::VisitAllUniforms(bool iterateSimpleArrayElements,
+                                   std::function<void(const std::string&, const Type&)> visitor) const
 {
     std::unordered_set<std::string> usedStructs;
     for (const auto& [uName, uType] : Uniforms)
     {
-        VisitUniform(visitor, uName, uType, *this, usedStructs);
+        VisitUniform(visitor, uName, uType, *this, usedStructs,
+                     iterateSimpleArrayElements);
         usedStructs.clear();
     }
 }

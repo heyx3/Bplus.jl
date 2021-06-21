@@ -162,9 +162,16 @@ namespace Bplus::GL::Uniforms
         //Tries to add the given uniforms/structs to this instance.
         //Returns an error message, or an empty string if everything went fine.
         std::string Import(const Definitions& newDefs);
-        //Executes the given function on every individual uniform element.
-        //For example, it iterates over each element of an array, and each field of a struct.
-        void VisitAllUniforms(std::function<void(const std::string&, const Type&)> visitor) const;
+
+        //Executes the given function on every individual uniform.
+        //For example, it iterates over each individual element of an array of structs,
+        //    and individual field of any struct.
+        //If 'iterateSimpleArrayElements' is true, then it also visits each individual element
+        //    of simple arrays (array of fvec3, array of dmat2x4, array of bool, etc).
+        //Otherwise, it visits those arrays as a whole.
+        //TODO: Unit-test.
+        void VisitAllUniforms(bool iterateSimpleArrayElements,
+                              std::function<void(const std::string&, const Type&)> visitor) const;
     };
 }
 
