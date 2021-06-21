@@ -169,6 +169,13 @@ namespace Bplus::Math
 //Simple Iterator Template, which makes it much easier to construct custom STL iterators.
 #include <iterator_tpl.h>
 
+//TCB's "span" implementation, bringing std::span to pre-C++20 code.
+//TODO: Integrate "span" in more places that use raw pointers or std::vector.
+#define TCB_SPAN_NAMESPACE_NAME Bplus
+#define TCB_SPAN_EXPECT(cond) BP_ASSERT(cond, "TCB std::span assert: " #cond)
+#include <span/span.hpp>
+
+
 //zlib, a popular compression algorithm.
 #define ZLIB_WINAPI
 #define ZLIB_DLL

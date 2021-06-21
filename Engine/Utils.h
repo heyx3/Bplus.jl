@@ -19,6 +19,7 @@
 #include "Utils/Streams.hpp"
 
 
+//TODO: Move this into "Dependencies" and check that it doesn't break anything.
 //The BETTER_ENUM() macro, to define an enum
 //    with added string conversions and iteration.
 //There is one downside: to use a literal value, it must be prepended with a '+',
