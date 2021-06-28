@@ -108,7 +108,7 @@
       <ConformanceMode>false</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <DisableSpecificWarnings>4996;4251;26495;6011;26812;26819</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4996;4251;26495;6011;26812;26819;26439</DisableSpecificWarnings>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessKeepComments>false</PreprocessKeepComments>
@@ -174,7 +174,7 @@ exit 0</Command>
       <ConformanceMode>false</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <DisableSpecificWarnings>4996;4251;26495;6011;26812;26819</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4996;4251;26495;6011;26812;26819;26439</DisableSpecificWarnings>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessKeepComments>false</PreprocessKeepComments>
@@ -242,7 +242,7 @@ exit 0</Command>
       <ConformanceMode>false</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <DisableSpecificWarnings>4996;4251;26495;6011;26812;26819</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4996;4251;26495;6011;26812;26819;26439</DisableSpecificWarnings>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessKeepComments>false</PreprocessKeepComments>
       <TreatSpecificWarningsAsErrors>4715;4172</TreatSpecificWarningsAsErrors>
@@ -312,7 +312,7 @@ exit 0</Command>
       <ConformanceMode>false</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <DisableSpecificWarnings>4996;4251;26495;6011;26812;26819</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4996;4251;26495;6011;26812;26819;26439</DisableSpecificWarnings>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessKeepComments>false</PreprocessKeepComments>
       <TreatSpecificWarningsAsErrors>4715;4172</TreatSpecificWarningsAsErrors>

@@ -52,18 +52,15 @@ namespace Bplus::GL::Uniforms
     };
 
     //Stores the values of shader-compile-time parameters.
-    //Is hashable.
+    //Is hashable/equatable.
     struct BP_API StaticUniformValues
     {
-        //Needed for hashing.
-        StaticUniformDefs Definitions;
-
         //The values, either integer or enum, for each uniform.
         std::unordered_map<std::string, std::variant<int64_t, std::string>>
             Values;
     };
 
-    #pragma region Static value expressions
+    #pragma region Static value expressions (unused for now)
 
     //TODO: Implement these int and bool expressions so we can have custom rules for rendering states in each CompiledShader
     
@@ -146,10 +143,24 @@ namespace Bplus::GL::Uniforms
     #pragma endregion
 }
 
-//Make the "static uniform values" struct hashable.
+//Make the "StaticUniformValues" struct equatable.
+bool operator==(const Bplus::GL::Uniforms::StaticUniformValues& a,
+                const Bplus::GL::Uniforms::StaticUniformValues& b)
+{
+    return a.Values == b.Values;
+}
+
+//Make the "StaticUniformValues" struct hashable.
 BP_HASHABLE_START(Bplus::GL::Uniforms::StaticUniformValues)
+    using std::hash;
+    hash<decltype(d.Values)::mapped_type> hasher;
+
     size_t hashed = 1234567890;
-    for (const auto& sName : d.Definitions.Ordering)
-        hashed = Bplus::MultiHash(hashed, d.Values.at(sName));
+
+    //Combine the individual value hashes with an order-independent operation,
+    //    because the values are stored in an unordered dictionary.
+    for (const auto& [key, value] : d.Values)
+        hashed ^= hasher(value);
+
     return hashed;
 BP_HASHABLE_END

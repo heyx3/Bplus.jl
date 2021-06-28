@@ -50,9 +50,12 @@ namespace Bplus
         return b;
     }
 
+    //Swaps the bytes in some data between little-endian and big-endian.
+    //TODO: Take "src" as a reference instead of a pointer.
     template<typename T>
     void SwapByteOrder(const T* src, std::byte* dest)
     {
+        //For small data, we can do this with simple bitwise operations.
         if constexpr (sizeof(T) == 1)
         {
             std::memcpy(dest, src, 1);
@@ -73,6 +76,7 @@ namespace Bplus
                      ((asInt & 0xFF000000) >> 24));
             std::memcpy(dest, &asInt, 4);
         }
+        //For any other byte-size data, fall back to a loop.
         else
         {
             const std::byte* srcBytes = (const std::byte*)src;
@@ -82,6 +86,7 @@ namespace Bplus
     }
 
 
+    //Makes a static array, filled with the given value.
     template<typename T, size_t Size>
     std::array<T, Size> MakeArray(const T& fillValue)
     {
@@ -90,6 +95,8 @@ namespace Bplus
         return arr;
     }
 
+    //Takes a group of iterators (i.e. things with "begin()" and "end()" methods)
+    //    and combines them together into one vector.
     template<typename T, typename ... Inputs>
     std::vector<T> Concatenate(const Inputs& ... inputs)
     {
@@ -98,8 +105,39 @@ namespace Bplus
         return output;
     }
 
+    //TODO: "Enumerate()", a decorator for iterators, that pairs each element with its index.
 
-    //A helper function that turns the "glCreateX()" functions into a simple expression.
+    // "overload", a C++17 trick that makes it easier to work with std::variant and std::visit.
+    //Example usage:
+    /*
+        std::variant<...> myVar = ...;
+        std::visit(overload(
+            [](int i) { cout << "Value is an int: " << i; },
+            [](std::string) { cout << "Value is some string"; },
+            [](auto&&) { cout << "value is something else"; }
+        ), myVar);
+    */
+    #pragma region overload
+
+    //Source: https://arne-mertz.de/2018/05/overload-build-a-variant-visitor-on-the-fly/
+
+    template <class ...Fs>
+    struct overload : Fs... {
+        template <class ...Ts>
+        overload(Ts&& ...ts) : Fs{ std::forward<Ts>(ts) }...
+        {}
+
+        using Fs::operator()...;
+    };
+
+    template <class ...Ts>
+    overload(Ts&&...)->overload<std::remove_reference_t<Ts>...>;
+
+    #pragma endregion
+
+
+    //Allows you to invoke the "glCreate[X]()" functions as a simple expression,
+    //    instead of having to create a variable to be written into.
     template<typename GL_t>
     GL_t GlCreate(void (*glFunc)(int, GL_t*))
     {

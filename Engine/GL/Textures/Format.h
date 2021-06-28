@@ -328,3 +328,5 @@ namespace Bplus::GL::Textures
     //Converts the given texture format to a human-readable string.
     std::string BP_API ToString(const Format& format);
 }
+
+//TODO: Make the various structs hashable/equatable (see the TODO in the Utils section first).

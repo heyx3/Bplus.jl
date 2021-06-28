@@ -19,7 +19,6 @@ namespace Bplus::GL::Uniforms
 
         Storage(const Definitions& uniforms);
 
-
         const Textures::Texture1D& GetGradient(const std::string& name) const;
         void SetGradient(const std::string& name,
                          const Uniforms::GradientValue_t& newValue);

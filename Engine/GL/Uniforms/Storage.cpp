@@ -17,6 +17,8 @@ namespace
         //    I'm pretty sure that:
         //  * We use (width - 1) to calculate the texel size
         //  * We do NOT add a half-pixel offset to each pixel's T value.
+        //  * We need to change the sampling range in the shader from 0-1, shrinking both ends by half a pixel
+        //TODO: Do the above point 3 when we define shader built-ins
 
         uint32_t width = tex.GetSize().x;
         buffer.resize(width);

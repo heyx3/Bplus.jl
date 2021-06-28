@@ -6,11 +6,14 @@
 
 namespace Bplus::GL::Materials
 {
+    //CompiledShaders are expected to never move after creation,
+    //    to keep the rest of the Material classes simpler,
+    //    so the norm will be to store them in unique_ptr.
     using CompiledShaderPtr = std::unique_ptr<CompiledShader>;
 
 
-    //A group of shaders that can be seamlessly swapped out
-    //    based on shader-compile-time settings.
+    //A group of shaders that are generated from the same source,
+    //    but with different preprocessor #defines.
     //Each individual compiled shader is called a "variant".
     class BP_API Factory
     {
@@ -23,7 +26,8 @@ namespace Bplus::GL::Materials
                                      const Factory& me,
                                      const std::string& errorMsg);
 
-        //Default behavior: BP_ASSERT_STR(false, ...)
+        //What to do if a shader fails to compile.
+        //Defaults to a BP_ASSERT failure.
         std::function<ErrorCallback_t> OnError =
             [](const ShaderCompileJob&, const Factory&,
                const std::string& errorMsg)
@@ -31,8 +35,8 @@ namespace Bplus::GL::Materials
                 BP_ASSERT_STR(false, "Error compiling shader: " + errorMsg);
             };
 
-        //Processes "include" statements in any shaders.
-        //Default behavior: returns an error for every include statement.
+        //Processes "include" statements in the shaders.
+        //Default behavior: fails to process it.
         std::function<FileContentsLoader> ProcessIncludeStatement =
             [](const std::filesystem::path&, std::stringstream&)
             {
@@ -55,8 +59,8 @@ namespace Bplus::GL::Materials
         const Uniforms::Definitions&       GetUniformDefs() const { return shaderDefs.GetUniforms(); }
         const Uniforms::StaticUniformDefs& GetStaticDefs() const { return shaderDefs.GetStatics(); }
 
-        //Gets the shader variant for the given static uniform values.
-        //If this is the first time this variant is being used,
+        //Gets the shader variant for the given set of static uniform values.
+        //If this is the first time a particular variant is being used,
         //    it will be generated and compiled, which can cause a slight hang.
         //Returns null if the shader didn't compile.
         const CompiledShader* GetVariant(const Uniforms::StaticUniformValues& statics) const;

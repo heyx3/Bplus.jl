@@ -113,6 +113,8 @@ namespace Bplus::GL::Uniforms
         SamplerTypes SamplingType = SamplerTypes::Float;
     };
 
+    //TODO: Image type, to complement TexSampler (see ImgHandle vs TexHandle).
+
     //TODO: SSBO buffer definition. Very similar to a struct definition,
     //    but with additional "memory qualifiers"
     //    and the last element can be a dynamically-sized array.

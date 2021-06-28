@@ -85,6 +85,7 @@ namespace Bplus
 
 //Wraps the hashing of a type into a simple MultiHash call
 //    enumerating the object's fields.
+//TODO: Offer another macro which combines this one with equality/inequality operators. Make sure all hashable things also have equality operators.
 #define BP_HASHABLE_SIMPLE(Type, ...) BP_HASHABLE_SIMPLE_FULL(, Type, __VA_ARGS__)
 
 #pragma endregion
