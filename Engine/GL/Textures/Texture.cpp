@@ -122,8 +122,8 @@ void ImgHandle::Deactivate()
 
 #pragma region Views
 
-TexView::TexView(const Texture& owner, TexHandle& handle)
-    : GlPtr(handle.ViewGlPtr), Owner(owner), Handle(handle)
+TexView::TexView(TexHandle& handle)
+    : GlPtr(handle.ViewGlPtr), Handle(handle)
 {
     Handle.Activate();
 }
@@ -148,8 +148,8 @@ TexView& TexView::operator=(const TexView& cpy)
     return *this;
 }
 
-ImgView::ImgView(const Texture& owner, ImgHandle& handle)
-    : GlPtr(handle.ViewGlPtr), Owner(owner), Handle(handle)
+ImgView::ImgView(ImgHandle& handle)
+    : GlPtr(handle.ViewGlPtr), Handle(handle)
 {
     Handle.Activate();
 }
@@ -264,10 +264,11 @@ void Texture::SetDepthStencilSource(DepthStencilSources newSource)
     }
 }
 
-TexView Texture::GetViewFull(std::optional<Sampler<3>> customSampler) const
+TexHandle& Texture::GetViewHandleFull(std::optional<Sampler<3>> customSampler) const
 {
     auto sampler = customSampler.value_or(sampler3D);
 
+    //Error-checking on the sampler type:
     bool isStencilSampler = format.IsStencilOnly() ||
                             depthStencilMode == +DepthStencilSources::Stencil,
          isDepthSampler = format.IsDepthOnly() ||
@@ -278,21 +279,32 @@ TexView Texture::GetViewFull(std::optional<Sampler<3>> customSampler) const
              "Can't use a depth comparison sampler (a.k.a. 'shadow sampler') on a non-depth texture");
 
     auto found = texHandles.find(sampler);
+
+    //Create the handle if it doesn't exist.
     if (found == texHandles.end())
         if (customSampler.has_value())
-            texHandles.emplace(sampler, new TexHandle(this, sampler));
+            found = texHandles.emplace(sampler, new TexHandle(this, sampler)).first;
         else
-            texHandles.emplace(sampler, new TexHandle(this));
+            found = texHandles.emplace(sampler, new TexHandle(this)).first;
 
-    return TexView(*this, *texHandles[sampler]);
+    return *found->second;
 }
-ImgView Texture::GetView(ImgHandleData params) const
+ImgHandle& Texture::GetViewHandle(ImgHandleData params) const
 {
     auto found = imgHandles.find(params);
     if (found == imgHandles.end())
-        imgHandles.emplace(params, new ImgHandle(this, params));
-    
-    return ImgView(*this, *imgHandles[params]);
+        found = imgHandles.emplace(params, new ImgHandle(this, params)).first;
+
+    return *found->second;
+}
+
+TexView Texture::GetViewFull(std::optional<Sampler<3>> customSampler) const
+{
+    return TexView(GetViewHandleFull(customSampler));
+}
+ImgView Texture::GetView(ImgHandleData params) const
+{
+    return ImgView(GetViewHandle(params));
 }
 
 #pragma endregion

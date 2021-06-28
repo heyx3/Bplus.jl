@@ -241,6 +241,13 @@ namespace Bplus::GL::Textures
                                   std::make_optional(customSampler.value().ChangeDimensions<3>()) :
                                   std::nullopt);
         }
+        //Gets (or creates) a handle for views of this texture with the given sampler.
+        TexHandle& GetViewHandle(std::optional<Sampler<2>> customSampler = std::nullopt) const
+        {
+            return GetViewHandleFull(customSampler.has_value() ?
+                                     std::make_optional(customSampler.value().ChangeDimensions<3>()) :
+                                     std::nullopt);
+        }
         
         Sampler<2> GetSampler() const { return GetSamplerFull().ChangeDimensions<2>(); }
 

@@ -106,8 +106,15 @@ namespace Bplus::GL::Textures
         TexView GetView(std::optional<Sampler_t> customSampler = std::nullopt) const
         {
             return GetViewFull(customSampler.has_value() ?
-                               std::make_optional(customSampler.value().ChangeDimensions<3>()) :
-                               std::nullopt);
+                                   std::make_optional(customSampler.value().ChangeDimensions<3>()) :
+                                   std::nullopt);
+        }
+        //Gets (or creates) a handle for views of this texture with the given sampler.
+        TexHandle& GetViewHandle(std::optional<Sampler_t> customSampler = std::nullopt) const
+        {
+            return GetViewHandleFull(customSampler.has_value() ?
+                                         std::make_optional(customSampler.value().ChangeDimensions<3>()) :
+                                         std::nullopt);
         }
 
         const Sampler_t& GetSampler() const { return GetSamplerFull().ChangeDimensions<D>(); }

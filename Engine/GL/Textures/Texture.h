@@ -13,33 +13,21 @@ namespace Bplus::GL::Textures
     struct TexView;
     struct ImgView;
 
+    //TODO: TexHandle and ImgHandle should store references to their owning Texture, and that Texture should update the references when moved.
 
-    #pragma region TexHandle and ImgHandle
+    #pragma region TexHandle
 
-    //A helper class for Texture, representing a bindless handle.
-    //Should not and cannot be used outside of that class,
-    //    but it can't be nested in Texture due to forward-declaration problems.
+    //A helper class for Texture, representing
+    //    a reference to a Texture with a specific sampler.
+    //You can provide this handle to shaders to sample from the texture.
     struct BP_API TexHandle
     {
         const OglPtr::Sampler SamplerGlPtr = OglPtr::Sampler::Null();
         const OglPtr::View ViewGlPtr;
 
-        //No copying, but moves are fine.
+        //No copying or moving; this class is expected to stay where it was first allocated.
         TexHandle(const TexHandle& cpy) = delete;
-        TexHandle& operator=(const TexHandle& cpy) = delete;
-        TexHandle(TexHandle&& src);
-        TexHandle& operator=(TexHandle&& src)
-        {
-            //Call deconstructor, then move constructor.
-            //Only bother changing things if they represent different handles.
-            if (this != &src)
-            {
-                this->~TexHandle();
-                new (this) TexHandle(std::move(src));
-            }
-
-            return *this;
-        }
+        TexHandle(TexHandle&& src) = delete;
 
         void Activate();
         void Deactivate();
@@ -59,11 +47,14 @@ namespace Bplus::GL::Textures
         ~TexHandle();
 
         uint_fast32_t activeCount = 0;
-        bool skipDestructor = false;
+        bool skipDestructor = false;//TODO: I think this can be replaced with checking if the OglPtr is null
     };
 
+    #pragma endregion
 
-    //Represents the parameters that come with an "ImgView".
+    #pragma region ImgHandle
+
+    //Represents the parameters that come with an ImgHandle.
     struct BP_API ImgHandleData
     {
         uint_mipLevel_t MipLevel;
@@ -92,22 +83,11 @@ namespace Bplus::GL::Textures
         const OglPtr::View ViewGlPtr;
         const ImgHandleData Params;
 
-        //No copying, but moves are fine.
+        //No copying or moving; this class is expected to stay where it was first allocaated.
         ImgHandle(const ImgHandle& cpy) = delete;
         ImgHandle& operator=(const ImgHandle& cpy) = delete;
-        ImgHandle(ImgHandle&& src);
-        ImgHandle& operator=(ImgHandle&& src)
-        {
-            //Call deconstructor, then move constructor.
-            //Only bother changing things if they represent different handles.
-            if (this != &src)
-            {
-                this->~ImgHandle();
-                new (this) ImgHandle(std::move(src));
-            }
-
-            return *this;
-        }
+        ImgHandle(ImgHandle&& src) = delete;
+        ImgHandle& operator=(ImgHandle&& src) = delete;
 
         void Activate();
         void Deactivate();
@@ -127,24 +107,25 @@ namespace Bplus::GL::Textures
 
 
         uint_fast32_t activeCount = 0;
-        bool skipDestructor = false;
+        bool skipDestructor = false; //TODO: I think this can be replaced with checking if the OglPtr is null
     };
 
     #pragma endregion
 
 
-    //A texture combined with a custom sampler.
+    //An active reference to a TexHandle.
+    //For as long as at least one of these is alive,
+    //    the TexHandle is considered "active" by the OpenGL driver.
+    //You must only sample from a texture handle when it is "active".
     struct BP_API TexView
     {
         const OglPtr::View GlPtr;
-
-        const Texture& Owner;
         TexHandle& Handle;
 
-        TexView(const Texture& owner, TexHandle& handle);
+        TexView(TexHandle& handle);
         ~TexView();
 
-        TexView(const TexView& cpy) : TexView(cpy.Owner, cpy.Handle) { }
+        TexView(const TexView& cpy) : TexView(cpy.Handle) { }
         TexView& operator=(const TexView& cpy);
         TexView(TexView&& from) : TexView(from) { }
         TexView& operator=(TexView&& from) { return operator=(from); }
@@ -154,18 +135,16 @@ namespace Bplus::GL::Textures
     };
 
     //A specific mip-level of a texture,
-    //    for direct reading and writing (no sampling).
+    //    for reading and writing of specific pixels.
     struct BP_API ImgView
     {
         const OglPtr::View GlPtr;
-
-        const Texture& Owner;
         ImgHandle& Handle;
 
-        ImgView(const Texture& owner, ImgHandle& handle);
+        ImgView(ImgHandle& handle);
         ~ImgView();
 
-        ImgView(const ImgView& cpy) : ImgView(cpy.Owner, cpy.Handle) { }
+        ImgView(const ImgView& cpy) : ImgView(cpy.Handle) { }
         ImgView& operator=(const ImgView& cpy);
         ImgView(ImgView&& from) : ImgView(from) { }
         ImgView& operator=(ImgView&& from) { return operator=(from); }
@@ -230,14 +209,25 @@ namespace Bplus::GL::Textures
         //Not allowed for compressed-format textures.
         void RecomputeMips();
         
+        //Gets (or creates) a view of this texture with the given 3D sampler.
+        //Child classes should provide a "GetView()" with
+        //    the correct-dimensional sampler.
+        TexView GetViewFull(std::optional<Sampler<3>> customSampler = std::nullopt) const;
         //Gets (or creates) an "image" view of this texture,
         //    allowing simple reads/writes but no sampling.
         ImgView GetView(ImgHandleData params) const;
 
-        //Gets (or creates) a view of this texture with the given 3D sampler.
-        //Child classes should provide a public "GetView() with
+        //Gets (or creates) a handle for sampling from this texture with the given 3D sampler.
+        //Child classes should provide a "GetViewHandle()" with
         //    the correct-dimensional sampler.
-        TexView GetViewFull(std::optional<Sampler<3>> customSampler = std::nullopt) const;
+        //If no sampler is provided, this texture's built-in one is used.
+        //NOTE: you must create a "View" to use the handle in a shader, so
+        //    it's recommended to call "GetView()" or "GetViewFull()" instead.
+        TexHandle& GetViewHandleFull(std::optional<Sampler<3>> customSampler = std::nullopt) const;
+        //Gets (or creates) an "image" handle, for reading/writing individual pixels.
+        //NOTE: you must create a "View" to use the handle in a shader, so
+        //    it's recommended to call "GetView()" instead.
+        ImgHandle& GetViewHandle(ImgHandleData params) const;
 
 
     protected:
@@ -248,7 +238,6 @@ namespace Bplus::GL::Textures
         
 
         //Given a set of components for texture uploading/downloading,
-        //    and the data type of this texture's pixels,
         //    finds the corresponding OpenGL enum value.
         GLenum GetOglChannels(PixelIOChannels components) const
         {
