@@ -214,6 +214,7 @@ CompiledShader::~CompiledShader()
     if (!programHandle.IsNull())
     {
         glDeleteProgram(programHandle.Get());
+        programHandle = OglPtr::ShaderProgram::Null();
     }
 }
 
@@ -222,17 +223,7 @@ CompiledShader::CompiledShader(CompiledShader&& src)
       uniformPtrs(std::move(src.uniformPtrs)),
       uniformValues(std::move(src.uniformValues))
 {
-    src.programHandle = OglPtr::ShaderProgram();
-}
-CompiledShader& Bplus::GL::Materials::CompiledShader::operator=(CompiledShader&& src)
-{
-    if (&src == this)
-        return *this;
-
-    this->~CompiledShader();
-    new (this) CompiledShader(std::move(src));
-
-    return *this;
+    src.programHandle = OglPtr::ShaderProgram::Null();
 }
 
 CompiledShader::UniformAndStatus CompiledShader::CheckUniform(const std::string& name) const
@@ -249,4 +240,51 @@ CompiledShader::UniformAndStatus CompiledShader::CheckUniform(const std::string&
 
     //Everything checks out!
     return { ptr, UniformStates::Exists };
+}
+
+
+bool CompiledShader::SetUniform_Dynamic(const std::string& name, const UniformSetData_t& value)
+{
+    std::visit(
+        [&](auto&& val) { SetUniform(name, val); },
+        value
+    );
+}
+bool CompiledShader::SetUniformArrayElement_Dynamic(const std::string& name, int index,
+                                                    const UniformSetData_t& value)
+{
+    std::visit(
+        [&](auto&& val) { SetUniformArrayElement(name, index, value); },
+        value
+    );
+}
+bool CompiledShader::SetUniformArray_Dynamic(const std::string& name,
+                                             const span<UniformSetData_t>& newValues,
+                                             size_t uOffset)
+{
+    //Edge-case: an empty array.
+    if (newValues.size() < 1)
+        return true;
+
+    //Learn the type of the elements.
+    bool result;
+    std::visit(
+        [&](auto&& val) {
+            //Copy the elements into a buffer of the exact type.
+            thread_local std::vector<decltype(val)> dataBuffer;
+            dataBuffer.reserve(newValues.size());
+            for (const auto& dataVariant : newValues)
+            {
+                BP_ASSERT(std::holds_alternative<decltype(val)>(dataVariant),
+                          "Trying to set a uniform array, using "
+                              "an array of values of different types");
+                dataBuffer.push_back(std::get<decltype(val)>(dataVariant));
+            }
+            //Pass the buffer into the type-safe version of this function.
+            result = SetUniformArray(name, span(dataBuffer), uOffset);
+        },
+        newValues[0]
+    );
+
+    return result;
 }

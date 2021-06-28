@@ -34,7 +34,7 @@ namespace
 
 Storage::Storage(const Definitions& defs)
 {
-    defs.VisitAllUniforms([&](const std::string& uName, const Type& uType)
+    defs.VisitAllUniforms(true, [&](const std::string& uName, const Type& uType)
     {
         if (std::holds_alternative<Uniforms::Gradient>(uType.ElementType))
         {

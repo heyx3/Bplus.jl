@@ -28,7 +28,9 @@
 
 namespace Bplus::GL::Materials
 {
-    //A specific compiled shader, plus its "uniforms" (a.k.a. parameters).
+    //A specific compiled shader, plus its "uniforms".
+    //Note that this class takes a low-level view of uniforms,
+    //    for example there's no "Gradients".
     class BP_API CompiledShader
     {
     public:
@@ -46,7 +48,18 @@ namespace Bplus::GL::Materials
 
         //Support move constructor/assignment.
         CompiledShader(CompiledShader&& src);
-        CompiledShader& operator=(CompiledShader&& src);
+        CompiledShader& operator=(CompiledShader&& src)
+        {
+            //Clean up this instance, then invoke the move constructor.
+
+            if (&src == this)
+                return *this;
+
+            this->~CompiledShader();
+            new (this) CompiledShader(std::move(src));
+
+            return *this;
+        }
 
 
         OglPtr::ShaderProgram GetOglPtr() const { return programHandle; }
@@ -58,7 +71,6 @@ namespace Bplus::GL::Materials
             return (found != uniformPtrs.end()) &&
                    (found->second == OglPtr::ShaderUniform::null);
         }
-
 
         #pragma region Uniform getting
 
@@ -121,7 +133,7 @@ namespace Bplus::GL::Materials
         //    nothing is done and "true" will be returned as if it exists.
         template<typename Value_t>
         bool GetUniformArray(const std::string& name, span<Value_t>& outValues,
-                             span<Value_t>::size_type uOffset = 0) const
+                             size_t destOffset = 0) const
         {
             auto uniformStatus = CheckUniform(name);
             switch (uniformStatus.Status)
@@ -132,9 +144,9 @@ namespace Bplus::GL::Materials
                     return true;
 
                 case UniformStates::Exists:
-                    for (decltype(uOffset) i = 0; i < outValues.size(); ++i)
+                    for (size_t i = 0; i < outValues.size(); ++i)
                     {
-                        auto arrI = (OglPtr::ShaderUniform::Data_t)(i + uOffset);
+                        auto arrI = (OglPtr::ShaderUniform::Data_t)(i + destOffset);
                         OglPtr::ShaderUniform elementPtr{ uniformStatus.Uniform.Get() + arrI };
                         outValues[i] = GetUniform<Value_t>(elementPtr);
                     }
@@ -150,6 +162,58 @@ namespace Bplus::GL::Materials
 
         #pragma region Uniform setting
         
+        //All the different types that a uniform could have.
+        //You can set a uniform's value by passing it an instance of this variant,
+        //    if you don't know what type it has at compile-time.
+        using UniformSetData_t = std::variant<
+            //Scalars/Vectors:
+            float, glm::fvec1, glm::fvec2, glm::fvec3, glm::fvec4,
+            double, glm::dvec1, glm::dvec2, glm::dvec3, glm::dvec4,
+            int32_t, glm::ivec1, glm::ivec2, glm::ivec3, glm::ivec4,
+            uint32_t, glm::uvec1, glm::uvec2, glm::uvec3, glm::uvec4,
+            bool, glm::bvec1, glm::bvec2, glm::bvec3, glm::bvec4,
+            //Matrices:
+            glm::fmat2, glm::fmat2x3, glm::fmat2x4,
+            glm::fmat3x2, glm::fmat3, glm::fmat3x4,
+            glm::fmat4x2, glm::fmat4x3, glm::fmat4,
+            glm::dmat2, glm::dmat2x3, glm::dmat2x4,
+            glm::dmat3x2, glm::dmat3, glm::dmat3x4,
+            glm::dmat4x2, glm::dmat4x3, glm::dmat4,
+            //Resources:
+            OglPtr::View, OglPtr::Buffer
+        >;
+
+        #pragma region "Dynamic" versions
+
+        //Sets a uniform of some type, determined at run-time.
+        //Returns false if the uniform doesn't exist.
+        //If the shader optimized out the uniform,
+        //    nothing is done and "true" will be returned as if it exists.
+        //If reaching through a struct (or array of structs),
+        //    just make that part of the name (e.x. "u_lights[3].color").
+        //For arrays of non-struct types (e.x. an array of float3),
+        //    use "SetUniformArrayElement_Dynamic()" or "SetUniformArray_Dynamic()".
+        bool SetUniform_Dynamic(const std::string& name, const UniformSetData_t& value);
+
+        //Sets an element of an array uniform of some type, determined at run-time.
+        //Returns false if the uniform doesn't exist.
+        //If the shader optimized out the uniform,
+        //    nothing is done and "true" will be returned as if it exists.
+        bool SetUniformArrayElement_Dynamic(const std::string& name, int index,
+                                            const UniformSetData_t& value);
+
+        //Sets an array of uniforms of some type, determined at run-time.
+        //Does not work for arrays of structs; you must set their elements/fields individually.
+        //Returns false if the uniform array doesn't exist.
+        //If the shader optimized out the uniform,
+        //    nothing is done and "true" will be returned as if it exists.
+        bool SetUniformArray_Dynamic(const std::string& name,
+                                     const span<UniformSetData_t>& newValues,
+                                     size_t uOffset = 0);
+
+        #pragma endregion
+
+
         //Sets a uniform of the given templated type.
         //If reaching through a struct (or array of structs),
         //    just make that part of the name (e.x. "u_lights[3].color").
@@ -177,7 +241,7 @@ namespace Bplus::GL::Materials
             }
         }
 
-        //Sets a uniform of the given templated type.
+        //Sets an element of an array uniform of the given templated type.
         //Returns false if the uniform doesn't exist.
         //If the shader optimized out the uniform,
         //    nothing is done and "true" will be returned as if it exists.
@@ -210,7 +274,7 @@ namespace Bplus::GL::Materials
         //    nothing is done and "true" will be returned as if it exists.
         template<typename Value_t>
         bool SetUniformArray(const std::string& name, const span<Value_t>& newValues,
-                             span<Value_t>::size_type uOffset = 0)
+                             size_t destOffset = 0)
         {
             auto uniformStatus = CheckUniform(name);
             switch (uniformStatus.Status)
@@ -221,9 +285,9 @@ namespace Bplus::GL::Materials
                     return true;
 
                 case UniformStates::Exists:
-                    for (decltype(uOffset) i = 0; i < newValues.size(); ++i)
+                    for (size_t i = 0; i < newValues.size(); ++i)
                     {
-                        auto arrI = (OglPtr::ShaderUniform::Data_t)(i + uOffset);
+                        auto arrI = (OglPtr::ShaderUniform::Data_t)(i + destOffset);
                         OglPtr::ShaderUniform elementPtr{ uniformStatus.Uniform.Get() + arrI };
                         SetUniform(elementPtr, newValues[i]);
                     }
