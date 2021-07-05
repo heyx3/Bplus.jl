@@ -219,5 +219,17 @@ namespace Bplus::GuiData
 //TODO: Toml IO helpers.
 //TODO: Unit tests for slider math.
 
-//Make some of the above types hashable.
+//Make some of the above types hashable/equatable.
+
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GuiData::SliderTextboxModes);
+
+BP_HASH_EQ_TEMPL_START(Bplus::GuiData,
+                       typename Number_t BP_COMMA typename Float_t,
+                       SliderRange<Number_t BP_COMMA Float_t>,
+                       d.Min, d.Max, d.Power, d.PowerMidpoint, d.TextboxMode)
+    return (a.Min == b.Min) &&
+           (a.Max == b.Max) &&
+           (a.Power == b.Power) &&
+           (a.PowerMidpoint == b.PowerMidpoint) &&
+           (a.TextboxMode == b.TextboxMode);
+BP_HASH_EQ_END

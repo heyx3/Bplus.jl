@@ -143,6 +143,9 @@ namespace Bplus::GL
 
     #pragma region BlendState<> struct template
 
+    //A GPU blending mode.
+    //Note that equality/hashing is not smart when it comes to
+    //    blend states which are equivalent but specified differently.
     template<typename Constant_t>
     struct BlendState
     {
@@ -222,32 +225,16 @@ namespace Bplus::GL
         #pragma endregion
     };
 
-    //Note that equality comparisons don't check whether the two states are
-    //    *effectively* equal;
-    //    only that their fields are identical.
-    //There are sometimes multiple ways to represent the same blend effect.
-
-    template<typename Constant_t>
-    bool operator==(const BlendState<Constant_t>& a, const BlendState<Constant_t>& b)
-    {
-        return (a.Src == b.Src) &
-               (a.Dest == b.Dest) &
-               (a.Op == b.Op) &
-               (!a.UsesConstant() | (a.Constant == b.Constant));
-    }
-
-    template<typename Constant_t>
-    bool operator!=(const BlendState<Constant_t>& a, const BlendState<Constant_t>& b)
-    {
-        return !(a == b);
-    }
-
     #pragma endregion
     using BlendStateRGB = BlendState<glm::vec3>;
     using BlendStateAlpha = BlendState<glm::vec1>;
     using BlendStateRGBA = BlendState<glm::vec4>;
 
 
+    //A test made against the stencil buffer.
+    //Note that hashing and equality tries to be intelligent,
+    //    ignoring the "RefValue" and "Mask" fields
+    //    if the test mode doesn't involve them.
     struct BP_API StencilTest
     {
         ValueTests Test = ValueTests::Off;
@@ -259,11 +246,8 @@ namespace Bplus::GL
         toml::Value ToToml() const;
         bool EditGUI(int popupMaxItemHeight = -1);
     };
-    bool BP_API operator==(const StencilTest& a, const StencilTest& b);
-    inline bool BP_API operator!=(const StencilTest& a, const StencilTest& b) { return !(a == b); }
 
-
-    //What happens to the stencil buffer when a fragment is placed into a pixel.
+    //What happens to a pixel when it passes/fails the stencil and depth buffer tests.
     struct BP_API StencilResult
     {
         StencilOps OnFailStencil = StencilOps::Nothing,
@@ -282,21 +266,9 @@ namespace Bplus::GL
         toml::Value ToToml() const;
         bool EditGUI(int popupMaxItemHeight = -1);
     };
-    bool BP_API operator==(const StencilResult& a, const StencilResult& b);
-    inline bool BP_API operator!=(const StencilResult& a, const StencilResult& b) { return !(a == b); }
-
 
     #pragma endregion
 }
-
-//Make the various enums hashable.
-BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::VsyncModes);
-BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::FaceCullModes);
-BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::ValueTests);
-BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::StencilOps);
-BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::BlendFactors);
-BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::BlendOps);
-
 
 #pragma region OpenGL handle typedefs
 
@@ -328,3 +300,45 @@ MAKE_GL_STRONG_TYPEDEF(Mesh, GLuint, 0);
 #undef MAKE_GL_STRONG_TYPEDEF
 
 #pragma endregion
+
+
+//Make the above types hashable/equatable:
+
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::VsyncModes);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::FaceCullModes);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::ValueTests);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::StencilOps);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::BlendFactors);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::BlendOps);
+
+BP_HASH_EQ_TEMPL_START(Bplus::GL,
+                       class Constant_t, BlendState<Constant_t>,
+                       d.Src, d.Dest, d.Op,
+                       (d.UsesConstant() ? d.Constant : Constant_t(0)))
+    return a.Src == b.Src &&
+           a.Dest == b.Dest &&
+           a.Op == b.Op &&
+           a.UsesConstant() == b.UsesConstant() &&
+           (!a.UsesConstant() || (a.Constant == b.Constant));
+BP_HASH_EQ_END
+
+BP_HASH_EQ_START(Bplus::GL, StencilTest,
+                 d.Test,
+                 (d.Test == +Bplus::GL::ValueTests::Off || d.Test == +Bplus::GL::ValueTests::Never) ?
+                    0 : d.RefValue,
+                 (d.Test == +Bplus::GL::ValueTests::Off || d.Test == +Bplus::GL::ValueTests::Never) ?
+                    0 : d.Mask)
+    bool isRealTest = (a.Test != +Bplus::GL::ValueTests::Off) &&
+                      (a.Test != +Bplus::GL::ValueTests::Never);
+    return (a.Test == b.Test) &&
+           //Only check RefValue and Mask if they're used by this type of test:
+           (!isRealTest ||
+            (a.RefValue == b.RefValue && a.Mask == b.Mask));
+BP_HASH_EQ_END
+
+BP_HASH_EQ_START(Bplus::GL, StencilResult,
+                 d.OnFailStencil, d.OnPassStencilFailDepth, d.OnPassStencilDepth)
+    return a.OnFailStencil == b.OnFailStencil &&
+           a.OnPassStencilFailDepth == b.OnPassStencilFailDepth &&
+           a.OnPassStencilDepth == b.OnPassStencilDepth;
+BP_HASH_EQ_END

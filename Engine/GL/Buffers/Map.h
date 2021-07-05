@@ -45,3 +45,12 @@ namespace Bplus::GL::Buffers
         MapSyncModes Sync;
     };
 }
+
+//Add hashing/equality for the above types:
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::MapUses)
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::MapSyncModes)
+BP_HASH_EQ_START(Bplus::GL::Buffers, MapAbility,
+                 d.Usage, d.Sync)
+    return a.Usage == b.Usage &&
+           a.Sync == b.Sync;
+BP_HASH_EQ_END

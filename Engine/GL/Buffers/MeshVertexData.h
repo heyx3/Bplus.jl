@@ -31,13 +31,6 @@ namespace Bplus::GL::Buffers::VertexData
     struct MatrixType
     {
         VectorSizes RowSize, ColSize;
-
-        bool operator==(const MatrixType<TFloat>& other) const
-        {
-            return (RowSize == other.RowSize) &
-                   (ColSize == other.ColSize);
-        }
-        bool operator!=(const MatrixType<TFloat>& other) const { return !operator==(other); }
     };
     using FMatrixType = MatrixType<float>;
     using DMatrixType = MatrixType<double>;
@@ -72,13 +65,7 @@ namespace Bplus::GL::Buffers::VertexData
     {
         VectorSizes Size;
         IVectorTypes ComponentType;
-
         IVectorType(VectorSizes size, IVectorTypes type) : Size(size), ComponentType(type) { }
-
-        bool operator==(const IVectorType& other) const {
-            return (Size == other.Size) & (ComponentType == other.ComponentType);
-        }
-        bool operator!=(const IVectorType& other) const { return !operator==(other); }
     };
 
     #pragma endregion
@@ -108,11 +95,6 @@ namespace Bplus::GL::Buffers::VertexData
         SimpleFVectorTypes ComponentType;
 
         SimpleFVectorType(VectorSizes size, SimpleFVectorTypes componentType) : Size(size), ComponentType(componentType) { }
-
-        bool operator==(const SimpleFVectorType& other) const {
-            return (Size == other.Size) & (ComponentType == other.ComponentType);
-        }
-        bool operator!=(const SimpleFVectorType& other) const { return !operator==(other); }
     };
 
     struct ConvertedFVectorType
@@ -125,12 +107,6 @@ namespace Bplus::GL::Buffers::VertexData
 
         ConvertedFVectorType(VectorSizes size, IVectorTypes type, bool normalize)
             : Size(size), ComponentType(type), Normalize(normalize) { }
-
-        bool operator==(const ConvertedFVectorType& other) const {
-            return (Size == other.Size) & (Normalize == other.Normalize) &
-                   (ComponentType == other.ComponentType);
-        }
-        bool operator!=(const ConvertedFVectorType& other) const { return !operator==(other); }
     };
 
     //The different possible types of packed float vertex data stored in the buffer,
@@ -160,11 +136,6 @@ namespace Bplus::GL::Buffers::VertexData
         //If true, then the integer data is normalized to the range [0, 1] or [-1, 1].
         //If false, then the data is simply casted to a float.
         bool Normalize;
-
-        bool operator==(const PackedConvertedFVectorType& other) const {
-            return (VectorType == other.VectorType) & (Normalize == other.Normalize);
-        }
-        bool operator!=(const PackedConvertedFVectorType& other) const { return !operator==(other); }
     };
 
     #pragma endregion
@@ -173,11 +144,7 @@ namespace Bplus::GL::Buffers::VertexData
     struct DVectorType
     {
         VectorSizes Size;
-
         DVectorType(VectorSizes size) : Size(size) { }
-
-        bool operator==(const DVectorType& other) const { return Size == other.Size; }
-        bool operator!=(const DVectorType& other) const { return !operator==(other); }
     };
 
 
@@ -194,28 +161,50 @@ namespace Bplus::GL::Buffers::VertexData
     BETTER_ENUM(LogicalFormats, uint8_t, Vector, Matrix);
 }
 
-#pragma region Add hashing support for the above types
+#pragma region Add hashing and equality for the above types
 
-//Hashes for BETTER_ENUM() enums:
+//BETTER_ENUM() enums:
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::VectorSizes);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::SimpleFVectorTypes);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::PackedFVectorTypes);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::PackedConvertedFVectorTypes);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::VertexData::IVectorTypes);
 
-//Hashes for data structures:
-BP_HASHABLE_SIMPLE_FULL(typename T, Bplus::GL::Buffers::VertexData::MatrixType<T>,
-                        d.RowSize, d.ColSize)
-BP_HASHABLE_SIMPLE(Bplus::GL::Buffers::VertexData::SimpleFVectorType,
-                   d.Size, d.ComponentType)
-BP_HASHABLE_SIMPLE(Bplus::GL::Buffers::VertexData::ConvertedFVectorType,
-                   d.Size, d.ComponentType, d.Normalize)
-BP_HASHABLE_SIMPLE(Bplus::GL::Buffers::VertexData::PackedConvertedFVectorType,
-                   d.VectorType, d.Normalize)
-BP_HASHABLE_SIMPLE(Bplus::GL::Buffers::VertexData::IVectorType,
-                   d.Size, d.ComponentType)
-BP_HASHABLE_SIMPLE(Bplus::GL::Buffers::VertexData::DVectorType,
-                   d.Size)
+//Data structures:
+
+BP_HASH_EQ_TEMPL_START(Bplus::GL::Buffers::VertexData,
+                       typename TFloat, MatrixType<TFloat>,
+                       d.RowSize, d.ColSize)
+    return a.RowSize == b.RowSize &&
+           a.ColSize == b.ColSize;
+BP_HASH_EQ_END
+
+BP_HASH_EQ_START(Bplus::GL::Buffers::VertexData, SimpleFVectorType,
+                 d.Size, d.ComponentType)
+    return a.Size == b.Size &&
+           a.ComponentType == b.ComponentType;
+BP_HASH_EQ_END
+BP_HASH_EQ_START(Bplus::GL::Buffers::VertexData, DVectorType,
+                 d.Size)
+    return a.Size == b.Size;
+BP_HASH_EQ_END
+BP_HASH_EQ_START(Bplus::GL::Buffers::VertexData, IVectorType,
+                 d.Size, d.ComponentType)
+    return a.Size == b.Size &&
+           a.ComponentType == b.ComponentType;
+BP_HASH_EQ_END
+
+BP_HASH_EQ_START(Bplus::GL::Buffers::VertexData, ConvertedFVectorType,
+                 d.Size, d.ComponentType, d.Normalize)
+    return a.Size == b.Size &&
+           a.ComponentType == b.ComponentType &&
+           a.Normalize == b.Normalize;
+BP_HASH_EQ_END
+BP_HASH_EQ_START(Bplus::GL::Buffers::VertexData, PackedConvertedFVectorType,
+                 d.VectorType, d.Normalize)
+    return a.VectorType == b.VectorType &&
+           a.Normalize == b.Normalize;
+BP_HASH_EQ_END
 
 #pragma endregion
 
@@ -303,9 +292,8 @@ namespace Bplus::GL::Buffers::VertexData
         GLenum GetOglEnum() const;
 
 
-        bool operator==(const Type& other) const { return (data == other.data); }
-        bool operator!=(const Type& other) const { return !operator==(other); }
-        size_t GetHash() const { return MultiHash(data); }
+        //Used for hashing and equality.
+        const auto& GetRawData() const { return data; }
 
     private:
         using TypeUnion = std::variant<FMatrixType,
@@ -319,6 +307,9 @@ namespace Bplus::GL::Buffers::VertexData
         TypeUnion data;
     };
 }
-BP_HASHABLE_START(Bplus::GL::Buffers::VertexData::Type)
-    return d.GetHash();
-BP_HASHABLE_END
+
+//Hashing/equality:
+BP_HASH_EQ_START(Bplus::GL::Buffers::VertexData, Type,
+                 d.GetRawData())
+    return a.GetRawData() == b.GetRawData();
+BP_HASH_EQ_END

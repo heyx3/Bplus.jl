@@ -55,16 +55,6 @@ namespace Bplus::GL::Buffers
             : MeshDataSourceIndex(meshDataSourceIndex),
               FieldByteOffset(fieldByteOffset), FieldType(fieldType),
               PerInstance(perInstance) { }
-
-
-        bool operator==(const VertexDataField& other) const
-        {
-            return (MeshDataSourceIndex == other.MeshDataSourceIndex) &
-                   (FieldByteOffset == other.FieldByteOffset) &
-                   (FieldType == other.FieldType) &
-                   (PerInstance == other.PerInstance);
-        }
-        bool operator!=(const VertexDataField& other) const { return !operator==(other); }
     };
 
     //TODO: Rename VertexDataField to VertexDataFromSource, and put it in the new VertexDataField as a union with with plain vector/matrix types, allowing the MeshData to set up a constant in place of a real array of vertex data.
@@ -126,8 +116,8 @@ namespace Bplus::GL::Buffers
     );
 
 
-    //A renderable 3D model, or "mesh", made from multiple data sources
-    //    spread across some number of Buffers.
+    //A renderable model, or "mesh", made up of vertex data (and possibly index data)
+    //    pulled from any number of Buffers.
     //In OpenGL terms, this is a "Vertex Array Object" or "VAO".
     class BP_API MeshData
     {
@@ -200,7 +190,8 @@ namespace Bplus::GL::Buffers
         //Internally, Buffers are stored by their OpenGL pointer,
         //    so that they aren't tied to a specific location in memory
         //    (otherwise we could get undefined behavior when e.x. an STL container moves the Buffer).
-        //The Buffer class provides a static function to get a buffer by its ID, so this is fine.
+        //The Buffer class provides a static function to look up a Buffer by its ID,
+        //    so we can hide this detail from users.
 
         struct MeshDataSource_Impl
         {
@@ -231,7 +222,12 @@ namespace Bplus::GL::Buffers
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Buffers::IndexDataTypes);
 
 //Hashes for data structures:
-BP_HASHABLE_SIMPLE(Bplus::GL::Buffers::VertexDataField,
-                   d.MeshDataSourceIndex,
-                   d.FieldType, d.FieldByteOffset,
-                   d.PerInstance)
+BP_HASH_EQ_START(Bplus::GL::Buffers, VertexDataField,
+                 d.MeshDataSourceIndex,
+                 d.FieldType, d.FieldByteOffset,
+                 d.PerInstance)
+    return a.MeshDataSourceIndex == b.MeshDataSourceIndex &&
+           a.FieldType == b.FieldType &&
+           a.FieldByteOffset == b.FieldByteOffset &&
+           a.PerInstance == b.PerInstance;
+BP_HASH_EQ_END

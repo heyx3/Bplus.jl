@@ -188,14 +188,6 @@ namespace Bplus::Math
 
             return newBox;
         }
-
-
-        bool operator==(const Box<N, T>& other) const
-        {
-            return (MinCorner == other.MinCorner) &
-                   (Size == other.Size);
-        }
-        bool operator!=(const Box<N, T>& other) const { return !operator==(other); }
     };
 
 
@@ -233,7 +225,11 @@ namespace Bplus::Math
 }
 
 
-BP_HASHABLE_START_FULL(glm::length_t N BP_COMMA typename T,
-                       Bplus::Math::Box<N BP_COMMA T>)
-    return Bplus::MultiHash(d.MinCorner, d.Size);
-BP_HASHABLE_END
+//Hashing and equality:
+BP_HASH_EQ_TEMPL_START(Bplus::Math,
+                       glm::length_t N BP_COMMA typename T,
+                       Box<N BP_COMMA T>,
+                       d.MinCorner, d.Size)
+    return a.MinCorner == b.MinCorner &&
+           a.Size == b.Size;
+BP_HASH_EQ_END

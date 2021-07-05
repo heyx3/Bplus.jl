@@ -57,9 +57,12 @@ namespace Bplus
 }
 
 
-#pragma region Helper macros for easy std::hash specialization
+//TODO: Change the naming convention "..._START_FULL" to "..._TEMPL_START" (e.x. BP_HASHABLE_START_FULL to BP_HASHABLE_TEMPL_START).
 
-//A helper macro for adding std::hash<> for some data type.
+#pragma region Macros for easy std::hash specialization
+
+//A helper macro for adding std::hash<> for some templated type.
+//The type can have partial or full specialization.
 //NOTE: this macro must be invoked in the global namespace!
 #define BP_HASHABLE_START_FULL(OuterTemplate, Type) \
     namespace std { \
@@ -67,29 +70,82 @@ namespace Bplus
         struct hash<Type> { \
             size_t operator()(const Type& d) const {
 
-//A helper macro for adding hashes to some data type.
-//NOTE: this macro must be invoked in the global namespace!
-#define BP_HASHABLE_START(Type) BP_HASHABLE_START_FULL(, Type)
-
 #define BP_HASHABLE_END \
             } \
         }; \
     }
 
-//Wraps the hashing of a type into a simple MultiHash call
-//    enumerating the object's fields.
+//A helper macro for adding std::hash<> for some concrete type.
+//NOTE: this macro must be invoked in the global namespace!
+#define BP_HASHABLE_START(Type) BP_HASHABLE_START_FULL(, Type)
+
+
+//Defines the hashing of a templated type, by
+//    hashing all its given fields.
+//This type can have partial or full specialization.
 #define BP_HASHABLE_SIMPLE_FULL(OuterTemplate, Type, ...) \
     BP_HASHABLE_START_FULL(OuterTemplate, Type) \
         return Bplus::MultiHash(__VA_ARGS__); \
     BP_HASHABLE_END
 
-//Wraps the hashing of a type into a simple MultiHash call
-//    enumerating the object's fields.
-//TODO: Offer another macro which combines this one with equality/inequality operators. Make sure all hashable things also have equality operators.
+//Defines the hashing of a concrete type, by
+//    hashing all its given fields.
 #define BP_HASHABLE_SIMPLE(Type, ...) BP_HASHABLE_SIMPLE_FULL(, Type, __VA_ARGS__)
 
 #pragma endregion
 
+#pragma region Macros for easy equality operators
+
+//Defines operator!= for the given templated type, then starts operator== for you to implement.
+//The two instances to compare are named 'a' and 'b'.
+#define BP_EQUATABLE_TEMPL_START(OuterTemplate, Type) \
+    namespace { \
+        /* Forward-declare operator== so it can be used for operator!= */ \
+        template<OuterTemplate> bool operator==(const Type& a, const Type& b); \
+        template<OuterTemplate> inline bool operator!=(const Type& a, const Type& b) { return !(a == b); } \
+        template<OuterTemplate> inline bool operator==(const Type& a, const Type& b) {
+
+//Defines operator!= for the given concrete type, then starts operator== for you to implement.
+//The two instances to compare are named 'a' and 'b'.
+#define BP_EQUATABLE_START(Type) \
+    namespace { \
+        /*Forward-declare operator== so it can be used for operator!= */ \
+        bool operator==(const Type& a, const Type& b); \
+        bool operator!=(const Type& a, const Type& b) { return !(a == b); } \
+        bool operator==(const Type& a, const Type& b) {
+
+
+//Closes the code that started with BP_EQUATABLE[_TEMPL]_START().
+#define BP_EQUATABLE_END } }
+
+#pragma endregion
+
+#pragma region Macros that provide both hashing and equality
+
+//Provides simple hashing and equality for the given templated type.
+//The hashing is done with the given set of fields (of the form "d.MyField1, d.MyField2, [etc]").
+//The equality must be implemented below this macro invocation,
+//    using the two instances 'a' and 'b'.
+//NOTE: this macro must be invoked in the global namespace!
+#define BP_HASH_EQ_TEMPL_START(NamespacePath, OuterTemplate, Type, ...) \
+    BP_HASHABLE_SIMPLE_FULL(OuterTemplate, NamespacePath::Type, __VA_ARGS__) \
+    namespace NamespacePath { \
+        BP_EQUATABLE_TEMPL_START(OuterTemplate, Type)
+
+//Provides simple hashing and equality for the given concrete type.
+//The hashing is done with the given set of fields (of the form "d.MyField1, d.MyProperty2(), [etc]").
+//The equality must be implemented below this macro invocation,
+//    using the two instances 'a' and 'b'.
+//NOTE: this macro must be invoked in the global namespace!
+#define BP_HASH_EQ_START(NamespacePath, Type, ...) \
+    BP_HASHABLE_SIMPLE(NamespacePath::Type, __VA_ARGS__) \
+    namespace NamespacePath { \
+        BP_EQUATABLE_START(Type)
+
+//Closes the code that started with BP_HASH_EQ_START() or BP_HASH_EQ_TEMPL_START().
+#define BP_HASH_EQ_END } BP_EQUATABLE_END
+
+#pragma endregion
 
 //TODO: Switch to a custom hash function, since implementing std::hash for built-in types like array and tuple is UB. This would then call for a custom macro to declare dictionaries.
 

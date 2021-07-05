@@ -38,8 +38,9 @@ namespace Bplus::GL::Uniforms
 
     #pragma endregion
 
-    //A static uniform definition.
+
     using StaticUniformDef_t = std::variant<StaticEnum, StaticInt>;
+    using StaticUniformVal_t = std::variant<int64_t, std::string>;
 
     //A set of shader-compile-time parameters.
     struct StaticUniformDefs
@@ -51,13 +52,13 @@ namespace Bplus::GL::Uniforms
         std::vector<std::string> Ordering;
     };
 
+    
     //Stores the values of shader-compile-time parameters.
     //Is hashable/equatable.
     struct BP_API StaticUniformValues
     {
         //The values, either integer or enum, for each uniform.
-        std::unordered_map<std::string, std::variant<int64_t, std::string>>
-            Values;
+        std::unordered_map<std::string, StaticUniformVal_t> Values;
     };
 
     #pragma region Static value expressions (unused for now)
@@ -143,17 +144,10 @@ namespace Bplus::GL::Uniforms
     #pragma endregion
 }
 
-//Make the "StaticUniformValues" struct equatable.
-bool operator==(const Bplus::GL::Uniforms::StaticUniformValues& a,
-                const Bplus::GL::Uniforms::StaticUniformValues& b)
-{
-    return a.Values == b.Values;
-}
-
-//Make the "StaticUniformValues" struct hashable.
+//Make the "StaticUniformValues" struct hashable/equatable.
 BP_HASHABLE_START(Bplus::GL::Uniforms::StaticUniformValues)
     using std::hash;
-    hash<decltype(d.Values)::mapped_type> hasher;
+    hash<Bplus::GL::Uniforms::StaticUniformVal_t> hasher;
 
     size_t hashed = 1234567890;
 
@@ -164,3 +158,6 @@ BP_HASHABLE_START(Bplus::GL::Uniforms::StaticUniformValues)
 
     return hashed;
 BP_HASHABLE_END
+BP_EQUATABLE_START(Bplus::GL::Uniforms::StaticUniformValues)
+    return a.Values == b.Values;
+BP_EQUATABLE_END

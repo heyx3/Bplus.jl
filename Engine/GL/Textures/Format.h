@@ -17,7 +17,7 @@ namespace Bplus::GL::Textures
         //TODO: Multisample
 
         //Array textures are not supported, because
-        //    they aren't necessary after bindless textures were introduced.
+        //    they aren't necessary when we support bindless textures.
     );
 
 
@@ -84,14 +84,6 @@ namespace Bplus::GL::Textures
                      SimpleFormatComponents components,
                      SimpleFormatBitDepths channelBitSize)
             : Type(type), Components(components), ChannelBitSize(channelBitSize) { }
-
-        bool operator==(const SimpleFormat& other) const
-        {
-            return Type == other.Type &&
-                   Components == other.Components &&
-                   ChannelBitSize == other.ChannelBitSize;
-        }
-        bool operator!=(const SimpleFormat& other) const { return !operator==(other); }
     };
 
     //Converts the given simple texture format to a human-readable string.
@@ -314,9 +306,9 @@ namespace Bplus::GL::Textures
         //    as opposed to falling back on a "bigger" format under the hood.
         bool IsNativelySupported(std::optional<Textures::Types> texType) const;
 
-        bool operator==(const Format& other) const { return data == other.data; }
-        bool operator!=(const Format& other) const { return !operator==(other); }
 
+        //Used for hashing/equality.
+        const auto& GetRawData() const { return data; }
 
     private:
 
@@ -329,4 +321,27 @@ namespace Bplus::GL::Textures
     std::string BP_API ToString(const Format& format);
 }
 
-//TODO: Make the various structs hashable/equatable (see the TODO in the Utils section first).
+
+//Make types hashable/equatable:
+
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::Types)
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::ColorChannels)
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::AllChannels)
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::FormatTypes)
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::SimpleFormatComponents)
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::SimpleFormatBitDepths)
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::SpecialFormats)
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::CompressedFormats)
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::DepthStencilFormats)
+
+BP_HASH_EQ_START(Bplus::GL::Textures, SimpleFormat,
+                 d.Type, d.Components, d.ChannelBitSize)
+    return a.Type == b.Type &&
+           a.Components == b.Components &&
+           a.ChannelBitSize == b.ChannelBitSize;
+BP_HASH_EQ_END
+
+BP_HASH_EQ_START(Bplus::GL::Textures, Format,
+                 d.GetRawData())
+    return a.GetRawData() == b.GetRawData();
+BP_HASH_EQ_END

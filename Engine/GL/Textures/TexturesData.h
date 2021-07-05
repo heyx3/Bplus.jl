@@ -283,7 +283,22 @@ namespace Bplus::GL::Textures
     #pragma endregion
 }
 
-//Allow enums in this file to be hashed, for use in STL collections.
+//Make these types hashable/equatable:
+
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::PixelIOChannels);
-BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::Types);
+BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::PixelIOTypes);
 BETTER_ENUMS_DECLARE_STD_HASH(Bplus::GL::Textures::ImageAccessModes);
+
+BP_HASH_EQ_TEMPL_START(Bplus::GL::Textures,
+                       glm::length_t N, SetDataParams<N>,
+                       d.DestRange, d.Miplevel, d.RecomputeMips)
+    return a.DestRange == b.DestRange &&
+           a.MipLevel == b.MipLevel &&
+           a.RecomputeMips == b.RecomputeMips;
+BP_HASH_EQ_END
+BP_HASH_EQ_TEMPL_START(Bplus::GL::Textures,
+                       glm::length_t N, GetDataParams<N>,
+                       d.Range, d.Miplevel)
+    return a.Range == b.Range &&
+           a.MipLevel == b.MipLevel;
+BP_HASH_EQ_END

@@ -34,19 +34,6 @@ bool GL::UsesConstant(BlendFactors b)
     }
 }
 
-bool GL::operator==(const GL::StencilTest& a, const GL::StencilTest& b)
-{
-    return (a.Test == b.Test) &
-           (a.RefValue == b.RefValue) &
-           (a.Mask == b.Mask);
-}
-bool GL::operator==(const GL::StencilResult& a, const GL::StencilResult& b)
-{
-    return (a.OnFailStencil == b.OnFailStencil) &
-           (a.OnPassStencilFailDepth == b.OnPassStencilFailDepth) &
-           (a.OnPassStencilDepth == b.OnPassStencilDepth);
-}
-
 void GL::StencilTest::FromToml(const toml::Value& tomlData)
 {
     const char* status = "[null]";
