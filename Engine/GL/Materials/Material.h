@@ -53,10 +53,9 @@ namespace Bplus::GL::Materials
             //Special:
             Uniforms::GradientValue_t,
             //Resources:
-            const Textures::Texture*, //NOTE: textures are actually given to this class as references,
-                                      //   not pointers, due to arcane C++ template rules.
+            const Textures::Texture*
             //TODO: Specific TexHandle and ImgHandle instances
-            //TODO: Add Buffers
+            //TODO: Buffers
         >;
 
         //A uniform is either a value, or an array of values.
@@ -106,8 +105,6 @@ namespace Bplus::GL::Materials
             SET_PARAM_MAT(2, 4) SET_PARAM_MAT(3, 4) SET_PARAM_MAT(4, 4)
             SET_PARAM_BASIC(const Textures::Texture*)
             SET_PARAM_BASIC(Uniforms::GradientValue_t)
-            SET_PARAM_BASIC(OglPtr::View)
-            SET_PARAM_BASIC(OglPtr::Buffer)
             else
             {
                 BP_ASSERT_STR(false,
@@ -156,7 +153,7 @@ namespace Bplus::GL::Materials
 
         //Textures require special handling;
         //    we need to decide which sampler to use.
-        DECL_SET_PARAM(const Textures::Texture&, tex) {
+        DECL_SET_PARAM(const Textures::Texture*, tex) {
 
             //Get the desired sampler for this uniform, if one exists;
             //    otherwise use the texture's default sampler.
@@ -175,8 +172,8 @@ namespace Bplus::GL::Materials
 
             //Pick a sampler and get the corresponding texture handle.
             const auto& tpData = std::get<Uniforms::TexSampler>(paramData.ElementType);
-            const auto tpSampler = tpData.FullSampler.value_or(tex.GetSamplerFull());
-            auto& texHandle = tex.GetViewHandleFull(tpSampler);
+            const auto tpSampler = tpData.FullSampler.value_or(tex->GetSamplerFull());
+            auto& texHandle = tex->GetViewHandleFull(tpSampler);
 
             Textures::TexView view(texHandle);
             UpdateViewUse(name, std::nullopt, view);
@@ -499,7 +496,7 @@ namespace Bplus::GL::Materials
 
             //Update the uniform in OpenGL/the current variant.
             if (isActive && updateShader)
-                currentVariant->SetUniformArray(name, shaderValues.value(), uOffset);
+                currentVariant->SetUniformArray(name, shaderValues, uOffset);
 
             //Remember the new value, for ALL variants.
             std::copy(materialValues.begin(), materialValues.end(),

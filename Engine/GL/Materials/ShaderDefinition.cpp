@@ -9,7 +9,7 @@ namespace
 {
     void GenerateStaticDef(std::string outCode, const ShaderDefinition& defs,
                            const std::string& defName,
-                           const Uniforms::StaticUniformValues::mapped_type& value)
+                           const Uniforms::StaticUniformVal_t& value)
     {
         if (std::holds_alternative<int64_t>(value))
         {
@@ -303,7 +303,7 @@ void ShaderDefinition::GenerateCode(const Uniforms::StaticUniformValues& staticV
                    "// ==================================================\n\n";
         
         for (const auto& staticName : GetStatics().Ordering)
-            GenerateStaticDef(outCode, *this, staticName, staticValues.at(staticName));
+            GenerateStaticDef(outCode, *this, staticName, staticValues.Values.at(staticName));
         
         outCode += "\n// ==================================================\n"
                      "//                     End of Statics                \n"

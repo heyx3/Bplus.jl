@@ -73,19 +73,6 @@ ImgHandle::~ImgHandle()
         Deactivate();
 }
 
-TexHandle::TexHandle(TexHandle&& src)
-    : ViewGlPtr(src.ViewGlPtr), SamplerGlPtr(src.SamplerGlPtr),
-      activeCount(src.activeCount), skipDestructor(src.skipDestructor)
-{
-    src.skipDestructor = true;
-}
-ImgHandle::ImgHandle(ImgHandle&& src)
-    : ViewGlPtr(src.ViewGlPtr), Params(src.Params),
-      activeCount(src.activeCount), skipDestructor(src.skipDestructor)
-{
-    src.skipDestructor = true;
-}
-
 void TexHandle::Activate()
 {
     activeCount += 1;

@@ -85,9 +85,7 @@ namespace Bplus::GL::Textures
 
         //No copying or moving; this class is expected to stay where it was first allocaated.
         ImgHandle(const ImgHandle& cpy) = delete;
-        ImgHandle& operator=(const ImgHandle& cpy) = delete;
         ImgHandle(ImgHandle&& src) = delete;
-        ImgHandle& operator=(ImgHandle&& src) = delete;
 
         void Activate();
         void Deactivate();
