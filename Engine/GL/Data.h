@@ -327,7 +327,8 @@ BP_HASH_EQ_START(Bplus::GL, StencilTest,
                  (d.Test == +Bplus::GL::ValueTests::Off || d.Test == +Bplus::GL::ValueTests::Never) ?
                     0 : d.RefValue,
                  (d.Test == +Bplus::GL::ValueTests::Off || d.Test == +Bplus::GL::ValueTests::Never) ?
-                    0 : d.Mask)
+                    0 : d.Mask
+                )
     bool isRealTest = (a.Test != +Bplus::GL::ValueTests::Off) &&
                       (a.Test != +Bplus::GL::ValueTests::Never);
     return (a.Test == b.Test) &&

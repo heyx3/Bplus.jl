@@ -99,24 +99,22 @@ namespace Bplus
 //Defines operator!= for the given templated type, then starts operator== for you to implement.
 //The two instances to compare are named 'a' and 'b'.
 #define BP_EQUATABLE_TEMPL_START(OuterTemplate, Type) \
-    namespace { \
         /* Forward-declare operator== so it can be used for operator!= */ \
         template<OuterTemplate> bool operator==(const Type& a, const Type& b); \
-        template<OuterTemplate> inline bool operator!=(const Type& a, const Type& b) { return !(a == b); } \
-        template<OuterTemplate> inline bool operator==(const Type& a, const Type& b) {
+        template<OuterTemplate> static inline bool operator!=(const Type& a, const Type& b) { return !(a == b); } \
+        template<OuterTemplate> static inline bool operator==(const Type& a, const Type& b) {
 
 //Defines operator!= for the given concrete type, then starts operator== for you to implement.
 //The two instances to compare are named 'a' and 'b'.
 #define BP_EQUATABLE_START(Type) \
-    namespace { \
         /*Forward-declare operator== so it can be used for operator!= */ \
         bool operator==(const Type& a, const Type& b); \
-        bool operator!=(const Type& a, const Type& b) { return !(a == b); } \
-        bool operator==(const Type& a, const Type& b) {
+        static inline bool operator!=(const Type& a, const Type& b) { return !(a == b); } \
+        static inline bool operator==(const Type& a, const Type& b) {
 
 
 //Closes the code that started with BP_EQUATABLE[_TEMPL]_START().
-#define BP_EQUATABLE_END } }
+#define BP_EQUATABLE_END }
 
 #pragma endregion
 
@@ -130,7 +128,7 @@ namespace Bplus
 #define BP_HASH_EQ_TEMPL_START(NamespacePath, OuterTemplate, Type, ...) \
     BP_HASHABLE_SIMPLE_FULL(OuterTemplate, NamespacePath::Type, __VA_ARGS__) \
     namespace NamespacePath { \
-        BP_EQUATABLE_TEMPL_START(OuterTemplate, Type)
+        BP_EQUATABLE_TEMPL_START(OuterTemplate, NamespacePath::Type)
 
 //Provides simple hashing and equality for the given concrete type.
 //The hashing is done with the given set of fields (of the form "d.MyField1, d.MyProperty2(), [etc]").
@@ -140,10 +138,10 @@ namespace Bplus
 #define BP_HASH_EQ_START(NamespacePath, Type, ...) \
     BP_HASHABLE_SIMPLE(NamespacePath::Type, __VA_ARGS__) \
     namespace NamespacePath { \
-        BP_EQUATABLE_START(Type)
+        BP_EQUATABLE_START(NamespacePath::Type)
 
 //Closes the code that started with BP_HASH_EQ_START() or BP_HASH_EQ_TEMPL_START().
-#define BP_HASH_EQ_END } BP_EQUATABLE_END
+#define BP_HASH_EQ_END  } BP_EQUATABLE_END
 
 #pragma endregion
 

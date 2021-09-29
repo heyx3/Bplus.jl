@@ -200,12 +200,12 @@ namespace Bplus::GuiData
 
                 //Edge-case: the keys share the same position.
                 if (key1.Pos == key2.Pos)
-                    return Value_t{ (key1.Value + key2.Value) / 2 };
+                    return Value_t{ (key1.Value + key2.Value) / Float_t{2} };
 
                 Float_t keyT = Math::InverseLerp(key1.Pos, key2.Pos, t);
                 //Model the movement between key1 and key2 using
                 //    a (N+1)-dimensional Bezier curve.
-                //TODO: Finish.
+                throw "//TODO: Finish";
                 return Default;
             }
             else
@@ -233,3 +233,11 @@ BP_HASH_EQ_TEMPL_START(Bplus::GuiData,
            (a.PowerMidpoint == b.PowerMidpoint) &&
            (a.TextboxMode == b.TextboxMode);
 BP_HASH_EQ_END
+
+BP_HASH_EQ_TEMPL_START(Bplus::GuiData,
+                       typename Data_t, NumberRange<Data_t>,
+                       d.Min, d.Max)
+    return (a.Min == b.Min) && (a.Max == b.Max);
+BP_HASH_EQ_END
+
+//TODO: Finish for the other types. std::nullopt is NOT hashable by default
