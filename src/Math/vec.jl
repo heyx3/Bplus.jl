@@ -236,3 +236,41 @@ vdot(v1::Vec, v2::Vec) = sum(Iterators.map(t->t[1]*t[2], zip(v1, v2)))
 "The \\cdot character represents the dot product."
 ⋅ = vdot
 export vdot, ⋅
+
+
+# Define a bunch of useful aliases.
+# Note that in game math, 32-bit numbers are far more common than 64-bit.
+
+Vec2{T} = Vec{2, T}
+Vec3{T} = Vec{3, T}
+Vec4{T} = Vec{4, T}
+
+vRGB{T} = Vec{3, T}
+vRGBA{T} = Vec{4, T}
+
+VecF{N} = Vec{N, Float32}
+Vec2f = Vec{2, Float32}
+Vec3f = Vec{3, Float32}
+Vec4f = Vec{4, Float32}
+
+VecI{N} = Vec{N, Int32}
+v2i = Vec{2, Int32}
+v3i = Vec{3, Int32}
+v4i = Vec{4, Int32}
+
+VecU{N} = Vec{N, UInt32}
+v2u = Vec{2, UInt32}
+v3u = Vec{3, UInt32}
+v4u = Vec{4, UInt32}
+
+VecF64{N} = Vec{N, Float64}
+VecI64{N} = Vec{N, Int64}
+VecU64{N} = Vec{N, UInt64}
+
+export Vec2, Vec3, Vec4,
+       vRGB, vRGBA,
+       VecF, VecI, VecU,
+       VecF64, VecI64, VecU64,
+       v2f, v3f, v4f,
+       v2i, v3i, v4i,
+       v2u, v3u, v4u
