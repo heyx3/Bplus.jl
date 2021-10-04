@@ -42,9 +42,22 @@ export mat, fmat, dmat,
        fmat2x2, fmat2x3, fmat2x4, fmat3x2, fmat3x3, fmat3x4, fmat4x2, fmat4x3, fmat4x4,
        dmat2x2, dmat2x3, dmat2x4, dmat3x2, dmat3x3, dmat3x4, dmat4x2, dmat4x3, dmat4x4
 
-       
-# Expose the various matrix-related functions from StaticArrays:
-export inv
+
+"Inverts the given matrix"
+m_invert = StaticArrays.inv
+export m_invert
+
+"""
+Embeds a 3x3 matrix into a 4x4 matrix.
+A 4x4 matrix is needed to represent 3D translations.
+"""
+to_mat4x4(m::mat{3, 3, F}) where {F} =
+    @SMatrix [ m[1]    m[4]    m[7]    zero(F)
+               m[2]    m[5]    m[8]    zero(F)
+               m[3]    m[6]    m[9]    zero(F)
+               zero(F) zero(F) zero(F) one(F)  ]
+export to_mat4x4
+
 
 
 #TODO: another file 'transformations.jl' handling world, view, and projection math.
