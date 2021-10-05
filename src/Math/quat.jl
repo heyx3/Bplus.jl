@@ -68,14 +68,35 @@ export fquat, dquat
             (q1.xyz ⋅ q2.xyz)
     return Quaternion(xyz..., w)
 end
-@inline function Base.:(*)(q::Quaternion, v::Vec)
+@inline Base.:(*)(q::Quaternion, v::Vec3{T}) where {T} = (q * Quaternion(v..., zero(T)))
 
 @inline function Base.:(-)(q::Quaternion)
     @bp_assert(is_normalized(q.data, 0.0001), "Quaternion isn't normalized")
     return Quaternion((-q.xyz)..., q.w)
 end
 
-#TODO: Quat-vector multiplication
-#TODO: 'Apply to vector' function
-#TODO: The three lerps
+"Applies a Quaternion rotation to a vector"
+@inline q_apply(q::Quaternion, v::Vec3) = (q * v) * -q
+export q_apply
+
+"""
+Interpolation between two rotations.
+The interpolation is nonlinear, following the surface of the unit sphere
+   instead of a straight line from rotation 1 to rotation 2,
+   but is a bit expensive to compute.
+The quaternions' 4 components must be normalized.
+"""
+@inline function q_slerp(a::Quaternion{F}, b::Quaternion{F}, t::F) where {F}
+    @bp_assert(is_normalized(a, convert(F, 0.001)))
+    @bp_assert(is_normalized(b, convert(F, 0.001)))
+
+    cos_angle::F = vdot(a.data, b.data)
+    angle::F = acos(cos_angle) * t
+
+    output::Quaternion{F} = Quaternion(vnorm(b.data - (one.data * cos_angle)))
+    (sin_angle::F, cos_angle) = sincos(angle)
+    return Quaternion((a.data * cos_angle) + (output.data * sin_angle))
+end
+
+#TODO: q_lerp() and q_nlerp()
 #TODO: to_matrix()
