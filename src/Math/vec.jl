@@ -4,11 +4,16 @@ using TupleTools, Setfield
 A vector math struct.
 You can get its data from the field "data",
   or access individual components "x|r", "y|g", "z|b", "w|a",
-  or even swizzle it, with 0 and 1 constants (e.x. "v.bgr1").
-You can also access its components like an AbstractVector.
+  or swizzle it, e.x. "v.xz".
+Swizzles can also use '0' for a constant 0, '1' for a constant 1,
+  '⋀' (\\bigwedge) for the max finite value, and '⋁' (\\bigvee) for the min finite value.
+For example, swizzling a Vec{4, UInt8} with "v.rrr⋀" results in
+  a vector with the RGB components set to the original red component,
+  and the alpha set to 255.
+You can also treat it like an AbstractVector, with indices, `map()`, etc.
 To change how many digits are printed in the REPL (i.e. Base.show()),
-  set VEC_N_DIGITS or call `print_vec_digits()`.
-NOTE: Broadcasting is not specialized; the output is an array instead of another Vector,
+  set VEC_N_DIGITS or call `use_vec_digits()`.
+NOTE: Broadcasting is not specialized; the output is an array instead of another Vec,
   because I don't know how to overload broadcasting correctly.
 """
 struct Vec{N, T} <: AbstractVector{T}
@@ -16,12 +21,14 @@ struct Vec{N, T} <: AbstractVector{T}
 
     # Construct with individual components.
     Vec(data::NTuple{N, T}) where {N, T} = new{N, T}(data)
-    Vec(data::T...) where {T} = new{length(data), T}(data)
+    Vec(data::T...) where {T} = Vec(data)
     Vec(data::Any...) = Vec(promote(data...))
 
     # Construct with a type parameter, and set of values.
     Vec{T}(data::NTuple{N, T2}) where {N, T, T2} = new{N, T}(map(T, data))
-    Vec{T}(data::T2...) where {T, T2} = Vec(map(T, data))
+    Vec{T}(data::T2...) where {T, T2} = Vec{T}(data)
+    Vec{N, T}(data::NTuple{N, T2}) where {N, T, T2} = Vec(map(T, data))
+    Vec{N, T}(data::T2...) where {N, T, T2} = Vec{N, T}(data)
 
     # "Empty" constructor makes a value with all 0's.
     Vec{N, T}() where {N, T} = new{N, T}(ntuple(i->zero(T), N))
@@ -32,41 +39,49 @@ struct Vec{N, T} <: AbstractVector{T}
 end
 export Vec
 
-
 ###############
 #   Aliases   #
 ###############
 
 # Note that in gamedev, 32-bit floats are far more common than 64-bit.
 
-Vec2{T} = Vec{2, T}
-Vec3{T} = Vec{3, T}
-Vec4{T} = Vec{4, T}
+const Vec2{T} = Vec{2, T}
+const Vec3{T} = Vec{3, T}
+const Vec4{T} = Vec{4, T}
 
-vRGB{T} = Vec{3, T}
-vRGBA{T} = Vec{4, T}
+const vRGB{T} = Vec{3, T}
+const vRGBu8 = vRGB{UInt8}
+const vRGBi8 = vRGB{Int8}
+const vRGBf = vRGB{Float32}
 
-VecF{N} = Vec{N, Float32}
-v2f = Vec{2, Float32}
-v3f = Vec{3, Float32}
-v4f = Vec{4, Float32}
+const vRGBA{T} = Vec{4, T}
+const vRGBAu8 = vRGBA{UInt8}
+const vRGBAi8 = vRGBA{Int8}
+const vRGBAf = vRGBA{Float32}
 
-VecI{N} = Vec{N, Int32}
-v2i = Vec{2, Int32}
-v3i = Vec{3, Int32}
-v4i = Vec{4, Int32}
+const VecF{N} = Vec{N, Float32}
+const v2f = Vec{2, Float32}
+const v3f = Vec{3, Float32}
+const v4f = Vec{4, Float32}
 
-VecU{N} = Vec{N, UInt32}
-v2u = Vec{2, UInt32}
-v3u = Vec{3, UInt32}
-v4u = Vec{4, UInt32}
+const VecI{N} = Vec{N, Int32}
+const v2i = Vec{2, Int32}
+const v3i = Vec{3, Int32}
+const v4i = Vec{4, Int32}
 
-VecF64{N} = Vec{N, Float64}
-VecI64{N} = Vec{N, Int64}
-VecU64{N} = Vec{N, UInt64}
+const VecU{N} = Vec{N, UInt32}
+const v2u = Vec{2, UInt32}
+const v3u = Vec{3, UInt32}
+const v4u = Vec{4, UInt32}
+
+const VecF64{N} = Vec{N, Float64}
+const VecI64{N} = Vec{N, Int64}
+const VecU64{N} = Vec{N, UInt64}
 
 export Vec2, Vec3, Vec4,
        vRGB, vRGBA,
+       vRGBu8, vRGBi8, vRGBf,
+       vRGBAu8, vRGBAi8, vRGBAf,
        VecF, VecI, VecU,
        VecF64, VecI64, VecU64,
        v2f, v3f, v4f,
@@ -111,7 +126,7 @@ function Base.print(io::IO, v::Vec{N, T}) where {N, T}
 end
 
 "Runs the given code with VEC_N_DIGITS temporarily changed to the given value."
-function print_vec_digits(to_do::Function, n::Int)
+function use_vec_digits(to_do::Function, n::Int)
     global VEC_N_DIGITS
     old::Int = VEC_N_DIGITS
     VEC_N_DIGITS = n
@@ -125,10 +140,11 @@ function print_vec_digits(to_do::Function, n::Int)
 end
 "Pretty-prints a vector using the given number of digits."
 function show_vec(io::IO, v::Vec, n::Int)
-    print_vec_digits(n) do
+    use_vec_digits(n) do
         show(io, v)
     end
 end
+export use_vec_digits, show_vec
 
 #################################
 #   Base overloads/interfaces   #
@@ -147,44 +163,79 @@ Base.IndexStyle(::Vec{N, T}) where {N, T} = IndexLinear()
 Base.iterate(v::Vec, state...) = iterate(v.data, state...)
 Base.map(f, v::Vec) = Vec(map(f, v.data))
 
-"Checks whether two vectors are equal, within the given per-component error."
-Base.isapprox(a::Vec{N, T}, b::Vec{N, T2}; kw...) where {N, T, T2} =
-    all(isapprox(f1, f2; kw...) for (f1, f2) in zip(a, b))
+@inline function Base.foldl(func::F, v::Vec{N, T}) where {F, N, T}
+    f::T = v[1]
+    for i in 2:N
+        f = func(f, v[i])
+    end
+    return f
+end
+@inline function Base.foldl(func::F, v::Vec{N, T}, init::T2)::T2 where {F, N, T, T2}
+    output::T2 = init
+    for f::T in v
+        output = func(output, f)
+    end
+    return output
+end
+@inline function Base.foldr(func::F, v::Vec{N, T}) where {F, N, T}
+    f::T = v[end]
+    for i in (N-1):-1:1
+        f = func(f, v[i])
+    end
+    return f
+end
+@inline function Base.foldr(func::F, v::Vec{N, T}, init::T2)::T2 where {F, N, T, T2}
+    f::T2 = init
+    for i in N:-1:1
+        f = func(f, v[i])
+    end
+    return f
+end
+
+# I can't figure out how to make the general-case form of `isapprox()` work
+#   without heap allocations.
+# I tried all sorts of stuff, including @generate.
+# So here are two simple, common cases.
+Base.isapprox(a::Vec{N, T1}, b::Vec{N, T2}) where {N, T1, T2} =
+    all(t -> isapprox(t[1], t[2]), zip(a, b))
+Base.isapprox(a::Vec{N, T1}, b::Vec{N, T2}, atol) where {N, T1, T2} =
+    all(t -> isapprox(t[1], t[2]; atol=atol), zip(a, b))
+
 
 #TODO: Implement broadcasting. I tried already, but turns out it's really complicated...
 
-@inline Base.getproperty(v::Vec, n::Symbol) =
-    if (n == :x) | (n == :r)
-        getfield(v, :data)[1]
-    elseif (n == :y) | (n == :g)
-        getfield(v, :data)[2]
-    elseif (n == :z) | (n == :b)
-        getfield(v, :data)[3]
-    elseif (n == :w) | (n == :a)
-        getfield(v, :data)[4]
-    elseif n == :data
-        return getfield(v, :data)
-    else # Assume it's a swizzle.
-        return swizzle(v, n)
-    end
-Base.propertynames(v::Vec, _) = (:x, :y, :z, :w, :data)
-    
-swizzle(v::Vec, n::Symbol) = swizzle(v, Val(n))
+@inline Base.getproperty(v::Vec, n::Symbol) = getproperty(v, Val(n))
+# getproperty() for individual components:
+@inline Base.getproperty(v::Vec, ::Val{:x}) = getfield(v, :data)[1]
+@inline Base.getproperty(v::Vec, ::Val{:y}) = getfield(v, :data)[2]
+@inline Base.getproperty(v::Vec, ::Val{:z}) = getfield(v, :data)[3]
+@inline Base.getproperty(v::Vec, ::Val{:w}) = getfield(v, :data)[4]
+@inline Base.getproperty(v::Vec, ::Val{:r}) = getfield(v, :data)[1]
+@inline Base.getproperty(v::Vec, ::Val{:g}) = getfield(v, :data)[2]
+@inline Base.getproperty(v::Vec, ::Val{:b}) = getfield(v, :data)[3]
+@inline Base.getproperty(v::Vec, ::Val{:a}) = getfield(v, :data)[4]
+# getproperty() for fields:
+@inline Base.getproperty(v::Vec, ::Val{:data}) = getfield(v, :data)
+# getproperty() for swizzling:
+@inline Base.getproperty(v::Vec, ::Val{T}) where {T} = swizzle(v, T)
+
+Base.propertynames(::Vec, _) = (:x, :y, :z, :w, :data)
+swizzle(v::Vec{N, T}, n::Symbol) where {N, T} = swizzle(v, Val(n))
 
 Base.:(+)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i+j for (i,j) in zip(a, b))...)
 Base.:(-)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i-j for (i,j) in zip(a, b))...)
 Base.:(*)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i*j for (i,j) in zip(a, b))...)
 Base.:(/)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i/j for (i,j) in zip(a, b))...)
 
-Base.:(+)(a::Vec{N, T}, b::T2) where {N, T, T2<:Real} = map(f->(f*b), a)
-Base.:(-)(a::Vec{N, T}, b::T2) where {N, T, T2<:Real} = map(f->(f-b), a)
-Base.:(*)(a::Vec{N, T}, b::T2) where {N, T, T2<:Real} = map(f->(f*b), a)
-Base.:(/)(a::Vec{N, T}, b::T2) where {N, T, T2<:Real} = map(f->(f/b), a)
+Base.:(+)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f+b), a)
+Base.:(-)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f-b), a)
+Base.:(*)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f*b), a)
+Base.:(/)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f/b), a)
 
-Base.:(+)(a, b::Vec) = b+a
-Base.:(-)(a, b::Vec) = b-a
-Base.:(*)(a, b::Vec) = b*a
-Base.:(/)(a, b::Vec) = b/a
+Base.:(+)(a::T, b::Vec) where {T<:Number} = b+a
+Base.:(-)(a::T, b::Vec) where {T<:Number} = (-b)+a
+Base.:(*)(a::T, b::Vec) where {T<:Number} = b*a
+Base.:(/)(a::T, b::Vec) where {T<:Number} = map(f->(a/f), b)
 
 Base.:(-)(a::Vec) = map(-, a)
 
@@ -274,9 +325,13 @@ swizzle(v::Vec, ::Val{T}) where {T} = swizzle(v, string(T))
         elseif (component == 'w') | (component == 'a')
             @set! v2[i] = v[4]
         elseif (component == '1')
-            @set! v2[i] = 1
+            @set! v2[i] = one(T)
         elseif (component == '0')
-            @set! v2[i] = 0
+            @set! v2[i] = zero(T)
+        elseif (component == '⋀')
+            @set! v2[i] = typemax_finite(T)
+        elseif (component == '⋁')
+            @set! v2[i] = typemin_finite(T)
         else
             error("Invalid swizzle char: '", component, "'")
         end
@@ -290,15 +345,21 @@ vdot(v1::Vec, v2::Vec) = sum(Iterators.map(t->t[1]*t[2], zip(v1, v2)))
 export vdot
 
 "Computes the square distance between two vectors"
-vdist_sqr(v1::Vec, v2::Vec) = sum(f*f for f in (a-b for (a,b) in zip(v1, v2)))
+@inline function vdist_sqr(v1::Vec{N, T1}, v2::Vec{N, T2})::promote_type(T1, T2) where {N, T1, T2}
+    delta::Vec{N, promote_type(T1, T2)} = v1 - v2
+    delta = map(f -> f*f, delta)
+    return sum(delta)
+end
 "Computes the distance between two vectors"
 vdist(v1::Vec, v2::Vec) = sqrt(vdist_sqr(v1, v2))
 export vdist_sqr, vdist
 
 "Computes the square length of a vector"
-vlength_sqr(v::Vec) = v⋅v
+@inline function vlength_sqr(v::Vec{N, T})::T where {N, T}
+    return vdot(v, v)
+end
 "Computes the length of a vector"
-vlength(v::Vec) = sqrt(vlength_sqr(v))
+@inline vlength(v::Vec, out_type=Float64)::out_type = convert(out_type, sqrt(vlength_sqr(v)))
 export vlength_sqr, vlength
 
 "Normalizes a vector"
@@ -306,16 +367,18 @@ vnorm(v::Vec) = v / vlength(v)
 export vnorm
 
 "Checks whether a vector is normalized, within the given epsilon"
-@inline is_normalized(v::Vec{N, T}, eps::T) where {N, T} =
-    isapprox(vlength_sqr(v), convert(T, 1.0); atol=eps*eps)
+@inline is_normalized(v::Vec{N, T}, atol::T = zero(T)) where {N, T} =
+    isapprox(vlength_sqr(v), convert(T, 1.0); atol=atol*atol)
 export is_normalized
 
 "Computes the 3D cross product."
-@inline vcross(a::Vec3, b::Vec3) = Vec(
-    foldl(-, a.yz * b.zy),
-    foldl(-, a.zx * b.xz),
-    foldl(-, a.xy * b.yx)
-)
+@inline function vcross( a::Vec3{T1},
+                         b::Vec3{T2}
+                       )::Vec3{promote_type(T1, T2)} where {T1, T2}
+    return Vec(foldl(-, a.yz * b.zy),
+               foldl(-, a.zx * b.xz),
+               foldl(-, a.xy * b.yx))
+end
 export vcross
 
 
@@ -326,11 +389,11 @@ export vcross
 # Define some mathematical aliases for some vector ops, in case anybody likes mathy syntax.
 
 "The \\cdot character represents the dot product."
-⋅ = vdot
+const ⋅ = vdot
 "The \\circ character also represents the dot product, as it's easier to read than the dot."
-∘ = vdot
+const ∘ = vdot
 "The \\times character represents the cross product."
-× = vcross
+const × = vcross
 export ⋅, ∘, ×
 
 
@@ -380,7 +443,7 @@ export get_up_axis, get_horz_axes,
 
 """
 Defines a fast implementation of swizzling for a specific swizzle.
-Valid swizzle chars are x, y, z, w, 0, 1.
+Valid swizzle chars are x, y, z, w, 0, 1, ⋀, ⋁.
 RGBA swizzles are generated along with the XYZW swizzles.
 """
 macro fast_swizzle(components_xyzw::Union{Symbol, Int}...)
@@ -402,8 +465,10 @@ macro fast_swizzle(components_xyzw::Union{Symbol, Int}...)
             return :b
         elseif c == :w
             return :a
+        elseif c in (:⋀, :⋁)
+            return c
         else
-            error("Swizzle char isn't valid (xyzw/rgba/01): '", c, "'")
+            error("Swizzle char isn't valid (xyzw/rgba/01/!¡): '", c, "'")
         end
     end
 
@@ -422,13 +487,25 @@ macro fast_swizzle(components_xyzw::Union{Symbol, Int}...)
     # Generate expressions to evaluate each swizzle component.
     # Note that this will always behave the same for the XYZW and RGBA versions,
     #    so we only need one copy.
-    components_expr = map(component_sets) do c
+    components_expr = map(component_sets[1]) do c
         if c == 0
             return :( zero(T) )
         elseif c == 1
             return :( one(T) )
+        elseif c == :⋀
+            return :( typemax_finite(T) )
+        elseif c == :⋁
+            return :( typemin_finite(T) )
+        elseif (c == :x) || (c == :r)
+            return :( data[1] )
+        elseif (c == :y) || (c == :g)
+            return :( data[2] )
+        elseif (c == :z) || (c == :b)
+            return :( data[3] )
+        elseif (c == :w) || (c == :a)
+            return :( data[4] )
         else
-            return :( v.$c )
+            error("Unknown component in macro: '", c, "'")
         end
     end
 
@@ -436,10 +513,12 @@ macro fast_swizzle(components_xyzw::Union{Symbol, Int}...)
     output = Expr(:block)
     for swizzle_symbol_expr in swizzle_symbol_exprs
         push!(output.args, :(
-            Math.swizzle( v::Vec{N, T},
-                           ::Val{$swizzle_symbol_expr}
-                        ) where {N, T} =
-                Vec($(components_expr...))
+            @inline function Base.getproperty( v::Vec{N, T},
+                                               ::Val{$swizzle_symbol_expr}
+                                             ) where {N, T}
+                data::NTuple{N, T} = getfield(v, :data)
+                return Vec($(components_expr...))
+            end
         ))
     end
     return esc(output)
@@ -458,23 +537,35 @@ end
 @fast_swizzle_single y
 @fast_swizzle_single z
 @fast_swizzle_single w
-
+# Define fast cases for all two-component swizzles of XYZ, and of XW (for red-alpha textures).
 @fast_swizzle x y
 @fast_swizzle y x
 @fast_swizzle x z
 @fast_swizzle z x
 @fast_swizzle y z
 @fast_swizzle z y
-
+@fast_swizzle x w
+@fast_swizzle w x
+@fast_swizzle x 0
+@fast_swizzle x 1
+@fast_swizzle x ⋀
+@fast_swizzle x ⋁
+# Define fast cases for simple three-component swizzles, optionally with constant alpha.
 @fast_swizzle x y z
 @fast_swizzle x y z 0
 @fast_swizzle x y z 1
-
+@fast_swizzle x y z ⋀
+@fast_swizzle x y z ⋁
 @fast_swizzle z y x
 @fast_swizzle z y x w
 @fast_swizzle z y x 0
 @fast_swizzle z y x 1
-
+@fast_swizzle z y x ⋀
+@fast_swizzle z y x ⋁
+# Define fast cases that turn Red-Alpha color data into RGBA data.
 @fast_swizzle x x x w
+# Define fast cases that turn greyscale data into RGBA data.
 @fast_swizzle x x x 0
 @fast_swizzle x x x 1
+@fast_swizzle x x x ⋀
+@fast_swizzle x x x ⋁

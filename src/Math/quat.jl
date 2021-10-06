@@ -1,6 +1,5 @@
 """
 Quaternions are great for representing 3D rotations.
-This Quaternion type is backed by a Vec4, so you can swizzle it.
 It is assumed to always be normalized, to optimize the math
   when reversing Quaternions and rotating vectors.
 """
@@ -55,8 +54,8 @@ end
 Base.getproperty(q::Quaternion, n::Symbol) = getproperty(q.data, n)
 export Quaternion
 
-fquat = Quaternion{Float32}
-dquat = Quaternion{Float64}
+const fquat = Quaternion{Float32}
+const dquat = Quaternion{Float64}
 export fquat, dquat
 
 @inline function Base.:(*)(q1::Quaternion{F1}, a2::Quaternion{F2}) where {F1, F2}
@@ -75,8 +74,16 @@ end
     return Quaternion((-q.xyz)..., q.w)
 end
 
+"""
+Normalizes a quaternion.
+You normally don't need to do this, but floating-point error can accumulate over time,
+   causing quaternions to "drift" away from length 1.
+"""
+qnorm(q::Quaternion) = Quaternion(vnorm(q.data))
+export qnorm
+
 "Applies a Quaternion rotation to a vector"
-@inline q_apply(q::Quaternion, v::Vec3) = (q * v) * -q
+q_apply(q::Quaternion, v::Vec3) = (q * v) * -q
 export q_apply
 
 """
@@ -97,6 +104,39 @@ The quaternions' 4 components must be normalized.
     (sin_angle::F, cos_angle) = sincos(angle)
     return Quaternion((a.data * cos_angle) + (output.data * sin_angle))
 end
+export q_slerp
 
-#TODO: q_lerp() and q_nlerp()
-#TODO: to_matrix()
+"""
+Interpolation between two quaternions.
+It's simple (and fast) linear interpolation,
+  which can lead to strange animations when tweening.
+Use q_slerp() instead for smoother rotations.
+"""
+lerp(a::Quaternion, b::Quaternion, t) = vnorm(Quaternion(lerp(a.data, b.data, t)))
+
+"Converts a quaternion to a 3x3 transformation matrix"
+function q_mat3x3(q::Quaternion{F}) where {F}
+    # Source: https://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix/index.htm
+
+    v::Vec3{F} = q.xyz
+    v_sqr::Vec3{F} = map(f->f*f, v)
+
+    ONE::F = one(F)
+    TWO::F = convert(F, 2)
+
+    xy2::F = v.x * v.y * TWO
+    xz2::F = v.x * v.z * TWO
+    yz2::F = v.y * v.z * TWO
+    vw2::Vec3{F} = v * (w * TWO)
+
+    return @SMatrix [ (ONE - (TWO * (v_sqr.y + v_sqr.z)))               (xy2 - vw2.z)                       (xz2 + vw2.y)
+                                (xy2 + vw2.z)               (ONE - (TWO * (v_sqr.x + v_sqr.z)))             (yz2 - vw2.x)
+                                (xz2 - vw2.y)                           (yz2 + vw2.x)             (ONE - (TWO * (v_sqr.x + v_sqr.y)))
+                    ]
+end
+"Converts a quaternion to a 4x4 transformation matrix"
+q_mat4x4(q::Quaternion{F}) where {F} = to_mat4x4(q_mat3x3(q))
+export q_mat3x3, q_mat4x4
+
+
+#TODO: Double-check slerp, and implement squad, using this article: https://www.3dgep.com/understanding-quaternions/#SLERP

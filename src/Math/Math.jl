@@ -8,6 +8,16 @@ using ..Utilities
 @inline lerp(a, b, t) = a + (t * (b - a))
 export lerp
 
+"Like typemin(), but returns a finite value for floats"
+typemin_finite(T) = typemin(T)
+typemin_finite(T::Type{<:AbstractFloat}) = nextfloat(typemin(T))
+export typemin_finite
+
+"Like typemax(), but returns a finite value for floats"
+typemax_finite(T) = typemax(T)
+typemax_finite(T::Type{<:AbstractFloat}) = prevfloat(typemax(T))
+export typemax_finite
+
 include("vec.jl")
 include("mat.jl")
 include("quat.jl")
