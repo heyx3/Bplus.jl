@@ -38,18 +38,18 @@
                                  Vec(0, 2, 3, 4, 5, 6)),
                         false)
 @bp_test_no_allocations(isapprox(Vec(1.0, 2, 3, 4, 5, 6),
-                                 Vec(ntuple(i->nextfloat(Float64(i), 6)))),
+                                 Vec(ntuple(i->nextfloat(Float64(i)), 6))),
                         true)
 @bp_test_no_allocations(isapprox(Vec(1.0, 2.0, 3.0, 4.0, 5.0, 6.0),
                                  Vec(1.4, 2.4, 2.6, 4.4, 4.6, 5.75)),
                         false)
 @bp_test_no_allocations(isapprox(Vec(1.0, 2.0, 3.0, 4.0, 5.0, 6.0),
-                                 Vec(1.4, 2.4, 2.6, 4.4, 4.6, 5.75);
-                                 atol = 0.5),
+                                 Vec(1.4, 2.4, 2.6, 4.4, 4.6, 5.75),
+                                 0.5),
                         true)
 @bp_test_no_allocations(isapprox(Vec(1.0, 2.0, 3.0, 4.0, 5.0, 6.0),
-                                 Vec(1.0, 2.0, 3.0, 4.4, 5.0, 6.0);
-                                 atol = 0.15),
+                                 Vec(1.0, 2.0, 3.0, 4.4, 5.0, 6.0),
+                                 0.15),
                         false)
 
 # Test arithmetic.
@@ -142,4 +142,15 @@
                         Vec(-1, 0, 0))
 
 # Test the "up axis" stuff.
-#TODO: Implement
+@bp_test_no_allocations(get_up_vector(Int8), Vec(0, 0, 1))
+@bp_test_no_allocations(get_horz(Vec(3, 4, 5)), Vec(3, 4))
+Bplus.Math.get_up_axis()::Int = 1
+Bplus.Math.get_up_sign()::Int = -1
+@bp_test_no_allocations(get_up_vector(Int16), Vec(-1, 0, 0))
+@bp_test_no_allocations(get_horz(Vec(3, 4, 5)), Vec(4, 5))
+# Undo the change to the "up" axis.
+Bplus.Math.get_up_axis()::Int = 3
+Bplus.Math.get_up_sign()::Int = 1
+@bp_test_no_allocations(get_vert(Vec(3, 4, 5)), 5)
+@bp_test_no_allocations(to_3d(Vec(3, 4)), Vec(3, 4, 0))
+@bp_test_no_allocations(to_3d(Vec(3, 4), 5), Vec(3, 4, 5))

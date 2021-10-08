@@ -1,9 +1,11 @@
 # Import dependencies.
-using TupleTools, Setfield, StaticArrays
+using TupleTools, Setfield, StaticArrays, InteractiveUtils
 
 # Import the main codebase.
 using Bplus
 using Bplus.Utilities, Bplus.Math
+# Enable all asserts for the codebase.
+@inline Bplus.Math.bp_math_asserts_enabled() = true
 
 # Ensure the @timed macro is precompiled by timing some arbitrary code.
 _ = @timed sin(Threads.nthreads())
@@ -24,12 +26,13 @@ macro bp_test_no_allocations(expr, expected_value, msg...)
         function run_test()
             gen_actual() = $expr
             run_timer() = @timed(gen_actual())
-            # Pre-compile the expression by running it once.
-            # Then run it for real, and profile with the @timed macro.
+            # Pre-compile the expression by running it once, then run it for real.
             try
-                run_timer()
+                # We need to force the compiler to not optimize away the run_timer() call,
+                #    so "print" the result.
+                println(devnull, gen_actual(), run_timer())
             catch e
-                error("Error evaluating ", $expr_str, ":\n\t",
+                error("Error evaluating `", $expr_str, "``:\n\t",
                          sprint(showerror, e, catch_backtrace()))
             end
             result = run_timer()
@@ -62,3 +65,5 @@ end
 
 # If we haven't crashed yet, then I guess the tests worked.
 println("All tests passed!")
+
+#TODO: Add tests for "toggleable assert" macros

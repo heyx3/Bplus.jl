@@ -3,8 +3,13 @@ module Math
 using Setfield
 using ..Utilities
 
-#TODO: There's a macro that can check for type instability/performance issues. Use it on this code.
+# Define @bp_math_assert.
+@make_toggleable_asserts bp_math_
 
+"""
+Linear interpolation: a smooth transition from `a` to `b` based on a `t`.
+`t=0` results in `a`, `t=1.0` results in `b`, `t=0.5` results in the midpoint between them.
+"""
 @inline lerp(a, b, t) = a + (t * (b - a))
 export lerp
 

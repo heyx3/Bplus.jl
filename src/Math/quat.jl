@@ -6,11 +6,14 @@ It is assumed to always be normalized, to optimize the math
 struct Quaternion{F}
     data::Vec4{F}
     
-    Quaternion(components...) = Quaternion(promote(components...))
-    Quaternion{F}(components...) where {F} = Quaternion(map(F, components))
+    # Constructors that take the components:
+    Quaternion(x, y, z, w) = Quaternion(promote(x, y, z, w))
     Quaternion(x::F, y::F, z::F, w::F) where {F} = new{F}(Vec(x, y, z, w))
-    Quaternion(components::Vec4{F}) where {F} = new{F}(components)
+    Quaternion{F}(x, y, z, w) where {F} = Quaternion(map(F, (x, y, z, w)))
     Quaternion(components::NTuple{4, F}) where {F} = Quaternion(Vec(components))
+    Quaternion{F}(components::NTuple{4, F2}) where {F, F2} = Quaternion(Vec(map(F2, components)))
+    Quaternion(components::Vec4{F}) where {F} = new{F}(components)
+    Quaternion{F}(components::Vec4{F2}) where {F, F2} = new{F}(map(F2, components))
 
     "Creates an identity quaternion (i.e. no rotation)."
     Quaternion{F}() where {F} = new{F}(Vec(zero(F), zero(F), zero(F), one(F)))
@@ -19,24 +22,32 @@ struct Quaternion{F}
     Creates a rotation around the given axis, by the given angle in radians.
     The axis should be normalized.
     """
-    function Quaternion(axis::Vec3{F}, angle_radians::F) where {F}
-        (sine::F, cos::F) = sincos(angle_radians * convert(F, 0.5))
-        return new{F}((axis * sine)..., cos)
+    function Quaternion(axis::Vec3{F}, angle_radians::F2) where {F, F2}
+        @bp_math_assert(is_normalized(axis), "Axis of Quaternion rotation isn't normalized: ", axis)
+        (sine::F, cos::F) = sincos(convert(F, angle_radians * 0.5))
+        return new{F}(Vec((axis * sine)..., cos))
     end
+    Quaternion{F}(axis::Vec3{F2}, angle_radians::F3) where {F, F2, F3} =
+        Quaternion(convert(Vec3{F}, axis), convert(F, angle_radians))
     
     """
     Creates a rotation that transforms the first vector into the second.
     The vectors should be normalized.
     """
     Quaternion(from::Vec3{F}, to::Vec3{F}) where {F} = Quaternion{F}(from, to)
-    function Quaternion{F}(from::Vec3{F2}, to::Vec3{F2}) where {F, F2}
-        @bp_assert(is_normalized(from, convert(F2, 0.001)), "'from' vector isn't normalized")
-        @bp_assert(is_normalized(to, convert(F2, 0.001)), "'to' vector isn't normalized")
-        cos_angle::F2 = vdot(from, to)
+    Quaternion(from::Vec3{F1}, to::Vec3{F2}) where {F1, F2} = Quaternion{promote_type(F, F2)}(from, to)
+    function Quaternion{F}(from::Vec3{F2}, to::Vec3{F3}) where {F, F2, F3}
+        if !(F2<:Integer)
+            @bp_math_assert(is_normalized(from, convert(F2, 0.001)), "'from' vector isn't normalized")
+        end
+        if !(F3<:Integer)
+            @bp_math_assert(is_normalized(to, convert(F3, 0.001)), "'to' vector isn't normalized")
+        end
+        cos_angle::F = convert(F, vdot(from, to))
 
-        if isapprox(cos_angle, one(F2); atol=F2(0.001))
+        if isapprox(cos_angle, one(F); atol=0.001)
             return Quaternion{F}()
-        elseif isapprox(cos_angle, -one(F2); atol=F2(0.001))
+        elseif isapprox(cos_angle, -one(F); atol=0.001)
             # Get an arbitrary perpendicular axis to rotate around.
             axis::Vec3{F2} = (abs(from.x) < 1) ?
                                 Vec3{F2}(1, 0, 0) :
@@ -52,10 +63,14 @@ struct Quaternion{F}
     end
 
     "Creates a rotation by combining a sequence of rotations together."
-    Quaternion(rots_in_order::Quaternion...) = foldl(*, rots_in_order)
+    @inline Quaternion(rots_in_order::Quaternion...) = foldl(*, rots_in_order)
+    @inline Quaternion{F}(rots_in_order::Quaternion...) where {F} = foldl(*, rots_in_order)
 end
-Base.getproperty(q::Quaternion, n::Symbol) = getproperty(getfield(q, :data), n)
 export Quaternion
+
+Base.getproperty(q::Quaternion, n::Symbol) = getproperty(getfield(q, :data), n)
+
+Base.convert(::Type{Quaternion{F2}}, q::Quaternion) where {F2} = Quaternion{F2}(q.data)
 
 
 ###############
@@ -80,14 +95,15 @@ QUAT_AXIS_DIGITS = 2
 QUAT_ANGLE_DIGITS = 3
 
 function Base.show(io::IO, ::MIME"text/plain", q::Quaternion{F}) where {F}
+    qdata::Vec4{F} = getfield(q, :data)
+    length::Optional{F} = vlength(qdata)
+    is_normalized::Bool = isapprox(length, 1; atol=0.00001)
+    (axis::Vec3{F}, angle::F) = q_axisangle(qnorm(q))
+
     # Use the Vec printing work to simplify.
     n_digits_axis::Int = QUAT_AXIS_DIGITS
     n_digits_angle::Int = QUAT_ANGLE_DIGITS
     use_vec_digits(n_digits_axis) do
-        qdata::Vec4{F} = getfield(q, :data)
-        length::Optional{F} = vlength(qdata)
-        is_normalized::Bool = isapprox(length, 1; atol=0.00001)
-        (axis::Vec3{F}, angle::F) = q_axisangle(qnorm(q))
 
         print(io, "<")
         print(io, "axis=", axis, "  ")
@@ -165,10 +181,14 @@ export show_quat
             (q1.xyz ⋅ q2.xyz)
     return Quaternion(xyz..., w)
 end
-@inline Base.:(*)(q::Quaternion, v::Vec3{T}) where {T} = (q * Quaternion(v..., zero(T)))
+@inline function Base.:(*)( q::Quaternion{F},
+                            v::Vec3{T}
+                          )::Quaternion{promote_type(F, T)} where {F, T}
+    return (q * Quaternion(v..., zero(F)))
+end
 
 @inline function Base.:(-)(q::Quaternion)
-    @bp_assert(is_normalized(q), "Quaternion isn't normalized: ", q)
+    @bp_math_assert(is_normalized(q), "Quaternion isn't normalized: ", q)
     return Quaternion((-q.xyz)..., q.w)
 end
 
@@ -198,7 +218,7 @@ qnorm(q::Quaternion) = Quaternion(vnorm(getfield(q, :data)))
 export qnorm
 
 "Applies a Quaternion rotation to a vector"
-q_apply(q::Quaternion, v::Vec3) = (q * v) * -q
+@inline q_apply(q::Quaternion, v::Vec3) = ((q * v) * -q).xyz
 export q_apply
 
 """
@@ -209,8 +229,8 @@ The interpolation is nonlinear, following the surface of the unit sphere
 The quaternions' 4 components must be normalized.
 """
 @inline function q_slerp(a::Quaternion{F}, b::Quaternion{F}, t::F) where {F}
-    @bp_assert(is_normalized(a, convert(F, 0.001)))
-    @bp_assert(is_normalized(b, convert(F, 0.001)))
+    @bp_math_assert(is_normalized(a, convert(F, 0.001)))
+    @bp_math_assert(is_normalized(b, convert(F, 0.001)))
 
     cos_angle::F = vdot(a.data, b.data)
     angle::F = acos(cos_angle) * t
@@ -236,12 +256,12 @@ lerp(a::Quaternion, b::Quaternion, t) = vnorm(Quaternion(lerp(a.data, b.data, t)
 ###################
 
 "Gets the quaternion's rotation as an axis and an angle (in radians)"
-function q_axisangle(q::Quaternion{F}) where {F}
-    @bp_assert(q.w <= 1.0, "Quaternion isn't normalized, which breaks q_axisangle(): ", q)
+function q_axisangle(q::Quaternion{F})::Tuple{Vec3{F}, F} where {F}
+    @bp_math_assert(q.w <= 1.0, "Quaternion isn't normalized, which breaks q_axisangle(): ", q)
 
     # For the 'identity' Quaternion, the angle is 0 and the axis is arbitrary.
     if q.w >= 1
-        return (get_up_axis(), zero(F))
+        return (get_up_vector(F), zero(F))
     end
     # In all other cases (including an angle of 180), the math works out fine.
     return (q.xyz / convert(F, sqrt(1 - (q.w * q.w))),

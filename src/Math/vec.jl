@@ -25,9 +25,15 @@ struct Vec{N, T} <: AbstractVector{T}
     Vec(data::Any...) = Vec(promote(data...))
 
     # Construct with a type parameter, and set of values.
-    Vec{T}(data::NTuple{N, T2}) where {N, T, T2} = new{N, T}(map(T, data))
-    Vec{T}(data::T2...) where {T, T2} = Vec{T}(data)
-    Vec{N, T}(data::NTuple{N, T2}) where {N, T, T2} = Vec(map(T, data))
+    function Vec{T}(data::NTuple{N, T2}) where {N, T, T2}
+        @bp_check(!(T isa Int), "Constructors of the form 'VecN(x, y, ...)' aren't allowed. Try 'Vec(x, y, ...)', or 'VecN{T}(x, y, ...)'")
+        return new{N, T}(convert(NTuple{N, T}, data))
+    end
+    function Vec{T}(data::T2...) where {T, T2}
+        @bp_check(!(T isa Int), "Constructors of the form 'VecN(x, y, ...)' aren't allowed. Try 'Vec(x, y, ...)', or 'VecN{T}(x, y, ...)'")
+        return Vec{T}(data)
+    end
+    Vec{N, T}(data::NTuple{N, T2}) where {N, T, T2} = Vec{T}(convert(NTuple{N, T}, data))
     Vec{N, T}(data::T2...) where {N, T, T2} = Vec{N, T}(data)
 
     # "Empty" constructor makes a value with all 0's.
@@ -211,6 +217,32 @@ Base.isapprox(a::Vec{N, T1}, b::Vec{N, T2}, atol) where {N, T1, T2} =
 
 #TODO: Implement broadcasting. I tried already, but turns out it's really complicated...
 
+@inline function Setfield.ConstructionBase.setproperties(v::Vec{N, T}, patch::NamedTuple)::Vec{N, T} where {N, T}
+    for name::Symbol in propertynames(patch)
+        v = v_setproperty(v, name, getfield(patch, name))
+    end
+    return v
+end
+
+@inline function v_setproperty( v::Vec{N, T},
+                                n::Symbol,
+                                val::Union{T2, NTuple{N, T2}}
+                              )::Vec{N, T} where {N, T, T2}
+    if (n == :x) | (n == :r)
+        return Vec(@set getfield(v, :data)[1] = convert(T, val::T2))
+    elseif (n == :y) | (n == :g)
+        return Vec(@set getfield(v, :data)[2] = convert(T, val::T2))
+    elseif (n == :z) | (n == :b)
+        return Vec(@set getfield(v, :data)[3] = convert(T, val::T2))
+    elseif (n == :w) | (n == :a)
+        return Vec(@set getfield(v, :data)[4] = convert(T, val::T2))
+    elseif n == :data
+        return Vec{N, T}(val::NTuple{N, T2})
+    else
+        error("No property on Vec: '", n, "'")
+    end
+end
+
 @inline Base.getproperty(v::Vec, n::Symbol) = getproperty(v, Val(n))
 # getproperty() for individual components:
 @inline Base.getproperty(v::Vec, ::Val{:x}) = getfield(v, :data)[1]
@@ -266,8 +298,10 @@ end
 # Conversions/constructors between Vec and MVec:
 MVec(v::Vec{N, T}) where {N, T} = MVec(v.data)
 Vec(v::MVec{N, T}) where {N, T} = Vec(v.data)
+Base.convert(::Type{Vec{N, T}}, v::MVec{N, T2}) where {N, T, T2} = Vec(map(T, v.data))
 Base.convert(::Type{Vec{N, T}}, v::MVec{N, T}) where {N, T} = Vec(v.data)
 Base.convert(::Type{MVec{N, T}}, v::Vec{N, T}) where {N, T} = MVec(v.data)
+Base.convert(::Type{MVec{N, T}}, v::Vec{N, T2}) where {N, T, T2} = MVec(map(T, v.data))
 # AbstractArray iterface for MVec:
 Base.getindex(v::MVec, i::Int) = v.data[i]
 function Base.setindex!(v::MVec{N, T}, val::T, i::Int) where {N, T}
@@ -311,6 +345,7 @@ Base.length(::MVec{N, T}) where {N, T} = N
 Base.size(::MVec{N, T}) where {N, T} = (N, )
 Base.IndexStyle(::MVec{N, T}) where {N, T} = IndexLinear()
 Base.iterate(v::MVec, state...) = iterate(v.data, state...)
+Base.copy!(dest::MVec{N, T}, src::Vec{N, T2}) where {N, T, T2} = (dest.data = map(T, src.data))
 
 Base.similar(v::Vec) = MVec(v.data)
 Base.similar(v::Vec{N, T}, ::Type{T2}) where {N, T, T2} = MVec(map(T2, v.data))
@@ -451,8 +486,8 @@ get_up_sign()::Int = 1
 
 
 "Gets a normalized vector pointing in the positive direction along the Up axis"
-get_up_vector(F = Float32) = @set(
-    Vec3{F}(0, 0, 0)[get_up_axis()] = get_up_sign()
+@inline get_up_vector(F = Float32) = Vec3{F}(
+    @set (0, 0, 0)[get_up_axis()] = sign(get_up_sign())
 )
 
 "Gets the horizontal axes -- 1=X, 2=Y, 3=Z."
@@ -475,19 +510,20 @@ end
 get_vert(v::Vec3) = v[get_up_axis()]
 
 "Inserts a vertical component into the given horizontal vector."
-@inline function to_3d(v_2d::Vec2{T}, vertical::T2 = zero(T2))::Vec3{T} where {N, T, T2}
+@inline function to_3d(v_2d::Vec2{T}, vertical::T2 = zero(T))::Vec3{T} where {T, T2}
     v::Vec3{T} = zero(Vec3{T})
     
     @set! v[get_up_axis()] = convert(T, vertical)
 
     (a::Int, b::Int) = get_horz_axes()
-    @set! v[a] = v.x
-    @set! v[b] = v.y
+    @set! v[a] = v_2d.x
+    @set! v[b] = v_2d.y
 
     return v
 end
 
-export get_up_sign, get_up_axis, get_horz_axes,
+export get_up_sign, get_up_axis, get_up_vector,
+       get_horz_axes,
        get_horz, get_vert, to_3d
 #
 
