@@ -7,12 +7,13 @@ struct Quaternion{F}
     data::Vec4{F}
     
     Quaternion(components...) = Quaternion(promote(components...))
+    Quaternion{F}(components...) where {F} = Quaternion(map(F, components))
     Quaternion(x::F, y::F, z::F, w::F) where {F} = new{F}(Vec(x, y, z, w))
     Quaternion(components::Vec4{F}) where {F} = new{F}(components)
     Quaternion(components::NTuple{4, F}) where {F} = Quaternion(Vec(components))
 
     "Creates an identity quaternion (i.e. no rotation)."
-    Quaternion{F}() where {F} = new{F}(zero(F), zero(F), zero(F), one(F))
+    Quaternion{F}() where {F} = new{F}(Vec(zero(F), zero(F), zero(F), one(F)))
 
     """
     Creates a rotation around the given axis, by the given angle in radians.
@@ -74,7 +75,6 @@ export fquat, dquat
 ################
 
 # Base.show() prints the quat with a certain number of digits.
-# Base.print() prints with a few extra digits.
 
 QUAT_AXIS_DIGITS = 2
 QUAT_ANGLE_DIGITS = 3
@@ -84,13 +84,18 @@ function Base.show(io::IO, ::MIME"text/plain", q::Quaternion{F}) where {F}
     n_digits_axis::Int = QUAT_AXIS_DIGITS
     n_digits_angle::Int = QUAT_ANGLE_DIGITS
     use_vec_digits(n_digits_axis) do
-        (axis::Vec3{F}, angle::F) = q_axisangle(q)
-        print(io,
-              "<",
-                "axis=", axis,
-                " ",
-                "θ=", printable_component(angle, n_digits_angle),
-              ">")
+        qdata::Vec4{F} = getfield(q, :data)
+        length::Optional{F} = vlength(qdata)
+        is_normalized::Bool = isapprox(length, 1; atol=0.00001)
+        (axis::Vec3{F}, angle::F) = q_axisangle(qnorm(q))
+
+        print(io, "<")
+        print(io, "axis=", axis, "  ")
+        print(io, "θ=", printable_component(angle, n_digits_angle))
+        if !is_normalized
+            print(io, "  len=", length)
+        end
+        print(io, ">")
     end
 end
 function Base.print(io::IO, q::Quaternion{F}) where {F}
@@ -151,7 +156,7 @@ export show_quat
 #   Arithmetic   #
 ##################
 
-@inline function Base.:(*)(q1::Quaternion{F1}, a2::Quaternion{F2}) where {F1, F2}
+@inline function Base.:(*)(q1::Quaternion{F1}, q2::Quaternion{F2}) where {F1, F2}
     F3::DataType = promote_type(F1, F2)
     xyz::Vec3{F3} = (q1.xyz × q2.xyz) +
                     (q1.w * q2.xyz) +
@@ -163,7 +168,7 @@ end
 @inline Base.:(*)(q::Quaternion, v::Vec3{T}) where {T} = (q * Quaternion(v..., zero(T)))
 
 @inline function Base.:(-)(q::Quaternion)
-    @bp_assert(is_normalized(q, 0.0001), "Quaternion isn't normalized")
+    @bp_assert(is_normalized(q), "Quaternion isn't normalized: ", q)
     return Quaternion((-q.xyz)..., q.w)
 end
 
@@ -181,7 +186,7 @@ Base.isapprox(a::Quaternion{F}, b::Quaternion{F2}, atol) where {F, F2} =
 #   Quaternion ops   #
 ######################
 
-is_normalized(q::Quaternion{F}, atol::F2 = zero(F2)) where {F, F2} = is_normalized(q.data, atol)
+is_normalized(q::Quaternion{F}, atol::F2 = 0.0) where {F, F2} = is_normalized(getfield(q, :data), atol)
 # No export needed for is_normalized(), because it's an overload of the Vec version.
 
 """
@@ -189,7 +194,7 @@ Normalizes a quaternion.
 You normally don't need to do this, but floating-point error can accumulate over time,
    causing quaternions to "drift" away from length 1.
 """
-qnorm(q::Quaternion) = Quaternion(vnorm(q.data))
+qnorm(q::Quaternion) = Quaternion(vnorm(getfield(q, :data)))
 export qnorm
 
 "Applies a Quaternion rotation to a vector"

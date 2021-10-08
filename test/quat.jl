@@ -34,7 +34,7 @@
                         false)
 
 # Test arithmetic.
-@bp_test_no_allocations(-Quaternion(1, 2, 3, 4), Quaternion(-1, -2, -3, 4))
+@bp_test_no_allocations(-Quaternion(1, 0, 0, 0), Quaternion(-1, 0, 0, 0))
 
 # Test combination of multiple rotations.
 @bp_test_no_allocations(Quaternion(fquat(), fquat(), fquat()),

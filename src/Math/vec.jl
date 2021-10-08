@@ -96,7 +96,6 @@ export Vec2, Vec3, Vec4,
 ################
 
 # Base.show() prints the vector with a certain number of digits.
-# Base.print() prints with a few extra digits.
 
 VEC_N_DIGITS = 2
 
@@ -118,7 +117,7 @@ function Base.show(io::IO, ::MIME"text/plain", v::Vec{N, T}) where {N, T}
 end
 function Base.print(io::IO, v::Vec{N, T}) where {N, T}
     global VEC_N_DIGITS
-    n_digits::Int = VEC_N_DIGITS + 2
+    n_digits::Int = VEC_N_DIGITS
     
     print(io, "Vec", N, "(")
     if N > 0
@@ -394,7 +393,7 @@ vnorm(v::Vec) = v / vlength(v)
 export vnorm
 
 "Checks whether a vector is normalized, within the given epsilon"
-@inline is_normalized(v::Vec{N, T}, atol::T2 = zero(T2)) where {N, T, T2} =
+@inline is_normalized(v::Vec{N, T}, atol::T2 = 0.0) where {N, T, T2} =
     isapprox(vlength_sqr(v), convert(T, 1.0); atol=atol*atol)
 export is_normalized
 
