@@ -43,7 +43,9 @@ export Vec
 #   Aliases   #
 ###############
 
-# Note that in gamedev, 32-bit floats are far more common than 64-bit.
+# Note that in gamedev, 32-bit floats are far more common than 64-bit, for performance reasons.
+# Especially when passing data to the GPU --
+#    commercial gaming GPU's can have pretty terrible float64 performance.
 
 const Vec2{T} = Vec{2, T}
 const Vec3{T} = Vec{3, T}
@@ -95,9 +97,12 @@ export Vec2, Vec3, Vec4,
 
 # Base.show() prints the vector with a certain number of digits.
 # Base.print() prints with a few extra digits.
-VEC_N_DIGITS = 3
+
+VEC_N_DIGITS = 2
+
 printable_component(f::T, n_digits::Int) where {T} = round(f; digits=n_digits)
 printable_component(f::I, n_digits::Int) where {I<:Integer} = f
+
 function Base.show(io::IO, ::MIME"text/plain", v::Vec{N, T}) where {N, T}
     global VEC_N_DIGITS
     n_digits::Int = VEC_N_DIGITS
@@ -138,13 +143,15 @@ function use_vec_digits(to_do::Function, n::Int)
         VEC_N_DIGITS = old
     end
 end
+export use_vec_digits
+
 "Pretty-prints a vector using the given number of digits."
 function show_vec(io::IO, v::Vec, n::Int)
     use_vec_digits(n) do
         show(io, v)
     end
 end
-export use_vec_digits, show_vec
+export show_vec
 
 #################################
 #   Base overloads/interfaces   #
@@ -193,9 +200,10 @@ end
 end
 
 # I can't figure out how to make the general-case form of `isapprox()` work
-#   without heap allocations.
+#   without heap allocations (I think it's related to the keyword arguments).
 # I tried all sorts of stuff, including @generate.
 # So here are two simple, common cases.
+# Note that I've done the same thing for Quaternions.
 Base.isapprox(a::Vec{N, T1}, b::Vec{N, T2}) where {N, T1, T2} =
     all(t -> isapprox(t[1], t[2]), zip(a, b))
 Base.isapprox(a::Vec{N, T1}, b::Vec{N, T2}, atol) where {N, T1, T2} =
@@ -221,6 +229,7 @@ Base.isapprox(a::Vec{N, T1}, b::Vec{N, T2}, atol) where {N, T1, T2} =
 
 Base.propertynames(::Vec, _) = (:x, :y, :z, :w, :data)
 swizzle(v::Vec{N, T}, n::Symbol) where {N, T} = swizzle(v, Val(n))
+#TODO: I think we can make all swizzles fast by using @generated with the argument type Val{S}.
 
 Base.:(+)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i+j for (i,j) in zip(a, b))...)
 Base.:(-)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i-j for (i,j) in zip(a, b))...)
@@ -266,6 +275,24 @@ function Base.setindex!(v::MVec{N, T}, val::T, i::Int) where {N, T}
     d::NTuple{N, T} = v.data
     @set! d[i] = val
     v.data = d
+end
+@inline function Base.setproperty!( v::MVec{N, T},
+                                    name::Symbol,
+                                    val::Union{T, NTuple{N, T}}
+                                  ) where {N, T}
+    if (name == :x) | (name == :r)
+        setfield!(v, :data, @set(getfield(v, :data)[1] = val::T))
+    elseif (name == :y) | (name == :g)
+        setfield!(v, :data, @set(getfield(v, :data)[2] = val::T))
+    elseif (name == :z) | (name == :b)
+        setfield!(v, :data, @set(getfield(v, :data)[3] = val::T))
+    elseif (name == :w) | (name == :a)
+        setfield!(v, :data, @set(getfield(v, :data)[4] = val::T))
+    elseif (name == :data)
+        setfield!(v, :data, val::NTuple{N, T})
+    else
+        error("Invalid field of MVec: '", name, "'")
+    end
 end
 Base.similar(v::MVec) = MVec(v.data)
 Base.similar(v::MVec{N, T}, ::Type{T2}) where {N, T, T2} = MVec(map(T2, v.data))
@@ -367,7 +394,7 @@ vnorm(v::Vec) = v / vlength(v)
 export vnorm
 
 "Checks whether a vector is normalized, within the given epsilon"
-@inline is_normalized(v::Vec{N, T}, atol::T = zero(T)) where {N, T} =
+@inline is_normalized(v::Vec{N, T}, atol::T2 = zero(T2)) where {N, T, T2} =
     isapprox(vlength_sqr(v), convert(T, 1.0); atol=atol*atol)
 export is_normalized
 
@@ -410,9 +437,24 @@ export ⋅, ∘, ×
 Gets the vertical axis -- 1=X, 2=Y, 3=Z.
 Redefine this to set the vertical axis for your project.
 Julia's JIT should ensure it's a compile-time constant, even after redefinition.
-By default, defines Z as the up-axis.
+By default, uses Z as the up-axis.
 """
 get_up_axis()::Int = 3
+
+"""
+Gets the sign of the "Upward" direction of the vertical axis.
+For example, if `get_up_axis()==3 && get_up_sign()==-1`,
+  then the "Up" direction is pointing in the -Z direction.
+Like `get_up_axis()`, you can redefine this to set the value for your project.
+By default, points in the positive direction.
+"""
+get_up_sign()::Int = 1
+
+
+"Gets a normalized vector pointing in the positive direction along the Up axis"
+get_up_vector(F = Float32) = @set(
+    Vec3{F}(0, 0, 0)[get_up_axis()] = get_up_sign()
+)
 
 "Gets the horizontal axes -- 1=X, 2=Y, 3=Z."
 @inline function get_horz_axes()::Tuple{Int, Int}
@@ -433,8 +475,21 @@ end
 "Extracts the vertical component from a 3D vector."
 get_vert(v::Vec3) = v[get_up_axis()]
 
-export get_up_axis, get_horz_axes,
-       get_horz, get_vert
+"Inserts a vertical component into the given horizontal vector."
+@inline function to_3d(v_2d::Vec2{T}, vertical::T2 = zero(T2))::Vec3{T} where {N, T, T2}
+    v::Vec3{T} = zero(Vec3{T})
+    
+    @set! v[get_up_axis()] = convert(T, vertical)
+
+    (a::Int, b::Int) = get_horz_axes()
+    @set! v[a] = v.x
+    @set! v[b] = v.y
+
+    return v
+end
+
+export get_up_sign, get_up_axis, get_horz_axes,
+       get_horz, get_vert, to_3d
 #
 
 ###########################
@@ -445,6 +500,8 @@ export get_up_axis, get_horz_axes,
 Defines a fast implementation of swizzling for a specific swizzle.
 Valid swizzle chars are x, y, z, w, 0, 1, ⋀, ⋁.
 RGBA swizzles are generated along with the XYZW swizzles.
+Feel free to add this macro to your own code, for specific swizzles
+    that you want to be high-performance.
 """
 macro fast_swizzle(components_xyzw::Union{Symbol, Int}...)
     # If there is only one component, we don't actually need swizzling behavior for it.
@@ -474,7 +531,7 @@ macro fast_swizzle(components_xyzw::Union{Symbol, Int}...)
 
     component_sets = (components_xyzw, components_rgba)
 
-    # Generate the swizzle symbols for both versions.
+    # Generate the swizzle symbols (e.x. ":xyzw") for both XYZW and RGBA versions.
     swizzle_symbol_exprs = map(cs -> QuoteNode(Symbol(cs...)),
                                component_sets)
     # Don't use the RGBA version if it isn't actually different

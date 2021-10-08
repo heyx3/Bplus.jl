@@ -6,8 +6,10 @@ It is assumed to always be normalized, to optimize the math
 struct Quaternion{F}
     data::Vec4{F}
     
+    Quaternion(components...) = Quaternion(promote(components...))
     Quaternion(x::F, y::F, z::F, w::F) where {F} = new{F}(Vec(x, y, z, w))
     Quaternion(components::Vec4{F}) where {F} = new{F}(components)
+    Quaternion(components::NTuple{4, F}) where {F} = Quaternion(Vec(components))
 
     "Creates an identity quaternion (i.e. no rotation)."
     Quaternion{F}() where {F} = new{F}(zero(F), zero(F), zero(F), one(F))
@@ -51,12 +53,103 @@ struct Quaternion{F}
     "Creates a rotation by combining a sequence of rotations together."
     Quaternion(rots_in_order::Quaternion...) = foldl(*, rots_in_order)
 end
-Base.getproperty(q::Quaternion, n::Symbol) = getproperty(q.data, n)
+Base.getproperty(q::Quaternion, n::Symbol) = getproperty(getfield(q, :data), n)
 export Quaternion
+
+
+###############
+#   Aliases   #
+###############
+
+# See the notes in the "Aliases" section for Vec.
 
 const fquat = Quaternion{Float32}
 const dquat = Quaternion{Float64}
+
 export fquat, dquat
+
+
+################
+#   Printing   #
+################
+
+# Base.show() prints the quat with a certain number of digits.
+# Base.print() prints with a few extra digits.
+
+QUAT_AXIS_DIGITS = 2
+QUAT_ANGLE_DIGITS = 3
+
+function Base.show(io::IO, ::MIME"text/plain", q::Quaternion{F}) where {F}
+    # Use the Vec printing work to simplify.
+    n_digits_axis::Int = QUAT_AXIS_DIGITS
+    n_digits_angle::Int = QUAT_ANGLE_DIGITS
+    use_vec_digits(n_digits_axis) do
+        (axis::Vec3{F}, angle::F) = q_axisangle(q)
+        print(io,
+              "<",
+                "axis=", axis,
+                " ",
+                "θ=", printable_component(angle, n_digits_angle),
+              ">")
+    end
+end
+function Base.print(io::IO, q::Quaternion{F}) where {F}
+    n_digits_axis::Int = QUAT_AXIS_DIGITS
+    n_digits_angle::Int = QUAT_ANGLE_DIGITS
+    if q isa fquat
+        print(io, "fquat")
+    elseif q isa dquat
+        print(io, "dquat")
+    else
+        print(io, "Quaternion")
+    end
+
+    print(io, '(')
+    for i in 1:4
+        if i > 1
+            print(io, ", ")
+        end
+        f::F = printable_component(q.data[i],
+                                   (i == 4) ?
+                                     n_digits_angle :
+                                     n_digits_axis)
+        print(io, f)
+    end
+    print(io, ')')
+end
+
+"""
+Runs the given code with QUAT_ANGLE_DIGITS and QUAT_AXIS_DIGITS
+  temporarily changed to the given values.
+"""
+function use_quat_digits(to_do::Function, n_axis_digits::Int, n_angle_digits::Int)
+    global QUAT_ANGLE_DIGITS, QUAT_AXIS_DIGITS
+    old::Tuple{Int, Int} = QUAT_ANGLE_DIGITS, QUAT_AXIS_DIGITS
+    QUAT_ANGLE_DIGITS = n_angle_digits
+    QUAT_AXIS_DIGITS = n_axis_digits
+
+    try
+        to_do()
+    catch e
+        rethrow(e)
+    finally
+        QUAT_ANGLE_DIGITS, QUAT_AXIS_DIGITS = old
+    end
+end
+export use_quat_digits
+
+"Pretty-prints a Quaternion using the given number of digits."
+function show_quat(io::IO, q::Quaternion, n_axis_digits::Int, n_angle_digits::Int)
+    use_quat_digits(n_axis_digits, n_angle_digits) do
+        show(io, v)
+    end
+end
+export show_quat
+
+
+##################
+#   Arithmetic   #
+##################
 
 @inline function Base.:(*)(q1::Quaternion{F1}, a2::Quaternion{F2}) where {F1, F2}
     F3::DataType = promote_type(F1, F2)
@@ -70,9 +163,26 @@ end
 @inline Base.:(*)(q::Quaternion, v::Vec3{T}) where {T} = (q * Quaternion(v..., zero(T)))
 
 @inline function Base.:(-)(q::Quaternion)
-    @bp_assert(is_normalized(q.data, 0.0001), "Quaternion isn't normalized")
+    @bp_assert(is_normalized(q, 0.0001), "Quaternion isn't normalized")
     return Quaternion((-q.xyz)..., q.w)
 end
+
+Base.:(==)(q1::Quaternion, q2::Quaternion)::Bool = (q1.data == q2.data)
+
+# See my notes about isapprox() for Vec
+Base.isapprox(a::Quaternion{F}, b::Quaternion{F2}) where {F, F2} =
+    all(t -> isapprox(t[1], t[2]), zip(a.data, b.data))
+Base.isapprox(a::Quaternion{F}, b::Quaternion{F2}, atol) where {F, F2} =
+    all(t -> isapprox(t[1], t[2]; atol=atol), zip(a.data, b.data))
+#
+
+
+######################
+#   Quaternion ops   #
+######################
+
+is_normalized(q::Quaternion{F}, atol::F2 = zero(F2)) where {F, F2} = is_normalized(q.data, atol)
+# No export needed for is_normalized(), because it's an overload of the Vec version.
 
 """
 Normalizes a quaternion.
@@ -113,6 +223,26 @@ It's simple (and fast) linear interpolation,
 Use q_slerp() instead for smoother rotations.
 """
 lerp(a::Quaternion, b::Quaternion, t) = vnorm(Quaternion(lerp(a.data, b.data, t)))
+# No export needed for lerp(), because it's an overload of an existing function.
+
+
+###################
+#   Conversions   #
+###################
+
+"Gets the quaternion's rotation as an axis and an angle (in radians)"
+function q_axisangle(q::Quaternion{F}) where {F}
+    @bp_assert(q.w <= 1.0, "Quaternion isn't normalized, which breaks q_axisangle(): ", q)
+
+    # For the 'identity' Quaternion, the angle is 0 and the axis is arbitrary.
+    if q.w >= 1
+        return (get_up_axis(), zero(F))
+    end
+    # In all other cases (including an angle of 180), the math works out fine.
+    return (q.xyz / convert(F, sqrt(1 - (q.w * q.w))),
+            convert(F, 2 * acos(q.w)))
+end
+export q_axisangle
 
 "Converts a quaternion to a 3x3 transformation matrix"
 function q_mat3x3(q::Quaternion{F}) where {F}
@@ -134,9 +264,11 @@ function q_mat3x3(q::Quaternion{F}) where {F}
                                 (xz2 - vw2.y)                           (yz2 + vw2.x)             (ONE - (TWO * (v_sqr.x + v_sqr.y)))
                     ]
 end
+export q_mat3x3
+
 "Converts a quaternion to a 4x4 transformation matrix"
 q_mat4x4(q::Quaternion{F}) where {F} = to_mat4x4(q_mat3x3(q))
-export q_mat3x3, q_mat4x4
+export q_mat4x4
 
 
 #TODO: Double-check slerp, and implement squad, using this article: https://www.3dgep.com/understanding-quaternions/#SLERP

@@ -25,6 +25,32 @@
 # Test equality.
 @bp_test_no_allocations(Vec(1, 2, 3), Vec(1, 2, 3), true)
 @bp_test_no_allocations(Vec(1, 2, 3), Vec(1, 2.0, 3), true)
+@bp_test_no_allocations(isapprox(Vec(1, 2, 3, 4, 5, 6),
+                                 Vec(1, 2, 3, 4, 5, 6)),
+                        true)
+@bp_test_no_allocations(isapprox(Vec(1, 2, 3, 4, 5, 6),
+                                 Vec(1, 0, 3, 4, 5, 6)),
+                        false)
+@bp_test_no_allocations(isapprox(Vec(1, 2, 3, 4, 5, 6),
+                                 Vec(1, 2, 3, 4, 5, 0)),
+                        false)
+@bp_test_no_allocations(isapprox(Vec(1, 2, 3, 4, 5, 6),
+                                 Vec(0, 2, 3, 4, 5, 6)),
+                        false)
+@bp_test_no_allocations(isapprox(Vec(1.0, 2, 3, 4, 5, 6),
+                                 Vec(ntuple(i->nextfloat(Float64(i), 6)))),
+                        true)
+@bp_test_no_allocations(isapprox(Vec(1.0, 2.0, 3.0, 4.0, 5.0, 6.0),
+                                 Vec(1.4, 2.4, 2.6, 4.4, 4.6, 5.75)),
+                        false)
+@bp_test_no_allocations(isapprox(Vec(1.0, 2.0, 3.0, 4.0, 5.0, 6.0),
+                                 Vec(1.4, 2.4, 2.6, 4.4, 4.6, 5.75);
+                                 atol = 0.5),
+                        true)
+@bp_test_no_allocations(isapprox(Vec(1.0, 2.0, 3.0, 4.0, 5.0, 6.0),
+                                 Vec(1.0, 2.0, 3.0, 4.4, 5.0, 6.0);
+                                 atol = 0.15),
+                        false)
 
 # Test arithmetic.
 @bp_test_no_allocations(Vec(1, 2, 3, 4, 5) + 2, Vec(3, 4, 5, 6, 7))
@@ -48,6 +74,10 @@
                         true)
 @bp_test_no_allocations(-Vec(2, -3, 4, -5, 6, -7), Vec(-2, 3, -4, 5, -6, 7))
 
+# Test setfield.
+@bp_test_no_allocations(@set(Vec(1, 2, 3).x = 3),
+                        Vec(3, 2, 3))
+
 # Test the dot product.
 @bp_test_no_allocations(vdot(Vec(1, 2), Vec(4, 5)),  14)
 @bp_test_no_allocations(Vec(1, 2) ⋅ Vec(4, 5), vdot(Vec(1, 2), Vec(4, 5)))
@@ -61,6 +91,7 @@
 @bp_test_no_allocations(v2f(1, 2).xxx⋀, Vec(1, 1, 1, typemax_finite(Float32)))
 @bp_test_no_allocations(v2f(3, 4).xxx⋁, Vec(3, 3, 3, typemin_finite(Float32)))
 @bp_check(Vec(1, 2, 3, 4).xxyyz0101w === Vec(1, 1, 2, 2, 3, 0, 1, 0, 1, 4))
+#TODO: Add a @fast_swizzle for our weird one, then test that it doesn't allocate anymore.
 
 # Test array-like behavior.
 @bp_test_no_allocations(map(f->f*f, Vec(1, 2, 3, 4)) === Vec(1, 4, 9, 16),
@@ -109,3 +140,6 @@
                         Vec(0, 0, 1))
 @bp_test_no_allocations(Vec(0, 0, 1) × Vec(0, 1, 0),
                         Vec(-1, 0, 0))
+
+# Test the "up axis" stuff.
+#TODO: Implement

@@ -36,9 +36,9 @@ macro bp_test_no_allocations(expr, expected_value, msg...)
             actual_value = result.value
             expected_value = $expected_value
             # Test.
-            @bp_check(actual_value == expected_value,
-                     "Expected: `", $expr_str, "` == `", $expected_str, "`.\n",
-                     "       => `", actual_value, "` == `", expected_value, "`.\n",
+            @bp_check(actual_value == expected_value, "\n",
+                     "    Expected: `", $expected_str, "` => `", expected_value, "`.\n",
+                     "      Actual: `", $expr_str,     "` => `", actual_value, "`.\n",
                      "\t", $(msg...))
             @bp_check(result.bytes == 0,
                      "The expression `", $expr_str,
