@@ -14,7 +14,7 @@ macro f32(f64)
 end
 export @f32
 
-include("macros.jl")
 include("asserts.jl")
+include("enums.jl")
 
 end
