@@ -4,6 +4,7 @@
 @bp_enum(VsyncModes,
     Off, On, Adaptive
 )
+export VsyncModes, E_VsyncModes
 
 #=
 Whether to ignore polygon faces that are pointing away from the camera
@@ -15,3 +16,4 @@ Whether to ignore polygon faces that are pointing away from the camera
     Backwards = GL_FRONT,
     All       = GL_FRONT_AND_BACK
 )
+export FaceCullModes, E_FaceCullModes

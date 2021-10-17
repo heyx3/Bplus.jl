@@ -19,12 +19,21 @@ include("depth_stencil.jl")
 include("blending.jl")
 include("data.jl")
 
-"""
-An OpenGL environment.
-You should only interact with it on the main thread.
-"""
-mutable struct Context
+include("context.jl")
+#TODO: Drawing functions
+# TODO: Give various object names with glObjectLabel
 
-end
+#TODO: Buffers, Textures, Targets, Meshes
+
+
+# OpenGL/GLSL version info:
+const OGL_MAJOR_VERSION = 4
+const OGL_MINOR_VERSION = 6
+const GLSL_VERSION = "#version 460"
+const GLSL_EXTENSIONS = [
+    #TODO: Ho do we load extensions? https://github.com/JuliaGL/ModernGL.jl/issues/70
+    # "#extension GL_ARB_bindless_texture : require",
+    # "#extension GL_ARB_gpu_shader_int64 : require"
+]
 
 end # module
