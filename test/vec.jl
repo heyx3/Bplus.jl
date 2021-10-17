@@ -74,6 +74,38 @@
                         true)
 @bp_test_no_allocations(-Vec(2, -3, 4, -5, 6, -7), Vec(-2, 3, -4, 5, -6, 7))
 
+# Test boolean vector operations
+@bp_test_no_allocations(Vec(true, false) | Vec(false, true),
+                        Vec(true, true))
+@bp_test_no_allocations(Vec(true, false) | false,
+                        Vec(true, false))
+@bp_test_no_allocations(true | Vec(true, false),
+                        Vec(true, true))
+@bp_test_no_allocations(Vec(true, false, true) & Vec(true, true, false),
+                        Vec(true, false, false))
+@bp_test_no_allocations(Vec(true, false, true) & false,
+                        Vec(false, false, false))
+@bp_test_no_allocations(Vec(true, false, true) & true,
+                        Vec(true, false, true))
+
+# Test comparisons and all/any
+@bp_test_no_allocations(Vec(1, 2, 3) < 2, Vec(true, false, false))
+@bp_test_no_allocations(Vec(1, 2, 3) <= 2, Vec(true, true, false))
+@bp_test_no_allocations(Vec(1, 2, 3) > 2, Vec(false, false, true))
+@bp_test_no_allocations(Vec(1, 2, 3) >= 2, Vec(false, true, true))
+@bp_test_no_allocations(2 > Vec(1, 2, 3), Vec(true, false, false))
+@bp_test_no_allocations(2 >= Vec(1, 2, 3), Vec(true, true, false))
+@bp_test_no_allocations(2 < Vec(1, 2, 3), Vec(false, false, true))
+@bp_test_no_allocations(2 <= Vec(1, 2, 3), Vec(false, true, true))
+@bp_test_no_allocations(Vec(1, 2, 3) < Vec(2, 2, 2), Vec(true, false, false))
+@bp_test_no_allocations(Vec(1, 2, 3) <= Vec(2, 2, 2), Vec(true, true, false))
+@bp_test_no_allocations(Vec(1, 2, 3) > Vec(2, 2, 2), Vec(false, false, true))
+@bp_test_no_allocations(Vec(1, 2, 3) >= Vec(2, 2, 2), Vec(false, true, true))
+@bp_test_no_allocations(all(Vec(true, false)), false)
+@bp_test_no_allocations(all(Vec(true, true)), true)
+@bp_test_no_allocations(any(Vec(false, true)), true)
+@bp_test_no_allocations(any(Vec(false, false, false, false)), false)
+
 # Test setfield.
 @bp_test_no_allocations(@set(Vec(1, 2, 3).x = 3),
                         Vec(3, 2, 3))

@@ -15,6 +15,8 @@ To change how many digits are printed in the REPL (i.e. Base.show()),
   set VEC_N_DIGITS or call `use_vec_digits()`.
 NOTE: Broadcasting is not specialized; the output is an array instead of another Vec,
   because I don't know how to overload broadcasting correctly.
+NOTE: Comparing two vectors with == or != returns a boolean as expected,
+  but other comparisons (<, <=, >, <=) return a component-wise result.
 """
 struct Vec{N, T} <: AbstractVector{T}
     data::NTuple{N, T}
@@ -68,19 +70,24 @@ const vRGBAi8 = vRGBA{Int8}
 const vRGBAf = vRGBA{Float32}
 
 const VecF{N} = Vec{N, Float32}
-const v2f = Vec{2, Float32}
-const v3f = Vec{3, Float32}
-const v4f = Vec{4, Float32}
+const v2f = VecF{2}
+const v3f = VecF{3}
+const v4f = VecF{4}
 
 const VecI{N} = Vec{N, Int32}
-const v2i = Vec{2, Int32}
-const v3i = Vec{3, Int32}
-const v4i = Vec{4, Int32}
+const v2i = VecI{2}
+const v3i = VecI{3}
+const v4i = VecI{4}
 
 const VecU{N} = Vec{N, UInt32}
-const v2u = Vec{2, UInt32}
-const v3u = Vec{3, UInt32}
-const v4u = Vec{4, UInt32}
+const v2u = VecU{2}
+const v3u = VecU{3}
+const v4u = VecU{4}
+
+const VecB{N} = Vec{N, Bool}
+const v2b = VecB{2}
+const v3b = VecB{3}
+const v4b = VecB{4}
 
 const VecF64{N} = Vec{N, Float64}
 const VecI64{N} = Vec{N, Int64}
@@ -90,11 +97,12 @@ export Vec2, Vec3, Vec4,
        vRGB, vRGBA,
        vRGBu8, vRGBi8, vRGBf,
        vRGBAu8, vRGBAi8, vRGBAf,
-       VecF, VecI, VecU,
+       VecF, VecI, VecU, VecB,
        VecF64, VecI64, VecU64,
        v2f, v3f, v4f,
        v2i, v3i, v4i,
-       v2u, v3u, v4u
+       v2u, v3u, v4u,
+       v2b, v3b, v4b
 #
 
 ################
@@ -105,8 +113,8 @@ export Vec2, Vec3, Vec4,
 
 VEC_N_DIGITS = 2
 
-printable_component(f::T, n_digits::Int) where {T} = round(f; digits=n_digits)
-printable_component(f::I, n_digits::Int) where {I<:Integer} = f
+printable_component(f::AbstractFloat, n_digits::Int) = round(f; digits=n_digits)
+printable_component(f::Integer, n_digits::Int) = f
 
 function Base.show(io::IO, ::MIME"text/plain", v::Vec{N, T}) where {N, T}
     global VEC_N_DIGITS
@@ -272,16 +280,27 @@ Base.:(-)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f-b), a)
 Base.:(*)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f*b), a)
 Base.:(/)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f/b), a)
 
-Base.:(+)(a::T, b::Vec) where {T<:Number} = b+a
-Base.:(-)(a::T, b::Vec) where {T<:Number} = (-b)+a
-Base.:(*)(a::T, b::Vec) where {T<:Number} = b*a
-Base.:(/)(a::T, b::Vec) where {T<:Number} = map(f->(a/f), b)
+Base.:(+)(a::Number, b::Vec) = b+a
+Base.:(-)(a::Number, b::Vec) = (-b)+a
+Base.:(*)(a::Number, b::Vec) = b*a
+Base.:(/)(a::Number, b::Vec) = map(f->(a/f), b)
 
-Base.:(-)(a::Vec) = map(-, a)
+Base.:(-)(a::Vec)::Vec = map(-, a)
 
+Base.:(<)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i<j for (i,j) in zip(a, b))...)
+Base.:(<)(a::Vec{N, T}, b::T2) where {N, T, T2} = map(x -> x<b, a)
+Base.:(<)(a::T2, b::Vec{N, T}) where {N, T, T2} = map(x -> a<x, b)
+Base.:(<=)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i<=j for (i,j) in zip(a, b))...)
+Base.:(<=)(a::Vec{N, T}, b::T2) where {N, T, T2} = map(x -> x<=b, a)
+Base.:(<=)(a::T2, b::Vec{N, T}) where {N, T, T2} = map(x -> a<=x, b)
 
+@inline Base.:(&)(a::VecB{N}, b::VecB{N}) where {N} = Vec((i&j for (i,j) in zip(a, b))...)
+Base.:(&)(a::VecB{N}, b::Bool) where {N} = map(x -> x&b, a)
+@inline Base.:(&)(a::Bool, b::VecB) = b & a
 
-#TODO: Bool vectors
+@inline Base.:(|)(a::VecB{N}, b::VecB{N}) where {N} = Vec((i|j for (i,j) in zip(a, b))...)
+Base.:(|)(a::VecB{N}, b::Bool) where {N} = map(x -> x|b, a)
+@inline Base.:(|)(a::Bool, b::VecB) = b | a
 
 
 #######################
