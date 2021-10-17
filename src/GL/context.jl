@@ -28,7 +28,7 @@ struct RenderState
 
     # There can be different stencil behaviors for the front-faces and back-faces.
     stencil::Union{StencilState,
-                   @NamedTuple(front::StencilState, back::StencilState)}
+                   @NamedTuple{front::StencilState, back::StencilState}}
 end
 
 
