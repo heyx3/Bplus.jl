@@ -1,12 +1,3 @@
-struct StencilState
-    test::StencilTest
-    result::StencilResult
-    write_mask::GLuint
-
-    StencilState(test, result, write_mask = ~GLuint(0)) = new(test, result, write_mask)
-    StencilResult() = StencilState(StencilTest(), StencilResult())
-end
-
 "Global OpenGL state, mostly related to the fixed-function stuff like blending"
 struct RenderState
     color_write_mask::vRGBA{Bool}
@@ -26,8 +17,17 @@ struct RenderState
     stencil_test::Union{StencilTest, @NamedTuple{front::StencilTest, back::StencilTest}}
     stencil_result::Union{StencilResult, @NamedTuple{front::StencilResult, back::StencilResult}}
     stencil_write_mask::Union{GLuint, @NamedTuple{front::GLuint, back::GLuint}}
-end
 
+    RenderState(fields...) = new(fields...)
+    RenderState() = new(
+        Vec(true, true, true, true), true,
+        FaceCullModes.Off,
+        (min=v2i(0, 0), max=v2i(1, 1)), nothing,
+        (rgb=make_blend_opaque(BlendStateRGB), alpha=make_blend_opaque(BlendStateAlpha)),
+        ValueTests.Pass,
+        StencilTest(), StencilResult(), ~GLuint(0)
+    )
+end
 
 
 ############################
@@ -35,29 +35,45 @@ end
 ############################
 
 "
-The OpenGL context, which owns all OpenGL state and data.
+The OpenGL context, which owns all state and data.
 This type is very special, in a lot of ways:
     * It is a per-thread singleton, because OpenGL only allows one context per thread
     * You can get the current context for your thread by calling `get_context()`.
-    * You create and register it simply by calling the constructor.
+    * You register it simply by calling the constructor.
     * You can get the fields, but you cannot set them manually
 It's recommended to surround all OpenGL work in a `bp_gl_context()` block.
 "
 mutable struct Context
-    state::RenderState
+    window::GLFW.Window
+    vsync::Optional{E_VsyncModes}
     
-    #TODO: Vsync mode. Make sure to load it in refresh_context()!
+    state::RenderState
     #TODO: The active RenderTarget
-    #TODO: The GLFW window
 
-    #TODO: Constructor that registers and starts the context
+    function Context(window::GLFW.Window, vsync::Optional{E_VsyncModes} = nothing)
+        con::Context = new(window, vsync, RenderState())
+
+        @bp_check(isnothing(get_context()), "A Context already exists on this thread")
+        CONTEXTS_PER_THREAD[Threads.threadid()] = con
+
+        GLFW.MakeContextCurrent(window)
+        refresh(con)
+        if exists(con.vsync)
+            GLFW.SwapInterval(Int(con.vsync))
+        end
+
+        return con
+    end
 end
 export Context
+
 
 # Disable the setting of Context fields.
 # You can still set them by manually calling setfield!(),
 #    but at that point you're asking for trouble.
 Base.setproperty!(c::Context, name::Symbol, new_val) = error("Cannot set the fields of `Bplus.GL.Context`")
+
+#TODO: Use setproperty!() instead of global setter functions
 
 
 "Gets the current context, if it exists"
@@ -99,6 +115,10 @@ get_stencil_write_mask_back(context::Context)::GLuint =
         context.state.stencil_write_mask :
         context.state.stencil_write_mask.back
 export get_stencil_write_mask_front, get_stencil_write_mask_back
+
+
+#TODO: A 'Base.close()' overload for closing the context
+#TODO: bp_gl_context()
 
 
 ############################
@@ -212,7 +232,11 @@ function refresh(context::Context)
 end
 export refresh
 
-#TODO: A 'Base.close()' overload for closing the context
+function set_vsync(context::Context, sync::E_VsyncModes)
+    GLFW.SwapInterval(Int(context.vsync))
+    setfield(context, :vsync, sync)
+end
+export set_vsync
 
 "Configures the culling of primitives that face away from (or towards) the camera"
 function set_culling(context::Context, cull::E_FaceCullModes)
@@ -472,6 +496,7 @@ export set_viewport, set_scissor
 
 
 # Provide convenient versions of the above which get the context automatically.
+set_vsync(sync::E_VsyncModes) = set_vsync(get_context(), sync)
 set_culling(cull::E_FaceCullModes) = set_culling(get_context(), cull)
 set_color_writes(enabled::vRGBA{Bool}) = set_color_writes(get_context(), enabled)
 set_depth_test(test::E_ValueTests) = set_depth_test(get_context(), test)
@@ -488,7 +513,6 @@ set_stencil_write_mask_front(write_mask::GLuint) = set_stencil_write_mask_front(
 set_stencil_write_mask_back(write_mask::GLuint) = set_stencil_write_mask_back(get_context(), write_mask)
 set_viewport(min::v2i, max::v2i) = set_viewport(get_context(), min, max)
 set_scissor(min_max::Optional{Tuple{v2i, v2i}}) = set_scissor(get_context(), min_max)
-
 
 #TODO: Set up callbacks for 'destroyed' and 'refresh state'.
 #TODO: bp_gl_context(f::Function)

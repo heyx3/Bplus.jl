@@ -1,8 +1,10 @@
 # Defines simple data types used by GL
 
-# SDL Vsync settings
+# GLFW Vsync settings
 @bp_enum(VsyncModes,
-    Off, On, Adaptive
+    Off = 0,
+    On = 1,
+    Adaptive = -1
 )
 export VsyncModes, E_VsyncModes
 

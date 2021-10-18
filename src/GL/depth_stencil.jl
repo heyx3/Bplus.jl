@@ -94,3 +94,6 @@ struct StencilResult
     StencilResult() = new(StencilOps.Nothing, StencilOps.Nothing, StencilOps.Nothing)
 end
 export StencilResult
+
+
+#TODO: Bring in those C++ structs for packed depth/stencil data
