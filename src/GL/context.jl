@@ -36,12 +36,16 @@ end
 
 "
 The OpenGL context, which owns all state and data.
-This type is very special, in a lot of ways:
-    * It is a per-thread singleton, because OpenGL only allows one context per thread
-    * You can get the current context for your thread by calling `get_context()`.
-    * You register it simply by calling the constructor.
-    * You can get the fields, but you cannot set them manually
-It's recommended to surround all OpenGL work in a `bp_gl_context()` block.
+
+This type as a lot of special behavior:
+* It is a per-thread singleton, because OpenGL only allows one context per thread
+* You can get the current context for your thread by calling `get_context()`.
+* You register it simply by calling the constructor.
+* You can set the properties of the context's RenderState to trigger OpenGL calls,
+    e.x. `context.depth_write = true`.
+* You can also set the render state by calling functions (e.x. `set_depth_writes([context,] true)`).
+
+It's recommended to use a `bp_gl_context()` block to control the lifetime of a Context.
 "
 mutable struct Context
     window::GLFW.Window
@@ -67,13 +71,15 @@ mutable struct Context
 end
 export Context
 
-
-# Disable the setting of Context fields.
-# You can still set them by manually calling setfield!(),
-#    but at that point you're asking for trouble.
-Base.setproperty!(c::Context, name::Symbol, new_val) = error("Cannot set the fields of `Bplus.GL.Context`")
-
-#TODO: Use setproperty!() instead of global setter functions
+@inline function Base.setproperty!(c::Context, name::Symbol, new_val)
+    if hasfield(RenderState, name)
+        set_render_state(Val(name), new_val, c)
+    elseif name == :vsync
+        set_vsync(c, new_val)
+    else
+        error("Bplus.GL.Context has no field '", name, "'")
+    end
+end
 
 
 "Gets the current context, if it exists"
@@ -257,6 +263,7 @@ function set_culling(context::Context, cull::E_FaceCullModes)
                   @set context.state.cull_mode = cull)
     end
 end
+set_render_state(::Val{:cull_mode}, val::E_FaceCullModes, c::Context) = set_culling(c, val)
 export set_culling
 
 "Toggles the writing of individual color channels"
@@ -267,6 +274,7 @@ function set_color_writes(context::Context, enabled::vRGBA{Bool})
                   @set context.state.color_write_mask = enabled)
     end
 end
+set_render_state(::Val{:color_write_mask}, val::vRGBA{Bool}, c::Context) = set_color_writes(c, val)
 export set_color_writes
 
 "Configures the depth test"
@@ -277,6 +285,7 @@ function set_depth_test(context::Context, test::E_ValueTests)
                   @set context.state.depth_test = test)
     end
 end
+set_render_state(::Val{:depth_test}, val::E_ValueTests, c::Context) = set_depth_test(c, val)
 export set_depth_test
 
 "Toggles the writing of fragment depths into the depth buffer"
@@ -287,6 +296,7 @@ function set_depth_writes(context::Context, enabled::Bool)
                   @set context.state.depth_write = enabled)
     end
 end
+set_render_state(::Val{:depth_write}, val::Bool, c::Context) = set_depth_writes(c, val)
 export set_depth_writes
 
 "Sets the blend mode for RGB and Alpha channels"
@@ -333,6 +343,20 @@ function set_blending(context::Context, blend_a::BlendStateAlpha)
                   @set context.state.blend_mode.alpha = blend_alpha)
     end
 end
+"Sets the blend mode for RGB and Alpha channels separately"
+function set_blending(context::Context, blend_rgb::BlendStateRGB, blend_a::BlendStateAlpha)
+    new_blend = (rgb=blend_rgb, alpha=blend_a)
+    if new_blend != context.state.blend_mode
+        glBlendFuncSeparate(GLenum(blend_rgb.src), GLenum(blend_rgb.dest),
+                            GLenum(blend_a.src), GLenum(blend_a.dest))
+        glBlendEquationSeparate(GLenum(blend_rgb.op), GLenum(blend_a.op))
+        glBlendColor(blend_rgb.constant..., blend_a.constant)
+        setfield!(context, :state,
+                  @set context.state.blend_mode.alpha = blend_alpha)
+    end
+end
+set_render_state(::Val{:blend_mode}, val::@NamedTuple{rgb::BlendStateRGB, alpha::BlendStateAlpha}, c::Context) =
+   set_blending(c, val.rgb, val.alpha)
 export set_blending
 
 "Sets the stencil test to use, for both front- and back-faces"
@@ -362,6 +386,13 @@ function set_stencil_test_back(context::Context, test::StencilTest)
                   @set context.state.stencil_test = (front=current_front, back=test))
     end
 end
+"Sets the stencil test to use on front-faces and back-faces, separately"
+function set_stencil_test(context::Context, front::StencilTest, back::StencilTest)
+    set_stencil_test_front(context, front)
+    set_stencil_test_back(context, back)
+end
+set_render_state(::Val{:stencil_test}, val::StencilTest, context::Context) = set_stencil_test(context, val)
+@inline set_render_state(::Val{:stencil_test}, val::NamedTuple, context::Context) = set_stencil_test(context, val.front, val.back)
 export set_stencil_test, set_stencil_test_front, set_stencil_test_back
 
 "
@@ -409,6 +440,16 @@ function set_stencil_result_back(context::Context, ops::StencilResult)
         )
     end
 end
+"
+Sets the stencil operations to use on front-faces and back-faces, separately,
+   based on the stencil and depth tests.
+"
+function set_stencil_result(context::Context, front::StencilResult, back::StencilResult)
+    set_stencil_result_front(context, front)
+    set_stencil_result_back(context, back)
+end
+set_render_state(::Val{:stencil_result}, val::StencilResult, context::Context) = set_stencil_result(context, val)
+@inline set_render_state(::Val{:stencil_result}, val::NamedTuple, context::Context) = set_stencil_result(context, val.front, val.back)
 export set_stencil_result, set_stencil_result_front, set_stencil_result_back
 
 "Sets the bitmask which enables/disables bits of the stencil buffer for writing"
@@ -450,6 +491,16 @@ function set_stencil_write_mask_back(context::Context, mask::GLuint)
         )
     end
 end
+"
+Sets the bitmasks which enable/disable bits of the stencil buffer for writing.
+Applies different values to front-faces and back-faces.
+"
+function set_stencil_write_mask(context::Context, front::GLuint, back::GLuint)
+    set_stencil_write_mask_front(context, front)
+    set_stencil_write_mask_back(context, back)
+end
+set_render_state(::Val{:stencil_write_mask}, val::GLuint, c::Context) = set_stencil_write_mask(c, val)
+@inline set_render_state(::Val{:stencil_write_mask}, val::NamedTuple, c::Context) = set_stencil_write_mask(c, val.front, val.back)
 export set_stencil_write_mask, set_stencil_write_mask_front, set_stencil_write_mask_back
 
 "
@@ -466,6 +517,9 @@ function set_viewport(context::Context, min::v2i, max::v2i)
         setfield!(context, :state, @set context.state.viewport = new_view)
     end
 end
+set_render_state(::Val{:viewport}, val::NamedTuple, c::Context) = set_viewport(c, val.min, val.max)
+export set_viewport
+
 "
 Changes the area of the screen where rendering can happen.
 Any rendering outside this view is discarded.
@@ -491,7 +545,8 @@ function set_scissor(context::Context, min_max::Optional{Tuple{v2i, v2i}})
         setfield!(context, :state, @set context.state.scissor = new_scissor)
     end
 end
-export set_viewport, set_scissor
+set_render_state(::Val{:scissor}, val::NamedTuple, c::Context) = set_scissor(c, val)
+export set_scissor
 
 
 
@@ -502,15 +557,19 @@ set_color_writes(enabled::vRGBA{Bool}) = set_color_writes(get_context(), enabled
 set_depth_test(test::E_ValueTests) = set_depth_test(get_context(), test)
 set_depth_writes(enabled::Bool) = set_depth_writes(get_context(), enabled)
 set_blending(blend::BlendState_) = set_blending(get_context(), blend)
+set_blending(rgb::BlendStateRGB, a::BlendStateAlpha) = set_blending(get_context(), rgb, a)
 set_stencil_test(test::StencilTest) = set_stencil_test(get_context(), test)
 set_stencil_test_front(test::StencilTest) = set_stencil_test_front(get_context(), test)
 set_stencil_test_back(test::StencilTest) = set_stencil_test_back(get_context(), test)
+set_stencil_test(front::StencilTest, back::StencilTest) = set_stencil_test(get_context(), front, back)
 set_stencil_result(result::StencilResult) = set_stencil_result(get_context(), result)
 set_stencil_result_front(result::StencilResult) = set_stencil_result_front(get_context(), result)
 set_stencil_result_back(result::StencilResult) = set_stencil_result_back(get_context(), result)
+set_stencil_result(front::StencilResult, back::StencilResult) = set_stencil_result(get_context(), front, back)
 set_stencil_write_mask(write_mask::GLuint) = set_stencil_write_mask(get_context(), write_mask)
 set_stencil_write_mask_front(write_mask::GLuint) = set_stencil_write_mask_front(get_context(), write_mask)
 set_stencil_write_mask_back(write_mask::GLuint) = set_stencil_write_mask_back(get_context(), write_mask)
+set_stencil_write_mask(front::GLuint, back::GLuint) = set_stencil_write_mask(get_context(), front, back)
 set_viewport(min::v2i, max::v2i) = set_viewport(get_context(), min, max)
 set_scissor(min_max::Optional{Tuple{v2i, v2i}}) = set_scissor(get_context(), min_max)
 
