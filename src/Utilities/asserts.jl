@@ -20,8 +20,8 @@ However, this means that all projects which use that package
    are forced to keep all asserts on or off, as a group.
 This macro generates the ToggleableAsserts code on command,
    so that you can toggle asserts for a specifc module without affecting other ones.
-In particular it generates an `Xasserts_enabled()` and an `@Xassert`, where `X` is some prefix.
-These generated items are NOT exported, as the whole idea is to keep the asserts internal.
+In particular it generates an `[X]asserts_enabled()` and an `@[X]assert`, where `[X]` is some prefix.
+These generated items are not exported, as the whole goal is to keep the asserts internal.
 By default, the asserts are disabled. You should enable them when running tests.
 """
 macro make_toggleable_asserts(prefix::Symbol)
