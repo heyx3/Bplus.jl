@@ -1,14 +1,15 @@
 # Runs a GLFW/OpenGL window and messes with it.
-using GLFW
 
 GLFW.Init()
 try
     wnd = GLFW.CreateWindow(700, 500, "Press Enter to close it")
     GLFW.MakeContextCurrent(wnd)
 
+    timer::Int = 200_000
     while !GLFW.WindowShouldClose(wnd)
         GLFW.PollEvents()
-        if GLFW.GetKey(wnd, GLFW.KEY_ENTER)
+        timer -= 1
+        if (timer <= 0) || GLFW.GetKey(wnd, GLFW.KEY_ENTER)
             break
         end
     end
