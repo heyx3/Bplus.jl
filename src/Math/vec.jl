@@ -44,6 +44,18 @@ struct Vec{N, T} <: AbstractVector{T}
     # Construct by appending smaller vectors/components together.
     Vec(first::Vec{N, T}, rest::T2...) where {N, T, T2} = Vec(promote(first..., rest...))
     Vec(first::Vec{N, T}, rest::Vec{N2, T2}) where {N, N2, T, T2} = Vec(promote(first..., rest...))
+    Vec{T}(first::Vec{N, T2}, rest::T3...) where {N, T, T2, T3} = Vec{T}(first..., rest...)
+    Vec{T}(first::Vec{N, T2}, rest::Vec{N2, T3}) where {N, N2, T, T2, T3} = Vec{T}(first..., rest...)
+    Vec{N, T}(first::Vec{N2, T2}, rest::T3...) where {N, N2, T, T2, T3} = Vec{N, T}(first..., rest...)
+    Vec{N, T}(first::Vec{N2, T2}, rest::Vec{N3, T3}) where {N, N2, N3, T, T2, T3} = Vec{N, T}(first..., rest...)
+
+    # Construct with a lambda, like ntuple().
+    Vec(make_component::Function, n::Int) = Vec(ntuple(make_component, n))
+    Vec{N, T}(make_component::Function) where {N, T} = Vec{N, T}(ntuple(make_component, N))
+    function Vec{T}(make_component::Function, n::Int) where {T}
+        @bp_check(!(T isa Int), "Constructors of the form 'VecN(x, y, ...)' aren't allowed. Try 'Vec(x, y, ...)', or 'VecN{T}(x, y, ...)'")
+        Vec{n, T}(make_component)
+    end
 end
 export Vec
 
@@ -173,9 +185,20 @@ export show_vec
 Base.zero(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}()
 Base.one(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(ntuple(i->one(T), N))
 
+Base.typemin(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(ntuple(i -> typemin(T), N))
+Base.typemax(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(ntuple(i -> typemax(T), N))
+
+Base.min(p1::Vec{N, T1}, p2::Vec{N, T2}) where {N, T1, T2} = Vec((min(p1[i], p2[i]) for i in 1:N)...)
+Base.max(p1::Vec{N, T1}, p2::Vec{N, T2}) where {N, T1, T2} = Vec((max(p1[i], p2[i]) for i in 1:N)...)
+
+Base.clamp(v::Vec{N, T}, a::T2, b::T3) where {N, T, T2, T3} = Vec{N, T}(i -> clamp(v[i], a, b))
+Base.clamp(v::Vec{N, T}, a::Vec{N, T2}, b::Vec{N, T3}) where {N, T, T2, T3} = Vec{N, T}(i -> clamp(v[i], a[i], b[i]))
+
 Base.convert(::Type{Vec{N, T2}}, v::Vec{N, T}) where {N, T, T2} = map(T2, v)
+Base.promote_rule(::Type{Vec{N, T1}}, ::Type{Vec{N, T2}}) where {N, T1, T2} = Vec{N, promote_type(T1, T2)}
 
 Base.getindex(v::Vec, i::Int) = v.data[i]
+Base.getindex(v::Vec, r::UnitRange) = Vec(v.data[r])
 Base.eltype(::Vec{N, T}) where {N, T} = T
 Base.length(::Vec{N, T}) where {N, T} = N
 Base.size(::Vec{N, T}) where {N, T} = (N, )
@@ -332,7 +355,7 @@ end
                                     name::Symbol,
                                     val::Union{T, NTuple{N, T}}
                                   ) where {N, T}
-    if (name == :x) | (name == :r)
+    if (name zzz :x) | (name == :r)
         setfield!(v, :data, @set(getfield(v, :data)[1] = val::T))
     elseif (name == :y) | (name == :g)
         setfield!(v, :data, @set(getfield(v, :data)[2] = val::T))
@@ -475,6 +498,9 @@ const ∘ = vdot
 "The \\times character represents the cross product."
 const × = vcross
 export ⋅, ∘, ×
+
+
+println("#TODO: Iteration using Colon")
 
 
 ###########################

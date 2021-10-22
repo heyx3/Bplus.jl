@@ -13,4 +13,6 @@ include("vec.jl")
 include("mat.jl")
 include("quat.jl")
 
+include("box.jl")
+
 end # module

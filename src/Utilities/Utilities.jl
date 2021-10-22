@@ -17,4 +17,6 @@ export @f32
 include("asserts.jl")
 include("enums.jl")
 
+include("strings.jl")
+
 end

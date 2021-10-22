@@ -1,7 +1,13 @@
 # Test that vector constructors work as expected.
+@bp_test_no_allocations(Vec{5, Float32}(), Vec(0f0, 0f0, 0f0, 0f0, 0f0))
 @bp_test_no_allocations(Vec(1, 2, 3) isa Vec{3, Int}, true)
 @bp_test_no_allocations(Vec(1, 2.0, UInt8(3)) isa Vec{3, Float64}, true)
 @bp_test_no_allocations(Vec{Float32}(1, -2, 3) isa Vec{3, Float32}, true)
+@bp_test_no_allocations(Vec(Vec(1, 2, 3), Vec(6, 5, 4, 3, 2)),
+                        Vec(1, 2, 3, 6, 5, 4, 3, 2))
+@bp_test_no_allocations(Vec(i -> i + 2.0, 3), Vec(3.0, 4.0, 5.0))
+@bp_test_no_allocations(Vec{Float64}(i -> i + 2, 3) isa Vec{3, Float64}, true)
+@bp_test_no_allocations(Vec{3, Float64}(i -> i + 2), Vec(3, 4, 5), true)
 
 # Test our ability to construct aliases.
 @bp_test_no_allocations(typeof(Vec3{Int8}(1, 2, 3)),
@@ -11,19 +17,31 @@
 @bp_test_no_allocations(typeof(Vec(UInt8(2), UInt8(5), UInt8(10))),
                         Vec{3, UInt8})
 
+# Test type promotion.
+for (nt1, nt2) in Iterators.product(ALL_REALS, ALL_REALS)
+    @bp_test_no_allocations(promote_type(Vec2{nt1}, Vec2{nt2}),
+                            Vec2{promote_type(nt1, nt2)})
+end
+
 # Test properties.
 @bp_test_no_allocations(Vec(2, 3, 4).x, 2)
 @bp_test_no_allocations(Vec(2, 3, 4).y, 3)
 @bp_test_no_allocations(Vec(2, 3, 4).z, 4)
 @bp_test_no_allocations(Vec(2, 3, 4, 5).w, 5)
+@bp_test_no_allocations(Vec(2, 3, 4)[1], 2)
+@bp_test_no_allocations(Vec(2, 3, 4)[2], 3)
+@bp_test_no_allocations(Vec(2, 3, 4)[3], 4)
+@bp_test_no_allocations(Vec(2, 3, 4, 5)[4], 5)
 @bp_test_no_allocations(Vec(2, 3, 4).r, 2)
 @bp_test_no_allocations(Vec(2, 3, 4).g, 3)
 @bp_test_no_allocations(Vec(2, 3, 4).b, 4)
 @bp_test_no_allocations(Vec(2, 3, 4, 5).a, 5)
 @bp_test_no_allocations(Vec(2, 3, 4, 5).data, (2, 3, 4, 5))
+@bp_test_no_allocations(Vec(2, 3, 4, 5)[2:4], Vec(3, 4, 5))
 
 # Test equality.
 @bp_test_no_allocations(Vec(1, 2, 3), Vec(1, 2, 3), true)
+@bp_test_no_allocations(Vec(1, 2, 3), Vec(1.0, 2.0, 3.00), true)
 @bp_test_no_allocations(Vec(1, 2, 3), Vec(1, 2.0, 3), true)
 @bp_test_no_allocations(isapprox(Vec(1, 2, 3, 4, 5, 6),
                                  Vec(1, 2, 3, 4, 5, 6)),
@@ -109,6 +127,19 @@
 # Test setfield.
 @bp_test_no_allocations(@set(Vec(1, 2, 3).x = 3),
                         Vec(3, 2, 3))
+
+# Test number stuff.
+@bp_test_no_allocations(typemin(Vec{3, UInt8}),
+                        Vec(UInt8(0), UInt8(0), UInt8(0)))
+@bp_test_no_allocations(typemax(v2f), Vec(+Inf, +Inf))
+@bp_test_no_allocations(min(Vec(3, 4), Vec(1, 10)),
+                        Vec(1, 4))
+@bp_test_no_allocations(max(Vec(3, 4), Vec(1, 10)),
+                        Vec(3, 10))
+@bp_test_no_allocations(clamp(Vec(3, 7), 3, 5),
+                        Vec(3, 5))
+@bp_test_no_allocations(clamp(Vec(3, 7), Vec(1, 10), Vec(2, 15)),
+                        Vec(2, 10))
 
 # Test the dot product.
 @bp_test_no_allocations(vdot(Vec(1, 2), Vec(4, 5)),  14)
