@@ -36,7 +36,7 @@ struct Vec{N, T} <: AbstractVector{T}
         return Vec{T}(data)
     end
     Vec{N, T}(data::NTuple{N, T2}) where {N, T, T2} = Vec{T}(convert(NTuple{N, T}, data))
-    Vec{N, T}(data::T2...) where {N, T, T2} = Vec{N, T}(data)
+    Vec{N, T}(data::T2...) where {N, T, T2} = Vec{N, T}(convert(NTuple{N, T}, data))
 
     # "Empty" constructor makes a value with all 0's.
     Vec{N, T}() where {N, T} = new{N, T}(ntuple(i->zero(T), N))
@@ -355,7 +355,7 @@ end
                                     name::Symbol,
                                     val::Union{T, NTuple{N, T}}
                                   ) where {N, T}
-    if (name zzz :x) | (name == :r)
+    if (name == :x) | (name == :r)
         setfield!(v, :data, @set(getfield(v, :data)[1] = val::T))
     elseif (name == :y) | (name == :g)
         setfield!(v, :data, @set(getfield(v, :data)[2] = val::T))
