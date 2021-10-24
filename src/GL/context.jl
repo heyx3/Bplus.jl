@@ -35,15 +35,10 @@ end
 ############################
 
 "
-The OpenGL context, which owns all state and data.
-
-This type as a lot of special behavior:
-* It is a per-thread singleton, because OpenGL only allows one context per thread
-* You can get the current context for your thread by calling `get_context()`.
-* You register it simply by calling the constructor.
-* You can set the properties of the context's RenderState to trigger OpenGL calls,
-    e.x. `context.depth_write = true`.
-* You can also set the render state by calling functions (e.x. `set_depth_writes([context,] true)`).
+The OpenGL context, which owns all state and data, including the GLFW window it belongs to.
+This type is a per-thread singleton, because OpenGL only allows one active context per thread.
+Like the other GL resource objects, you can't set the fields of this struct;
+*    use the provided functions to change its state.
 
 You should close the context with `Base.close(context)`, but even easier
     is to use a `bp_gl_context()` block to control its lifetime.
@@ -51,7 +46,7 @@ You should close the context with `Base.close(context)`, but even easier
 mutable struct Context
     window::GLFW.Window
     vsync::Optional{E_VsyncModes}
-    
+
     state::RenderState
     #TODO: The active RenderTarget
 

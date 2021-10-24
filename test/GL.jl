@@ -1,20 +1,26 @@
-# Runs a GLFW/OpenGL window and messes with it.
+# Check some basic facts.
+@bp_check(GL.gl_type(GL.Ptr_Uniform) === GLint,
+          "GL.Ptr_Uniform's original type is not GLint, but ",
+             GL.gl_type(GL.Ptr_Uniform))
+@bp_check(GL.gl_type(GL.Ptr_Buffer) === GLuint)
 
-GLFW.Init()
-try
-    wnd = GLFW.CreateWindow(700, 500, "Press Enter to close it")
-    GLFW.MakeContextCurrent(wnd)
+# Create a GL Context and window.
+bp_gl_context(v2i(800, 500), "Press Enter to close me") do context::Context
+    @bp_check(context === GL.get_context(),
+              "Just started this Context, but another one is the singleton")
 
     timer::Int = 200_000
-    while !GLFW.WindowShouldClose(wnd)
+    while !GLFW.WindowShouldClose(context.window)
+        clear_col = vRGBAf(rand(Float32), rand(Float32), rand(Float32), @f32 1)
+        GL.render_clear(context, GL.Ptr_Target(), clear_col)
+
         GLFW.PollEvents()
         timer -= 1
-        if (timer <= 0) || GLFW.GetKey(wnd, GLFW.KEY_ENTER)
-            break
+        if (timer <= 0) || GLFW.GetKey(context.window, GLFW.KEY_ENTER)
+            return
         end
     end
-catch e
-    rethrow()
-finally
-    GLFW.Terminate()
 end
+
+@bp_check(isnothing(GL.get_context()),
+          "Just closed the context, but it still exists")

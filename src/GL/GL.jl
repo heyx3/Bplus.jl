@@ -16,6 +16,8 @@ function __init__()
     end
 end
 
+#TODO: Base type for all GL resource objects (i.e. no getproperty(), and other things)
+
 
 # OpenGL info:
 const OGL_MAJOR_VERSION = 4
