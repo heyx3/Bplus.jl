@@ -81,6 +81,14 @@ Base.show(io::IO, b::Buffer) = print(io,
     ">"
 )
 
+function Base.close(b::Buffer)
+    glDeleteBuffers(1, Ref(b.handle))
+end
+
+Base.setproperty!(b::Buffer, name::Symbol, value) = error("Can't set the fields of a Buffer! Use the functions instead")
+
+export Buffer
+
 
 ################################
 #       Buffer Operations      #
@@ -95,9 +103,9 @@ function set_buffer_data( b::Buffer,
                           new_elements::Vector{T}
                           ;
                           # Which part of the input array to read from
-                          src_element_range::IntervalU = IntervalU(),
-                          # The first element of the buffer's array to write to
-                          dest_element_start::UInt = 0x0,
+                          src_element_range::IntervalU = IntervalU(1, length(new_elements)),
+                          # Shifts the first element of the buffer's array to write to
+                          dest_element_offset::UInt = 0x0,
                           # A byte offset, to be combinend wth 'dest_element_start'
                           dest_byte_offset::UInt = 0x0
                         ) where {T}
@@ -105,12 +113,8 @@ function set_buffer_data( b::Buffer,
     @bp_check(inclusive_max(src_element_range) <= length(new_elements),
               "Trying to upload a range of data beyond the input buffer")
 
-    element_count::UInt = (src_element_range.size == 0) ?
-                              length(new_elements) :
-                              in_element.range.size
-    byte_size::UInt = sizeof(T) * element_count
-
-    first_byte::UInt = dest_byte_offset + (dest_element_start * sizeof(T))
+    first_byte::UInt = dest_byte_offset + (dest_element_offset * sizeof(T))
+    byte_size::UInt = sizeof(T) * src_element_range.size
     last_byte::UInt = first_byte + byte_size - 1
     @bp_check(last_byte <= b.byte_size,
               "Trying to write past the end of the buffer: ",
@@ -126,7 +130,7 @@ end
 "
 Loads the buffer's data into the given array.
 If given a type instead of an array,
-   then a new array of that type is allocated and returned
+   then a new array of that type is allocated and returned.
 Note that counts are per-element, not per-byte
    (unless the elements you're reading are 1 byte each).
 "
@@ -135,32 +139,31 @@ function get_buffer_data( b::Buffer,
                           #    or the type of the new array to make
                           output::Union{Vector{T}, Type{T}}
                           ;
-                          # An offset into the 'out_array' elements
+                          # Shifts the first element to write to in the output array
                           dest_offset::UInt = 0x0,
-                          # The elements to read from the buffer array
-                          src_elements::IntervalU = IntervalU(),
-                          # A byte offset to the start of the buffer array,
-                          #   to be combined with 'src_elements.min'.
+                          # The elements to read from the buffer (defaults to as much as possible)
+                          src_elements::IntervalU = IntervalU(1, (output isa Vector{T}) ?
+                                                                   (length(output) - dest_offset) :
+                                                                   b.byte_size ÷ sizeof(T)),
+                          # The start of the buffer's array data
                           src_byte_offset::UInt = 0x0
                         )::Optional{Vector{T}} where {T}
-    src_first_byte::UInt = src_byte_offset + (src_elements.size * sizeof(T))
+    src_first_byte::UInt = src_byte_offset + (src_elements.min * sizeof(T))
     src_last_byte::UInt = src_first_byte + (src_elements.size * sizeof(T))
-    n_bytes::UInt = src_last_byte - src_first_byte
-    @bp_gl_assert(isinteger(n_bytes // sizeof(T)),
-                  "My byte math is wrong: ", n_bytes, "/", sizeof(T),
-                     " == ", n_bytes/sizeof(T))
-    
-    n_elements::UInt = n_bytes ÷ sizeof(T)
+    n_bytes::UInt = src_last_byte - src_first_byte + 1
+
     if output isa Vector{T}
-        @bp_check(n_elements + dest_offset < length(output),
+        @bp_check(dest_offset + src_elements.size <= length(output),
                   "Trying to read Buffer into an array, but the array isn't big enough.",
                     " Trying to write to elements ", (dest_offset + 1),
-                    " - ", (dest_offset + n_elements), ", but there are only ",
+                    " - ", (dest_offset + src_elements.size), ", but there are only ",
                     length(output))
+    else
+        @bp_check(dest_offset == 0x0, "You provided 'dest_offset' but not an output array")
     end
     output_array::Vector{T} = (output isa Vector{T}) ?
                                   output :
-                                  Vector{T}(undef, n_elements)
+                                  Vector{T}(undef, src_elements.size)
 
     glGetNamedBufferSubData(b.handle, src_first_byte, n_bytes, Ref(output_array))
     if !(output isa Vector{T})
@@ -170,5 +173,30 @@ function get_buffer_data( b::Buffer,
     end
 end
 
-#TODO: Rest of the operations (CopyBytes, mapping)
+"
+Copies data from one buffer to another.
+By default, copies as much data as possible.
+"
+function copy_buffer( src::Buffer, dest::Buffer
+                      ;
+                      src_byte_offset::UInt = 0x0,
+                      dest_byte_offset::UInt = 0x0,
+                      byte_size::UInt = min(src.byte_size - src.byte_offset,
+                                            dest.byte_size - dest.byte_offset)
+                    )
+    @bp_check(src_byte_offset + byte_size <= src.byte_size,
+              "Going outside the bounds of the 'src' buffer in a copy:",
+                " from ", src_byte_offset, " to ", src_byte_offset + byte_size)
+    @bp_check(dest_byte_offset + byte_size <= dest.byte_size,
+              "Going outside the bounds of the 'dest' buffer in a copy:",
+                " from ", dest_byte_offset, " to ", dest_byte_offset + byte_size)
+    glCopyNamedBufferSubData(src.handle, dest.handle,
+                             src_byte_offset,
+                             dest_byte_offset,
+                             byte_size)
+end
+
+export set_buffer_data, get_buffer_data, copy_buffer
+
+#TODO: Rest of the operations (mapping)
 #TODO: Unit tests

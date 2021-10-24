@@ -17,9 +17,11 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me") do context::Context
         GLFW.PollEvents()
         timer -= 1
         if (timer <= 0) || GLFW.GetKey(context.window, GLFW.KEY_ENTER)
-            return
+            break
         end
     end
+
+    
 end
 
 @bp_check(isnothing(GL.get_context()),
