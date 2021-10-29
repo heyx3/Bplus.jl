@@ -4,6 +4,9 @@ Optional{T} = Union{T, Nothing}
 exists(x) = !isnothing(x)
 export Optional, exists
 
+@inline none(args...) = !any(args...)
+export none
+
 """
 Game math is mostly done with 32-bit floats,
    especially when interacting with computer graphics.

@@ -2,31 +2,35 @@ using TupleTools, Setfield
 
 """
 A vector math struct.
-You can get its data from the field "data",
-  or access individual components "x|r", "y|g", "z|b", "w|a",
-  or swizzle it, e.x. "v.xz".
-Swizzles can also use '0' for a constant 0, '1' for a constant 1,
-  '⋀' (\\bigwedge) for the max finite value, and '⋁' (\\bigvee) for the min finite value.
-For example, swizzling a Vec{4, UInt8} with "v.rrr⋀" results in
-  a vector with the RGB components set to the original red component,
-  and the alpha set to 255.
-You can also treat it like an AbstractVector, with indices, `map()`, etc.
-To change how many digits are printed in the REPL (i.e. Base.show()),
-  set VEC_N_DIGITS or call `use_vec_digits()`.
-NOTE: Broadcasting is not specialized; the output is an array instead of another Vec,
-  because I don't know how to overload broadcasting correctly.
-NOTE: Comparing two vectors with == or != returns a boolean as expected,
-  but other comparisons (<, <=, >, <=) return a component-wise result.
+You can get its data from:
+* The field "data", e.x. `v.data::NTuple`
+* Individual XYZW or RGBA components, e.x. `v1.x == v1.r`
+* Swizzling, e.x. `v.yyyz == Vec(v.y, v.y, v.y, v.z)`.
+
+Swizzles can also use `0` for a constant 0, `1` for a constant 1,
+  `∆` (\\increment) for the max finite value, and `∇` (\\nabla) for the min finite value.
+For example, `Vec{UInt8}(128, 4, 200).rgb∆` results in `Vec{UInt8}(128, 4, 200, 255)`.
+
+`Vec` has an efficient implementation of `AbstractVector`, including `map`, `foldl`, etc,
+  except for broadcasting because I don't know how to do it yet.
+
+You can use the colon operator to iterate between two values (e.x. `Vec(1, 1) : Vec(10, 10)`).
+
+To change how many digits are printed in the REPL and `Base.show()`,
+  set `VEC_N_DIGITS` or call `use_vec_digits() do ... end`.
+
+NOTE: Comparing two vectors with `==` or `!=` returns a boolean as expected,
+  but other comparisons (`<`, `<=`, `>`, `>=`) return a component-wise result.
 """
 struct Vec{N, T} <: AbstractVector{T}
     data::NTuple{N, T}
 
-    # Construct with individual components.
+    # Construct with components.
     Vec(data::NTuple{N, T}) where {N, T} = new{N, T}(data)
     Vec(data::T...) where {T} = Vec(data)
     Vec(data::Any...) = Vec(promote(data...))
 
-    # Construct with a type parameter, and set of values.
+    # Construct with the type parameter, and components.
     function Vec{T}(data::NTuple{N, T2}) where {N, T, T2}
         @bp_check(!(T isa Int), "Constructors of the form 'VecN(x, y, ...)' aren't allowed. Try 'Vec(x, y, ...)', or 'VecN{T}(x, y, ...)'")
         return new{N, T}(convert(NTuple{N, T}, data))
@@ -37,6 +41,7 @@ struct Vec{N, T} <: AbstractVector{T}
     end
     Vec{N, T}(data::NTuple{N, T2}) where {N, T, T2} = Vec{T}(convert(NTuple{N, T}, data))
     Vec{N, T}(data::T2...) where {N, T, T2} = Vec{N, T}(data)
+    Vec{N, T}(data::Any...) where {N, T} = Vec{N, T}(promote(data...))
 
     # "Empty" constructor makes a value with all 0's.
     Vec{N, T}() where {N, T} = new{N, T}(ntuple(i->zero(T), N))
@@ -56,6 +61,9 @@ struct Vec{N, T} <: AbstractVector{T}
         @bp_check(!(T isa Int), "Constructors of the form 'VecN(x, y, ...)' aren't allowed. Try 'Vec(x, y, ...)', or 'VecN{T}(x, y, ...)'")
         Vec{n, T}(make_component)
     end
+
+    # Constructed with the wrong number of components.
+    Vec{N, T}(components::NTuple{N2, T2}) where {N, N2, T, T2} = error("Expected ", N, " components, got ", N2, ": ", components)
 end
 export Vec
 
@@ -86,12 +94,12 @@ const v2f = VecF{2}
 const v3f = VecF{3}
 const v4f = VecF{4}
 
-const VecI{N} = Vec{N, Int32}
+const VecI{N} = Vec{N, Int}
 const v2i = VecI{2}
 const v3i = VecI{3}
 const v4i = VecI{4}
 
-const VecU{N} = Vec{N, UInt32}
+const VecU{N} = Vec{N, UInt}
 const v2u = VecU{2}
 const v3u = VecU{3}
 const v4u = VecU{4}
@@ -101,16 +109,11 @@ const v2b = VecB{2}
 const v3b = VecB{3}
 const v4b = VecB{4}
 
-const VecF64{N} = Vec{N, Float64}
-const VecI64{N} = Vec{N, Int64}
-const VecU64{N} = Vec{N, UInt64}
-
 export Vec2, Vec3, Vec4,
        vRGB, vRGBA,
        vRGBu8, vRGBi8, vRGBf,
        vRGBAu8, vRGBAi8, vRGBAf,
        VecF, VecI, VecU, VecB,
-       VecF64, VecI64, VecU64,
        v2f, v3f, v4f,
        v2i, v3i, v4i,
        v2u, v3u, v4u,
@@ -178,9 +181,9 @@ function show_vec(io::IO, v::Vec, n::Int)
 end
 export show_vec
 
-#################################
-#   Base overloads/interfaces   #
-#################################
+###################################################
+#   Arithmetic, Iteration, and other interfaces   #
+###################################################
 
 Base.zero(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}()
 Base.one(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(ntuple(i->one(T), N))
@@ -189,7 +192,12 @@ Base.typemin(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(ntuple(i -> typemin(T),
 Base.typemax(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(ntuple(i -> typemax(T), N))
 
 Base.min(p1::Vec{N, T1}, p2::Vec{N, T2}) where {N, T1, T2} = Vec((min(p1[i], p2[i]) for i in 1:N)...)
+Base.min(p1::Vec{N, T1}, p2::T2) where {N, T1, T2} = Vec((min(p1[i], p2) for i in 1:N)...)
+@inline Base.min(p1::Number, p2::Vec) = min(p2, p1)
+
 Base.max(p1::Vec{N, T1}, p2::Vec{N, T2}) where {N, T1, T2} = Vec((max(p1[i], p2[i]) for i in 1:N)...)
+Base.max(p1::Vec{N, T1}, p2::T2) where {N, T1, T2} = Vec((max(p1[i], p2) for i in 1:N)...)
+@inline Base.max(p1::Number, p2::Vec) = max(p2, p1)
 
 Base.clamp(v::Vec{N, T}, a::T2, b::T3) where {N, T, T2, T3} = Vec{N, T}(i -> clamp(v[i], a, b))
 Base.clamp(v::Vec{N, T}, a::Vec{N, T2}, b::Vec{N, T3}) where {N, T, T2, T3} = Vec{N, T}(i -> clamp(v[i], a[i], b[i]))
@@ -248,32 +256,6 @@ Base.isapprox(a::Vec{N, T1}, b::Vec{N, T2}, atol) where {N, T1, T2} =
 
 #TODO: Implement broadcasting. I tried already, but turns out it's really complicated...
 
-@inline function Setfield.ConstructionBase.setproperties(v::Vec{N, T}, patch::NamedTuple)::Vec{N, T} where {N, T}
-    for name::Symbol in propertynames(patch)
-        v = v_setproperty(v, name, getfield(patch, name))
-    end
-    return v
-end
-
-@inline function v_setproperty( v::Vec{N, T},
-                                n::Symbol,
-                                val::Union{T2, NTuple{N, T2}}
-                              )::Vec{N, T} where {N, T, T2}
-    if (n == :x) | (n == :r)
-        return Vec(@set getfield(v, :data)[1] = convert(T, val::T2))
-    elseif (n == :y) | (n == :g)
-        return Vec(@set getfield(v, :data)[2] = convert(T, val::T2))
-    elseif (n == :z) | (n == :b)
-        return Vec(@set getfield(v, :data)[3] = convert(T, val::T2))
-    elseif (n == :w) | (n == :a)
-        return Vec(@set getfield(v, :data)[4] = convert(T, val::T2))
-    elseif n == :data
-        return Vec{N, T}(val::NTuple{N, T2})
-    else
-        error("No property on Vec: '", n, "'")
-    end
-end
-
 @inline Base.getproperty(v::Vec, n::Symbol) = getproperty(v, Val(n))
 # getproperty() for individual components:
 @inline Base.getproperty(v::Vec, ::Val{:x}) = getfield(v, :data)[1]
@@ -297,18 +279,24 @@ Base.:(+)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i+j for (i,j) in 
 Base.:(-)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i-j for (i,j) in zip(a, b))...)
 Base.:(*)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i*j for (i,j) in zip(a, b))...)
 Base.:(/)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i/j for (i,j) in zip(a, b))...)
+Base.:(÷)(a::Vec{N, I1}, b::Vec{N, I2}) where {N, I1, I2} = Vec((i÷j for (i,j) in zip(a, b))...)
 
 Base.:(+)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f+b), a)
 Base.:(-)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f-b), a)
 Base.:(*)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f*b), a)
 Base.:(/)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f/b), a)
+Base.:(÷)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f÷b), a)
 
 Base.:(+)(a::Number, b::Vec) = b+a
 Base.:(-)(a::Number, b::Vec) = (-b)+a
 Base.:(*)(a::Number, b::Vec) = b*a
 Base.:(/)(a::Number, b::Vec) = map(f->(a/f), b)
+Base.:(÷)(a::Number, b::Vec) = map(f->(a÷f), b)
 
 Base.:(-)(a::Vec)::Vec = map(-, a)
+
+Base.:(==)(a::Number, b::Vec) = b==a
+Base.:(==)(a::Vec, b::Number) = all(x->x==b, a)
 
 Base.:(<)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i<j for (i,j) in zip(a, b))...)
 Base.:(<)(a::Vec{N, T}, b::T2) where {N, T, T2} = map(x -> x<b, a)
@@ -327,81 +315,114 @@ Base.:(|)(a::VecB{N}, b::Bool) where {N} = map(x -> x|b, a)
 
 
 #######################
-#   Mutable Vectors   #
+#    Colon Operator   #
 #######################
 
-# In order to use things like Setfield, we need to overload Base.similar().
-# The default behavior puts the components into an Array, instead of another Vec,
-#    which creates heap allocations.
-# So here we define a mutable version of Vec for this purpose.
-mutable struct MVec{N, T} <: AbstractVector{T}
-    data::NTuple{N, T}
+Base.:(:)(a::Vec, b::Vec) = VecRange(a, b, one(typeof(a)))
+@inline function Base.:(:)(a::Vec, step::Vec, b::Vec)
+    @bp_check(none(iszero, step), "Iterating with a step size of 0: ", step)
+    VecRange(a, b, step)
 end
-# Conversions/constructors between Vec and MVec:
-MVec(v::Vec{N, T}) where {N, T} = MVec(v.data)
-Vec(v::MVec{N, T}) where {N, T} = Vec(v.data)
-Base.convert(::Type{Vec{N, T}}, v::MVec{N, T2}) where {N, T, T2} = Vec(map(T, v.data))
-Base.convert(::Type{Vec{N, T}}, v::MVec{N, T}) where {N, T} = Vec(v.data)
-Base.convert(::Type{MVec{N, T}}, v::Vec{N, T}) where {N, T} = MVec(v.data)
-Base.convert(::Type{MVec{N, T}}, v::Vec{N, T2}) where {N, T, T2} = MVec(map(T, v.data))
-# AbstractArray iterface for MVec:
-Base.getindex(v::MVec, i::Int) = v.data[i]
-function Base.setindex!(v::MVec{N, T}, val::T, i::Int) where {N, T}
-    d::NTuple{N, T} = v.data
-    @set! d[i] = val
-    v.data = d
+
+# Support mixing single values with vectors.
+Base.:(:)(a::Vec, b::Number) = a : typeof(a)(i->b)
+Base.:(:)(a::Number, b::Vec) = typeof(b)(i->a) : b
+Base.:(:)(a::Vec, step::Number, b::Vec) = a : typeof(a)(i->step) : b
+Base.:(:)(a::Number, step::Vec, b::Vec) = typeof(b)(i->a) : step : b
+Base.:(:)(a::Number, step::Number, b::Vec) = typeof(b)(i->a) : typeof(b)(i->step) : b
+Base.:(:)(a::Number, step::Vec, b::Number) = typeof(step)(i->a) : step : typeof(step)(i->b)
+
+"Implements iteration over a range of coordinates (you can also use the `:` operator)"
+struct VecRange{N, T}
+    a::Vec{N, T}
+    b::Vec{N, T}
+    step::Vec{N, T}
 end
-@inline function Base.setproperty!( v::MVec{N, T},
-                                    name::Symbol,
-                                    val::Union{T, NTuple{N, T}}
-                                  ) where {N, T}
-    if (name zzz :x) | (name == :r)
-        setfield!(v, :data, @set(getfield(v, :data)[1] = val::T))
-    elseif (name == :y) | (name == :g)
-        setfield!(v, :data, @set(getfield(v, :data)[2] = val::T))
-    elseif (name == :z) | (name == :b)
-        setfield!(v, :data, @set(getfield(v, :data)[3] = val::T))
-    elseif (name == :w) | (name == :a)
-        setfield!(v, :data, @set(getfield(v, :data)[4] = val::T))
-    elseif (name == :data)
-        setfield!(v, :data, val::NTuple{N, T})
+
+Base.eltype(::VecRange{N, T}) where {N, T} = T
+
+Base.size(r::VecRange)::Vec = max(0, ((r.b - r.a) + 1))
+Base.size(r::VecRange{N, U}) where {N, U<:Unsigned} =
+    if any(r.a > r.b)
+        zero(Vec{N, U})
     else
-        error("Invalid field of MVec: '", name, "'")
+        ((r.b - r.a) + 1).data
+    end
+#
+
+Base.length(r::VecRange) = prod(size(r))
+Base.length(r::VecRange{N, F}) where {N, F<:AbstractFloat} = Int(floor(reduce(*, size(r))))
+
+# The iteration algorithm is recursive, with a type parameter for the axis being incremented.
+@inline function Base.iterate(r::VecRange)
+    if any(r.a > r.b)
+        return nothing
+    else
+        return (r.a, r.a)
     end
 end
-Base.similar(v::MVec) = MVec(v.data)
-Base.similar(v::MVec{N, T}, ::Type{T2}) where {N, T, T2} = MVec(map(T2, v.data))
-function Base.similar(v::MVec{N, T}, ::Type{T2}, dims::Tuple{I}) where {N, T, T2, I<:Integer}
-    N2 = dims[1]
-    v2::MVec{N2, T2} = MVec(ntuple(i->zero(T2), N2))
-
-    #TODO: Use broadcasting instead
-    for i in 1:N
-        v2[i] = convert(T2, v[i])
+@inline function Base.iterate( r::VecRange{N, T},
+                               last_pos::Vec{N, T}
+                             ) where {N, T}
+    p::Vec{N, T} = vec_iterate(r, last_pos, Val(1))
+    return (p[end] > r.b[end]) ? nothing : (p, p)
+end
+@inline function vec_iterate( r::VecRange{N, T},
+                              last_pos::Vec{N, T},
+                              ::Val{Axis}
+                            )::Vec{N, T} where {N, T, Axis}
+    # If we've passed the last dimension that could be incremented,
+    #    then we've covered the whole space.
+    if Axis > N
+        return @set last_pos[end] = (r.b[end] + r.step[end])
     end
 
-    return v2
-end
-Base.eltype(::MVec{N, T}) where {N, T} = T
-Base.length(::MVec{N, T}) where {N, T} = N
-Base.size(::MVec{N, T}) where {N, T} = (N, )
-Base.IndexStyle(::MVec{N, T}) where {N, T} = IndexLinear()
-Base.iterate(v::MVec, state...) = iterate(v.data, state...)
-Base.copy!(dest::MVec{N, T}, src::Vec{N, T2}) where {N, T, T2} = (dest.data = map(T, src.data))
-
-Base.similar(v::Vec) = MVec(v.data)
-Base.similar(v::Vec{N, T}, ::Type{T2}) where {N, T, T2} = MVec(map(T2, v.data))
-function Base.similar(v::Vec{N, T}, ::Type{T2}, dims::Tuple{Int}) where {N, T, T2}
-    N2 = dims[1]
-    v2::Vec{N2, T2} = Vec(ntuple(i->zero(T2), N2))
-
-    #TODO: Use broadcasting instead
-    for i in 1:N
-        @set! v2[i] = convert(T2, v[i])
+    # If there's more to iterate along this axis, do so.
+    axis_step::T = r.step[Axis]
+    next_axis_val::T = last_pos[Axis] + axis_step
+    if ((axis_step > 0) & (next_axis_val <= r.b[Axis])) |
+       ((axis_step < 0) & (next_axis_val >= r.b[Axis]))
+    #begin
+        return @set last_pos[Axis] = next_axis_val
     end
 
-    return v2
+    # Otherwise, we passed the end of this axis, so reset it and move to the next axis.
+    @set! last_pos[Axis] = r.a[Axis]
+    return vec_iterate(r, last_pos, Val(Axis+1))
 end
+
+#TODO: Implement Base.in and Base.intersect for VecRange
+
+
+################
+#   Setfield   #
+################
+
+Setfield.set(v::Vec,  ::Setfield.PropertyLens{field}, val) where {field} = Setfield.set(v, Val(field), val)
+Setfield.set(v::Vec, i::Setfield.IndexLens, val) = typeof(v)(Setfield.set(v.data, i, val))
+Setfield.set(v::Vec, f::Setfield.DynamicIndexLens, val) = typeof(v)(Setfield.set(v.data, f, val))
+Setfield.set(v::Vec, f::Setfield.FunctionLens, val) = typeof(v)(Setfield.set(v.data, f, val))
+
+Setfield.get(v::Vec, ::Setfield.PropertyLens{field}) where {field} = getproperty(v, Val(field))
+Setfield.get(v::Vec, i::Setfield.IndexLens) = v[i.indices...]
+Setfield.get(v::Vec, f::Setfield.DynamicIndexLens) = Setfield.get(v.data, f)
+Setfield.get(v::Vec, f::Setfield.FunctionLens) = Setfield.get(v.data, f)
+
+Setfield.set(v::Vec, ::Union{Val{:x}, Val{:r}}, val) = let d = v.data
+    Vec(@set d[1] = val)
+end
+Setfield.set(v::Vec, ::Union{Val{:y}, Val{:g}}, val) = let d = v.data
+    Vec(@set d[2] = val)
+end
+Setfield.set(v::Vec, ::Union{Val{:z}, Val{:b}}, val) = let d = v.data
+    Vec(@set d[3] = val)
+end
+Setfield.set(v::Vec, ::Union{Val{:w}, Val{:a}}, val) = let d = v.data
+    Vec(@set d[4] = val)
+end
+
+Setfield.set(v::Vec, ::Val{:data}, val) = return typeof(v)(val...)
+
 
 #######################
 #   Other functions   #
@@ -431,9 +452,9 @@ swizzle(v::Vec, ::Val{T}) where {T} = swizzle(v, string(T))
             @set! v2[i] = one(T)
         elseif (component == '0')
             @set! v2[i] = zero(T)
-        elseif (component == '⋀')
+        elseif (component == '∆')
             @set! v2[i] = typemax_finite(T)
-        elseif (component == '⋁')
+        elseif (component == '∇')
             @set! v2[i] = typemin_finite(T)
         else
             error("Invalid swizzle char: '", component, "'")
@@ -498,9 +519,6 @@ const ∘ = vdot
 "The \\times character represents the cross product."
 const × = vcross
 export ⋅, ∘, ×
-
-
-println("#TODO: Iteration using Colon")
 
 
 ###########################
@@ -578,7 +596,7 @@ export get_up_sign, get_up_axis, get_up_vector,
 
 """
 Defines a fast implementation of swizzling for a specific swizzle.
-Valid swizzle chars are x, y, z, w, 0, 1, ⋀, ⋁.
+Valid swizzle chars are x, y, z, w, 0, 1, ∆, ∇.
 RGBA swizzles are generated along with the XYZW swizzles.
 Feel free to add this macro to your own code, for specific swizzles
     that you want to be high-performance.
@@ -602,7 +620,7 @@ macro fast_swizzle(components_xyzw::Union{Symbol, Int}...)
             return :b
         elseif c == :w
             return :a
-        elseif c in (:⋀, :⋁)
+        elseif c in (:∆, :∇)
             return c
         else
             error("Swizzle char isn't valid (xyzw/rgba/01/!¡): '", c, "'")
@@ -629,9 +647,9 @@ macro fast_swizzle(components_xyzw::Union{Symbol, Int}...)
             return :( zero(T) )
         elseif c == 1
             return :( one(T) )
-        elseif c == :⋀
+        elseif c == :∆
             return :( typemax_finite(T) )
-        elseif c == :⋁
+        elseif c == :∇
             return :( typemin_finite(T) )
         elseif (c == :x) || (c == :r)
             return :( data[1] )
@@ -685,24 +703,24 @@ end
 @fast_swizzle w x
 @fast_swizzle x 0
 @fast_swizzle x 1
-@fast_swizzle x ⋀
-@fast_swizzle x ⋁
+@fast_swizzle x ∆
+@fast_swizzle x ∇
 # Define fast cases for simple three-component swizzles, optionally with constant alpha.
 @fast_swizzle x y z
 @fast_swizzle x y z 0
 @fast_swizzle x y z 1
-@fast_swizzle x y z ⋀
-@fast_swizzle x y z ⋁
+@fast_swizzle x y z ∆
+@fast_swizzle x y z ∇
 @fast_swizzle z y x
 @fast_swizzle z y x w
 @fast_swizzle z y x 0
 @fast_swizzle z y x 1
-@fast_swizzle z y x ⋀
-@fast_swizzle z y x ⋁
+@fast_swizzle z y x ∆
+@fast_swizzle z y x ∇
 # Define fast cases that turn Red-Alpha color data into RGBA data.
 @fast_swizzle x x x w
 # Define fast cases that turn greyscale data into RGBA data.
 @fast_swizzle x x x 0
 @fast_swizzle x x x 1
-@fast_swizzle x x x ⋀
-@fast_swizzle x x x ⋁
+@fast_swizzle x x x ∆
+@fast_swizzle x x x ∇

@@ -1,3 +1,8 @@
+# Before running this file, if you define the global TEST_NAME, it will only test that file.
+# Otherwise, it'll run every file in this folder.
+# E.x. to only run tests for Vec (from vec.jl), you can set `TEST_NAME = "vec"`.
+
+
 # Import dependencies.
 using TupleTools, Setfield, StaticArrays, InteractiveUtils,
       ModernGL, GLFW
@@ -77,16 +82,23 @@ const ALL_REALS = TupleTools.vcat(ALL_INTEGERS, ALL_FLOATS)
 #############################
 
 
-# Execute all Julia files in this folder, other than this one.
-test_files = readdir(@__DIR__, join=true)
-filter!(test_files) do name
-    return !endswith(name, "runtests.jl") &&
-           endswith(name, ".jl")
-end
-for f_path in test_files
-    f_name = split(f_path, ('/', '\\'))[end]
-    println("Running ", f_name, "...")
-    include(f_name)
+# If a desired file is given, just run that one.
+if @isdefined(TEST_NAME)
+    println("Running single test: ", TEST_NAME, "...")
+    include(TEST_NAME * ".jl")
+# Otherwise, execute all Julia files in this folder, (other than this one).
+else
+    println("Running all tests...")
+    test_files = readdir(@__DIR__, join=true)
+    filter!(test_files) do name
+        return !endswith(name, "runtests.jl") &&
+            endswith(name, ".jl")
+    end
+    for f_path in test_files
+        f_name = split(f_path, ('/', '\\'))[end]
+        println("Running ", f_name, "...")
+        include(f_path)
+    end
 end
 
 # If we haven't crashed yet, then I guess the tests worked.

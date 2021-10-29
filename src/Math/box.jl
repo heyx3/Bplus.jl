@@ -33,8 +33,11 @@ export Box
 
 "Constructs an empty box (size 0)"
 Box{T}() where {T} = Box{T}(zero(T), zero(T))
-"Constructs an empty box (size 0)"
 Box(T) = Box(zero(T), zero(T))
+
+"Constructs a Box covering the given range, *ignoring* the step size."
+Box(range::VecRange) = Box_minmax(range.a, range.b)
+Box(range::UnitRange) = Box_minmax(first(range), last(range))
 
 "Constructs a box from a min and inclusive max"
 Box_minmax(min, max_inclusive) = Box(min, box_typenext(max_inclusive) - min)
@@ -45,25 +48,29 @@ Box_minsize(min, size) = Box(min, size)
 "Constructs a box from an inclusive max and size"
 Box_maxsize(max_inclusive, size) = Box(box_typenext(max_inclusive) - size, size)
 
-"Constructs a box that bounds the given points"
-function Box_bounding(points_iterator::T) where T
-    # Edge-case: no points, return an empty box.
-    if isempty(points_iterator)
-        return Box(eltype(points_iterator))
-    end
-
-    # Find the extrema.
-    p_min = typemax(eltype(points_iterator))
-    p_max = typemin(eltype(points_iterator))
-    for p in points_iterator
-        p_min = min(p_min, p)
-        p_max = max(p_max, p)
-    end
-
-    return Box_minmax(p_min, p_max)
+"Constructs a box bounded by a set of points/boxes"
+Box_bounding(point::Union{Number, Vec}) = Box_minsize(point, box_typenext(zero(typeof(point))))
+Box_bounding(b::Box) = b
+@inline function Box_bounding(a::P1, b::P2, rest...) where {P1<:Union{Number, Vec}, P2<:Union{Number, Vec}}
+    p_min = min(a, b)
+    p_max = max(a, b)
+    return Box_bounding(Box_minmax(p_min, p_max), rest...)
 end
-"Constructs a box that bounds the given points"
-Box_bounding(points::T...) where {T<:Union{Vec, Number}} = Box_bounding(points)
+@inline function Box_bounding(a::B1, b::B2, rest...) where {B1<:Box, B2<:Box}
+    p_min = min(a.min, b.min)
+    p_max = max(max_inclusive(a), max_inclusive(b))
+    return Box_bounding(Box_minmax(p_min, p_max), rest...)
+end
+@inline function Box_bounding(b::B, p::P, rest...) where {B<:Box, P<:Union{Number, Vec}}
+    p_min = min(b.min, p)
+    p_max = max(max_inclusive(b), p)
+    return Box_bounding(Box_minmax(p_min, p_max), rest...)
+end
+@inline function Box_bounding(p::P, b::B, rest...) where {P<:Union{Number, Vec}, B<:Box}
+    p_min = min(b.min, p)
+    p_max = max(max_inclusive(b), p)
+    return Box_bounding(Box_minmax(p_min, p_max), rest...)
+end
 
 export Box_minmax, Box_minsize, Box_maxsize, Box_bounding
 
@@ -91,7 +98,7 @@ export get_number_type
 "Gets the point just past the corner of the Box"
 max_exclusive(b::Box) = b.min + b.size
 "Gets the corner point of the Box"
-max_inclusive(b::Box) = box_typeprev(get_max_exclusive(b))
+max_inclusive(b::Box) = box_typeprev(max_exclusive(b))
 export max_exclusive, max_inclusive
 
 "Gets the N-dimensional size of a Box"
@@ -101,7 +108,7 @@ export volume
 "Gets whether the point is somewhere in the box"
 is_touching(box::Box{T}, point::T) where {T} = all(
     (point >= box.min) &
-    (point <= box.max)
+    (point < max_exclusive(box))
 )
 export is_touching
 
@@ -133,6 +140,8 @@ Base.intersect(b1::Box{T}, b2::Box{T}...) where {T} = foldl(intersect, b2, init=
 
 "
 Calculate the union of boxes, a.k.a. a bigger box that contains all of them.
+Note that, unlike the union of regular sets, a union of boxes
+   will contain other elements that weren't in either set.
 "
 Base.union(b::Box) = b
 Base.union(b1::Box{T}, b2::Box{T}) where {T} = Box_minmax(
@@ -146,11 +155,11 @@ closest_point(b::Box{T}, p::T) where {T} = clamp(p, b.min, max_inclusive(b))
 
 "
 Changes the dimensionality of the box.
-By default, new dimensions are given the smallest non-zero size.
+By default, new dimensions are given the size 1 (both for integer and float boxes).
 "
 @inline function Base.reshape( b::Box{Vec{OldN, T}},
                                NewN::Int,
-                               new_dims_size::T = box_typenext(zero(T)),
+                               new_dims_size::T = one(T),
                              ) where {OldN, T}
     if (NewN > OldN)
         return Box(Vec{NewN, T}(b.min, Vec{NewN - OldN, T}(i -> zero(T))),
