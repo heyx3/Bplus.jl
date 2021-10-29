@@ -1,4 +1,7 @@
 # Define the handles to various OpenGL objects.
+# Most define an "emmpty" constructor which creates a null-pointer,
+#    a.k.a. a value which OpenGL promises will not be a valid handle.
+# They also provide a `gl_type(::Type)` that retrieves their underlying integer data type.
 
 """
 Defines a primitive type representing an OpenGL handle.
@@ -24,6 +27,8 @@ macro ogl_handle(name::Symbol, gl_type_name,
         )
         $type_name() = reinterpret($type_name, $null_val)
         $type_name(i::$gl_type) = reinterpret($type_name, i)
+        Base.convert(::Type{$gl_type_name}, i::$type_name) = reinterpret($gl_type, i)
+        $(esc(:gl_type))(::Type{$type_name}) = $(esc(gl_type_name))
         Base.show(io::IO, x::$type_name) = print(io, $display_name, '<', Int(x), '>')
         Base.print(io::IO, x::$type_name) = print(io, Int(x))
     end
@@ -39,7 +44,7 @@ end
 
 "Equivalent to an OpenGL 'Framebuffer'"
 @ogl_handle Target GLuint
-"Equivalent ot an OpenGL 'RenderBuffer'"
+"Equivalent to an OpenGL 'RenderBuffer'"
 @ogl_handle TargetBuffer GLuint
 
 @ogl_handle Buffer GLuint

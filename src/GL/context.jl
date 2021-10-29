@@ -35,35 +35,64 @@ end
 ############################
 
 "
-The OpenGL context, which owns all state and data.
+The OpenGL context, which owns all state and data, including the GLFW window it belongs to.
+This type is a per-thread singleton, because OpenGL only allows one active context per thread.
+Like the other GL resource objects, you can't set the fields of this struct;
+*    use the provided functions to change its state.
 
-This type as a lot of special behavior:
-* It is a per-thread singleton, because OpenGL only allows one context per thread
-* You can get the current context for your thread by calling `get_context()`.
-* You register it simply by calling the constructor.
-* You can set the properties of the context's RenderState to trigger OpenGL calls,
-    e.x. `context.depth_write = true`.
-* You can also set the render state by calling functions (e.x. `set_depth_writes([context,] true)`).
-
-It's recommended to use a `bp_gl_context()` block to control the lifetime of a Context.
+You should close the context with `Base.close(context)`, but even easier
+    is to use a `bp_gl_context()` block to control its lifetime.
 "
 mutable struct Context
     window::GLFW.Window
     vsync::Optional{E_VsyncModes}
-    
+
     state::RenderState
     #TODO: The active RenderTarget
 
-    function Context(window::GLFW.Window, vsync::Optional{E_VsyncModes} = nothing)
-        con::Context = new(window, vsync, RenderState())
+    function Context( size::v2i, title::String
+                      ;
+                      vsync::Optional{E_VsyncModes} = nothing,
+                      glfw_hints::Dict{UInt, UInt} = Dict{UInt, UInt}()
+                    )::Context
+        # Create the window:
+        for (hint_name, hint_val) in glfw_hints
+            GLFW.WindowHint(hint_name, hint_val)
+        end
+        window = GLFW.CreateWindow(size..., title)
 
+        # Check the version that GLFW gave us.
+        gl_version::NTuple{2, Int} = (GLFW.GetWindowAttrib(window, GLFW.CONTEXT_VERSION_MAJOR),
+                                      GLFW.GetWindowAttrib(window, GLFW.CONTEXT_VERSION_MINOR))
+        gl_version_str::String = join(map(string, gl_version), '.')
+        @bp_check((gl_version[1] > OGL_MAJOR_VERSION) ||
+                    ((gl_version[1] == OGL_MAJOR_VERSION) && (gl_version[2] >= OGL_MINOR_VERSION)),
+                  "OpenGL context is version ", gl_version_str, ", which is too old!",
+                    " Bplus requires ", string(OGL_MAJOR_VERSION, ".", OGL_MINOR_VERSION),
+                    ". If you're on a laptop with a discrete GPU, make sure you're not accidentally",
+                    " using the Integrated Graphics. This program was using the GPU '",
+                    unsafe_string(ModernGL.glGetString(GL_RENDERER)), "'.")
+
+        # Set up the Context singleton.
+        con::Context = new(window, vsync, RenderState())
         @bp_check(isnothing(get_context()), "A Context already exists on this thread")
         CONTEXTS_PER_THREAD[Threads.threadid()] = con
 
+        # Set up the OpenGL/window state.
         GLFW.MakeContextCurrent(window)
         refresh(con)
         if exists(con.vsync)
             GLFW.SwapInterval(Int(con.vsync))
+        end
+        
+        # Check whether our required extensions are provided.
+        # This has to be done after 'GLFW.MakeContextCurrent()'.
+        for ext in OGL_REQUIRED_EXTENSIONS
+            @bp_check(GLFW.ExtensionSupported(ext),
+                      "Required OpenGL extension not supported: ", ext,
+                        ". If you're on a laptop with a discrete GPU, make sure you're not accidentally",
+                        " using the Integrated Graphics. This program was using the GPU '",
+                        unsafe_string(ModernGL.glGetString(GL_RENDERER)), "'.")
         end
 
         return con
@@ -80,6 +109,28 @@ export Context
         error("Bplus.GL.Context has no field '", name, "'")
     end
 end
+
+function Base.close(c::Context)
+    GLFW.DestroyWindow(c.window)
+
+    if CONTEXTS_PER_THREAD[Threads.threadid()] === c
+        CONTEXTS_PER_THREAD[Threads.threadid()] = nothing
+    end
+end
+
+"Runs the given code on a new OpenGL context, ensuring the context will get cleaned up"
+@inline function bp_gl_context(to_do::Function, args...; kw_args...)
+    c::Optional{Context} = nothing
+    try
+        c = Context(args...; kw_args...)
+        to_do(c)
+    catch
+        rethrow()
+    finally
+        close(c)
+    end
+end
+export bp_gl_context
 
 
 "Gets the current context, if it exists"
@@ -123,10 +174,6 @@ get_stencil_write_mask_back(context::Context)::GLuint =
 export get_stencil_write_mask_front, get_stencil_write_mask_back
 
 
-#TODO: A 'Base.close()' overload for closing the context
-#TODO: bp_gl_context()
-
-
 ############################
 #   Render State setters   #
 ############################
@@ -160,22 +207,22 @@ function refresh(context::Context)
 
     # Read the render state.
     # Viewport:
-    viewport = get_from_ogl(GLinint, 4, glGetIntegerv, GL_VIEWPORT)
-    viewport = (min=viewport[1:2], max=viewport[3:4])
+    viewport = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_VIEWPORT))
+    viewport = (min=viewport.xy, max=viewport.zw)
     # Scissor:
     if glIsEnabled(GL_SCISSOR_TEST)
-        scissor = get_from_ogl(GLint, 4, glGetIntegerv, GL_SCISSOR_BOX)
-        scissor = (min=scissor[1:2], max=scissor[3:4])
+        scissor = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_SCISSOR_BOX))
+        scissor = (min=scissor.xy, max=scissor.zw)
     else
         scissor = nothing
     end
     # Simple one-off settings:
-    color_mask = get_from_ogl(glboolean, 4, glGetBooleanv, GL_COLOR_WRITEMASK)
+    color_mask = get_from_ogl(GLboolean, 4, glGetBooleanv, GL_COLOR_WRITEMASK)
     color_mask = Vec(map(b -> !iszero(b), color_mask))
-    depth_write = (get_from_ogl(Glboolean, glGetBooleanv, GL_DEPTH_WRITEMASK) != 0)
+    depth_write = (get_from_ogl(GLboolean, glGetBooleanv, GL_DEPTH_WRITEMASK) != 0)
     cull_mode = glIsEnabled(GL_CULL_FACE) ?
                     FaceCullModes.from(get_from_ogl(GLint, glGetIntegerv, GL_CULL_FACE_MODE)) :
-                    nothing
+                    FaceCullModes.Off
     depth_test = ValueTests.from(get_from_ogl(GLint, glGetIntegerv, GL_DEPTH_FUNC))
     # Blending:
     blend_constant = get_from_ogl(GLfloat, 4, glGetFloatv, GL_BLEND_COLOR)
@@ -206,7 +253,7 @@ function refresh(context::Context)
             StencilTest(
                 ValueTests.from(get_from_ogl(GLint, glGetIntegerv, ge_test)),
                 get_from_ogl(GLint, glGetIntegerv, ge_ref),
-                reinterpret(GLuint, get_from_ogl(GLint, ge_value_mask))
+                reinterpret(GLuint, get_from_ogl(GLint, glGetIntegerv, ge_value_mask))
             ),
             StencilResult(
                 StencilOps.from(get_from_ogl(GLint, glGetIntegerv, ge_on_fail)),
@@ -219,7 +266,11 @@ function refresh(context::Context)
     if stencils[1] == stencils[2]
         stencils = stencils[1]
     else
-        stencils = (front=stencils[1], back=stencils[2])
+        stencils = (
+            (front=stencils[1][1], back=stencils[2][1]),
+            (front=stencils[1][2], back=stencils[2][2]),
+            (front=stencils[1][3], back=stencils[2][3])
+        )
     end
 
     # Assemble them all together and update the Context.
@@ -228,12 +279,7 @@ function refresh(context::Context)
         cull_mode, viewport, scissor,
         (rgb=blend_rgb, alpha=blend_alpha),
         depth_test,
-        (stencils[1][1] == stencils[2][1]) ? stencils[1][1] :
-            (front=stencils[1][1], back=stencils[2][1]),
-        (stencils[1][2] == stencils[2][2]) ? stencils[1][2] :
-            (front=stencils[1][2], back=stencils[2][2]),
-        (stencils[1][3] == stencils[2][3]) ? stencils[1][3] :
-            (front=stencils[1][3], back=stencils[2][3]),
+        stencils...
     ))
 end
 export refresh
@@ -583,13 +629,9 @@ set_scissor(min_max::Optional{Tuple{v2i, v2i}}) = set_scissor(get_context(), min
 
 # Set up the thread-local storage.
 const CONTEXTS_PER_THREAD = Vector{Optional{Context}}()
-module _Init_Contexts
-    import ..CONTEXTS_PER_THREAD
-    function __init__()
-        global CONTEXTS_PER_THREAD
-        empty!(CONTEXTS_PER_THREAD)
-        for i in 1:Threads.nthreads()
-            push!(CONTEXTS_PER_THREAD, nothing)
-        end
+push!(RUN_ON_INIT, () -> begin
+    empty!(CONTEXTS_PER_THREAD)
+    for i in 1:Threads.nthreads()
+        push!(CONTEXTS_PER_THREAD, nothing)
     end
-end
+end)

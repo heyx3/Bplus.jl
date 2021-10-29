@@ -26,6 +26,7 @@ export PRNG
 
 Base.copy(r::PRNG) = PRNG(r.state, r.seeds)
 
+# The core algorithm is for generating UInt32 data.
 @inline function Base.rand(r::PRNG, ::Type{UInt32})
     seed4::UInt32 = r.state - prng_rot(r.seeds[1], UInt32(27))
     r.state = r.seeds[1] ⊻ prng_rot(r.seeds[2], UInt32(17))
