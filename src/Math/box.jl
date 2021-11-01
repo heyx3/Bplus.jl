@@ -150,7 +150,7 @@ Base.union(b1::Box{T}, b2::Box{T}) where {T} = Box_minmax(
 )
 Base.union(b1::Box{T}, b2::Box{T}...) where {T} = foldl(union, b2, init=b1)
 
-"Gets the closest point in a box to the given point"
+"Gets the closest point on or in a box to a point 'p'."
 closest_point(b::Box{T}, p::T) where {T} = clamp(p, b.min, max_inclusive(b))
 
 "

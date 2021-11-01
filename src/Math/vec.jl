@@ -191,13 +191,46 @@ Base.one(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(ntuple(i->one(T), N))
 Base.typemin(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(ntuple(i -> typemin(T), N))
 Base.typemax(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(ntuple(i -> typemax(T), N))
 
+Base.min(v::Vec) = reduce(min, v)
 Base.min(p1::Vec{N, T1}, p2::Vec{N, T2}) where {N, T1, T2} = Vec((min(p1[i], p2[i]) for i in 1:N)...)
 Base.min(p1::Vec{N, T1}, p2::T2) where {N, T1, T2} = Vec((min(p1[i], p2) for i in 1:N)...)
 @inline Base.min(p1::Number, p2::Vec) = min(p2, p1)
 
+Base.max(v::Vec) = reduce(max, v)
 Base.max(p1::Vec{N, T1}, p2::Vec{N, T2}) where {N, T1, T2} = Vec((max(p1[i], p2[i]) for i in 1:N)...)
 Base.max(p1::Vec{N, T1}, p2::T2) where {N, T1, T2} = Vec((max(p1[i], p2) for i in 1:N)...)
 @inline Base.max(p1::Number, p2::Vec) = max(p2, p1)
+
+@inline function Base.minmax(p1::Vec{N, T1}, p2::Vec{N, T2}) where {N, T1, T2}
+    T3 = promote_type(T1, T2)
+    component_wise = (minmax(a, b) for (a,b) in zip(p1, p2))
+    tuples::NTuple{2, NTuple{N, T3}} = unzip2(component_wise)
+    return map(Vec{N, T3}, tuples)
+end
+Base.minmax(p1::Vec{N, T1}, p2::T2) where {N, T1, T2} = minmax(p1, Vec{N, T2}(i->p2))
+Base.minmax(p1::Number, p2::Vec) = minmax(p2, p1)
+
+"Finds the minimum component which passes a given predicate"
+function find(pred::F, v::Vec{N, T})::Optional{T} where {F, N, T}
+    min_i::Int = 0
+    for i::Int in 1:N
+        if pred(v[i])
+            min_i = min(min_i, i)
+        end
+    end
+    return (min_i > 0) ? min_i : nothing
+end
+"Finds the minimum component which passes a given predicate"
+function Base.findmin(pred::F, v::Vec{N, T})::Optional{T} where {F, N, T}
+    min_i::Int = 0
+    for i::Int in 1:N
+        if pred(v[i])
+            min_i = min(min_i, i)
+        end
+    end
+    return (min_i > 0) ? min_i : nothing
+end
+
 
 Base.clamp(v::Vec{N, T}, a::T2, b::T3) where {N, T, T2, T3} = Vec{N, T}(i -> clamp(v[i], a, b))
 Base.clamp(v::Vec{N, T}, a::Vec{N, T2}, b::Vec{N, T3}) where {N, T, T2, T3} = Vec{N, T}(i -> clamp(v[i], a[i], b[i]))
@@ -483,7 +516,7 @@ export vdist_sqr, vdist
     return vdot(v, v)
 end
 "Computes the length of a vector"
-@inline vlength(v::Vec, out_type=Float64)::out_type = convert(out_type, sqrt(vlength_sqr(v)))
+@inline vlength(v::Vec) = sqrt(vlength_sqr(v))
 export vlength_sqr, vlength
 
 "Normalizes a vector"

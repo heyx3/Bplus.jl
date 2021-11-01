@@ -145,18 +145,26 @@ end
 @bp_test_no_allocations(typemin(Vec{3, UInt8}),
                         Vec(UInt8(0), UInt8(0), UInt8(0)))
 @bp_test_no_allocations(typemax(v2f), Vec(+Inf, +Inf))
+@bp_test_no_allocations(min(Vec(5, 6, -11, 8, 1)), -11)
 @bp_test_no_allocations(min(Vec(3, 4), Vec(1, 10)),
                         Vec(1, 4))
 @bp_test_no_allocations(min(Vec(3, 5), 4),
                         Vec(3, 4))
 @bp_test_no_allocations(min(4, Vec(3, 5)),
                         Vec(3, 4))
+@bp_test_no_allocations(max(Vec(5, 6, -11, 8, 1)), 8)
 @bp_test_no_allocations(max(Vec(3, 4), Vec(1, 10)),
                         Vec(3, 10))
 @bp_test_no_allocations(max(Vec(3, 5), 4),
                         Vec(4, 5))
 @bp_test_no_allocations(max(4, Vec(3, 5)),
                         Vec(4, 5))
+@bp_test_no_allocations(minmax(Vec(3, 4), Vec(1, 10)),
+                        (Vec(1, 4), Vec(3, 10)))
+@bp_test_no_allocations(minmax(3, Vec(1, 10)),
+                        (Vec(1, 3), Vec(3, 10)))
+@bp_test_no_allocations(minmax(Vec(1, 10), 3),
+                        (Vec(1, 3), Vec(3, 10)))
 @bp_test_no_allocations(clamp(Vec(3, 7), 3, 5),
                         Vec(3, 5))
 @bp_test_no_allocations(clamp(Vec(3, 7), Vec(1, 10), Vec(2, 15)),
@@ -165,6 +173,7 @@ end
 # Test the dot product.
 @bp_test_no_allocations(vdot(Vec(1, 2), Vec(4, 5)),  14)
 @bp_test_no_allocations(Vec(1, 2) ⋅ Vec(4, 5), vdot(Vec(1, 2), Vec(4, 5)))
+@bp_test_no_allocations(Vec(1, 2) ∘ Vec(4, 5), vdot(Vec(1, 2), Vec(4, 5)))
 
 # Test swizzling.
 @bp_test_no_allocations(Vec(1, 2, 3, 4).xyz, Vec(1, 2, 3))

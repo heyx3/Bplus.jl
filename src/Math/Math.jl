@@ -14,5 +14,7 @@ include("mat.jl")
 include("quat.jl")
 
 include("box.jl")
+include("sphere.jl")
+include("ray.jl")
 
 end # module
