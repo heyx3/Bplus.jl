@@ -547,11 +547,12 @@ export vcross
 
 "The \\cdot character represents the dot product."
 const ⋅ = vdot
-"The \\circ character also represents the dot product, as it's easier to read than the dot."
-const ∘ = vdot
 "The \\times character represents the cross product."
 const × = vcross
-export ⋅, ∘, ×
+export ⋅, ×
+
+"The \\circ character also represents the dot product, as it's easier to read than the dot."
+Base.:∘(v::Vec, v2::Vec) = vdot(v, v2)
 
 
 ###########################

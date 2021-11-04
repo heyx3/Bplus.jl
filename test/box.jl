@@ -25,6 +25,10 @@
 @bp_test_no_allocations(Box_bounding(Vec(-1, 30), Vec(21, -10), Box(1:20)),
                         Box_minmax(Vec(-1, -10), Vec(21, 30)))
 
+# Test conversions.
+@bp_test_no_allocations(convert(Box{v2u}, Box(v2f(1, 2), v2f(4, 3))) isa Box{v2u},
+                        true)
+
 #TODO: Test the use of aliases.
 
 @bp_test_no_allocations(is_empty(Box(v2i)), true)

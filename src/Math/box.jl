@@ -74,6 +74,9 @@ end
 
 export Box_minmax, Box_minsize, Box_maxsize, Box_bounding
 
+# Convert between boxes of different type.
+Base.convert(::Type{Box{T}}, b::Box{T2}) where {T, T2} = Box(convert(T, b.min), convert(T, b.size))
+
 
 ###########################
 #        Functions        #
