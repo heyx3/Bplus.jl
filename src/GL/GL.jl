@@ -45,6 +45,11 @@ include("context.jl")
 include("buffer.jl")
 include("mesh.jl")
 
+include("textures/format.jl")
+include("textures/sampling.jl")
+include("textures/data.jl")
+include("textures/texture.jl")
+
 include("drawing.jl")
 
 #TODO: Give various object names with glObjectLabel
