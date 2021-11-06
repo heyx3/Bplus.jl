@@ -1,5 +1,7 @@
 # Defines simple data types used by GL
 
+#TODO: All the enum values should be lowercase!
+
 # GLFW Vsync settings
 @bp_enum(VsyncModes,
     Off = 0,

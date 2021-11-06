@@ -1,15 +1,13 @@
 """
 A contiguous block of memory on the GPU,
    for storing any kind of data.
-Most commonly used to store mesh vertices/indices, or compute shader data.
+Most commonly used to store mesh vertices/indices, or other arrays of things.
 Instances can be "mapped" to the CPU, allowing you to write/read them directly
    as if they were a plain C array.
 This is often more efficient than setting the buffer data the usual way,
    e.x. you could read the mesh data from disk directly into this mapped memory.
-Like other GL resources, you cannot set the fields of this object directly.
-Instead, you should use its interface.
 """
-mutable struct Buffer
+mutable struct Buffer <: Resource
     handle::Ptr_Buffer
     byte_size::UInt64
     is_mutable::Bool
@@ -70,7 +68,6 @@ end
 
     glNamedBufferStorage(handle, byte_size, initial_byte_data, flags)
 end
-#TODO: Buffer <: Resource
 
 Base.show(io::IO, b::Buffer) = print(io,
     "Buffer<",
@@ -85,8 +82,6 @@ function Base.close(b::Buffer)
     glDeleteBuffers(1, Ref{GLuint}(b.handle))
     setfield!(b, :handle, Ptr_Buffer())
 end
-
-Base.setproperty!(b::Buffer, name::Symbol, value) = error("Can't set the fields of a Buffer! Use the functions instead")
 
 export Buffer
 
@@ -110,7 +105,7 @@ function set_buffer_data( b::Buffer,
                           # A byte offset, to be combinend wth 'dest_element_start'
                           dest_byte_offset::UInt = zero(UInt)
                         ) where {T}
-    @bp_check(b.is_mutable, "Can't change this Buffer's data after creation; it's immutable")
+    @bp_check(b.is_mutable, "Buffer is immutable")
     @bp_check(max_inclusive(src_element_range) <= length(new_elements),
               "Trying to upload a range of data beyond the input buffer")
 
@@ -141,9 +136,9 @@ function get_buffer_data( b::Buffer,
                           output::Union{Vector{T}, Type{T}} = UInt8
                           ;
                           # Shifts the first element to write to in the output array
-                          dest_offset::UInt = zero(UInt),
+                          dest_offset::Integer = zero(UInt),
                           # The start of the buffer's array data
-                          src_byte_offset::UInt = zero(UInt),
+                          src_byte_offset::Integer = zero(UInt),
                           # The elements to read from the buffer (defaults to as much as possible)
                           src_elements::IntervalU = IntervalU(1,
                               min((b.byte_size - src_byte_offset) ÷ sizeof(T),
@@ -152,8 +147,8 @@ function get_buffer_data( b::Buffer,
                                       typemax(UInt))
                           )
                         )::Optional{Vector{T}} where {T}
-    src_first_byte::UInt = src_byte_offset + ((src_elements.min - 1) * sizeof(T))
-    n_bytes::UInt = src_elements.size * sizeof(T)
+    src_first_byte::UInt = convert(UInt, src_byte_offset + ((src_elements.min - 1) * sizeof(T)))
+    n_bytes::UInt = convert(UInt, src_elements.size * sizeof(T))
 
     if output isa Vector{T}
         @bp_check(dest_offset + src_elements.size <= length(output),
@@ -162,7 +157,9 @@ function get_buffer_data( b::Buffer,
                     " - ", (dest_offset + src_elements.size), ", but there are only ",
                     length(output))
     else
-        @bp_check(dest_offset == 0x0, "You provided 'dest_offset' but not an output array")
+        @bp_check(dest_offset == 0x0,
+                  "In 'get_buffer_data()', you provided 'dest_offset' of ", dest_offset,
+                     " but no output array")
     end
     output_array::Vector{T} = (output isa Vector{T}) ?
                                   output :
@@ -185,10 +182,10 @@ By default, copies as much data as possible.
 "
 function copy_buffer( src::Buffer, dest::Buffer
                       ;
-                      src_byte_offset::UInt = 0x0,
-                      dest_byte_offset::UInt = 0x0,
-                      byte_size::UInt = min(src.byte_size - src.byte_offset,
-                                            dest.byte_size - dest.byte_offset)
+                      src_byte_offset::Integer = 0x0,
+                      dest_byte_offset::Integer = 0x0,
+                      byte_size::Integer = min(src.byte_size - src.byte_offset,
+                                               dest.byte_size - dest.byte_offset)
                     )
     @bp_check(src_byte_offset + byte_size <= src.byte_size,
               "Going outside the bounds of the 'src' buffer in a copy:",
@@ -196,6 +193,8 @@ function copy_buffer( src::Buffer, dest::Buffer
     @bp_check(dest_byte_offset + byte_size <= dest.byte_size,
               "Going outside the bounds of the 'dest' buffer in a copy:",
                 " from ", dest_byte_offset, " to ", dest_byte_offset + byte_size)
+    @bp_check(dest.is_mutable, "Destination buffer is immutable")
+
     glCopyNamedBufferSubData(src.handle, dest.handle,
                              src_byte_offset,
                              dest_byte_offset,
@@ -203,5 +202,6 @@ function copy_buffer( src::Buffer, dest::Buffer
 end
 
 export set_buffer_data, get_buffer_data, copy_buffer
+
 
 #TODO: Rest of the operations (mapping)

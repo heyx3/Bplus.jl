@@ -4,15 +4,20 @@
              GL.gl_type(GL.Ptr_Uniform))
 @bp_check(GL.gl_type(GL.Ptr_Buffer) === GLuint)
 
+using Bplus.GL
+using GLFW
+
 # Create a GL Context and window.
-bp_gl_context(v2i(800, 500), "Press Enter to close me") do context::Context
+bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.Off) do context::Context
     @bp_check(context === GL.get_context(),
               "Just started this Context, but another one is the singleton")
 
-    timer::Int = 200_000
+    timer::Int = 6_000
     while !GLFW.WindowShouldClose(context.window)
         clear_col = vRGBAf(rand(Float32), rand(Float32), rand(Float32), @f32 1)
         GL.render_clear(context, GL.Ptr_Target(), clear_col)
+
+        GLFW.SwapBuffers(context.window)
 
         GLFW.PollEvents()
         timer -= 1
@@ -46,15 +51,30 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me") do context::Context
     @bp_check(buf_actual == [ 0x7, 0x9 ], map(bitstring, buf_actual))
     buf_actual = get_buffer_data(buf, UInt8;
                                  src_elements = IntervalU(2, 2),
-                                 src_byte_offset = UInt(1))
+                                 src_byte_offset = 1)
     @bp_check(buf_actual == [ 0x9, 0x19 ], map(bitstring, buf_actual))
-    buf_actual = UInt8[ 0x0, 0x0, 0x0, 0x0, 0x0, 0x0 ]
+    buf_actual = UInt8[ 0x2, 0x0, 0x0, 0x0, 0x0, 0x4 ]
     get_buffer_data( buf, buf_actual;
                      dest_offset = UInt(1)
                    )
-    @bp_check(buf_actual == [ 0x0, 0x5, 0x7, 0x9, 0x19, 0x0],
+    @bp_check(buf_actual == [ 0x2, 0x5, 0x7, 0x9, 0x19, 0x4 ],
               buf_actual)
+    # Try copying.
+    buf2 = Buffer(30, true, true)
+    copy_buffer(buf, buf2;
+                src_byte_offset = 2,
+                dest_byte_offset = 11,
+                byte_size = 2)
+    buf_actual = get_buffer_data(buf2; src_byte_offset = 11, src_elements = IntervalU(1, 2))
+    @bp_check(buf_actual == [ 0x9, 0x19 ],
+              "Copying buffers with offsets: expected [ 0x9, 0x19 ], got ", buf_actual)
+    # Clean up.
+    close(buf2)
     close(buf)
+    @bp_check(buf.handle == GL.Ptr_Buffer(),
+              "Buffer 1's handle isn't zeroed out after closing")
+    @bp_check(buf2.handle == GL.Ptr_Buffer(),
+              "Buffer 2's handle isn't zeroed out after closing")
 end
 
 @bp_check(isnothing(GL.get_context()),
