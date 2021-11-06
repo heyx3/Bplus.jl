@@ -120,8 +120,23 @@ get_pixel_io_type(::Type{Int16}) = PixelIOTypes.int16
 get_pixel_io_type(::Type{Int32}) = PixelIOTypes.int32
 get_pixel_io_type(::Type{Float32}) = PixelIOTypes.float32
 
+"The set of all types which can be used for pixel upload/download"
+@inline supported_pixel_io_types() = (
+    UInt8, UInt16, UInt32,
+    Int8, Int16, Int32,
+    Float32
+)
 
-export PixelIOTypes, E_PixelIOTypes
+"
+A CPU-side array to hold pixel data for uploading or downloading an N-dimensional texture.
+Example: `PixelBuffer{1} == Union{Vector{UInt8}, Vector{Float32}, ...}`
+"
+const PixelBuffer{N} = @eval @unionspec(Array{_, $N}, $(supported_pixel_io_types()...))
+
+
+export PixelIOTypes, E_PixelIOTypes,
+       get_pixel_io_type, supported_pixel_io_types,
+       PixelBuffer
 
 
 #########################################

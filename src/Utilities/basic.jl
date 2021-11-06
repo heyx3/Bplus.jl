@@ -2,8 +2,45 @@ const Optional{T} = Union{T, Nothing}
 exists(x) = !isnothing(x)
 export Optional, exists
 
+
 @inline none(args...) = !any(args...)
 export none
+
+"A function that combines a UnionAll and its type parameter(s)"
+@inline specify(TOuter, TInner) = TOuter{TInner}
+export specify
+
+"
+Union of some outer type, specialized for many inner types.
+Examples:
+* `@unionspec(Vector{_}, Int, Float64) == Union{Vector{Int}, Vector{Float64}}`
+* `@unionspec(Array{Int, _}, 2, 4) == Union{Array{Int, 2}, Array{Int, 4}}`
+"
+macro unionspec(TOuter, TInners...)
+    # Search through tOut for any underscore tokens,
+    #    and replace them with tIn.
+    function specialize_unders(tOut, tIn)
+        if tOut isa Symbol
+            if tOut == :_
+                return tIn
+            else
+                return tOut
+            end
+        elseif tOut isa Expr
+            return Expr(tOut.head, map(arg -> specialize_unders(arg, tIn), tOut.args)...)
+        else #LineNumberNode or something else to leave alone
+            return tOut
+        end
+    end
+
+    specializations = map(tIn -> esc(specialize_unders(TOuter, tIn)),
+                          TInners)
+
+    return :( Union{$(specializations...)} )
+end
+export @unionspec
+
+
 
 """
 Game math is mostly done with 32-bit floats,

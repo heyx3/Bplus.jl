@@ -51,12 +51,15 @@ export TexTypes, E_TexTypes,
 #
 
 
-########################
-#   Format interface   #
-########################
+###########################
+#   TexFormat interface   #
+###########################
 
 # The format types are split into different "archetypes",
 #    each of which implement the following queries:
+
+"Is the given format supported for the given TexType?"
+function is_supported end
 
 "Is the given format a color type (as opposed to depth and/or stencil)?"
 function is_color end
@@ -94,7 +97,8 @@ Gets the OpenGL enum value representing this format,
 function get_ogl_enum end
 
 
-export is_color, is_depth_only, is_stencil_only, is_depth_and_stencil,
+export is_supported,
+       is_color, is_depth_only, is_stencil_only, is_depth_and_stencil,
        is_integer, stores_channel, get_n_channels,
        get_pixel_bit_size, get_byte_size,
        get_ogl_enum
@@ -164,6 +168,8 @@ export SimpleFormatComponents, E_SimpleFormatComponents,
        SimpleFormatBitDepths, E_SimpleFormatBitDepths,
        SimpleFormat
 #
+
+is_supported(::SimpleFormat, ::E_TexTypes) = true
 
 is_color(f::SimpleFormat) = true
 is_depth_only(f::SimpleFormat) = false
@@ -313,6 +319,8 @@ end
 
 export SpecialFormats, E_SpecialFormats
 
+is_supported(::E_SpecialFormats, ::E_TexTypes) = true
+
 is_color(f::E_SpecialFormats) = true
 is_depth_only(f::E_SpecialFormats) = false
 is_stencil_only(f::E_SpecialFormats) = false
@@ -438,13 +446,6 @@ get_ogl_enum(f::E_SpecialFormats) = GLenum(f)
     rgba_sRGB_normalized_uint = GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM
 );
 
-"Checks whether the given texture compression format is supported for the given type of texture"
-function is_supported(format::E_CompressedFormats, tex_type::E_TexTypes)::Bool
-    # Currently, all Bplus-supported compressed formats
-    #   only work with 2D textures.
-    return (tex_type != TexTypes.twoD) && (tex_type != TexTypes.cube_map)
-end
-
 "Gets the width/height/depth of each block of pixels in a block-compressed texture of the given format"
 function get_block_size(format::E_CompressedFormats)
     # Currently, all Bplus-supported compressed formats
@@ -460,8 +461,14 @@ function get_block_count(format::E_CompressedFormats, tex_size::Vec{N, I}) where
 end
 
 export CompressedFormats, E_CompressedFormats,
-       is_supported, get_block_size, get_block_count
+       get_block_size, get_block_count
 #
+
+function is_supported(::E_CompressedFormats, tex_type::E_TexTypes)::Bool
+    # Currently, all Bplus-supported compressed formats
+    #   only work with 2D textures.
+    return (tex_type != TexTypes.twoD) && (tex_type != TexTypes.cube_map)
+end
 
 is_color(f::E_CompressedFormats) = true
 is_depth_only(f::E_CompressedFormats) = false
@@ -569,6 +576,11 @@ get_ogl_enum(f::E_CompressedFormats) = GLenum(f)
 export DepthStencilFormats, E_DepthStencilFormats
 #
 
+function is_supported(f::E_DepthStencilFormats, t::E_TexTypes)
+    # Depth/stencil formats are not supported on 3D textures.
+    return t != TexTypes.threeD
+end
+
 is_color(f::E_DepthStencilFormats) = false
 is_depth_only(f::E_DepthStencilFormats) =
     if (f == DepthStencilFormats.depth_16u) ||
@@ -673,10 +685,10 @@ get_pixel_bit_size(f::E_DepthStencilFormats) =
 get_ogl_enum(f::E_DepthStencilFormats) = GLenum(f)
 
 
-####################
-#      Format      #
-####################
+#######################
+#      TexFormat      #
+#######################
 
 "Describes a pixel format for any kind of texture"
-const Format = Union{SimpleFormat, E_SpecialFormats, E_CompressedFormats, E_DepthStencilFormats}
-export Format
+const TexFormat = Union{SimpleFormat, E_SpecialFormats, E_CompressedFormats, E_DepthStencilFormats}
+export TexFormat

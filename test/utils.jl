@@ -35,3 +35,17 @@ end
                         reduce(+, 2:2:10))
 @bp_test_no_allocations(reduce_some(*, b->(b%2==0), 1:10; init=1),
                         reduce(*, 2:2:10))
+
+# Test @unionspec
+@bp_check(@unionspec(Vector{_}, Int, Float64) ==
+            Union{Vector{Int}, Vector{Float64}},
+          @unionspec(Vector{_}, Int, Float64))
+@bp_check(@unionspec(Vector{_}, Tuple{Int, Float64}, String) ==
+            Union{Vector{Tuple{Int, Float64}}, Vector{String}},
+          @unionspec(Vector{_}, Tuple{Int, Float64}, String))
+@bp_check(@unionspec(Array{_, 2}, Int, Float64) ==
+            Union{Array{Int, 2}, Array{Float64, 2}},
+          @unionspec(Array{_, 2}, Int, Float64))
+@bp_check(@unionspec(Array{Int, _}, 4, 5) ==
+            Union{Array{Int, 4}, Array{Int, 5}},
+          @unionspec(Array{Int, _}, 4, 5))

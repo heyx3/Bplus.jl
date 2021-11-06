@@ -5,6 +5,7 @@
 @bp_test_no_allocations(Vec{Float32}(1, -2, 3) isa Vec{3, Float32}, true)
 @bp_test_no_allocations(Vec(Vec(1, 2, 3), Vec(6, 5, 4, 3, 2)),
                         Vec(1, 2, 3, 6, 5, 4, 3, 2))
+@bp_test_no_allocations(Vec(Vec(1.0, 2, 3), 5) isa Vec{4, Float64}, true)
 @bp_test_no_allocations(Vec(i -> i + 2.0, 3), Vec(3.0, 4.0, 5.0))
 @bp_test_no_allocations(Vec{Float64}(i -> i + 2, 3) isa Vec{3, Float64}, true)
 @bp_test_no_allocations(Vec{3, Float64}(i -> i + 2), Vec(3, 4, 5), true)

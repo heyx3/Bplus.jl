@@ -16,8 +16,6 @@ function __init__()
     end
 end
 
-#TODO: Base type for all GL resource objects (i.e. no getproperty(), and other things)
-
 
 # OpenGL info:
 const OGL_MAJOR_VERSION = 4
@@ -41,6 +39,7 @@ include("depth_stencil.jl")
 include("blending.jl")
 include("data.jl")
 include("context.jl")
+include("resource.jl")
 
 include("buffer.jl")
 include("mesh.jl")
@@ -48,6 +47,7 @@ include("mesh.jl")
 include("textures/format.jl")
 include("textures/sampling.jl")
 include("textures/data.jl")
+include("textures/cube.jl")
 include("textures/texture.jl")
 
 include("drawing.jl")

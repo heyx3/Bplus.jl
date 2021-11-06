@@ -620,8 +620,6 @@ set_viewport(min::v2i, max::v2i) = set_viewport(get_context(), min, max)
 set_scissor(min_max::Optional{Tuple{v2i, v2i}}) = set_scissor(get_context(), min_max)
 
 #TODO: Set up callbacks for 'destroyed' and 'refresh state'.
-#TODO: bp_gl_context(f::Function)
-
 
 ####################################
 #   Thread-local context storage   #

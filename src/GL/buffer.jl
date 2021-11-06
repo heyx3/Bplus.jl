@@ -72,6 +72,7 @@ end
     setfield(output, :byte_size, UInt64(byte_size))
     setfield(output, :is_mutable, can_change_data)
 end
+#TODO: Buffer <: Resource
 
 Base.show(io::IO, b::Buffer) = print(io,
     "Buffer<",
@@ -83,6 +84,7 @@ Base.show(io::IO, b::Buffer) = print(io,
 
 function Base.close(b::Buffer)
     glDeleteBuffers(1, Ref(b.handle))
+    setfield!(b, :handle, Ptr_Buffer())
 end
 
 Base.setproperty!(b::Buffer, name::Symbol, value) = error("Can't set the fields of a Buffer! Use the functions instead")

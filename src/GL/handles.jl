@@ -19,11 +19,10 @@ macro ogl_handle(name::Symbol, gl_type_name,
                   " I only really planned for integers in this macro")
                   
     type_name = esc(Symbol(:Ptr_, name))
-    super_type = supertype(gl_type)
     null_val = esc(null_val)
     return quote
         Base.@__doc__(
-            primitive type $type_name <: $super_type (8*sizeof($gl_type)) end
+            primitive type $type_name (8*sizeof($gl_type)) end
         )
         $type_name() = reinterpret($type_name, $null_val)
         $type_name(i::$gl_type) = reinterpret($type_name, i)
