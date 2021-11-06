@@ -20,16 +20,18 @@ macro ogl_handle(name::Symbol, gl_type_name,
                   
     type_name = esc(Symbol(:Ptr_, name))
     null_val = esc(null_val)
+    gl_type_name = esc(gl_type_name)
     return quote
         Base.@__doc__(
             primitive type $type_name (8*sizeof($gl_type)) end
         )
         $type_name() = reinterpret($type_name, $null_val)
         $type_name(i::$gl_type) = reinterpret($type_name, i)
+        $gl_type_name(i::$type_name) = reinterpret($gl_type_name, i)
         Base.convert(::Type{$gl_type_name}, i::$type_name) = reinterpret($gl_type, i)
-        $(esc(:gl_type))(::Type{$type_name}) = $(esc(gl_type_name))
-        Base.show(io::IO, x::$type_name) = print(io, $display_name, '<', Int(x), '>')
-        Base.print(io::IO, x::$type_name) = print(io, Int(x))
+        $(esc(:gl_type))(::Type{$type_name}) = $gl_type_name
+        Base.show(io::IO, x::$type_name) = print(io, $display_name, '<', Int($gl_type_name(x)), '>')
+        Base.print(io::IO, x::$type_name) = print(io, Int($gl_type_name(x)))
     end
 end
 

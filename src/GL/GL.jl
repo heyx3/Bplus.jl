@@ -16,7 +16,6 @@ function __init__()
     end
 end
 
-
 # OpenGL info:
 const OGL_MAJOR_VERSION = 4
 const OGL_MINOR_VERSION = 6
@@ -53,6 +52,6 @@ include("textures/texture.jl")
 include("drawing.jl")
 
 #TODO: Give various object names with glObjectLabel
-#TODO: Buffers, Textures, Targets, Meshes
+#TODO: Targets, Meshes
 
 end # module
