@@ -1,6 +1,22 @@
 # Julia enums are weirdly C-like, in that their elements are global objects.
 # This macro wraps them in a module to prevent name collisions.
 
+
+"
+Anonymous enums, implemented with Val.
+A stricter alternative to passing symbols as parameters.
+`@ano_enum(ABC, DEF, GHI) == Union{Val{:ABC}, Val{:DEF}, Val{GHI}}`
+Note that this creates some overhead if the user can't construct the Val at compile-time.
+"
+macro ano_enum(args::Symbol...)
+    arg_names = map(string, args)
+    arg_exprs = map(s -> :(Val{Symbol($s)}), arg_names)
+    return :( Union{$(arg_exprs...)} )
+end
+export @ano_enum
+
+
+
 """
 An alternative to the @enum macro, with the following differences:
     * Keeps the enum values in a singleton struct to prevent name collisions.

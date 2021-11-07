@@ -1,3 +1,7 @@
+# Test @ano_enum
+@bp_test_no_allocations(@ano_enum(ABC, DEF, GHI),
+                        Union{Val{:ABC}, Val{:DEF}, Val{:GHI}})
+
 # Define some enums with the same value names.
 # Check that they work as expected, and that
 #    the new enums' values don't overwrite the old.

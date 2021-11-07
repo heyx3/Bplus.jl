@@ -7,14 +7,14 @@ export Optional, exists
 export none
 
 "A function that combines a UnionAll and its type parameter(s)"
-@inline specify(TOuter, TInner) = TOuter{TInner}
+@inline specify(TOuter, TInner...) = TOuter{TInner...}
 export specify
 
 "
 Union of some outer type, specialized for many inner types.
 Examples:
 * `@unionspec(Vector{_}, Int, Float64) == Union{Vector{Int}, Vector{Float64}}`
-* `@unionspec(Array{Int, _}, 2, 4) == Union{Array{Int, 2}, Array{Int, 4}}`
+* `@unionspec(Array{Bool, _}, 2, 4) == Union{Array{Bool, 2}, Array{Bool, 4}}`
 "
 macro unionspec(TOuter, TInners...)
     # Search through tOut for any underscore tokens,
@@ -39,6 +39,14 @@ macro unionspec(TOuter, TInners...)
     return :( Union{$(specializations...)} )
 end
 export @unionspec
+
+
+"
+An immutable alternative to Vector, using tuples.
+The size is a type parameter, but you are meant to omit it so that it's 'resizable'.
+"
+const ConstVector{T, N} = NTuple{N, T}
+export ConstVector
 
 
 

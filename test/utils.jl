@@ -49,3 +49,6 @@ end
 @bp_check(@unionspec(Array{Int, _}, 4, 5) ==
             Union{Array{Int, 4}, Array{Int, 5}},
           @unionspec(Array{Int, _}, 4, 5))
+
+# Test ConstVector
+@bp_check((4.0, 3.0, 1.0, 4.0) isa ConstVector{Float64})

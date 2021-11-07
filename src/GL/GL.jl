@@ -1,7 +1,7 @@
 "A light wrapper around OpenGL"
 module GL
 
-using Setfield
+using Setfield, TupleTools
 using ModernGL, GLFW
 using ..Utilities, ..Math
 
@@ -41,6 +41,7 @@ include("context.jl")
 include("resource.jl")
 
 include("buffer.jl")
+include("vertices.jl")
 include("mesh.jl")
 
 include("textures/format.jl")
@@ -52,6 +53,6 @@ include("textures/texture.jl")
 include("drawing.jl")
 
 #TODO: Give various object names with glObjectLabel
-#TODO: Targets, Meshes
+#TODO: Targets
 
 end # module
