@@ -68,8 +68,6 @@ export render_clear
 #        Drawing       #
 ########################
 
-#TODO: Take the shader program as a parameter
-
 "Extra parameters used for drawing indexed meshes"
 struct DrawIndexed
     # An index of this value signals OpenGL to restart the drawing primitive
@@ -106,6 +104,7 @@ NOTE: There is one small, relatively-esoteric OpenGL feature that is not include
    indexed multi-draw could use different index offsets for each subset of elements.
 "
 function render_mesh( mesh::Mesh
+                      #TODO: Take the shader program as a parameter
                       ;
                       shape::E_PrimitiveTypes = mesh.type,
                       indexed_params::Optional{DrawIndexed} =

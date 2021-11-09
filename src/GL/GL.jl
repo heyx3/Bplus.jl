@@ -33,16 +33,16 @@ const GLSL_EXTENSIONS = [
 
 include("utils.jl")
 include("handles.jl")
-
 include("depth_stencil.jl")
 include("blending.jl")
 include("data.jl")
+
 include("context.jl")
 include("resource.jl")
 
-include("buffer.jl")
-include("vertices.jl")
-include("mesh.jl")
+include("buffers/buffer.jl")
+include("buffers/vertices.jl")
+include("buffers/mesh.jl")
 
 include("textures/format.jl")
 include("textures/sampling.jl")
@@ -50,6 +50,7 @@ include("textures/data.jl")
 include("textures/cube.jl")
 include("textures/texture.jl")
 
+include("program.jl")
 include("drawing.jl")
 
 #TODO: Give various object names with glObjectLabel
