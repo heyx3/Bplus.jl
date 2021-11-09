@@ -47,6 +47,7 @@ The size is a type parameter, but you are meant to omit it so that it's 'resizab
 "
 const ConstVector{T, N} = NTuple{N, T}
 export ConstVector
+#TODO: Change ConstVector to be an actual struct inheriting from AbstractArray
 
 
 

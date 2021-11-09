@@ -1,42 +1,44 @@
-#############################
-#       MeshDataSource      #
-#############################
+###############################
+#       VertexDataSource      #
+###############################
 
 "
 A reference to an array of data stored in a Buffer.
 The elements of the array could be numbers, vectors, matrices,
-   or even an entire struct.
+   or entire structs.
 "
-struct MeshDataSource
+struct VertexDataSource
     buf::Buffer
     element_byte_size::UInt
     buf_byte_offset::UInt
+
+    #TODO: ConstVector of internal buffers of data, which can be set up in the constructor
 end
 
-MeshDataSource(buf, element_byte_size::Integer, buf_byte_offset::Integer = 0) =
-    MeshDataSource(buf, UInt(element_byte_size), UInt(buf_byte_offset))
+VertexDataSource(buf, element_byte_size::Integer, buf_byte_offset::Integer = 0) =
+    VertexDataSource(buf, UInt(element_byte_size), UInt(buf_byte_offset))
 
 "Gets the maximum number of elements which can be pulled from the given data source"
-function get_max_elements(data::MeshDataSource)
+function get_max_elements(data::VertexDataSource)
     @bp_gl_assert(data.buf.byte_size >= data.buf_byte_offset,
-                  "MeshDataSource's buffer is ", data.buf.byte_size,
+                  "VertexDataSource's buffer is ", data.buf.byte_size,
                     ", but the byte offset is ", data.buf_byte_offset)
     max_bytes = data.buf.byte_size - data.buf_byte_offset
     return max_bytes ÷ data.element_byte_size
 end
 
-export MeshDataSource, get_max_elements
+export VertexDataSource, get_max_elements
 
 
-###############################
-#       VertexDataSource      #
-###############################
+##############################
+#       VertexAttribute      #
+##############################
 
-"Pulls data out of each element of a MeshDataSource"
-struct VertexDataSource
-    # A reference to the MeshDataSource, as its index in some list.
+"Pulls data out of the elements of a VertexDataSource"
+struct VertexAttribute
+    # A reference to the VertexDataSource, as its index in some list.
     data_source_idx::Int
-    # The byte offset from each element of the MeshDataSource
+    # The byte offset from each element of the VertexDataSource
     #    to the specific field inside it.
     field_byte_offset::UInt
     # The type of this data.
@@ -49,14 +51,14 @@ struct VertexDataSource
     per_instance::UInt
 end
 
-VertexDataSource(data_source_idx::Integer,
-                 field_byte_offset::Integer,
-                 field_type::Type{<:VertexData},
-                 per_instance::Integer = 0) =
-    VertexDataSource(Int(data_source_idx), UInt(field_byte_offset),
-                     field_type, UInt(per_instance))
+VertexAttribute(data_source_idx::Integer,
+                field_byte_offset::Integer,
+                field_type::Type{<:VertexData},
+                per_instance::Integer = 0) =
+    VertexAttribute(Int(data_source_idx), UInt(field_byte_offset),
+                    field_type, UInt(per_instance))
 
-export VertexDataSource
+export VertexAttribute
 
 
 #########################
@@ -90,16 +92,37 @@ export VertexDataSource
     triangle_fan = GL_TRIANGLE_FAN
 );
 
-export PrimitiveTypes, E_PrimitiveTypes
+
+"The set of valid types for mesh indices"
+const MeshIndexTypes = Union{UInt8, UInt16, UInt32}
+
+"Gets the OpenGL enum corresponding to mesh index data of the given type"
+get_index_ogl_enum(::Type{UInt8}) = GL_UNSIGNED_BYTE
+get_index_ogl_enum(::Type{UInt16}) = GL_UNSIGNED_SHORT
+get_index_ogl_enum(::Type{UInt32}) = GL_UNSIGNED_INT
+"Gets the OpenGL enum corresponding to mesh index data of the given size"
+get_index_ogl_enum(byte_size::Integer) = get_index_ogl_enum(get_index_type(byte_size))
+
+"Gets the mesh index type, given its byte size"
+get_index_type(byte_size::Integer) =
+    if byte_size == 1
+        UInt8
+    elseif byte_size == 2
+        UInt16
+    elseif byte_size == 4
+        UInt32
+    else
+        error("Not a valid size for mesh index data: ", byte_size)
+    end
+
+
+export MeshIndexTypes, PrimitiveTypes, E_PrimitiveTypes
+export get_index_type, get_index_ogl_enum
 
 
 ###################
 #       Mesh      #
 ###################
-
-"The set of valid types for mesh indices"
-const MeshIndexTypes = Union{UInt8, UInt16, UInt32}
-
 
 "
 A collection of vertices (and optionally indices),
@@ -113,18 +136,17 @@ mutable struct Mesh <: Resource
     handle::Ptr_Mesh
     type::E_PrimitiveTypes
 
-    vertex_data_sources::ConstVector{MeshDataSource}
-    vertex_data::ConstVector{VertexDataSource}
+    vertex_data_sources::ConstVector{VertexDataSource}
+    vertex_data::ConstVector{VertexAttribute}
 
-    # The type and source of the index data, if this mesh uses indices.
-    index_data::Optional{Tuple{Type{<:MeshIndexTypes}, MeshDataSource}}
+    # The source of the index data, if this mesh uses indices.
+    index_data::Optional{Tuple{Buffer, Type{<:MeshIndexTypes}}}
 end
 
 function Mesh( type::E_PrimitiveTypes,
-               vertex_sources::AbstractVector{MeshDataSource},
-               vertex_fields::AbstractVector{VertexDataSource},
-               index_data::Optional{Tuple{Type{<:MeshIndexTypes},
-                                          MeshDataSource}}
+               vertex_sources::AbstractVector{VertexDataSource},
+               vertex_fields::AbstractVector{VertexAttribute},
+               index_data::Optional{Tuple{Buffer, Type{<:MeshIndexTypes}}}
              )
     @bp_check(exists(get_context()), "Trying to create a Mesh outside a GL Context")
     m::Mesh = Mesh(get_from_ogl(gl_type(Ptr_Mesh), glCreateVertexArrays, 1),
@@ -135,7 +157,7 @@ function Mesh( type::E_PrimitiveTypes,
 
     # Configure the index buffer.
     if exists(index_data)
-        glVertexArrayElementBuffer(m.handle, index_data[2].buf.handle)
+        glVertexArrayElementBuffer(m.handle, index_data[1].buf.handle)
     end
 
     # Configure the vertex buffers.
@@ -152,8 +174,7 @@ function Mesh( type::E_PrimitiveTypes,
         glEnableVertexArrayAttrib(m.handle, GLuint(i - 1))
     end
     vert_attrib_idx::GLuint = zero(GLuint)
-    for (i::Int, vert::VertexDataSource) in enumerate(vertex_fields)
-
+    for (i::Int, vert::VertexAttribute) in enumerate(vertex_fields)
         # The OpenGL calls to set up vertex attributes have mostly the same arguments,
         #   regardless of the field type.
         # One exception is the 'isNormalized' parameter.
@@ -186,11 +207,10 @@ function Mesh( type::E_PrimitiveTypes,
         for _ in 1:count_attribs(vert.field_type)
             gl_func(get_gl_args()...)
             glVertexArrayBindingDivisor(m.handle, vert_attrib_idx, vert.per_instance)
-            #TODO:  Do double vectors/matrices take up twice as many attrib slots as floats? Currently we assume they don't.
             vert_attrib_idx += 1
         end
     end
-    for (i::Int, vert::VertexDataSource) in enumerate(vertex_fields)
+    for (i::Int, vert::VertexAttribute) in enumerate(vertex_fields)
         glVertexArrayAttribBinding(m.handle, GLuint(i - 1), GLuint(vert.data_source_idx))
     end
 
@@ -203,18 +223,52 @@ function Base.close(m::Mesh)
     setfield!(m, :handle, Ptr_Mesh())
 end
 
-export Mesh, MeshIndexTypes
+export Mesh
 
 
 ##############################
 #       Mesh Operations      #
 ##############################
 
+"
+Gets the maximum number of vertices this mesh can offer for rendering,
+   based only on vertex data (not index data).
+"
+function count_mesh_vertices(m::Mesh)::Int
+    # Find the smallest set of per-vertex data within this mesh.
+    n_elements::Optional{Int} = nothing
+    for vertex_data::VertexAttribute in m.vertex_data
+        if vertex_data.per_instance == 0
+            buf_source::VertexDataSource = m.vertex_data_sources[vertex_data.data_source_idx]
+            n_vert_elements = get_max_elements(buf_source)
+            if isnothing(n_elements) || (n_vert_elements < n_vert_elements)
+                n_elements = n_vert_elements
+            end
+        end
+    end
+
+    # Edge-case: if there's no per-vertex data (meaning it's all per-instance?), return 0
+    return exists(n_elements) ? n_elements : 0
+end
+
+"
+Gets the maximum number of vertices (or indices, if indexed)
+  this mesh can offer for rendering
+"
+function count_mesh_elements(m::Mesh)::Int
+    if exists(m.index_data)
+        return get_max_elements(m.index_data[1])
+    else
+        return count_mesh_vertices(m)
+    end
+end
+
+
 #TODO: Operations to change vertex data
 
 "Adds/changes the index data for this mesh"
-function set_index_data(m::Mesh, source::MeshDataSource, type::Type{<:MeshIndexTypes})
-    setfield!(m, :index_data, (type, source))
+function set_index_data(m::Mesh, source::Buffer, type::Type{<:MeshIndexTypes})
+    setfield!(m, :index_data, (source, type))
     glVertexArrayElementBuffer(m.handle, source.buf.handle)
 end
 
@@ -228,4 +282,4 @@ function remove_index_data(m::Mesh)
     glVertexArrayElementBuffer(m.handle, Ptr_Buffer())
 end
 
-export set_index_data, remove_index_data
+export count_mesh_vertices, count_mesh_elements, set_index_data, remove_index_data

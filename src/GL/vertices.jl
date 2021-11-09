@@ -1,5 +1,5 @@
 #=
-The types of data that can be read as input into the vertex shader are:
+The types of Buffer data that can be read as input into the vertex shader are:
     * 1D - 4D vector of 32-bit int (or uint)
     * 1D - 4D vector of 64-bit doubles
     * 2x2 - 4x4 matrix of 32-bit floats or 64-bit doubles
@@ -37,6 +37,7 @@ Gets the number of OpenGL vertex attributes that are needed for this data type
    (i.e. 1 for a vector, or the number of rows in a matrix).
 "
 count_attribs(t::Type{<:VertexData}) = error("count_attribs() not implemented for ", t)
+#TODO: Do double vectors/matrices take up twice as many attrib slots as floats? Currently we assume they don't.
 
 export VertexData,
        vertex_data_byte_size, get_component_ogl_enum, count_attribs
