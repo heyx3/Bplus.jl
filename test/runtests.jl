@@ -26,19 +26,37 @@ _ = @timed sin(Threads.nthreads())
 """
 Tests that the given expression equals the given value,
    and does not allocate any heap memory when evaluating.
-NOTE: the expression is evaluated twice, to ensure it's precompiled,
+NOTE: the expression is evaluated more than once, to ensure it's precompiled,
    so don't mutate any state!
 """
 macro bp_test_no_allocations(expr, expected_value, msg...)
+    return impl_bp_test_no_allocations(expr, expected_value, msg, :())
+end
+"""
+Tests that the given expression equals the given value,
+   and does not allocate any heap memory when evaluating.
+Also takes some code which does initial setup and may allocate.
+NOTE: the expression is evaluated more than once, to ensure it's precompiled,
+   so don't mutate any important state!
+"""
+macro bp_test_no_allocations_setup(setup, expr, expected_value, msg...)
+    return impl_bp_test_no_allocations(expr, expected_value, msg, setup)
+end
+
+function impl_bp_test_no_allocations(expr, expected_value, msg, startup)
     expr_str = string(expr)
     expected_str = string(expected_value)
     expr = esc(expr)
     expected_value = esc(expected_value)
     msg = map(esc, msg)
+    startup = esc(startup)
     return quote
         # Hide the expressions in a function to avoid issues with memory allocations and globals.
         function run_test()
-            run_timer() = @timed($expr)
+            function run_timer()
+                $startup
+                return @timed($expr)
+            end
             # Try several times until we get a result which does't allocate,
             #    in case the GC does any weird stuff (and to handle the initial precompilation)
             result = nothing
