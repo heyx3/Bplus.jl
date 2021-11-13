@@ -66,6 +66,8 @@ end
 #       Sampler      #
 ######################
 
+#TODO: Rename to TexSampler to avoid conflicts with the Random std module
+
 "Information about a sampler for an N-dimensional texture"
 struct Sampler{N}
     # The wrapping mode along each individual axis

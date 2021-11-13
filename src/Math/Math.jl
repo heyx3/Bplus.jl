@@ -7,8 +7,6 @@ using ..Utilities
 @make_toggleable_asserts bp_math_
 
 include("functions.jl")
-include("prng.jl")
-
 include("vec.jl")
 include("mat.jl")
 include("quat.jl")
