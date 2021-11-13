@@ -6,9 +6,9 @@
 """
 Defines a primitive type representing an OpenGL handle.
 Think of this like a stronger version of type aliasing,
-   that doesn't allow implicit conversions between aliases.
+   which provides more type safety.
 The type will also have an empty constructor which creates a "null" value
-   (usually 0, but it depends on the OpenGL API).
+   (usually 0 or -1).
 """
 macro ogl_handle(name::Symbol, gl_type_name,
                  display_name = lowercase(string(name)),
@@ -35,7 +35,7 @@ macro ogl_handle(name::Symbol, gl_type_name,
     end
 end
 
-@ogl_handle Shader GLuint
+@ogl_handle Program GLuint
 @ogl_handle Uniform GLint "uniform" -1
 
 @ogl_handle Texture GLuint

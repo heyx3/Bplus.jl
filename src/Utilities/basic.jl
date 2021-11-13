@@ -41,6 +41,19 @@ end
 export @unionspec
 
 
+"""
+A value (or values) that may or may not exist, based on a condition.
+Useful for conditionally passing something into a collection or function.
+E.x. `print(a, " : ", b, @optional(i>0, "  i=", i))`
+"""
+macro optional(condition, exprs...)
+    condition = esc(condition)
+    exprs = map(esc, exprs)
+    return :( ($condition ? tuple($(exprs...)) : ())... )
+end
+export @optional
+
+
 "
 An immutable alternative to Vector, using tuples.
 The size is a type parameter, but you are meant to omit it so that it's 'resizable'.

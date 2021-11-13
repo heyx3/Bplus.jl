@@ -7,6 +7,8 @@ using Setfield, StaticArrays
 #    while SMatrix uses row count THEN column count.
 # Hopefully this doesn't result in much confusion.
 
+#TODO: Use capitals for the UnionAll aliases
+
 const mat{C, R, F} = SMatrix{R, C, F}
 
 const fmat{C, R} = mat{C, R, Float32}

@@ -109,15 +109,21 @@ const v2b = VecB{2}
 const v3b = VecB{3}
 const v4b = VecB{4}
 
+const VecD{N} = Vec{N, Float64}
+const v2d = VecD{2}
+const v3d = VecD{3}
+const v4d = VecD{4}
+
 export Vec2, Vec3, Vec4,
        vRGB, vRGBA,
        vRGBu8, vRGBi8, vRGBf,
        vRGBAu8, vRGBAi8, vRGBAf,
-       VecF, VecI, VecU, VecB,
+       VecF, VecI, VecU, VecB, VecD,
        v2f, v3f, v4f,
        v2i, v3i, v4i,
        v2u, v3u, v4u,
-       v2b, v3b, v4b
+       v2b, v3b, v4b,
+       v2d, v3d, v4d
 #
 
 ################

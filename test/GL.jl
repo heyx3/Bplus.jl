@@ -11,6 +11,28 @@ using GLFW
 bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.Off) do context::Context
     @bp_check(context === GL.get_context(),
               "Just started this Context, but another one is the singleton")
+    
+    # Try compiling a shader.
+    #TODO: Finish
+    #=
+    draw_triangles = bp_glsl"""
+        uniform ivec3 u_myVec;
+    #START_VERTEX
+        out vec3 out_points;
+        void main() {
+            out_points = vec3(0.0, 0.0, 0.0);
+            if (gl_VertexID == 0) {
+                out_points.x = 1.0;
+
+            } else if (gl_VertexID == 1) {
+                out_points.y = 1.0;
+            } else {
+                out_points.z = 1.0;
+            }
+            gl_Position
+        }
+    """
+    =#
 
     timer::Int = 6_000
     while !GLFW.WindowShouldClose(context.window)

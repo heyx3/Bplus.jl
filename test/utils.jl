@@ -52,3 +52,8 @@ end
 
 # Test ConstVector
 @bp_check((4.0, 3.0, 1.0, 4.0) isa ConstVector{Float64})
+
+# Test @optional
+@bp_check(tuple(@optional 4>0   3 4.0 true "hi" :world) ==
+           (3, 4.0, true, "hi", :world))
+@bp_check(tuple(@optional 4<0   3 4.0 true "hi" :world) == ())

@@ -19,17 +19,18 @@ end
 # OpenGL info:
 const OGL_MAJOR_VERSION = 4
 const OGL_MINOR_VERSION = 6
-const OGL_REQUIRED_EXTENSIONS = [
+const OGL_REQUIRED_EXTENSIONS = (
     "GL_ARB_bindless_texture",
-    "GL_ARB_gpu_shader_int64"
-]
+    "GL_ARB_gpu_shader_int64" #TODO: Build in conditional support for extensions like this one
+)
+#TODO: How do we load extensions? https://github.com/JuliaGL/ModernGL.jl/issues/70
 
-const GLSL_VERSION = "#version 460"
-const GLSL_EXTENSIONS = [
-    #TODO: How do we load extensions? https://github.com/JuliaGL/ModernGL.jl/issues/70
-    "#extension GL_ARB_bindless_texture : require",
-    "#extension GL_ARB_gpu_shader_int64 : require"  #TODO: Build in conditional support for extensions like this one
-]
+"A snippet that should be placed at the top of all shaders to ensure B+ compatibility"
+const GLSL_HEADER = string(
+    "#version ", OGL_MAJOR_VERSION, OGL_MINOR_VERSION, 0, "\n",
+    (string("#extension ", ex, " : require\n") for ex in OGL_REQUIRED_EXTENSIONS)...,
+    "#line 1 0\n"
+)
 
 include("utils.jl")
 include("handles.jl")
