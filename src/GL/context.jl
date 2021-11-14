@@ -48,6 +48,9 @@ mutable struct Context
     vsync::Optional{E_VsyncModes}
 
     state::RenderState
+
+    active_program::Ptr_Program
+    active_mesh::Ptr_Mesh
     #TODO: The active RenderTarget
 
     function Context( size::v2i, title::String
@@ -84,7 +87,7 @@ mutable struct Context
         if exists(con.vsync)
             GLFW.SwapInterval(Int(con.vsync))
         end
-        
+
         # Check whether our required extensions are provided.
         # This has to be done after 'GLFW.MakeContextCurrent()'.
         for ext in OGL_REQUIRED_EXTENSIONS
@@ -124,10 +127,10 @@ end
     try
         c = Context(args...; kw_args...)
         to_do(c)
-    catch
-        rethrow()
     finally
-        close(c)
+        if exists(c)
+            close(c)
+        end
     end
 end
 export bp_gl_context
@@ -172,11 +175,6 @@ get_stencil_write_mask_back(context::Context)::GLuint =
         context.state.stencil_write_mask :
         context.state.stencil_write_mask.back
 export get_stencil_write_mask_front, get_stencil_write_mask_back
-
-
-############################
-#   Render State setters   #
-############################
 
 "
 You can call this after some external tool messes with OpenGL state,
@@ -281,8 +279,23 @@ function refresh(context::Context)
         depth_test,
         stencils...
     ))
+
+    # Get any important bindings.
+    setfield!(
+        context, :active_mesh,
+        Ptr_Mesh(get_from_ogl(GLint, glGetIntegerv, GL_VERTEX_ARRAY_BINDING))
+    )
+    setfield!(
+        context, :active_program,
+        Ptr_Program(get_from_ogl(GLint, glGetIntegerv, GL_CURRENT_PROGRAM))
+    )
 end
 export refresh
+
+
+############################
+#   Render State setters   #
+############################
 
 function set_vsync(context::Context, sync::E_VsyncModes)
     GLFW.SwapInterval(Int(context.vsync))

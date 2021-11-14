@@ -104,8 +104,8 @@ NOTE: There is one small, relatively-esoteric OpenGL feature that is not include
    indexed multi-draw could use different index offsets for each subset of elements.
 "
 function render_mesh( context::Context,
-                      mesh::Mesh
-                      #TODO: Take the shader program as a parameter
+                      mesh::Mesh,
+                      program::Program
                       ;
                       shape::E_PrimitiveTypes = mesh.type,
                       indexed_params::Optional{DrawIndexed} =
@@ -131,8 +131,15 @@ function render_mesh( context::Context,
               "Trying to use more than one of the mutually-exclusive features: ",
                 "instancing, multi-draw, and known_vertex_range!")
 
-    println("#TODO: Don't bind if it's alreay bound")
-    glBindVertexArray(mesh.handle)
+    # Activate the mesh and program.
+    if context.active_program != program.handle
+        glUseProgram(program.handle)
+        setfield!(context, :active_program, program.handle)
+    end
+    if context.active_mesh != mesh.handle
+        glBindVertexArray(mesh.handle)
+        setfield!(context, :active_mesh, mesh.handle)
+    end
 
     #=
      The notes I took when preparing the old C++ draw calls interface:
@@ -257,7 +264,7 @@ function render_mesh( context::Context,
 end
 
 "If the Context isn't given already, it is pulled from the global state."
-render_mesh(mesh::Mesh; kw_args...) = render_mesh(get_context(), mesh; kw_args...)
+render_mesh(mesh::Mesh, program::Program; kw_args...) = render_mesh(get_context(), mesh, program; kw_args...)
 
 #TODO: Indirect drawing: glDrawArraysIndirect(), glMultiDrawArraysIndirect(), glDrawElementsIndirect(), and glMultiDrawElementsIndirect().
 

@@ -198,7 +198,7 @@ function Mesh( type::E_PrimitiveTypes,
             gl_func = glVertexArrayAttribLFormat
         elseif vert.field_type <: VertexData_FVector
             normalized_args = (vert_data_is_normalized(vert.field_type) ? GL_TRUE : GL_FALSE, )
-            gl_func = glVertexArrayAttribLFormat
+            gl_func = glVertexArrayAttribFormat
         else
             error("Unhandled case: ", vert.field_type)
         end
@@ -211,11 +211,14 @@ function Mesh( type::E_PrimitiveTypes,
         end
     end
     for (i::Int, vert::VertexAttribute) in enumerate(vertex_fields)
-        glVertexArrayAttribBinding(m.handle, GLuint(i - 1), GLuint(vert.data_source_idx))
+        glVertexArrayAttribBinding(m.handle, GLuint(i - 1), GLuint(vert.data_source_idx - 1))
     end
 
     return m
 end
+
+#TODO: A singleton in the Context for an 'empty' mesh
+
 
 function Base.close(m::Mesh)
     h = b.handle

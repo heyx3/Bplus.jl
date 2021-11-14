@@ -83,9 +83,9 @@ function compile_stage( name::String,
     if get_from_ogl(GLint, glGetShaderiv, handle, GL_COMPILE_STATUS) == GL_TRUE
         return handle
     else
-        err_msg_len = get_from_ogl(GLint, glGetShaderiv, GL_INFO_LOG_LENGTH)
+        err_msg_len = get_from_ogl(GLint, glGetShaderiv, handle, GL_INFO_LOG_LENGTH)
         err_msg_data = Vector{UInt8}(undef, err_msg_len)
-        glGetShaderInfoLog(handle, err_msg_len, Ref(err_msg_len), Ref(err_msg_data, 1))
+        glGetShaderInfoLog(handle, err_msg_len, Ref(GLsizei(err_msg_len)), Ref(err_msg_data, 1))
 
         return string("Error compiling ", name, ": ",
                       String(view(err_msg_data, 1:err_msg_len)))
@@ -238,19 +238,20 @@ function Program(handle::Ptr_Program)
     uniforms = Dict{String, UniformData}()
     glu_array_count = Ref{GLint}()  # The length of this uniform array (1 if it's not an array).
     glu_type = Ref{GLenum}()
-    glu_name_buf = Ref(Vector{UInt8}(
+    glu_name_buf = Vector{UInt8}(
                            undef,
                            get_from_ogl(GLint, glGetProgramiv,
                                         handle, GL_ACTIVE_UNIFORM_MAX_LENGTH)
-                   ), 1)
+                   )
     glu_name_len = Ref{GLsizei}()
     for i in 1:get_from_ogl(GLint, glGetProgramiv, handle, GL_ACTIVE_UNIFORMS)
         glGetActiveUniform(handle, i - 1,
                            length(glu_name_buf), glu_name_len,
                            glu_array_count,
                            glu_type,
-                           glu_name_buf)
-        u_name = String(glu_name_buf[][1:(glu_name_len[] - 1)])
+                           Ref(glu_name_buf, 1))
+        u_name_buf = glu_name_buf[1:glu_name_len[]]
+        u_name = String(u_name_buf)
 
         @bp_gl_assert(!haskey(uniforms, u_name))
         uniforms[u_name] = UniformData(

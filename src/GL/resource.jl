@@ -4,8 +4,11 @@ Resources should be created within a Context, and can be cleaned up with Base.cl
 "
 abstract type Resource end
 
-"Gets the OpenGL handle for a resource"
-get_ogl_handle(r::Resource) = error("Forgot to implement get_ogl_handle() for ", typeof(r))
+"
+Gets the OpenGL handle for a resource.
+By default, tries to access the `handle` property.
+"
+get_ogl_handle(r::Resource) = r.handle
 
 Base.close(r::Resource) = error("Forgot to implement close() for ", typeof(r))
 

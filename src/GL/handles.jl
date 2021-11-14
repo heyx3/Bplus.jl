@@ -25,8 +25,9 @@ macro ogl_handle(name::Symbol, gl_type_name,
         Base.@__doc__(
             primitive type $type_name (8*sizeof($gl_type)) end
         )
-        $type_name() = reinterpret($type_name, $null_val)
+        $type_name() = reinterpret($type_name, $gl_type($null_val))
         $type_name(i::$gl_type) = reinterpret($type_name, i)
+        $type_name(i::Integer) = $type_name(convert($gl_type, i))
         $gl_type_name(i::$type_name) = reinterpret($gl_type_name, i)
         Base.convert(::Type{$gl_type_name}, i::$type_name) = reinterpret($gl_type, i)
         $(esc(:gl_type))(::Type{$type_name}) = $gl_type_name

@@ -168,6 +168,4 @@ end
 #    Public Interface    #
 ##########################
 
-get_ogl_handle(t::Texture) = t.handle
-
 #TODO: All texture functions

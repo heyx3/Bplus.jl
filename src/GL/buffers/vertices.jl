@@ -58,7 +58,7 @@ abstract type VertexData_Matrix{ Cols<:VertexData_MatrixSizes,
                                  F<:Union{Float32, Float64}
                                } <: VertexData
 end
-@inline VertexData_Matrix(cols::Integer, rows::Integer, F::Type{<:AbstractFloat}) = VertexData_Matrix{Val(Int(cols)), Val(Int(rows)), F}
+@inline VertexData_Matrix(cols::Integer, rows::Integer, F::Type{<:AbstractFloat}) = VertexData_Matrix{Val{Int(cols)}, Val{Int(rows)}, F}
 
 const VertexData_MatrixF{Col, Row} = VertexData_Matrix{Col, Row, Float32}
 const VertexData_MatrixD{Col, Row} = VertexData_Matrix{Col, Row, Float64}
@@ -94,7 +94,7 @@ abstract type VertexData_IVector{ N<:VertexData_VecSizes,
                                 } <: VertexData
 end
 
-VertexData_IVector(n::Integer, i::Type{<:Integer}) = VertexData_IVector{Val(Int(n)), i}
+VertexData_IVector(n::Integer, i::Type{<:Integer}) = VertexData_IVector{Val{Int(n)}, i}
 
 export VertexData_IVector
 
@@ -143,6 +143,9 @@ count_attribs(::Type{VertexData_DVector{Val{N}}}) where {N, I} = 1
 
 "Vertex data that gets interpreted as 32-bit float vectors"
 abstract type VertexData_FVector <: VertexData end
+
+"Gets whether a subtype of `VertexData_Vector` needs to normalize its data"
+vert_data_is_normalized(::Type{<:VertexData_FVector}) = false
 
 
 "
@@ -199,8 +202,9 @@ function get_component_ogl_enum(::Type{VertexData_FVector_Int{Val{N}, FIn, Norma
         error("Unhandled case: ", FIn)
     end
 end
-count_components(::Type{VertexData_FVector_Int{Val{N}, F}}) where {N, F} = N
-count_attribs(::Type{VertexData_FVector_Int{Val{N}, F}}) where {N, F} = 1
+count_components(::Type{VertexData_FVector_Int{Val{N}, F, Norm}}) where {N, F, Norm} = N
+count_attribs(::Type{VertexData_FVector_Int{Val{N}, F, Norm}}) where {N, F, Norm} = 1
+vert_data_is_normalized(::Type{VertexData_FVector_Int{N, F, Val{Norm}}}) where {N, F, Norm} = Norm
 
 
 "
@@ -209,7 +213,7 @@ Vertex data that comes in as a vector of fixed-point decimals
    and gets interpreted as a vector of 32-bit float.
 "
 abstract type VertexData_FVector_Fixed{N<:VertexData_VecSizes} <: VertexData_FVector end
-VertexData_FVector_Fixed(n::Integer) = VertexData_FVector_Fixed{Val(Int(n))}
+VertexData_FVector_Fixed(n::Integer) = VertexData_FVector_Fixed{Val{Int(n)}}
 vertex_data_byte_size(::Type{VertexData_FVector_Fixed{Val{N}}}) where {N} = (N * 4)
 get_component_ogl_enum(::Type{<:VertexData_FVector_Fixed}) = GL_FIXED
 count_components(::Type{VertexData_FVector_Fixed{Val{N}}}) where {N} = N
@@ -240,7 +244,7 @@ The uint stores the components as integers, optionally signed and/or normallized
 abstract type VertexData_FVector_Pack_Integer_A2_BGR10{ Signed<:VertexData_Bool,
                                                         Normalized<:VertexData_Bool
                                                       } <: VertexData_FVector end
-VertexData_FVector_Pack_Integer_A2_BGR10(signed = false, normalized = true) = VertexData_FVector_Pack_Integer_A2_BGR10{Val(signed), Val(normalized)}
+VertexData_FVector_Pack_Integer_A2_BGR10(signed = false, normalized = true) = VertexData_FVector_Pack_Integer_A2_BGR10{Val{signed}, Val{normalized}}
 vertex_data_byte_size(::Type{VertexData_FVector_Pack_Integer_A2_BGR10}) = 4
 function get_component_ogl_enum(::Type{VertexData_FVector_Pack_Integer_A2_BGR10{Val{Sign}, Val{Norm}}}) where {Sign, Norm}
     if Sign
@@ -251,14 +255,11 @@ function get_component_ogl_enum(::Type{VertexData_FVector_Pack_Integer_A2_BGR10{
 end
 count_components(::Type{<:VertexData_FVector_Pack_Integer_A2_BGR10}) = 4
 count_attribs(::Type{<:VertexData_FVector_Pack_Integer_A2_BGR10}) = 1
-
-
-VertexData_FVector(n::Integer, f_in::Type{<:AbstractFloat}) = VertexData_FVector_Simple{Val(Int(n)), f_in}
-VertexData_FVector(n::Integer, f_in::Type{<:Integer}, normalize::Bool) = VertexData_FVector_Int{Val(Int(n)), f_in, Val(normalize)}
-
-vert_data_is_normalized(::Type{VertexData_FVector_Int{Val{N}, FIn, Val{Norm}}}) where {N, FIn, Norm} = Norm
 vert_data_is_normalized(::Type{VertexData_FVector_Pack_Integer_A2_BGR10{Val{Sign}, Val{Norm}}}) where {Sign, Norm} = Norm
 
+
+VertexData_FVector(n::Integer, f_in::Type{<:AbstractFloat}) = VertexData_FVector_Simple{Val{Int(n)}, f_in}
+VertexData_FVector(n::Integer, f_in::Type{<:Integer}, normalize::Bool) = VertexData_FVector_Int{Val{Int(n)}, f_in, Val{normalize}}
 
 
 export VertexData_FVector,
