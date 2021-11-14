@@ -4,40 +4,57 @@
              GL.gl_type(GL.Ptr_Uniform))
 @bp_check(GL.gl_type(GL.Ptr_Buffer) === GLuint)
 
+using ModernGL, GLFW
 using Bplus.GL
-using GLFW
 
 # Create a GL Context and window.
-bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.Off) do context::Context
+bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do context::Context
     @bp_check(context === GL.get_context(),
               "Just started this Context, but another one is the singleton")
     
     # Try compiling a shader.
-    #TODO: Finish
-    #=
-    draw_triangles = bp_glsl"""
+    draw_triangles::Program = bp_glsl"""
         uniform ivec3 u_myVec;
     #START_VERTEX
         out vec3 out_points;
         void main() {
-            out_points = vec3(0.0, 0.0, 0.0);
             if (gl_VertexID == 0) {
-                out_points.x = 1.0;
-
+                out_points = vec3(1.0, 0.0, 0.0);
+                gl_Position = vec4(-0.5, -0.5, 0.5, 1.0);
             } else if (gl_VertexID == 1) {
-                out_points.y = 1.0;
+                out_points = vec3(0.0, 1.0, 0.0);
+                gl_Position = vec4(-0.5, 0.5, 0.5, 1.0);
             } else {
-                out_points.z = 1.0;
+                out_points = vec3(0.0, 0.0, 1.0);
+                gl_Position = vec4(0.5, 0.5, 0.5, 1.0);
             }
-            gl_Position
+        }
+    #START_FRAGMENT
+        in vec3 out_points;
+        out vec4 out_color;
+        void main() {
+            out_color = vec4(out_points, 1.0);
         }
     """
-    =#
+    glUseProgram(draw_triangles.handle)
+
+    # Create one dummy mesh with no data, to render our test shader.
+    empty_mesh::Mesh = Mesh(PrimitiveTypes.triangle,
+                            VertexDataSource[ ],
+                            VertexAttribute[ ])
+
+    # Configure the render state.
+    GL.set_culling(context, GL.FaceCullModes.Off)
 
     timer::Int = 6_000
     while !GLFW.WindowShouldClose(context.window)
-        clear_col = vRGBAf(rand(Float32), rand(Float32), rand(Float32), @f32 1)
+        clear_col = lerp(vRGBAf(0.4, 0.8, 0.2, 1.0),
+                         vRGBAf(0.6, 0.8, 0.8, 1.0),
+                         rand(Float32))
         GL.render_clear(context, GL.Ptr_Target(), clear_col)
+        GL.render_clear(context, GL.Ptr_Target(), @f32 1.0)
+
+        GL.render_mesh(empty_mesh, elements = IntervalU(1, 3))
 
         GLFW.SwapBuffers(context.window)
 
@@ -47,6 +64,11 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.Off) do
             break
         end
     end
+
+    # Clean up the shader.
+    close(draw_triangles)
+    @bp_check(draw_triangles.handle == GL.Ptr_Program(),
+              "GL.Program's handle isn't nulled out")
 
     # Test Buffers, initialize one with some data.
     buf::Buffer = Buffer(true, [ 0x1, 0x2, 0x3, 0x4 ])

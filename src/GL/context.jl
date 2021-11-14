@@ -305,8 +305,9 @@ function set_culling(context::Context, cull::E_FaceCullModes)
         end
 
         # Update the context's fields.
+        st = context.state
         setfield!(context, :state,
-                  @set context.state.cull_mode = cull)
+                  @set st.cull_mode = cull)
     end
 end
 set_render_state(::Val{:cull_mode}, val::E_FaceCullModes, c::Context) = set_culling(c, val)

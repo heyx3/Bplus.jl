@@ -71,6 +71,13 @@ function compile_stage( name::String,
     source = string(GLSL_HEADER, "\n", source)
     handle::GLuint = glCreateShader(type)
 
+    # The OpenGL call wants an array of strings, a.k.a. a pointer to a pointer to a string.
+    # ModernGL provides an example of how to do this with Ptr,
+    #   but ideally I'd like to know how to do it with Ref.
+    source_array = [ convert(Ptr{GLchar}, pointer(source)) ]
+    source_array_ptr = convert(Ptr{UInt8}, pointer(source_array))
+
+    glShaderSource(handle, 1, source_array_ptr, C_NULL)
     glCompileShader(handle)
 
     if get_from_ogl(GLint, glGetShaderiv, handle, GL_COMPILE_STATUS) == GL_TRUE
@@ -125,7 +132,7 @@ function compile_program( p::ProgramCompiler,
                         )::Union{Ptr_Program, String}
     @bp_check(exists(get_context()), "Can't create a Program outside a Bplus.GL.Context")
 
-    out_ptr::Ptr_Program = glCreateProgram()
+    out_ptr = Ptr_Program(glCreateProgram())
 
     # Try to use the pre-compiled binary blob.
     if exists(p.cached_binary)
@@ -160,17 +167,17 @@ function compile_program( p::ProgramCompiler,
     for shad_ptr in compiled_handles
         glAttachShader(out_ptr, shad_ptr)
     end
-    glLinkProgram(handle)
+    glLinkProgram(out_ptr)
     map(glDeleteShader, compiled_handles)
 
     # Check for link errors.
     if get_from_ogl(GLint, glGetProgramiv, out_ptr, GL_LINK_STATUS) == GL_FALSE
         msg_len = get_from_ogl(GLint, glGetProgramiv, out_ptr, GL_INFO_LOG_LENGTH)
         msg_data = Vector{UInt8}(undef, msg_len)
-        glGetProgramInfoLog(out_ptr, msg_len, Ref(msg_len), Ref(msg_data, 1))
+        glGetProgramInfoLog(out_ptr, msg_len, Ref(Int(msg_len)), Ref(msg_data, 1))
 
         glDeleteProgram(out_ptr)
-        return string("Error combining shaders: ", String(view(msg_data, 1:msg_len)))
+        return string("Error combining shaders: ", String(msg_data[1:msg_len]))
     end
 
     # We need to "detach" the shader objects
@@ -199,7 +206,7 @@ function compile_program( p::ProgramCompiler,
 
     end
 
-    return output
+    return out_ptr
 end
 
 export ProgramCompiler, compile_program
@@ -221,7 +228,7 @@ function Program(vert_shader::String, frag_shader::String
     compiler = ProgramCompiler(vert_shader, frag_shader; src_geometry = geom_shader)
     result = compile_program(compiler)
     if result isa Ptr_Program
-        return Program(result, uniform_names)
+        return Program(result)
     else
         error(result)
     end
@@ -259,7 +266,7 @@ end
 function Base.close(p::Program)
     @bp_check(p.handle != Ptr_Program(), "Already closed this Program")
     glDeleteProgram(p.handle)
-    set(p, :handle, Ptr_Program())
+    setfield!(p, :handle, Ptr_Program())
 end
 
 "Gets the Julia type from a GLenum value representing a uniform type"
@@ -446,7 +453,7 @@ macro bp_glsl_str(src::AbstractString)
     gen_line_command(section_start) = string(
         "\n#line ",
         (1 + count(f -> f=='\n', src[1:section_start])),
-        " 0\n"
+        "\n"
     )
     src_vertex = string(src_header, gen_line_command(first(vert_range)), src[vert_range])
     src_fragment = string(src_header, gen_line_command(first(frag_range)), src[frag_range])

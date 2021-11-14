@@ -29,7 +29,7 @@ const OGL_REQUIRED_EXTENSIONS = (
 const GLSL_HEADER = string(
     "#version ", OGL_MAJOR_VERSION, OGL_MINOR_VERSION, 0, "\n",
     (string("#extension ", ex, " : require\n") for ex in OGL_REQUIRED_EXTENSIONS)...,
-    "#line 1 0\n"
+    "#line 1\n"
 )
 
 include("utils.jl")
