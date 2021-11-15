@@ -30,6 +30,7 @@ macro ogl_handle(name::Symbol, gl_type_name,
         $type_name(i::Integer) = $type_name(convert($gl_type, i))
         $gl_type_name(i::$type_name) = reinterpret($gl_type_name, i)
         Base.convert(::Type{$gl_type_name}, i::$type_name) = reinterpret($gl_type, i)
+        $(esc(:gl_type))(x::$type_name) = $gl_type_name(x)
         $(esc(:gl_type))(::Type{$type_name}) = $gl_type_name
         Base.show(io::IO, x::$type_name) = print(io, $display_name, '<', Int($gl_type_name(x)), '>')
         Base.print(io::IO, x::$type_name) = print(io, Int($gl_type_name(x)))

@@ -4,7 +4,7 @@ struct RenderState
     depth_write::Bool
 
     cull_mode::E_FaceCullModes
-    #TODO: Port the "Box" from C++ and use it for viewport and scissor.
+    #TODO: Use Box2i for viewport and scissor
     viewport::@NamedTuple{min::v2i, max::v2i}
     scissor::Optional{@NamedTuple{min::v2i, max::v2i}}
     # TODO: Changing viewport Y axis and depth (how can GLM support this depth mode?): https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glClipControl.xhtml
@@ -52,6 +52,8 @@ mutable struct Context
     active_program::Ptr_Program
     active_mesh::Ptr_Mesh
     #TODO: The active RenderTarget
+
+    #TODO: current binding points for UBO's and SSBO's: https://computergraphics.stackexchange.com/questions/6045/how-to-use-the-data-manipulated-in-opengl-compute-shader
 
     function Context( size::v2i, title::String
                       ;

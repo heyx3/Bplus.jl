@@ -65,7 +65,7 @@ function test_buffers()
               "Buffer 2's handle isn't zeroed out after closing")
 end
 
-# Create a GL Context and window.
+# Create a GL Context and window, and put the framework through its paces.
 bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do context::Context
     @bp_check(context === GL.get_context(),
               "Just started this Context, but another one is the singleton")
@@ -100,53 +100,82 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
                   count_mesh_vertices(mesh_triangles), ") vs 'count elements' (",
                   count_mesh_elements(mesh_triangles), ")")
 
-    # Set up a shader to render the mesh.
+    # Set up a shader to render the triangles.
+    # Use a variety of uniforms and vertex attributes to mix up the colors.
     draw_triangles::Program = bp_glsl"""
-        uniform ivec3 u_myVec = ivec3(1, 1, 1);
+        uniform ivec3 u_colorMask = ivec3(1, 1, 1);
     #START_VERTEX
         in vec4 vIn_pos;
         in vec3 vIn_color;
-        in ivec2 vIn_IDs;
+        in ivec2 vIn_IDs;  // Expected to be (1,0) for the first point,
+                           //    (0,1) for the second,
+                           //    (0,0) for the third.
         out vec3 vOut_color;
         void main() {
             gl_Position = vIn_pos;
-
             ivec3 ids = ivec3(vIn_IDs, all(vIn_IDs == 0) ? 1 : 0);
             vOut_color = vIn_color * vec3(ids);
         }
     #START_FRAGMENT
+        uniform mat3 u_colorTransform = mat3(1, 0, 0, 0, 1, 0, 0, 0, 1);
+        uniform dmat2x4 u_colorCurveAt512[10];
         in vec3 vOut_color;
         out vec4 fOut_color;
         void main() {
-            fOut_color = vec4(vOut_color * u_myVec, 1.0);
+            fOut_color = vec4(vOut_color * u_colorMask, 1.0);
+
+            fOut_color.rgb = clamp(u_colorTransform * fOut_color.rgb, 0.0, 1.0);
+
+            float scale = float(u_colorCurveAt512[3][1][2]);
+            fOut_color.rgb = pow(fOut_color.rgb, vec3(scale));
         }
     """
-    #@bp_check(isempty(draw_triangles.uniforms), "Program has >0 uniforms: ", draw_triangles.uniform)
-    # Tests for when we ue the uniform (currently it gets compiled out):
-    @bp_check(length(draw_triangles.uniforms) == 1,
-              "Program has !=1 uniforms: ", draw_triangles.uniforms)
-    @bp_check(haskey(draw_triangles.uniforms, "u_myVec"),
-              "Program has unexpected uniform: ", draw_triangles.uniforms)
-    @bp_check(draw_triangles.uniforms["u_myVec"] ==
-                UniformData(GL.Ptr_Uniform(0), Vec3{Int32}, 1),
-              "Wrong uniform data: ", draw_triangles.uniforms["u_myVec"])
+    function check_uniform(name::String, type, array_size)
+        @bp_check(haskey(draw_triangles.uniforms, name),
+                  "Program is missing uniform '", name, "': ", draw_triangles.uniforms)
+        @bp_check(draw_triangles.uniforms[name].type == type,
+                  "Wrong uniform data for '", name, "': ", draw_triangles.uniforms[name])
+        @bp_check(draw_triangles.uniforms[name].array_size == array_size,
+                  "Wrong uniform data for '", name, "': ", draw_triangles.uniforms[name])
+    end
+    @bp_check(Set(keys(draw_triangles.uniforms)) ==
+                  Set([ "u_colorMask", "u_colorTransform", "u_colorCurveAt512" ]),
+              "Unexpected set of uniforms: ", collect(keys(draw_triangles.uniforms)))
+    check_uniform("u_colorMask", Vec3{Int32}, 1)
+    check_uniform("u_colorTransform", fmat3x3, 1)
+    check_uniform("u_colorCurveAt512", dmat2x4, 10)
 
     # Configure the render state.
     GL.set_culling(context, GL.FaceCullModes.Off)
 
     timer::Int = 5 * 60  #Vsync is on, assume 60fps
     while !GLFW.WindowShouldClose(context.window)
-        clear_col = lerp(vRGBAf(0.4, 0.8, 0.2, 1.0),
-                         vRGBAf(0.6, 0.8, 0.8, 1.0),
+        clear_col = lerp(vRGBAf(0.4, 0.4, 0.2, 1.0),
+                         vRGBAf(0.6, 0.45, 0.6, 1.0),
                          rand(Float32))
         GL.render_clear(context, GL.Ptr_Target(), clear_col)
         GL.render_clear(context, GL.Ptr_Target(), @f32 1.0)
+
+        # Randomly shift some uniforms every N ticks.
+        if timer % 30 == 0
+            # Set 'u_colorMask' as an array of 1 element, just to test that code path.
+            set_uniforms(draw_triangles, "u_colorMask",
+                         [ Vec{Int32}(rand(0:1), rand(0:1), rand(0:1)) ])
+            set_uniform(draw_triangles, "u_colorTransform",
+                        fmat3x3(ntuple(i->rand(), 9)...))
+        end
+        # Continuously vary another uniform.
+        pow_val = lerp(0.3, 1/0.3,
+                       abs(mod(timer / 30, 2) - 1) ^ 5)
+        set_uniform(draw_triangles, "u_colorCurveAt512",
+                    dmat2x4(0, 0, 0, 0,
+                            0, 0, pow_val, 0),
+                    4)
 
         GL.render_mesh(context, mesh_triangles, draw_triangles,
                        elements = IntervalU(1, 3))
 
         GLFW.SwapBuffers(context.window)
-
         GLFW.PollEvents()
         timer -= 1
         if (timer <= 0) || GLFW.GetKey(context.window, GLFW.KEY_ENTER)
@@ -157,7 +186,12 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
     # Clean up the shader.
     close(draw_triangles)
     @bp_check(draw_triangles.handle == GL.Ptr_Program(),
-              "GL.Program's handle isn't nulled out")
+              "GL.Program's handle isn't nulled out after closing")
+
+    # Clean up the buffer.
+    close(mesh_triangles)
+    @bp_check(mesh_triangles.handle == GL.Ptr_Mesh(),
+              "GL.Mesh's handle isn't nulled out after closing")
 end
 
 @bp_check(isnothing(GL.get_context()),

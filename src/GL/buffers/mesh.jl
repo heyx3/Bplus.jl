@@ -221,8 +221,8 @@ end
 
 
 function Base.close(m::Mesh)
-    h = b.handle
-    glDeleteVertexArrays(1, Ref{GLuint}(b.handle))
+    @bp_check(m.handle != Ptr_Mesh(), "Already closed this Mesh")
+    glDeleteVertexArrays(1, Ref{GLuint}(m.handle))
     setfield!(m, :handle, Ptr_Mesh())
 end
 

@@ -270,7 +270,7 @@ end
 export q_axisangle
 
 "Converts a quaternion to a 3x3 transformation matrix"
-function q_mat3x3(q::Quaternion{F}) where {F}
+function q_mat3x3(q::Quaternion{F})::Mat(3, 3, F) where {F}
     # Source: https://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix/index.htm
 
     v::Vec3{F} = q.xyz
