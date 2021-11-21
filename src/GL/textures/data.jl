@@ -79,6 +79,36 @@ function get_pixel_io_channels( ::Val{N},
     end
 end
 
+"
+Gets the OpenGL enum for a set of channels being uploaded to a texture.
+Needs to know whether the texture has an int/uint format.
+"
+function get_ogl_enum(channels::E_PixelIOChannels, is_integer_format::Bool)
+    if is_integer_format
+        if channels == PixelIOChannels.red
+            return GL_RED_INTEGER
+        elseif channels == PixelIOChannels.green
+            return GL_GREEN_INTEGER
+        elseif channels == PixelIOChannels.blue
+            return GL_BLUE_INTEGER
+        elseif channels == PixelIOChannels.RG
+            return GL_RG_INTEGER
+        elseif channels == PixelIOChannels.RGB
+            return GL_RGB_INTEGER
+        elseif channels == PixelIOChannels.BGR
+            return GL_BGR_INTEGER
+        elseif channels == PixelIOChannels.RGBA
+            return GL_RGBA_INTEGER
+        elseif channels == PixelIOChannels.BGRA
+            return GL_BGRA_INTEGER
+        else
+            error("Unhandled case: ", channels)
+        end
+    else
+        return GLenum(channels)
+    end
+end
+
 
 export PixelIOChannels, E_PixelIOChannels
 
@@ -120,23 +150,50 @@ get_pixel_io_type(::Type{Int16}) = PixelIOTypes.int16
 get_pixel_io_type(::Type{Int32}) = PixelIOTypes.int32
 get_pixel_io_type(::Type{Float32}) = PixelIOTypes.float32
 
-"The set of all types which can be used for pixel upload/download"
+"
+The set of all number types which can be used for pixel upload/download.
+Does not include special packed types like Depth24uStencil8.
+"
 @inline supported_pixel_io_types() = (
     UInt8, UInt16, UInt32,
     Int8, Int16, Int32,
     Float32
+    #TODO: I think Float16 is supported as well! GL_HALF_FLOAT
 )
 
+
+"Types which can be used as pixel components for texture upload/download"
+const PixelIOComponent = Union{supported_pixel_io_types()..., Depth24uStencil8u, Depth32fStencil8u}
+
 "
-A CPU-side array to hold pixel data for uploading or downloading an N-dimensional texture.
-Example: `PixelBuffer{1} == Union{Vector{UInt8}, Vector{Float32}, ...}`
+Types which can be uploaded to/downloaded from a texture.
+One-component texture data can be a number or a Vec1;
+   higher-component data must be a Vec.
 "
-const PixelBuffer{N} = @eval @unionspec(Array{_, $N}, $(supported_pixel_io_types()...))
+const PixelIOValue = Union{PixelIOComponent, @unionspec(Vec{_, <:PixelIOComponent}, 1, 2, 3, 4)}
+
+
+"An array of pixels for texture upload/download"
+const PixelBufferD{N, T<:PixelIOValue} = Array{T, N}
+
+"The total set of valid pixel arrays for texture upload/download"
+const PixelBuffer{T} = Union{PixelBufferD{1, T}, PixelBufferD{2, T}, PixelBufferD{3, T}}
+
+"Gets the type of pixel data in the given buffer"
+get_pixel_type(::PixelBufferD{N, T}) where {N, T} = T
+"Gets the type of the individual components in some pixel buffer data"
+get_component_type(T::Type{<:Number}) = T
+get_component_type(V::Type{<:Vec}) = V.parameters[2]
+get_component_type(::Type{PixelBufferD{N, T}}) where {N, T} = get_component_type(T)
+"Gets the number of components in some pixel buffer data"
+get_component_count(T::Type{<:Number}) = 1
+get_component_count(V::Type{<:Vec}) = V.parameters[1]
+get_component_count(::Type{PixelBufferD{N, T}}) where {N, T} = get_component_count(T)
 
 
 export PixelIOTypes, E_PixelIOTypes,
-       get_pixel_io_type, supported_pixel_io_types,
-       PixelBuffer
+       get_pixel_io_type, supported_pixel_io_types, get_component_type, get_component_count,
+       PixelIOComponent, PixelIOValue, PixelBufferD, PixelBuffer
 
 
 #########################################
@@ -145,17 +202,21 @@ export PixelIOTypes, E_PixelIOTypes,
 
 #TODO: Provide a helper alias for "number or vector based on type parameter N".
 
-"Parameters for specifying a subset of data in an N-dimensional texture"
+"
+Parameters for specifying a subset of data in an N-dimensional texture.
+Note that mips and pixel ranges follow the 1-based Julia convention,
+   not the 0-based convention of OpenGL.
+"
 struct TexSubset{N}
     # Rectangular subset of the texture (or 'nothing' to use all the pixels).
     # The coordinates are numbers for 1D textures, and vectors for 2D+.
     pixels::Optional{Box{N == 1 ? UInt : VecU{N}}}
     # The mip level of the texture to focus on.
-    # 0 means the original (full-size) texture.
+    # 1 means the original (full-size) texture.
     # Higher values are smaller mips.
     mip::UInt
 
-    TexSubset{N}(pixels = nothing, mip = 0) where {N} = new(pixels, convert(UInt, mip))
+    TexSubset{N}(pixels = nothing, mip = 1) where {N} = new(pixels, convert(UInt, mip))
 end
 
 "
@@ -166,6 +227,16 @@ The 'full_size' should match the dimensionality of the texture.
     isnothing(subset.pixels) ?
         convert(Box{typeof(full_size)}, Box_minmax(1, full_size)) :
         subset.pixels
+
+"
+Converts a subset to a lower- or higher-dimensional one.
+"
+@inline change_dimensions(subset::TexSubset{N}, N2::Int) where {N} = TexSubset{N2}(
+    isnothing(subset.pixels) ?
+        nothing :
+        reshape(subset.pixels, 3),
+    subset.mip
+)
 
 
 export TexSubset
@@ -199,9 +270,19 @@ export SwizzleSources, E_SwizzleSources
 ######################
 
 "Gets the number of mips needed for a texture of the given size"
-@inline function get_n_mips(tex_size::VecI)
+@inline function get_n_mips(tex_size::Union{Integer, VecT{<:Integer}})
     largest_axis = max(tex_size)
     return 1 + Int(floor(log2(largest_axis)))
+end
+get_n_mips(length::Integer) = get_n_mips(Vec(length))
+
+"Gets the size of a mip level, given the original size of the texture"
+@inline function get_mip_size(original_size::Union{Integer, VecT{<:Integer}}, mip_level::Integer)
+    size = original_size
+    for _ in 2:mip_level
+        size = max(size ÷ 2, 1)
+    end
+    return size
 end
 
 # When using this texture through an ImageView, these are the modes it is available in.
@@ -211,4 +292,5 @@ end
     read_write = GL_READ_WRITE
 )
 
-export get_n_mips, ImageAccessModes, E_ImageAccessModes
+export get_n_mips, get_mip_size,
+       ImageAccessModes, E_ImageAccessModes

@@ -570,10 +570,51 @@ get_ogl_enum(f::E_CompressedFormats) = GLenum(f)
     depth32f_stencil8 = GL_DEPTH32F_STENCIL8
 );
 
-#TODO: Depth-Stencil packing helpers
+primitive type Depth24uStencil8u 32 end
+"The data in each pixel of a `depth24u_stencil8` texture"
+Depth24uStencil8u(u::UInt32) = reinterpret(Depth24uStencil8u, u)
+Depth24uStencil8u(depth::UInt32, stencil::UInt8) = Depth24uStencil8u(
+    (depth << 8) | stencil
+)
+Depth24uStencil8u(depth::UInt64, stencil::UInt8) = Depth24uStencil8u(UInt32(depth), stencil)
+function Depth24uStencil8u(depth01::AbstractFloat, stencil::UInt8)
+    max_uint24 = UInt32((2^24) - 1)
+    return Depth24uStencil8u(
+        UInt32(clamp(floor(depth01 * Float32(max_uint24)),
+                           0, max_uint24)),
+        stencil
+    )
+end
+export Depth24uStencil8u
+
+primitive type Depth32fStencil8u 64 end
+"The data in each pixel of a `depth32f_stencil8` texture"
+Depth32fStencil8u(u::UInt64) = reinterpret(Depth32fStencil8u, u)
+Depth32fStencil8u(depth::Float32, stencil::UInt8) = Depth32fStencil8u(
+    (UInt64(reinterpret(UInt32, depth)) << 32) |
+    stencil
+)
+export Depth32fStencil8u
+
+"Pulls the depth and stencil values out of a packed texture pixel"
+function Base.split(pixel::Depth24uStencil8u)::Tuple{UInt32, UInt8}
+    u = reinterpret(UInt32, pixel)
+    return (
+        (u & 0xffffff00) >> 8,
+        UInt8(u & 0xff)
+    )
+end
+function Base.split(pixel::Depth32fStencil8u)::Tuple{UInt32, UInt8}
+    u = reinterpret(UInt32, pixel)
+    return (
+        (u & 0xffffff00) >> 8,
+        UInt8(u & 0xff)
+    )
+end
 
 
-export DepthStencilFormats, E_DepthStencilFormats
+export DepthStencilFormats, E_DepthStencilFormats,
+       Depth24uStencil8u, Depth32fStencil8u
 #
 
 function is_supported(f::E_DepthStencilFormats, t::E_TexTypes)

@@ -114,6 +114,9 @@ const v2d = VecD{2}
 const v3d = VecD{3}
 const v4d = VecD{4}
 
+"Allows you to specify types like `VecT{Int}`"
+const VecT{T, N} = Vec{N, T}
+
 export Vec2, Vec3, Vec4,
        vRGB, vRGBA,
        vRGBu8, vRGBi8, vRGBf,
@@ -123,7 +126,8 @@ export Vec2, Vec3, Vec4,
        v2i, v3i, v4i,
        v2u, v3u, v4u,
        v2b, v3b, v4b,
-       v2d, v3d, v4d
+       v2d, v3d, v4d,
+       VecT
 #
 
 ################
