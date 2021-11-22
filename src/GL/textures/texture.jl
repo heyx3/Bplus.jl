@@ -4,7 +4,7 @@
 
 "
 Some kind of organized color data which can be 'sampled'.
-This includes typical 2D textures, as well as 3D textures and 'cubemaps'.
+This includes typical 2D textures, as well as 1D and 3D textures and 'cubemaps'.
 Note that mip levels are counted from 1, not from 0,
    to match Julia's convention.
 "
@@ -34,7 +34,7 @@ end
 export Texture
 
 function Base.close(t::Texture)
-    glDeleteTextures(1, Ref(t.handle))
+    glDeleteTextures(1, Ref(gl_type(t.handle)))
     setfield!(t, :handle, Ptr_Texture())
 end
 
@@ -43,18 +43,19 @@ end
 #       Constructors       #
 ############################
 
+#TODO: Support taking texture data already in the form of a Ref or Ptr, in constructors and in the get/set functions
 
 "Creates a 1D texture"
 function Texture( format::TexFormat,
-                  width::Integer
+                  width::Union{Integer, Vec{1, <:Integer}}
                   ;
                   sampler::Sampler{1} = Sampler{1}(),
-                  n_mips::Integer = get_n_mips(width),
+                  n_mips::Integer = get_n_mips(width isa Integer ? width : width.x),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
                 )
     return generate_texture(
-        TexTypes.oneD, format, v3u(width, 1, 1),
+        TexTypes.oneD, format, v3u(width, v2u(1, 1)),
         convert(Sampler{3}, sampler),
         n_mips,
         depth_stencil_sampling,
@@ -67,7 +68,7 @@ function Texture( format::TexFormat,
                   data_bgr_ordering::Bool = false
                   ;
                   sampler::Sampler{1} = Sampler{1}(),
-                  n_mips::Integer = get_n_mips(width),
+                  n_mips::Integer = get_n_mips(length(initial_data)),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
                 )
@@ -86,7 +87,7 @@ function Texture( format::TexFormat,
                   size::Vec2{<:Integer}
                   ;
                   sampler::Sampler{2} = Sampler{2}(),
-                  n_mips::Integer = get_n_mips(width),
+                  n_mips::Integer = get_n_mips(size),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
                 )
@@ -104,7 +105,7 @@ function Texture( format::TexFormat,
                   data_bgr_ordering::Bool = false
                   ;
                   sampler::Sampler{2} = Sampler{2}(),
-                  n_mips::Integer = get_n_mips(width),
+                  n_mips::Integer = get_n_mips(Vec(size(initial_data))),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
                 )
@@ -124,7 +125,7 @@ function Texture( format::TexFormat,
                   size::Vec3{<:Integer}
                   ;
                   sampler::Sampler{3} = Sampler{3}(),
-                  n_mips::Integer = get_n_mips(width),
+                  n_mips::Integer = get_n_mips(size),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
                 )
@@ -142,7 +143,7 @@ function Texture( format::TexFormat,
                   data_bgr_ordering::Bool = false
                   ;
                   sampler::Sampler{3} = Sampler{3}(),
-                  n_mips::Integer = get_n_mips(width),
+                  n_mips::Integer = get_n_mips(Vec(size(initial_data))),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
                 )
@@ -190,13 +191,16 @@ function generate_texture( type::E_TexTypes,
     @bp_check(is_supported(format, type),
               "Texture type ", type, " doesn't support the format ", sprint(show, format))
 
-    tex::Texture = Texture(get_from_ogl(gl_type(Ptr_Texture), glCreateTextures, 1),
-                           type, format, n_mips, size, sampler, depth_stencil_sampling)
+    tex::Texture = Texture(Ptr_Texture(get_from_ogl(gl_type(Ptr_Texture),
+                                                    glCreateTextures, GLenum(type), 1)),
+                           type, format, n_mips, size, sampler, depth_stencil_sampling, swizzling)
 
     # Configure the texture with OpenGL calls.
     set_tex_swizzling(tex, swizzling)
-    set_tex_depthstencil_source(tex, depth_stencil_sampling)
-    apply(sampler, tex)
+    if exists(depth_stencil_sampling)
+        set_tex_depthstencil_source(tex, depth_stencil_sampling)
+    end
+    apply(sampler, tex.handle)
 
     # Set up the texture with non-reallocatable storage.
     if tex.type == TexTypes.oneD
@@ -224,7 +228,7 @@ end
 default_tex_subset(tex::Texture) =
     if tex.type == TexTypes.oneD
         TexSubset{1}()
-    elseif (tex.type == TexTypes.twoD) || (tex.type == TexTypes.cube)
+    elseif (tex.type == TexTypes.twoD) || (tex.type == TexTypes.cube_map)
         TexSubset{2}()
     elseif (tex.type == TexTypes.threeD)
         TexSubset{3}()
@@ -244,7 +248,7 @@ function texture_data( tex::Texture,
                      ) where {TMode <: @ano_enum(Set, Get, Clear)}
     #TODO: Check that the subset is the right number of dimensions
 
-    full_size::v3u = get_mip_size(t.size, subset.mip)
+    full_size::v3u = get_mip_size(tex.size, subset.mip)
     full_subset::TexSubset{3} = change_dimensions(subset, 3)
     range::Box{v3u} = get_subset_range(full_subset, full_size)
 
@@ -274,7 +278,8 @@ function texture_data( tex::Texture,
     elseif mode == Val(:Get)
         @bp_gl_assert(get_buf_pixel_byte_size > 0,
                       "Internal field 'get_buf_pixel_byte_size' not passed for getting texture data")
-        @bp_gl_assert(!recompute_mips, "Asked to recompute mips after getting a texture's pixels, which is pointless")
+        @bp_gl_assert(!recompute_mips,
+                      "Asked to recompute mips after getting a texture's pixels, which is pointless")
         glGetTextureSubImage(tex.handle, subset.mip - 1,
                              (range.min - 1)..., range.size...,
                              components, component_type,
@@ -288,7 +293,7 @@ function texture_data( tex::Texture,
     end
 
     if recompute_mips
-        println("#TODO: Recompute mips")
+        glGenerateTextureMipmap(tex.handle)
     end
 end
 
@@ -301,7 +306,8 @@ get_ogl_handle(t::Texture) = t.handle
 
 "Changes how a texture's pixels are mixed when it's sampled on the GPU"
 function set_tex_swizzling(t::Texture, new::SwizzleRGBA)
-    glTextureParameteri(t.handle, GL_TEXTURE_SWIZZLE_RGBA, Ref(new))
+    new_as_ints = reinterpret(Vec4{GLint}, new)
+    glTextureParameteriv(t.handle, GL_TEXTURE_SWIZZLE_RGBA, Ref(new_as_ints))
     setfield!(t, :swizzle, new)
 end
 "Changes the data that can be sampled from this texture, assuming it's a depth/stencil hybrid"
@@ -475,7 +481,7 @@ function set_tex_color( t::Texture,
                  GLenum(get_pixel_io_type(T)),
                  get_ogl_enum(get_pixel_io_channels(Val(N), bgr_ordering),
                               is_integer(t.format)),
-                 subset, Ref(pixels), recompute_mips,
+                 subset, Ref(pixels, 1), recompute_mips,
                  Val(:Set))
 end
 "Sets the data for a depth texture"
@@ -488,7 +494,7 @@ function set_tex_depth( t::Texture,
     @bp_check(is_depth_only(t.format),
               "Can't set depth values in a texture of format ", t.format)
     texture_data(t, GLenum(get_pixel_io_type(T)), GL_DEPTH_COMPONENT,
-                 subset, Ref(pixels), recompute_mips,
+                 subset, Ref(pixels, 1), recompute_mips,
                  Val(:Set))
 end
 "Sets the data for a stencil texture"
@@ -503,7 +509,7 @@ function set_tex_stencil( t::Texture,
     texture_data(t,
                  GLenum(get_pixel_io_type(UInt8)),
                  GL_STENCIL_INDEX,
-                 subset, Ref(pixels), recompute_mips,
+                 subset, Ref(pixels, 1), recompute_mips,
                  Val(:Set))
 end
 "Sets the data for a depth/stencil hybrid texture"
@@ -527,7 +533,7 @@ function set_tex_depthstencil( t::Texture,
     end
     
     texture_data(t, component_type, GL_STENCIL_INDEX,
-                 subset, Ref(pixels), recompute_mips,
+                 subset, Ref(pixels, 1), recompute_mips,
                  Val(:Set))
 end
 #TODO: set_tex_compressed() for compressed-format textures
@@ -539,12 +545,13 @@ function get_tex_color( t::Texture,
                         subset::TexSubset = default_tex_subset(t),
                         bgr_ordering::Bool = false,
                       ) where {TBuf <: PixelBuffer}
-    T = get_component_type(out_pixels)
-    N = get_component_count(out_pixels)
+    T = get_component_type(TBuf)
+    N = get_component_count(TBuf)
 
     @bp_check(!(t.format isa E_CompressedFormats),
               "Can't get compressed texture data as if it's normal color data!")
-    @bp_check(is_color(t.format), "Can't get color data from a texture of format ", t.format)
+    @bp_check(is_color(t.format),
+              "Can't get color data from a texture of format ", t.format)
     @bp_check(!is_integer(t.format) || T<:Integer,
               "Can't set an integer texture with a non-integer value")
     @bp_check(!bgr_ordering || N >= 3,
@@ -552,8 +559,9 @@ function get_tex_color( t::Texture,
 
     texture_data(t,
                  GLenum(get_pixel_io_type(T)),
-                 get_ogl_enum(get_pixel_io_channels(Val(N), bgr_ordering)),
-                 subset, Ref(out_pixels), recompute_mips,
+                 get_ogl_enum(get_pixel_io_channels(Val(N), bgr_ordering),
+                              is_integer(t.format)),
+                 subset, Ref(out_pixels, 1), false,
                  Val(:Get), N * sizeof(T))
 end
 "Gets the pixel data for a depth texture"
@@ -564,7 +572,7 @@ function get_tex_depth( t::Texture,
                       ) where {T <: Union{Number, Vec{1, <:Number}}}
     @bp_check(is_depth_only(t.format), "Can't get depth data from a texture of format ", t.format)
     texture_data(t, GLenum(get_pixel_io_type(T)), GL_DEPTH_COMPONENT,
-                 subset, Ref(out_pixels), false,
+                 subset, Ref(out_pixels, 1), false,
                  Val(:Get), sizeof(T))
 end
 "Gets the pixel data for a stencil texture"
@@ -575,12 +583,12 @@ function get_tex_stencil( t::Texture,
                         ) where {TBuf <: @unionspec(PixelBuffer{_}, UInt8, Vec{1, UInt8})}
     @bp_check(is_stencil_only(t.format), "Can't get stencil data from a texture of format ", t.format)
     texture_data(t, GLenum(get_pixel_io_type(UInt8)), GL_STENCIL_INDEX,
-                 subset, Ref(out_pixels), false,
+                 subset, Ref(out_pixels, 1), false,
                  Val(:Get), sizeof(UInt8))
 end
 "Get the data for a depth/stencil hybrid texture"
 function get_tex_depthstencil( t::Texture,
-                               pixels::PixelBuffer{T}
+                               out_pixels::PixelBuffer{T}
                                ;
                                subset::TexSubset = default_tex_subset(t)
                              ) where {T <: Union{Depth24uStencil8u, Depth32fStencil8u}}
@@ -598,7 +606,7 @@ function get_tex_depthstencil( t::Texture,
     end
 
     texture_data(t, component_type, GL_DEPTH_STENCIL,
-                 subset, Ref(pixels), false,
+                 subset, Ref(out_pixels, 1), false,
                  Val(:Get), sizeof(T))
 end
 #TODO: get_tex_compressed() for compressed-format textures

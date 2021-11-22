@@ -65,12 +65,82 @@ function test_buffers()
               "Buffer 2's handle isn't zeroed out after closing")
 end
 
+# Runs a test on textures.
+function test_textures()
+    # Manipulate the texture using different sizes and different TexTypes.
+    for type::E_TexTypes in (TexTypes.oneD, TexTypes.twoD, TexTypes.threeD)
+        for size in (1, 5, 17) # Larger sizes make the test crazy slow for 3D textures
+            local D::Int
+            if type == TexTypes.oneD
+                D = 1
+            elseif type == TexTypes.twoD
+                D = 2
+            elseif type == TexTypes.threeD
+                D = 3
+            else
+                error("Unhandled case: ", D)
+            end
+
+            sizeD::VecI{D} = Vec(i->size, D)
+
+            # Try some different texture formats.
+            formats::Vector{Tuple{Type, TexFormat}} = vcat(
+                # Generate a bunch of normal formats.
+                filter(((I, f), ) -> exists(get_ogl_enum(f)),
+                  map(Iterators.product((SimpleFormatComponents.R,
+                                         SimpleFormatComponents.RG,
+                                         SimpleFormatComponents.RGB,
+                                         SimpleFormatComponents.RGBA),
+                                        ((UInt8, SimpleFormatBitDepths.B8),
+                                         (UInt16, SimpleFormatBitDepths.B16),
+                                         (UInt32, SimpleFormatBitDepths.B32)))) do (components, (I, depth))
+                      return (I, SimpleFormat(FormatTypes.normalized_uint, components, depth))
+                  end
+                )
+                #TODO: Incorporate other formats, e.x. depth/stencil
+            )
+            for (I, format) in formats
+                components = get_n_channels(format)
+                #TODO: Another loop for 'number of mip levels'
+                #TODO: Another loop for which set of components to set/get
+                tex = Texture(format, sizeD)
+                #TODO: Do the below tests for each mip level. Also check that mips are different after recomputation
+
+                #TODO: Clear the texture, then check the pixels
+
+                # Try getting and setting individual pixels.
+                for pixel::VecI in 1:sizeD
+                    val = Vec(ntuple(i -> rand(I), Int(components)))
+                    set_tex_color(tex, [ val ];
+                                  subset=TexSubset(Box(pixel, 1)))
+                    out_buf = Array{Vec{Int(components), I}, D}(undef, ntuple(i->1, D))
+                    get_tex_color(tex, out_buf;
+                                  subset=TexSubset(Box(pixel, 1)))
+                    total_buf = Array{Vec{Int(components), I}, D}(undef, sizeD.data)
+                    get_tex_color(tex, total_buf)
+                    @bp_test_no_allocations(out_buf[1], val,
+                                            "Set pixel of texture ", type, "_", format, "_", sizeD,
+                                              " at ", pixel, " with ", val, ". Total data: ", map(Vec{Int(components), Int}, total_buf))
+                end
+                #TODO: Set as UInt[N], get as float, and test
+
+                # Clean up.
+                close(tex)
+                @bp_check(get_ogl_handle(tex) == GL.Ptr_Texture(),
+                            "Texture was close()-d yet it still has a handle: ", type, " ", format, " ", size)
+            end
+
+        end
+    end 
+end
+
 # Create a GL Context and window, and put the framework through its paces.
 bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do context::Context
     @bp_check(context === GL.get_context(),
               "Just started this Context, but another one is the singleton")
 
     test_buffers()
+    test_textures()
     
     # Set up a mesh with some triangles.
     # Each triangle has position, color, and "IDs".

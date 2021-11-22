@@ -2,6 +2,8 @@
 @bp_test_no_allocations(Box(v2i), Box(v2f(), v2u()))
 @bp_test_no_allocations(Box(1:20), Box(1, 20))
 @bp_test_no_allocations(Box(1:Vec(21, 43)), Box(Vec(1, 1), Vec(21, 43)))
+@bp_test_no_allocations(Box(2, Vec(5, 6, 7)),
+                        Box(Vec(2, 2, 2), Vec(5, 6, 7)))
 @bp_test_no_allocations(Box_minmax(Vec(3, 4), Vec(4, 10)),
                         Box2D{Int}(Vec(3, 4), Vec(2, 7)))
 @bp_test_no_allocations(Box_minsize(Vec(3, 4), Vec(4, 10)),

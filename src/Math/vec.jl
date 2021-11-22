@@ -79,6 +79,32 @@ const Vec2{T} = Vec{2, T}
 const Vec3{T} = Vec{3, T}
 const Vec4{T} = Vec{4, T}
 
+const VecF{N} = Vec{N, Float32}
+const v2f = VecF{2}
+const v3f = VecF{3}
+const v4f = VecF{4}
+const VecD{N} = Vec{N, Float64}
+const v2d = VecD{2}
+const v3d = VecD{3}
+const v4d = VecD{4}
+
+const VecU{N} = Vec{N, UInt64}
+const v2u = VecU{2}
+const v3u = VecU{3}
+const v4u = VecU{4}
+const VecI{N} = Vec{N, Int64}
+const v2i = VecI{2}
+const v3i = VecI{3}
+const v4i = VecI{4}
+
+const VecB{N} = Vec{N, Bool}
+const v2b = VecB{2}
+const v3b = VecB{3}
+const v4b = VecB{4}
+
+"Allows you to specify types like `VecT{Int}`"
+const VecT{T, N} = Vec{N, T}
+
 const vRGB{T} = Vec{3, T}
 const vRGBu8 = vRGB{UInt8}
 const vRGBi8 = vRGB{Int8}
@@ -89,33 +115,6 @@ const vRGBAu8 = vRGBA{UInt8}
 const vRGBAi8 = vRGBA{Int8}
 const vRGBAf = vRGBA{Float32}
 
-const VecF{N} = Vec{N, Float32}
-const v2f = VecF{2}
-const v3f = VecF{3}
-const v4f = VecF{4}
-
-const VecI{N} = Vec{N, Int}
-const v2i = VecI{2}
-const v3i = VecI{3}
-const v4i = VecI{4}
-
-const VecU{N} = Vec{N, UInt}
-const v2u = VecU{2}
-const v3u = VecU{3}
-const v4u = VecU{4}
-
-const VecB{N} = Vec{N, Bool}
-const v2b = VecB{2}
-const v3b = VecB{3}
-const v4b = VecB{4}
-
-const VecD{N} = Vec{N, Float64}
-const v2d = VecD{2}
-const v3d = VecD{3}
-const v4d = VecD{4}
-
-"Allows you to specify types like `VecT{Int}`"
-const VecT{T, N} = Vec{N, T}
 
 export Vec2, Vec3, Vec4,
        vRGB, vRGBA,
@@ -138,6 +137,7 @@ export Vec2, Vec3, Vec4,
 
 VEC_N_DIGITS = 2
 
+printable_component(x, args...) = x
 printable_component(f::AbstractFloat, n_digits::Int) = round(f; digits=n_digits)
 printable_component(f::Integer, n_digits::Int) = f
 
@@ -221,16 +221,6 @@ Base.minmax(p1::Vec{N, T1}, p2::T2) where {N, T1, T2} = minmax(p1, Vec{N, T2}(i-
 Base.minmax(p1::Number, p2::Vec) = minmax(p2, p1)
 
 "Finds the minimum component which passes a given predicate"
-function find(pred::F, v::Vec{N, T})::Optional{T} where {F, N, T}
-    min_i::Int = 0
-    for i::Int in 1:N
-        if pred(v[i])
-            min_i = min(min_i, i)
-        end
-    end
-    return (min_i > 0) ? min_i : nothing
-end
-"Finds the minimum component which passes a given predicate"
 function Base.findmin(pred::F, v::Vec{N, T})::Optional{T} where {F, N, T}
     min_i::Int = 0
     for i::Int in 1:N
@@ -240,12 +230,19 @@ function Base.findmin(pred::F, v::Vec{N, T})::Optional{T} where {F, N, T}
     end
     return (min_i > 0) ? min_i : nothing
 end
+#TODO: findmax, and also unit-test these
 
+function Base.reinterpret(::Type{Vec{N, T2}}, v::Vec{N, T}) where {N, T, T2}
+    @bp_check(sizeof(T) == sizeof(T2),
+              "Can't reinterpret ", T, " (", sizeof(T), " bytes),",
+                " as ", T2, " (", sizeof(T2), " bytes)")
+    return map(x -> reinterpret(T2, x), v)
+end
 
 Base.clamp(v::Vec{N, T}, a::T2, b::T3) where {N, T, T2, T3} = Vec{N, T}(i -> clamp(v[i], a, b))
 Base.clamp(v::Vec{N, T}, a::Vec{N, T2}, b::Vec{N, T3}) where {N, T, T2, T3} = Vec{N, T}(i -> clamp(v[i], a[i], b[i]))
 
-Base.convert(::Type{Vec{N, T2}}, v::Vec{N, T}) where {N, T, T2} = map(T2, v)
+Base.convert(::Type{Vec{N, T2}}, v::Vec{N, T}) where {N, T, T2} = map(x -> convert(T2, x), v)
 Base.promote_rule(::Type{Vec{N, T1}}, ::Type{Vec{N, T2}}) where {N, T1, T2} = Vec{N, promote_type(T1, T2)}
 
 Base.getindex(v::Vec, i::Int) = v.data[i]
@@ -539,7 +536,7 @@ export vnorm
 
 "Checks whether a vector is normalized, within the given epsilon"
 @inline is_normalized(v::Vec{N, T}, atol::T2 = 0.0) where {N, T, T2} =
-    isapprox(vlength_sqr(v), convert(T, 1.0); atol=atol*atol)
+    isapprox(vlength_sqr(v), one(T); atol=atol*atol)
 export is_normalized
 
 "Computes the 3D cross product."

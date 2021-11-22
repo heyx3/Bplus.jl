@@ -38,7 +38,7 @@ end
 The OpenGL context, which owns all state and data, including the GLFW window it belongs to.
 This type is a per-thread singleton, because OpenGL only allows one active context per thread.
 Like the other GL resource objects, you can't set the fields of this struct;
-*    use the provided functions to change its state.
+   use the provided functions to change its state.
 
 You should close the context with `Base.close(context)`, but even easier
     is to use a `bp_gl_context()` block to control its lifetime.

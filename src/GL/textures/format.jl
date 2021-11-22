@@ -236,11 +236,11 @@ function get_ogl_enum(f::SimpleFormat)::Optional{GLenum}
                    GL_RGB5 :
                    nothing
     elseif (f.bit_size == SimpleFormatBitDepths.B8)
-        return switch_types(() -> nothing,
-                            () -> check_components(GL_R8, GL_RG8, GL_RGB8, GL_RGBA8),
-                            () -> check_components(GL_R8_SNORM, GL_RG8_SNORM, GL_RGB8_SNORM, GL_RGBA8_SNORM),
-                            () -> check_components(GL_R8UI, GL_RG8UI, GL_RGB8UI, GL_RGBA8UI),
-                            () -> check_components(GL_R8I, GL_RG8I, GL_RGB8I, GL_RGBA8I))
+        return check_types(() -> nothing,
+                           () -> check_components(GL_R8, GL_RG8, GL_RGB8, GL_RGBA8),
+                           () -> check_components(GL_R8_SNORM, GL_RG8_SNORM, GL_RGB8_SNORM, GL_RGBA8_SNORM),
+                           () -> check_components(GL_R8UI, GL_RG8UI, GL_RGB8UI, GL_RGBA8UI),
+                           () -> check_components(GL_R8I, GL_RG8I, GL_RGB8I, GL_RGBA8I))
     elseif (f.bit_size == SimpleFormatBitDepths.B10)
         return ((f.type == FormatTypes.normalized_uint) && (f.components == SimpleFormatComponents.RGB)) ?
                    GL_RGB10 :
@@ -250,16 +250,16 @@ function get_ogl_enum(f::SimpleFormat)::Optional{GLenum}
                    check_components(nothing, nothing, GL_RGB12, GL_RGBA12) :
                    nothing
     elseif (f.bit_size == SimpleFormatBitDepths.B16)
-        return switch_types(() -> check_components(GL_R16F, GL_RG16F, GL_RGB16F, GL_RGBA16F),
-                            () -> check_components(GL_R16, GL_RG16, GL_RGB16, GL_RGBA16),
-                            () -> check_components(GL_R16_SNORM, GL_RG16_SNORM, GL_RGB16_SNORM, GL_RGBA16_SNORM),
-                            () -> check_components(GL_R16UI, GL_RG16UI, GL_RGB16UI, GL_RGBA16UI),
-                            () -> check_components(GL_R16I, GL_RG16I, GL_RGB16I, GL_RGBA16I))
+        return check_types(() -> check_components(GL_R16F, GL_RG16F, GL_RGB16F, GL_RGBA16F),
+                           () -> check_components(GL_R16, GL_RG16, GL_RGB16, GL_RGBA16),
+                           () -> check_components(GL_R16_SNORM, GL_RG16_SNORM, GL_RGB16_SNORM, GL_RGBA16_SNORM),
+                           () -> check_components(GL_R16UI, GL_RG16UI, GL_RGB16UI, GL_RGBA16UI),
+                           () -> check_components(GL_R16I, GL_RG16I, GL_RGB16I, GL_RGBA16I))
     elseif (f.bit_size == SimpleFormatBitDepths.B32)
-        return switch_types(() -> check_components(GL_R32F, GL_RG32F, GL_RGB32F, GL_RGBA32F),
-                            nothing, nothing,
-                            () -> check_components(GL_R32UI, GL_RG32UI, GL_RGB32UI, GL_RGBA32UI),
-                            () -> check_components(GL_R32I, GL_RG32I, GL_RGB32I, GL_RGBA32I))
+        return check_types(() -> check_components(GL_R32F, GL_RG32F, GL_RGB32F, GL_RGBA32F),
+                           () -> nothing, () -> nothing,
+                           () -> check_components(GL_R32UI, GL_RG32UI, GL_RGB32UI, GL_RGBA32UI),
+                           () -> check_components(GL_R32I, GL_RG32I, GL_RGB32I, GL_RGBA32I))
     else
         error("Unhandled case: ", f.bit_size)
     end

@@ -170,8 +170,11 @@ Types which can be uploaded to/downloaded from a texture.
 One-component texture data can be a number or a Vec1;
    higher-component data must be a Vec.
 "
-const PixelIOValue = Union{PixelIOComponent, @unionspec(Vec{_, <:PixelIOComponent}, 1, 2, 3, 4)}
-
+const PixelIOValue = Union{PixelIOComponent,
+                           Vec{1, <:PixelIOComponent},
+                           Vec{2, <:PixelIOComponent},
+                           Vec{3, <:PixelIOComponent},
+                           Vec{4, <:PixelIOComponent}}
 
 "An array of pixels for texture upload/download"
 const PixelBufferD{N, T<:PixelIOValue} = Array{T, N}
@@ -209,14 +212,19 @@ Note that mips and pixel ranges follow the 1-based Julia convention,
 "
 struct TexSubset{N}
     # Rectangular subset of the texture (or 'nothing' to use all the pixels).
-    # The coordinates are numbers for 1D textures, and vectors for 2D+.
-    pixels::Optional{Box{N == 1 ? UInt : VecU{N}}}
+    # Note that a 1D interval uses Vec{1, UInt} and not scalars, for consistency.
+    pixels::Optional{Box{VecU{N}}}
     # The mip level of the texture to focus on.
     # 1 means the original (full-size) texture.
     # Higher values are smaller mips.
     mip::UInt
 
-    TexSubset{N}(pixels = nothing, mip = 1) where {N} = new(pixels, convert(UInt, mip))
+    TexSubset{N}(pixels = nothing, mip = 1) where {N} = new{N}(pixels, convert(UInt, mip))
+    TexSubset(pixels::Box{Vec{N, T}}, mip = 1) where {N, T} = new{N}(pixels, mip)
+
+    # Convenience constructors using an Interval for the pixel range
+    TexSubset{1}(pixels::Box{<:Integer}, mip = 1) = new{1}(Box{Vec{1, UInt}}(Vec(pixels.min), Vec(pixels.size)), mip)
+    TexSubset(pixels::Box{<:Integer}, mip = 1) = TexSubset{1}(pixels, mip)
 end
 
 "
@@ -234,7 +242,7 @@ Converts a subset to a lower- or higher-dimensional one.
 @inline change_dimensions(subset::TexSubset{N}, N2::Int) where {N} = TexSubset{N2}(
     isnothing(subset.pixels) ?
         nothing :
-        reshape(subset.pixels, 3),
+        reshape(subset.pixels, 3; new_dims_value=UInt(1)),
     subset.mip
 )
 

@@ -24,6 +24,18 @@ for (nt1, nt2) in Iterators.product(ALL_REALS, ALL_REALS)
                             Vec2{promote_type(nt1, nt2)})
 end
 
+# Test convert/reinterpret.
+@bp_test_no_allocations(typeof(convert(v3u, Vec(2.0, 5.0, 10.0))),
+                        v3u)
+@bp_test_no_allocations(convert(v3u, Vec(2.0, 5.0, 10.0)),
+                        v3u(2, 5, 10))
+@bp_test_no_allocations(typeof(reinterpret(v3u, v3i(4, 5, 6))),
+                        v3u)
+@bp_test_no_allocations(reinterpret(v3u, v3i(4, 5, 6)),
+                        v3u(4, 5, 6))
+@bp_test_no_allocations(reinterpret(v3u, v3i(-4, 5, -6)),
+                        Vec(-UInt(4), UInt(5), -UInt(6)))
+
 # Test properties.
 @bp_test_no_allocations(Vec(2, 3, 4).x, 2)
 @bp_test_no_allocations(Vec(2, 3, 4).y, 3)

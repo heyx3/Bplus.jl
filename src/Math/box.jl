@@ -11,6 +11,21 @@ struct Box{T<:Union{Vec, Number}}
         convert(T, min),
         convert(T, size)
     )
+
+    # Allow the user to provide a number for one field, and a vector for the other.
+    function Box(min::T, size::VecT{T2}) where {T<:Number, T2<:Number}
+        T3 = promote_type(T, T2)
+        return Box(convert(T3, min), map(x -> convert(T3, x), size))
+    end
+    function Box(min::VecT{T}, size::T2) where {T<:Number, T2<:Number}
+        T3 = promote_type(T, T2)
+        return Box(convert(T3, min), map(x -> convert(T3, x), size))
+    end
+    Box(min::T, size::VecT{T}) where {T<:Number} = Box(typeof(size)(i->min), size)
+    Box(min::VecT{T}, size::T) where {T<:Number} = Box(min, typeof(min)(i->size))
+
+    # If 1-D vectors are passed, and the box's type isn't fixed, replace them with scalars.
+    Box(min::Vec{1, T}, size::Vec{1, T2}) where {T, T2} = Box(min.x, size.x)
 end
 
 Base.print(io::IO, b::Box) = print(io, box_typestr(typeof(b)), "(", b.min, ",", b.size, ")")
@@ -161,11 +176,12 @@ Changes the dimensionality of the box.
 By default, new dimensions are given the size 1 (both for integer and float boxes).
 "
 @inline function Base.reshape( b::Box{Vec{OldN, T}},
-                               NewN::Int,
+                               NewN::Int;
                                new_dims_size::T = one(T),
+                               new_dims_value::T = zero(T)
                              ) where {OldN, T}
     if (NewN > OldN)
-        return Box(Vec{NewN, T}(b.min, Vec{NewN - OldN, T}(i -> zero(T))),
+        return Box(Vec{NewN, T}(b.min, Vec{NewN - OldN, T}(i -> new_dims_value)),
                    Vec{NewN, T}(b.size, Vec{NewN - OldN, T}(i -> new_dims_size)))
     else
         return Box(b.min[1:NewN], b.size[1:NewN])

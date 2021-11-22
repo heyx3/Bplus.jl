@@ -121,7 +121,7 @@ Sampler( wrapping::NTuple{N, E_WrapModes},
 
 # Convert a sampler to a different-dimensional one.
 Base.convert(::Type{Sampler{N2}}, s::Sampler{N1}) where {N1, N2} = Sampler{N2}(
-    ntuple(i -> s.wrapping[min(i, N1)], N2),
+    Vec(ntuple(i -> s.wrapping[min(i, N1)], N2)),
     s.pixel_filter, s.mip_filter,
     s.mip_offset, s.mip_range,
     s.depth_comparison_mode
