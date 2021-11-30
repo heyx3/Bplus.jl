@@ -219,8 +219,8 @@ struct TexSubset{N}
     # Higher values are smaller mips.
     mip::UInt
 
-    TexSubset{N}(pixels = nothing, mip = 1) where {N} = new{N}(pixels, convert(UInt, mip))
-    TexSubset(pixels::Box{Vec{N, T}}, mip = 1) where {N, T} = new{N}(pixels, mip)
+    TexSubset{N}(pixels = nothing, mip = 1) where {N} = new{N}(convert(Optional{Box{VecU{N}}}, pixels), convert(UInt, mip))
+    TexSubset(pixels::Box{Vec{N, T}}, mip = 1) where {N, T} = new{N}(convert(Box{VecU{N}}, pixels), mip)
 
     # Convenience constructors using an Interval for the pixel range
     TexSubset{1}(pixels::Box{<:Integer}, mip = 1) = new{1}(Box{Vec{1, UInt}}(Vec(pixels.min), Vec(pixels.size)), mip)

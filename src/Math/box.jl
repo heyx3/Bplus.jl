@@ -7,25 +7,32 @@ struct Box{T<:Union{Vec, Number}}
 
     # Replace the default constructor with one that can promote each field's type.
     Box(min::T1, size::T2) where {T1, T2} = Box{promote_type(T1, T2)}(min, size)
-    Box{T}(min::T1, size::T2) where {T, T1, T2} = new(
+    Box{T}(min::T, size::T) where {T} = new{T}(min, size)
+    Box{T}(min::T1, size::T2) where {T, T1, T2} = new{T}(
         convert(T, min),
         convert(T, size)
     )
 
     # Allow the user to provide a number for one field, and a vector for the other.
-    function Box(min::T, size::VecT{T2}) where {T<:Number, T2<:Number}
-        T3 = promote_type(T, T2)
-        return Box(convert(T3, min), map(x -> convert(T3, x), size))
+    function Box{T}(min::T1, size::Vec{N, T2}) where {N, T<:Vec, T1<:Number, T2<:Number}
+        min_f = convert(T.parameters[2], min)
+        return new{T}(T(i -> min_f), convert(T, size))
     end
-    function Box(min::VecT{T}, size::T2) where {T<:Number, T2<:Number}
-        T3 = promote_type(T, T2)
-        return Box(convert(T3, min), map(x -> convert(T3, x), size))
+    function Box{T}(min::Vec{N, T1}, size::T2) where {N, T<:Vec, T1<:Number, T2<:Number}
+        size_f = convert(T.parameters[2], size)
+        return new{T}(convert(T, min), T(i -> size_f))
     end
-    Box(min::T, size::VecT{T}) where {T<:Number} = Box(typeof(size)(i->min), size)
-    Box(min::VecT{T}, size::T) where {T<:Number} = Box(min, typeof(min)(i->size))
+    Box(min::T, size::Vec{N, T2}) where {N, T<:Number, T2<:Number} = Box{Vec{N, promote_type(T, T2)}}(min, size)
+    Box(min::Vec{N, T}, size::T2) where {N, T<:Number, T2<:Number} = Box{Vec{N, promote_type(T, T2)}}(min, size)
 
     # If 1-D vectors are passed, and the box's type isn't fixed, replace them with scalars.
     Box(min::Vec{1, T}, size::Vec{1, T2}) where {T, T2} = Box(min.x, size.x)
+    Box(min::T, size::Vec{1, T2}) where {T<:Number, T2} = Box(min, size.x)
+    Box(min::Vec{1, T}, size::T2) where {T, T2<:Number} = Box(min.x, size)
+    # If scalars are passed, and the box's type is Vec1, wrap the scalars.
+    Box{Vec{1, T}}(min::T2, size::T3) where {T, T2<:Number, T3<:Number} = Box{Vec{1, T}}(Vec(convert(T, min)), Vec(convert(T, size)))
+    Box{Vec{1, T}}(min::Vec{1, T2}, size::T3) where {T, T2<:Number, T3<:Number} = Box{Vec{1, T}}(Vec(convert(T, min.x)), Vec(convert(T, size)))
+    Box{Vec{1, T}}(min::T2, size::Vec{1, T3}) where {T, T2<:Number, T3<:Number} = Box{Vec{1, T}}(Vec(convert(T, min)), Vec(convert(T, size.x)))
 end
 
 Base.print(io::IO, b::Box) = print(io, box_typestr(typeof(b)), "(", b.min, ",", b.size, ")")
@@ -91,6 +98,7 @@ export Box_minmax, Box_minsize, Box_maxsize, Box_bounding
 
 # Convert between boxes of different type.
 Base.convert(::Type{Box{T}}, b::Box{T2}) where {T, T2} = Box(convert(T, b.min), convert(T, b.size))
+Base.convert(::Type{Box{T}}, b::Box{T2}) where {T<:Vec{1, <:Number}, T2<:Number} = Box{T}(T(b.min), T(b.size))
 
 
 ###########################

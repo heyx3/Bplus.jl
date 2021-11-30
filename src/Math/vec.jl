@@ -245,6 +245,10 @@ Base.clamp(v::Vec{N, T}, a::Vec{N, T2}, b::Vec{N, T3}) where {N, T, T2, T3} = Ve
 Base.convert(::Type{Vec{N, T2}}, v::Vec{N, T}) where {N, T, T2} = map(x -> convert(T2, x), v)
 Base.promote_rule(::Type{Vec{N, T1}}, ::Type{Vec{N, T2}}) where {N, T1, T2} = Vec{N, promote_type(T1, T2)}
 
+Base.reverse(v::Vec) = Vec(reverse(v.data))
+
+Base.getindex(a::Array, i::VecT{<:Integer}) = a[i...]
+
 Base.getindex(v::Vec, i::Int) = v.data[i]
 Base.getindex(v::Vec, r::UnitRange) = Vec(v.data[r])
 Base.eltype(::Vec{N, T}) where {N, T} = T
@@ -371,9 +375,10 @@ Base.:(:)(a::Vec, step::Number, b::Vec) = a : typeof(a)(i->step) : b
 Base.:(:)(a::Number, step::Vec, b::Vec) = typeof(b)(i->a) : step : b
 Base.:(:)(a::Number, step::Number, b::Vec) = typeof(b)(i->a) : typeof(b)(i->step) : b
 Base.:(:)(a::Number, step::Vec, b::Number) = typeof(step)(i->a) : step : typeof(step)(i->b)
+Base.:(:)(a::T, step::Vec, b::T) where {T<:Real} = typeof(step)(i->a) : step : typeof(step)(i->b)
 
 "Implements iteration over a range of coordinates (you can also use the `:` operator)"
-struct VecRange{N, T}
+struct VecRange{N, T} <: AbstractRange{Vec{N, T}}
     a::Vec{N, T}
     b::Vec{N, T}
     step::Vec{N, T}
@@ -381,17 +386,18 @@ end
 
 Base.eltype(::VecRange{N, T}) where {N, T} = T
 
-Base.size(r::VecRange)::Vec = max(0, ((r.b - r.a) + 1))
-Base.size(r::VecRange{N, U}) where {N, U<:Unsigned} =
-    if any(r.a > r.b)
-        zero(Vec{N, U})
-    else
-        ((r.b - r.a) + 1).data
-    end
-#
+Base.first(r::TVecRange) where {TVecRange<:VecRange} = r.a
+Base.last(r::TVecRange) where {TVecRange<:VecRange} = r.b
+Base.step(r::TVecRange) where {TVecRange<:VecRange} = r.step
 
+Base.isempty(r::TVecRange) where {TVecRange<:VecRange} = any(
+    (b < a) for (a,b) in zip(r.a, r.b)
+)
+
+Base.size(r::TVecRange) where {TVecRange<:VecRange} = tuple(
+    (length(a:step:b) for (a, b, step) in zip(r.a, r.b, r.step))...
+)
 Base.length(r::VecRange) = prod(size(r))
-Base.length(r::VecRange{N, F}) where {N, F<:AbstractFloat} = Int(floor(reduce(*, size(r))))
 
 # The iteration algorithm is recursive, with a type parameter for the axis being incremented.
 @inline function Base.iterate(r::VecRange)

@@ -211,7 +211,10 @@ Bplus.Math.@fast_swizzle x x y y z 0 1 ∇ ∆ w
 @bp_test_no_allocations(foldl(-, Vec(1, 2, 3)), 1-2-3)
 @bp_test_no_allocations(foldr(-, Vec(6, 7, 8)), 8-7-6)
 
-# Test the colon operator.
+# Test VecRange/the colon operator.
+@bp_check(collect(Bplus.Math.VecRange(Vec(1), Vec(5), Vec(2))) ==
+            [ 1, 3, 5 ],
+          "collect(1:Vec(2):5) == ", collect(Bplus.Math.VecRange(Vec(1), Vec(5), Vec(2))))
 @bp_test_no_allocations(Vec(1, 1) : Vec(10, 20),
                         Bplus.Math.VecRange(Vec(1, 1), Vec(10, 20), Vec(1, 1)))
 @bp_test_no_allocations(Vec(1, 1) : Vec(2, 4) : Vec(10, 20),

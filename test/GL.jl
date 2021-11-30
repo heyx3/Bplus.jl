@@ -69,7 +69,7 @@ end
 function test_textures()
     # Manipulate the texture using different sizes and different TexTypes.
     for type::E_TexTypes in (TexTypes.oneD, TexTypes.twoD, TexTypes.threeD)
-        for size in (1, 5, 17) # Larger sizes make the test crazy slow for 3D textures
+        for size in (1, 5, 13) # Larger sizes make the test crazy slow for 3D textures
             local D::Int
             if type == TexTypes.oneD
                 D = 1
@@ -101,35 +101,56 @@ function test_textures()
             )
             for (I, format) in formats
                 components = get_n_channels(format)
-                #TODO: Another loop for 'number of mip levels'
-                #TODO: Another loop for which set of components to set/get
-                tex = Texture(format, sizeD)
-                #TODO: Do the below tests for each mip level. Also check that mips are different after recomputation
+                for n_mips::Int in 1:get_n_mips(sizeD)
+                    #TODO: Another loop for which set of components to set/get
+                    tex = Texture(format, sizeD; n_mips=n_mips)
+                    #TODO: Do the below tests for each mip level. Also check that mips are different after recomputation
 
-                #TODO: Clear the texture, then check the pixels
-
-                # Try getting and setting individual pixels.
-                for pixel::VecI in 1:sizeD
+                    # Clear the texture, then check the pixels.
                     val = Vec(ntuple(i -> rand(I), Int(components)))
-                    set_tex_color(tex, [ val ];
-                                  subset=TexSubset(Box(pixel, 1)))
-                    out_buf = Array{Vec{Int(components), I}, D}(undef, ntuple(i->1, D))
-                    get_tex_color(tex, out_buf;
-                                  subset=TexSubset(Box(pixel, 1)))
-                    total_buf = Array{Vec{Int(components), I}, D}(undef, sizeD.data)
-                    get_tex_color(tex, total_buf)
-                    @bp_test_no_allocations(out_buf[1], val,
-                                            "Set pixel of texture ", type, "_", format, "_", sizeD,
-                                              " at ", pixel, " with ", val, ". Total data: ", map(Vec{Int(components), Int}, total_buf))
+                    clear_tex_color(tex, val)
+                    out_buf = Array{Vec{Int(components), I}, D}(undef, reverse(sizeD).data)
+                    get_tex_color(tex, out_buf)
+                    @bp_check(all(p -> p == val, out_buf),
+                              "Cleared pixels to ", val, " but got: ", out_buf)
+                    # Clear a subset, then check the pixels again.
+                    if all(sizeD >= 3)
+                        val2 = Vec(ntuple(i -> rand(I), Int(components)))
+                        clear_range = Box{VecI{D}}(2, max(sizeD - 3, 1))
+                        clear_tex_color(tex, val2; subset=TexSubset(clear_range))
+                        uncleared_range = union(collect(1:(clear_range.min - 1)),
+                                                collect(max_exclusive(clear_range):sizeD))
+                        get_tex_color(tex, out_buf)
+                        @bp_check(all(i -> out_buf[i]==val, uncleared_range),
+                                  "Pixels that weren't affected by clear_tex_color()",
+                                    " are still different: ", uncleared_range, " of\n\t", out_buf)
+                        @bp_check(all(i -> out_buf[i]==val2,
+                                      clear_range.min : max_inclusive(clear_range)),
+                                  "Pixels that were in the cleared subset aren't",
+                                    " the expected values: ", cleared_range, " of\n\t", out_buf)
+                    end
+
+                    # Try getting and setting individual pixels.
+                    for pixel::VecI in 1:sizeD
+                        val = Vec(ntuple(i -> rand(I), Int(components)))
+                        set_tex_color(tex, [ val ];
+                                      subset=TexSubset(Box(pixel, 1)))
+                        out_buf = Array{Vec{Int(components), I}, D}(undef, ntuple(i->1, D))
+                        get_tex_color(tex, out_buf;
+                                      subset=TexSubset(Box(pixel, 1)))
+                        @bp_check(out_buf[1] == val,
+                                  "Set pixel of texture ", type, "_", format, "_", sizeD, "_", n_mips,
+                                      " at ", pixel, " with ", val, ".")
+                    end
+                    #TODO: Set as UInt[N], get as float, and test
+
+                    # Clean up.
+                    close(tex)
+                    @bp_check(get_ogl_handle(tex) == GL.Ptr_Texture(),
+                              "Texture was close()-d yet it still has a handle: ",
+                                type, " ", format, " ", size)
                 end
-                #TODO: Set as UInt[N], get as float, and test
-
-                # Clean up.
-                close(tex)
-                @bp_check(get_ogl_handle(tex) == GL.Ptr_Texture(),
-                            "Texture was close()-d yet it still has a handle: ", type, " ", format, " ", size)
             end
-
         end
     end 
 end
