@@ -29,6 +29,38 @@ struct RenderState
     )
 end
 
+"GPU- and context-specific constants"
+struct Device
+    # Texture/sampler anisotropy can be between 1.0 and this value.
+    max_anisotropy::Float32
+
+    # The max number of individual float/int/bool uniform values
+    #    that can exist in a vertex shader.
+    # Guaranteed by OpenGL to be at least 1024.
+    max_uniform_components_in_vertex_shader::Int
+    max_uniform_components_in_fragment_shader::Int
+
+    # Driver hints about thresholds you should not cross or else performance gets bad:
+    recommended_max_mesh_vertices::Int
+    recommended_max_mesh_indices::Int
+
+    # Limits to the amount of stuff attached to Targets:
+    max_target_color_attachments::Int
+    max_target_draw_buffers::Int
+end
+
+"Reads the device constants from OpenGL using the current context"
+function Device()
+    #TODO: A flag to instead use the minimum constants guaranteed by the standard.
+    return Device(get_from_ogl(GLfloat, glGetFloatv, GL_MAX_TEXTURE_MAX_ANISOTROPY),
+                  get_from_ogl(GLint, glGetIntegerv, GL_MAX_VERTEX_UNIFORM_COMPONENTS),
+                  get_from_ogl(GLint, glGetIntegerv, GL_MAX_FRAGMENT_UNIFORM_COMPONENTS),
+                  get_from_ogl(GLint, glGetIntegerv, GL_MAX_ELEMENTS_VERTICES),
+                  get_from_ogl(GLint, glGetIntegerv, GL_MAX_ELEMENTS_INDICES),
+                  get_from_ogl(GLint, glGetIntegerv, GL_MAX_COLOR_ATTACHMENTS),
+                  get_from_ogl(GLint, glGetIntegerv, GL_MAX_DRAW_BUFFERS))
+end
+
 
 ############################
 #         Context          #
@@ -46,6 +78,7 @@ You should close the context with `Base.close(context)`, but even easier
 mutable struct Context
     window::GLFW.Window
     vsync::Optional{E_VsyncModes}
+    device::Device
 
     state::RenderState
 
@@ -79,25 +112,24 @@ mutable struct Context
                     unsafe_string(ModernGL.glGetString(GL_RENDERER)), "'.")
 
         # Set up the Context singleton.
-        con::Context = new(window, vsync, RenderState())
         @bp_check(isnothing(get_context()), "A Context already exists on this thread")
+        GLFW.MakeContextCurrent(window)
+        con::Context = new(window, vsync, Device(), RenderState())
         CONTEXTS_PER_THREAD[Threads.threadid()] = con
 
-        # Set up the OpenGL/window state.
-        GLFW.MakeContextCurrent(window)
-        refresh(con)
-        if exists(con.vsync)
-            GLFW.SwapInterval(Int(con.vsync))
-        end
-
         # Check whether our required extensions are provided.
-        # This has to be done after 'GLFW.MakeContextCurrent()'.
         for ext in OGL_REQUIRED_EXTENSIONS
             @bp_check(GLFW.ExtensionSupported(ext),
                       "Required OpenGL extension not supported: ", ext,
                         ". If you're on a laptop with a discrete GPU, make sure you're not accidentally",
                         " using the Integrated Graphics. This program was using the GPU '",
                         unsafe_string(ModernGL.glGetString(GL_RENDERER)), "'.")
+        end
+
+        # Set up the OpenGL/window state.
+        refresh(con)
+        if exists(con.vsync)
+            GLFW.SwapInterval(Int(con.vsync))
         end
 
         return con
@@ -298,6 +330,37 @@ export refresh
 ############################
 #   Render State setters   #
 ############################
+
+function set_render_state(context::Context, state::RenderState)
+    set_culling(context, state.cull_mode)
+    set_color_writes(context, state.color_write_mask)
+    set_depth_test(context, state.depth_test)
+    set_depth_writes(context, state.depth_write)
+    set_blending(context, state.blend_mode.rgb)
+    set_blending(context, state.blend_mode.alpha)
+    if state.stencil_test isa StencilTest
+        set_stencil_test(context, state.stencil_test)
+    else
+        set_stencil_test(context, state.stencil_test.front, state.stencil_test.back)
+    end
+    if state.stencil_result isa StencilResult
+        set_stencil_result(context, state.stencil_result)
+    else
+        set_stencil_result(context, state.stencil_result.front, state.stencil_result.back)
+    end
+    if state.stencil_write_mask isa GLuint
+        set_stencil_write_mask(context, state.stencil_write_mask)
+    else
+        set_stencil_write_mask(context, state.stencil_write_mask.front, state.stencil_write_mask.back)
+    end
+    set_viewport(context, state.viewport.min, state.viewport.max)
+    if exists(state.scissor)
+        set_scissor(context, (state.scissor.min, state.scissor.max))
+    else
+        set_scissor(context, nothing)
+    end
+end
+export set_render_state
 
 function set_vsync(context::Context, sync::E_VsyncModes)
     GLFW.SwapInterval(Int(context.vsync))
@@ -614,6 +677,7 @@ export set_scissor
 
 # Provide convenient versions of the above which get the context automatically.
 set_vsync(sync::E_VsyncModes) = set_vsync(get_context(), sync)
+set_render_state(state::RenderState) = set_render_state(get_context(), state)
 set_culling(cull::E_FaceCullModes) = set_culling(get_context(), cull)
 set_color_writes(enabled::vRGBA{Bool}) = set_color_writes(get_context(), enabled)
 set_depth_test(test::E_ValueTests) = set_depth_test(get_context(), test)

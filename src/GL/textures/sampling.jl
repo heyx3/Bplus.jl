@@ -76,12 +76,17 @@ struct Sampler{N}
     pixel_filter::E_PixelFilters
     mip_filter::MipFilters
 
+    # Anisotropic filtering.
+    # Should have a value between 1 and get_context().device.max_anisotropy.
+    anisotropy::Float32
+
     # Offsets the mip level calculation, if using mipmapping.
     # For example, a value of 1 essentially forces all samples to go up one mip level.
     mip_offset::Float32
-    # Sets the boundaries of the mip levels used.
-    # According to the OpenGL standard, the default value is [-1000.0, 1000.0].
-    mip_range::IntervalF
+    # Sets the boundaries of the mip levels used in sampling.
+    # As usual, 1 is the firt mip (i.e. original texture), and
+    #    higher values represent smaller mips.
+    mip_range::IntervalU
 
     # If this is a depth (or depth-stencil) texture,
     #    this setting makes it a "shadow" sampler.
@@ -99,22 +104,26 @@ Sampler{N}( wrapping,
 )
 Sampler{N}(; wrapping = WrapModes.clamp,
              filter = PixelFilters.smooth,
+             anisotropy = @f32(1),
              mip_filter = filter,
              mip_offset = @f32(0),
-             mip_range = Box_minmax(@f32(-1000.0), @f32(1000.0)),
+             mip_range = Box_minmax(UInt(1), UInt(1001)),
              depth_comparison_mode = nothing
           ) where {N} = Sampler{N}(
     Vec(ntuple(i->wrapping, N)), filter, mip_filter,
+    anisotropy,
     mip_offset, mip_range,
     depth_comparison_mode
 )
 Sampler( wrapping::NTuple{N, E_WrapModes},
          filter,
+         anisotropy = @f32(1),
          mip_filter = filter,
          mip_offset = @f32(0),
-         mip_range = Box_minmax(@f32(-1000.0), @f32(1000.0))
+         mip_range = Box_minmax(UInt(1), UInt(1001))
        ) where {N} = Sampler{N}(
     wrapping, filter, mip_filter,
+    anisotropy,
     mip_offset, mip_range,
     depth_comparison_mode
 )
@@ -123,7 +132,7 @@ Sampler( wrapping::NTuple{N, E_WrapModes},
 Base.convert(::Type{Sampler{N2}}, s::Sampler{N1}) where {N1, N2} = Sampler{N2}(
     Vec(ntuple(i -> s.wrapping[min(i, N1)], N2)),
     s.pixel_filter, s.mip_filter,
-    s.mip_offset, s.mip_range,
+    s.anisotropy, s.mip_offset, s.mip_range,
     s.depth_comparison_mode
 )
 
@@ -145,14 +154,29 @@ function apply_impl( s::Sampler{N},
                      gl_set_func_i::Function,
                      gl_set_func_f::Function
                    ) where {N}
+    context::Optional{Context} = get_context()
+    @bp_check(exists(context), "Can't apply sampler settings to a texture outside of an OpenGL context")
+
     # Set filtering.
     gl_set_func_i(ptr, GL_TEXTURE_MIN_FILTER, get_ogl_enum(s.pixel_filter, s.mip_filter))
     gl_set_func_i(ptr, GL_TEXTURE_MAG_FILTER, get_ogl_enum(s.pixel_filter))
 
+    # Set anisotropy.
+    @bp_check(s.anisotropy >= 1,
+              "Sampler anisotropy of ", s.anisotropy, " is too low!",
+                " It should be between 1 and ", context.device.max_anisotropy, ", inclusive")
+    @bp_check(s.anisotropy <= context.device.max_anisotropy,
+              "Sampler anisotropy of ", s.anisotropy,
+                 " is above the GPU driver's max value of ",
+                 context.device.max_anisotropy)
+    gl_set_func_f(ptr, GL_TEXTURE_MAX_ANISOTROPY, s.anisotropy)
+
     # Set mip bias.
-    gl_set_func_f(ptr, GL_TEXTURE_MIN_LOD, s.mip_range.min)
-    gl_set_func_f(ptr, GL_TEXTURE_MAX_LOD, max_exclusive(s.mip_range))
-    gl_set_func_f(ptr, GL_TEXTURE_LOD_BIAS, s.mip_offset)
+    @bp_check(s.mip_range.min >= 1,
+              "Sampler's mip range must start at 1 or above. The requested range is: ", s.mip_range)
+    gl_set_func_f(ptr, GL_TEXTURE_BASE_LEVEL, s.mip_range.min - 1)
+    gl_set_func_f(ptr, GL_TEXTURE_MAX_LEVEL, max_inclusive(s.mip_range) - 1)
+    gl_set_func_f(ptr, GL_TEXTURE_LOD_BIAS, s.mip_offset) #TODO: Does GL_TEXTURE_LOD_BIAS directly represent a "mip offset"?
 
     # Depth comparison.
     if exists(s.depth_comparison_mode)
