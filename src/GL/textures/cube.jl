@@ -49,12 +49,14 @@ end
 export get_cube_dir
 
 "The memory layout for each cubemap face, in order on the GPU"
-const CUBEMAP_MEMORY_LAYOUT = (
-    CubeFaceOrientation(CubeFaces.PosX, Vec(1, 1, 1), Vec(1, -1, -1), 2, 1),
-    CubeFaceOrientation(CubeFaces.NegX, Vec(-1, 1, -1), Vec(-1, -1, 1), 2, 1),
-    CubeFaceOrientation(CubeFaces.PosY, Vec(-1, 1, -1), Vec(1, 1, 1), 0, 2),
-    CubeFaceOrientation(CubeFaces.NegY, Vec(-1, -1, 1), Vec(1, -1, -1), 0, 2),
-    CubeFaceOrientation(CubeFaces.PosZ, Vec(-1, 1, 1), Vec(1, -1, 1), 0, 1),
-    CubeFaceOrientation(CubeFaces.NegZ, Vec(1, 1, -1), Vec(-1, -1, -1), 0, 1),
-)
+const CUBEMAP_MEMORY_LAYOUT = let v3i8 = Vec{3, Int8}
+    (
+        CubeFaceOrientation(CubeFaces.PosX, v3i8(1, 1, 1),   v3i8(1, -1, -1), 2, 1),
+        CubeFaceOrientation(CubeFaces.NegX, v3i8(-1, 1, -1), v3i8(-1, -1, 1), 2, 1),
+        CubeFaceOrientation(CubeFaces.PosY, v3i8(-1, 1, -1), v3i8(1, 1, 1), 0, 2),
+        CubeFaceOrientation(CubeFaces.NegY, v3i8(-1, -1, 1), v3i8(1, -1, -1), 0, 2),
+        CubeFaceOrientation(CubeFaces.PosZ, v3i8(-1, 1, 1),  v3i8(1, -1, 1), 0, 1),
+        CubeFaceOrientation(CubeFaces.NegZ, v3i8(1, 1, -1),  v3i8(-1, -1, -1), 0, 1),
+    )
+end
 export CUBEMAP_MEMORY_LAYOUT

@@ -1,3 +1,8 @@
+# To disable the slower tests, set `global GL_TEST_FULL=false`.
+if !@isdefined GL_TEST_FULL
+    GL_TEST_FULL = true
+end
+
 # Check some basic facts.
 @bp_check(GL.gl_type(GL.Ptr_Uniform) === GLint,
           "GL.Ptr_Uniform's original type is not GLint, but ",
@@ -161,7 +166,7 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
               "Just started this Context, but another one is the singleton")
 
     test_buffers()
-    test_textures()
+    GL_TEST_FULL && test_textures()
     
     # Set up a mesh with some triangles.
     # Each triangle has position, color, and "IDs".
@@ -210,6 +215,7 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
     #START_FRAGMENT
         uniform mat3 u_colorTransform = mat3(1, 0, 0, 0, 1, 0, 0, 0, 1);
         uniform dmat2x4 u_colorCurveAt512[10];
+        uniform sampler2D u_tex;
         in vec3 vOut_color;
         out vec4 fOut_color;
         void main() {
@@ -219,6 +225,8 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
 
             float scale = float(u_colorCurveAt512[3][1][2]);
             fOut_color.rgb = pow(fOut_color.rgb, vec3(scale));
+
+            fOut_color.rgb *= texture(u_tex, gl_FragCoord.xy / 50.0).rgb;
         }
     """
     function check_uniform(name::String, type, array_size)
@@ -230,14 +238,36 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
                   "Wrong uniform data for '", name, "': ", draw_triangles.uniforms[name])
     end
     @bp_check(Set(keys(draw_triangles.uniforms)) ==
-                  Set([ "u_colorMask", "u_colorTransform", "u_colorCurveAt512" ]),
+                  Set([ "u_colorMask", "u_colorTransform", "u_colorCurveAt512", "u_tex" ]),
               "Unexpected set of uniforms: ", collect(keys(draw_triangles.uniforms)))
     check_uniform("u_colorMask", Vec3{Int32}, 1)
     check_uniform("u_colorTransform", fmat3x3, 1)
     check_uniform("u_colorCurveAt512", dmat2x4, 10)
+    check_uniform("u_tex", GL.Ptr_View, 1)
 
     # Configure the render state.
     GL.set_culling(context, GL.FaceCullModes.Off)
+
+    # Set up the texture used to draw the triangles.
+    tex_data = Array{vRGBf, 2}(undef, (64, 64))
+    for x in 1:64
+        for y in 1:64
+            tex_data[y, x] = vRGBf(
+                x/64,
+                y/64,
+                rand()
+            )
+        end
+    end
+    tex = Texture(SimpleFormat(FormatTypes.normalized_uint,
+                               SimpleFormatComponents.RGB,
+                               SimpleFormatBitDepths.B8),
+                  tex_data;
+                  sampler = Sampler{2}(wrapping = WrapModes.repeat))
+    # Give the texture to the shader.
+    glActiveTexture(GL_TEXTURE0)
+    glBindTexture(GL_TEXTURE_2D, tex.handle)
+    glProgramUniform1i(draw_triangles.handle, draw_triangles.uniforms["u_tex"].handle, 0)
 
     timer::Int = 5 * 60  #Vsync is on, assume 60fps
     while !GLFW.WindowShouldClose(context.window)
@@ -273,6 +303,11 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
             break
         end
     end
+
+    # Clean up the textures.
+    close(tex)
+    @bp_check(tex.handle == GL.Ptr_Texture(),
+              "GL.Texture's handle isn't nulled out after closing")
 
     # Clean up the shader.
     close(draw_triangles)
