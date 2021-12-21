@@ -30,6 +30,9 @@ struct Vec{N, T} <: AbstractVector{T}
     Vec(data::T...) where {T} = Vec(data)
     Vec(data::Any...) = Vec(promote(data...))
 
+    # Construct a constant vector with all components set to one value.
+    Vec{N, T}(::Val{X}) where {N, T, X} = Vec{N, T}(i -> X)
+
     # Construct with the type parameter, and components.
     function Vec{T}(data::NTuple{N, T2}) where {N, T, T2}
         @bp_check(!(T isa Int), "Constructors of the form 'VecN(x, y, ...)' aren't allowed. Try 'Vec(x, y, ...)', or 'VecN{T}(x, y, ...)'")
@@ -39,9 +42,9 @@ struct Vec{N, T} <: AbstractVector{T}
         @bp_check(!(T isa Int), "Constructors of the form 'VecN(x, y, ...)' aren't allowed. Try 'Vec(x, y, ...)', or 'VecN{T}(x, y, ...)'")
         return Vec{T}(data)
     end
-    Vec{N, T}(data::NTuple{N, T2}) where {N, T, T2} = Vec{T}(convert(NTuple{N, T}, data))
+    Vec{N, T}(data::NTuple{N, T2}) where {N, T, T2} = new{N, T}(convert(NTuple{N, T}, data))
     Vec{N, T}(data::T2...) where {N, T, T2} = Vec{N, T}(data)
-    Vec{N, T}(data::Any...) where {N, T} = Vec{N, T}(promote(data...))
+    @inline Vec{N, T}(data::Any...) where {N, T} = Vec{N, T}(promote(data...))
 
     # "Empty" constructor makes a value with all 0's.
     Vec{N, T}() where {N, T} = new{N, T}(ntuple(i->zero(T), N))
@@ -141,6 +144,7 @@ printable_component(x, args...) = x
 printable_component(f::AbstractFloat, n_digits::Int) = round(f; digits=n_digits)
 printable_component(f::Integer, n_digits::Int) = f
 
+Base.show(io::IO, v::Vec) = show(io, MIME"text/plain"(), v)
 function Base.show(io::IO, ::MIME"text/plain", v::Vec{N, T}) where {N, T}
     global VEC_N_DIGITS
     n_digits::Int = VEC_N_DIGITS
@@ -243,6 +247,7 @@ Base.clamp(v::Vec{N, T}, a::T2, b::T3) where {N, T, T2, T3} = Vec{N, T}(i -> cla
 Base.clamp(v::Vec{N, T}, a::Vec{N, T2}, b::Vec{N, T3}) where {N, T, T2, T3} = Vec{N, T}(i -> clamp(v[i], a[i], b[i]))
 
 Base.convert(::Type{Vec{N, T2}}, v::Vec{N, T}) where {N, T, T2} = map(x -> convert(T2, x), v)
+Base.convert(::Type{Vec{N, T}}, v::Vec{N, T}) where {N, T} = v
 Base.promote_rule(::Type{Vec{N, T1}}, ::Type{Vec{N, T2}}) where {N, T1, T2} = Vec{N, promote_type(T1, T2)}
 
 Base.reverse(v::Vec) = Vec(reverse(v.data))
@@ -255,8 +260,9 @@ Base.eltype(::Vec{N, T}) where {N, T} = T
 Base.length(::Vec{N, T}) where {N, T} = N
 Base.size(::Vec{N, T}) where {N, T} = (N, )
 Base.IndexStyle(::Vec{N, T}) where {N, T} = IndexLinear()
-Base.iterate(v::Vec, state...) = iterate(v.data, state...)
-Base.map(f, v::Vec) = Vec(map(f, v.data))
+@inline Base.iterate(v::Vec, state...) = iterate(v.data, state...)
+
+@inline Base.map(f, v::Vec) = typeof(v)((f(x) for x in v)...)
 
 @inline function Base.foldl(func::F, v::Vec{N, T}) where {F, N, T}
     f::T = v[1]

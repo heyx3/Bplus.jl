@@ -9,6 +9,7 @@
 @bp_test_no_allocations(Vec(i -> i + 2.0, 3), Vec(3.0, 4.0, 5.0))
 @bp_test_no_allocations(Vec{Float64}(i -> i + 2, 3) isa Vec{3, Float64}, true)
 @bp_test_no_allocations(Vec{3, Float64}(i -> i + 2), Vec(3, 4, 5), true)
+@bp_test_no_allocations(v3f(Val(5)), v3f(5, 5, 5))
 
 # Test our ability to construct aliases.
 @bp_test_no_allocations(typeof(Vec3{Int8}(1, 2, 3)),

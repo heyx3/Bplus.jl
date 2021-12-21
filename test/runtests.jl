@@ -4,14 +4,15 @@
 
 
 # Import dependencies.
-using TupleTools, Setfield, StaticArrays, InteractiveUtils,
-      ModernGL, GLFW
+using Random, TupleTools, Setfield, InteractiveUtils,
+      StaticArrays, ModernGL, GLFW
 
 # Import the main codebase.
 using Bplus
 using Bplus.Utilities, Bplus.Math, Bplus.GL
 
 # Enable all asserts for the codebase.
+@inline Bplus.Utilities.bp_utils_asserts_enabled() = true
 @inline Bplus.Math.bp_math_asserts_enabled() = true
 @inline Bplus.GL.bp_gl_asserts_enabled() = true
 

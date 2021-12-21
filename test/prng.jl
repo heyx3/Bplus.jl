@@ -1,27 +1,3 @@
-# Test RandIterator
-@bp_test_no_allocations(typeof(RandIterator(200)), RandIterator{Int, ConstPRNG})
-@bp_test_no_allocations_setup(
-    begin
-        r::Vector{Int} = Vector{Int}(undef, 10)
-    end,
-    begin
-        for (i, x) in enumerate(RandIterator(length(r)))
-            @assert(i <= length(r), "Iterated past $(length(r))")
-            r[i] = x
-        end
-        (r[1] + r[end]) <= ((length(r) * 2) - 1)
-    end,
-    true)
-# Generate a random iteration over 1:N, N times,
-#    and assert that no iterations were the same.
-# Statistically, it's impossible for such a thing to happen coincidentally.
-orderings = map(i -> collect(RandIterator(1000)),
-                1:1000)
-@bp_check(all(o -> length(o) == length(orderings), orderings),
-          "RandIterator 1:1000 generated ", length(o), " values")
-@bp_check(allunique(orderings),
-          "RandIterator(1000) managed to generate the same sequence more than once; this is virtually impossible with proper randomness")
-
 # Test that ConstPRNG doesn't allocate.
 @bp_test_no_allocations(typeof(rand(ConstPRNG(), UInt)[1]), UInt)
 @bp_test_no_allocations(typeof(rand(ConstPRNG(), Int8)[1]), Int8)
@@ -32,6 +8,92 @@ orderings = map(i -> collect(RandIterator(1000)),
 @bp_test_no_allocations(typeof(rand(ConstPRNG(), 5:10:2000)[1]), Int)
 @bp_test_no_allocations(typeof(rand(ConstPRNG(), 5.5:10:2000.5)[1]), Float64)
 @bp_test_no_allocations(typeof(rand(ConstPRNG(), range(1, length=13, stop=20))[1]), Float64)
+
+# Test fill_in_seeds().
+@bp_test_no_allocations(sizeof(fill_in_seeds(UInt8)), 10)
+@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{2, UInt8})), 10)
+@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{3, UInt8})), 9)
+@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{4, UInt8})), 8)
+@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{5, UInt8})), 6)
+@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{6, UInt8})), 6)
+@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{7, UInt8})), 5)
+@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{8, UInt8})), 4)
+@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{9, UInt8})), 2)
+@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{10, UInt8})), 2)
+@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{11, UInt8})), 1)
+@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{12, UInt8})), 0)
+@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{13, UInt8})), 0)
+@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{99, UInt8})), 0)
+
+"
+Runs the following tests for an RNG with N input seeds of any scalar type:
+    1. Tests that constructing it doesn't allocate
+    2. Tests that each of the N seed values has an effect on the output
+Assumes the existence of DataTypes T1, T2, ..., TN representing the seed types to test with.
+"
+macro run_prng_test_for(n::Int)
+    types = map(i -> esc(Symbol(:T, i)), 1:n)
+    # Randomly jumble the orders of the seed types, to broaden the test coverage.
+    type_permute = :( type_permute::Vector = shuffle([ $(types...) ]) )
+
+    make_rand_seeds = :( tuple(map(t -> rand(t), type_permute)...) )
+    return quote
+        $type_permute
+
+        # Make sure the constructor doesn't allocate.
+        seeds::Tuple = $make_rand_seeds
+        @bp_test_no_allocations(typeof(ConstPRNG(seeds...)), ConstPRNG,
+                                "Using ", $n, " seeds: ", join(type_permute, ", "))
+
+        # Make sure each seed value is important.
+        for seed_idx::Int in 1:$n
+            seeds1 = $make_rand_seeds
+
+            TT = tuple($(types...))[seed_idx]
+            seeds2 = seeds1
+            while seeds2[seed_idx] == seeds1[seed_idx]
+                seeds2 = @set(seeds1[seed_idx] = rand(TT))
+            end
+
+            @bp_check(rand(ConstPRNG(seeds1...), UInt32) !=
+                        rand(ConstPRNG(seeds2...), UInt32),
+                      "No change detected from changing seed ", seed_idx, " in the param set ",
+                        join([$(types...)], ","), ":\n\t", seeds1, " vs ", seeds2)
+        end
+    end
+end
+# Test every combination of bits types with up to 4 seeds.
+print("\tRunning $(length(ALL_FLOATS)) sets of tests...\n\t\t")
+# Reduce the actual set of types tested to keep the tests fast.
+for (outer_i, T1) in enumerate(ALL_FLOATS)
+    if outer_i > 1
+        print(" | ")
+    end
+    print(outer_i, ":")
+
+    @run_prng_test_for(1)
+
+    for (inner_i, T2) in enumerate(ALL_UNSIGNED)
+        if inner_i > 1
+            print(",")
+        end
+        print(inner_i)
+
+        @run_prng_test_for(2)
+
+        # Don't print the inner layers, they run too frequently.
+        for T3 in ALL_SIGNED
+            @run_prng_test_for(3)
+
+            # The fourth layer is important, giving us tests with an extra seed value
+            #    beyond the ideal 3.
+            for T4 in ALL_SIGNED
+                @run_prng_test_for(4)
+            end
+        end
+    end
+end
+println()
 
 # Test some ConstPRNG functionality.
 for i in 1:1000
@@ -46,6 +108,31 @@ for i in 1:1000
     @bp_check(rand(ConstPRNG(), Dict(4=>50, 5=>10))[1][1] in 4:5, true)
     @bp_check(rand(ConstPRNG(), "ghi")[1] in "ghi", true)
 end
+
+# Test RandIterator
+@bp_test_no_allocations(typeof(RandIterator(200)), RandIterator{Int, ConstPRNG})
+@bp_test_no_allocations_setup(
+    begin
+        r::Vector{Int} = Vector{Int}(undef, 10)
+    end,
+    begin
+        for (i, x) in enumerate(RandIterator(length(r)))
+            @assert(i <= length(r), "Iterated past $(length(r))")
+            r[i] = x
+        end
+        (r[1] + r[end]) <= ((length(r) * 2) - 1)
+    end,
+    true
+)
+# Generate a random iteration over 1:N, N times,
+#    and assert that no iterations were the same.
+# Statistically, it's impossible for such a thing to happen coincidentally.
+orderings = map(i -> collect(RandIterator(1000)),
+                1:1000)
+@bp_check(all(o -> length(o) == length(orderings), orderings),
+          "RandIterator 1:1000 generated ", length(o), " values")
+@bp_check(allunique(orderings),
+          "RandIterator(1000) managed to generate the same sequence more than once; this is virtually impossible with proper randomness")
 
 
 const prng = PRNG(0x1234567)
