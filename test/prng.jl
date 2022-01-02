@@ -10,20 +10,46 @@
 @bp_test_no_allocations(typeof(rand(ConstPRNG(), range(1, length=13, stop=20))[1]), Float64)
 
 # Test fill_in_seeds().
-@bp_test_no_allocations(sizeof(fill_in_seeds(UInt8)), 10)
-@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{2, UInt8})), 10)
-@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{3, UInt8})), 9)
-@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{4, UInt8})), 8)
-@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{5, UInt8})), 6)
-@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{6, UInt8})), 6)
-@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{7, UInt8})), 5)
-@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{8, UInt8})), 4)
-@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{9, UInt8})), 2)
-@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{10, UInt8})), 2)
-@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{11, UInt8})), 1)
-@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{12, UInt8})), 0)
-@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{13, UInt8})), 0)
-@bp_test_no_allocations(sizeof(fill_in_seeds(NTuple{99, UInt8})), 0)
+const DESIRED_FILL_IN_SIZE = Dict(
+    0 => 12,
+    1 => 10,
+    2 => 10,
+    3 => 9,
+    4 => 8,
+    5 => 6,
+    6 => 6,
+    7 => 5,
+    8 => 4,
+    9 => 2,
+    10 => 2,
+    11 => 1
+)
+function test_fill_in_seeds(::Type{T}) where {T}
+    existing_size = if T <: Tuple
+                        sum(sizeof, T.parameters, init=0)
+                    else
+                        sizeof(T)
+                    end
+
+    expected_size = get(DESIRED_FILL_IN_SIZE, existing_size, 0)
+
+    # Test without a hash seed.
+    @bp_test_no_allocations(
+        begin
+            actual_value = fill_in_seeds(T)
+            actual_size = sum(sizeof, typeof(actual_value).parameters, init=0)
+            actual_size
+        end,
+        expected_size,
+        "fill_in_seeds() output the wrong amount of bits"
+    )
+end
+test_fill_in_seeds.(ALL_REALS)
+test_fill_in_seeds.([ Tuple{x...} for x in Iterators.product(ALL_REALS, ALL_REALS) ])
+println(stderr, "\tTesting large types for fill_in_seeds()...")
+test_fill_in_seeds.([ Tuple{x...} for x in Iterators.product(ALL_UNSIGNED, ALL_SIGNED, ALL_FLOATS) ])
+test_fill_in_seeds.([ Tuple{x...} for x in Iterators.product(ALL_FLOATS, ALL_UNSIGNED, ALL_SIGNED) ])
+test_fill_in_seeds(NTuple{99, UInt8})
 
 "
 Runs the following tests for an RNG with N input seeds of any scalar type:
@@ -142,34 +168,39 @@ const N_ITERATIONS = 9999999  # A balance between speed and having enough sample
 
 @bp_test_no_allocations(copy(prng) isa PRNG, true)
 
-# This macro runs the two PRNG's, checks they're equal, and checks there's no allocations.
-macro test_compare_prngs(rand_arg, msg_args...)
-    return impl_test_compare_prngs(:prng, :prng2, rand_arg, msg_args)
-end
-macro test_compare_prngs2(r1, r2, rand_arg, msg_args...)
-    return impl_test_compare_prngs(r1, r2, rand_arg, msg_args)
-end
-function impl_test_compare_prngs(r1, r2, rand_arg, msg_args)
-    r1 = esc(r1)
-    r2 = esc(r2)
-    rand_arg = esc(rand_arg)
-    msg_args = map(esc, msg_args)
-    return quote
-        @bp_test_no_allocations(rand($r1, $rand_arg),
-                                rand($r2, $rand_arg),
-                                $(msg_args...))
-        @bp_check(($r1.seeds == $r2.seeds) && ($r1.state == $r2.state),
-                  $r1, " vs ", $r2)
-    end
+"Run two identical ConstPRNG's, check they're equal, and check there's no allocations"
+@inline function test_compare_prngs( prng_args::TArg1,
+                                     ::Type{T}
+                                   ) where {TArg1<:Tuple, T}
+    # Test the ConstPRNG.
+    @bp_test_no_allocations(
+        begin
+            rng1 = ConstPRNG(prng_args...)
+            rand(rng1, T)
+        end,
+        begin
+            rng2 = ConstPRNG(prng_args...)
+            rand(rng2, T)
+        end,
+        "Testing determinism of ConstPRNG(", join(prng_args, ", "), ")"
+    )
+
+    # Test the PRNG.
+    @bp_test_no_allocations_setup(
+        begin
+            rng1 = PRNG(prng_args...)
+            rng2 = PRNG(prng_args...)
+        end,
+        rand(rng1, T),
+        rand(rng2, T),
+        "Testing determinism of ConstPRNG(", join(prng_args, ", "), ")"
+    )
 end
 
-
-#TODO: Pretty certain the PRNG stuff doesn't allocate, yet the tests think it does?
-if false
 
 # Test that the PRNG work is non-allocating and deterministic.
 for nt in ALL_REALS
-    @test_compare_prngs(nt, "For ", nt)
+    test_compare_prngs((0x5678768, ), nt)
 end
 
 # Test that copies of a PRNG match the original.
@@ -181,26 +212,30 @@ for i in 1:N_ITERATIONS
                             "For ", UInt32)
 end
 
-# Test that floats stay in the [0, 1) range.
+# Test that random floats stay in the [0, 1) range.
 for ft in ALL_FLOATS
     for i in 1:N_ITERATIONS
         f::ft = rand(prng, ft)
+        @bp_check((f >= 0) && (f < 1),
+                  "rand(prng, $ft) is outside [0, 1): $f.",
+                    " Took $i iterations to get here (out of $N_ITERATIONS)")
+        # Check determinism too.
         f2::ft = rand(prng2, ft)
         @bp_check(f == f2, f, " == ", f2)
-        @bp_check((f >= 0) && (f < 1),
-                  "rand(prng, ", ft, ") is outside [0, 1): ", f,
-                  ". Took ", i, " iterations to get here (out of ", N_ITERATIONS, ")")
     end
 end
 
 # Test other uses of rand() that weren't explicitly implemented.
-for it in ALL_INTEGERS
+test_rand_mode(data::T) where {T} = @bp_test_no_allocations(
+    rand(prng, data),
+    rand(prng2, data),
+    "rand(", typeof(T), ": ", data, ")"
+)
+for it in setdiff(ALL_INTEGERS, [ Int128, UInt128 ]) # 128-bit ints have some kind of different interface
     range = it(2) : it(101)
 
     # Test that it's non-allocating.
-    rand(prng2, range)
-    @bp_test_no_allocations(rand(prng, range), rand(prng2, range),
-                            "For range ", range)
+    test_rand_mode(range)
 
     # Test that it's correct.
     for i in 1:N_ITERATIONS
@@ -211,5 +246,3 @@ for it in ALL_INTEGERS
                   "Value ", i1, " outside of range ", range)
     end
 end
-
-end # if false (see todo above)

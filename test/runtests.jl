@@ -53,9 +53,9 @@ function impl_bp_test_no_allocations(expr, expected_value, msg, startup)
     startup = esc(startup)
     return quote
         # Hide the expressions in a function to avoid issues with memory allocations and globals.
-        function run_test()
-            function run_timer()
-                $startup
+        @inline function run_test()
+            $startup
+            @inline function run_timer()
                 return @timed($expr)
             end
             # Try several times until we get a result which does't allocate,

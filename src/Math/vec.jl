@@ -58,8 +58,8 @@ struct Vec{N, T} <: AbstractVector{T}
     Vec{N, T}(first::Vec{N2, T2}, rest::Vec{N3, T3}) where {N, N2, N3, T, T2, T3} = Vec{N, T}(first..., rest...)
 
     # Construct with a lambda, like ntuple().
-    Vec(make_component::Function, n::Int) = Vec(ntuple(make_component, n))
-    Vec{N, T}(make_component::Function) where {N, T} = Vec{N, T}(ntuple(make_component, N))
+    @inline Vec(make_component::Function, n::Int) = Vec(ntuple(make_component, Val(n)))
+    Vec{N, T}(make_component::Function) where {N, T} = Vec{N, T}(ntuple(make_component, Val(N)))
     function Vec{T}(make_component::Function, n::Int) where {T}
         @bp_check(!(T isa Int), "Constructors of the form 'VecN(x, y, ...)' aren't allowed. Try 'Vec(x, y, ...)', or 'VecN{T}(x, y, ...)'")
         Vec{n, T}(make_component)
@@ -262,7 +262,7 @@ Base.size(::Vec{N, T}) where {N, T} = (N, )
 Base.IndexStyle(::Vec{N, T}) where {N, T} = IndexLinear()
 @inline Base.iterate(v::Vec, state...) = iterate(v.data, state...)
 
-@inline Base.map(f, v::Vec) = typeof(v)((f(x) for x in v)...)
+@inline Base.map(f, v::Vec) = Vec((f(x) for x in v)...)
 
 @inline function Base.foldl(func::F, v::Vec{N, T}) where {F, N, T}
     f::T = v[1]

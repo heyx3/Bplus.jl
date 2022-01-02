@@ -18,4 +18,6 @@ include("sphere.jl")
 #TODO: Port Shapes.hpp
 include("ray.jl")
 
+include("noise.jl")
+
 end # module

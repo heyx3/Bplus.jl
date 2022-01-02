@@ -211,8 +211,14 @@ Outputs a tuple of enough data to make 96 bits of PRNG input,
     and a seed value to customize this output.
 "
 fill_in_seeds(existing) = fill_in_seeds(Val(sizeof(existing)))
-fill_in_seeds(existing, hash_seed::UInt32) = fill_in_seeds(Val(sizeof(existing)), hash_seed)
+fill_in_seeds(::Type{T}) where {T<:Tuple} = fill_in_seeds(Val(sum(sizeof, T.parameters, init=0)))
 
+fill_in_seeds(existing, hash_seed::UInt32) = fill_in_seeds(Val(sizeof(existing)), hash_seed)
+fill_in_seeds(::Type{T}, hash_seed::UInt32) where {T<:Tuple} = fill_in_seeds(Val(sum(sizeof, T.parameters, init=0)), hash_seed)
+
+@inline fill_in_seeds(::Val{0}, hasher::UInt32) = (0x98765432 ⊻ hasher,
+                                                   0x87654321 ⊻ hasher,
+                                                   0x76543210 ⊻ hasher)
 @inline fill_in_seeds(::Val{1}, hasher::UInt32) = (0x23456789 ⊻ hasher,
                                                    0x34567890 ⊻ hasher,
                                                    0x4567 ⊻ UInt16(hasher & 0x0000ffff) ⊻
