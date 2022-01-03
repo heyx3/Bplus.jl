@@ -3,7 +3,6 @@
 using StaticArrays
 
 
-#TODO: Rewrite this and compare performance
 function perlin_fast( v::Vec{2, T}
                         ;
                         seeds = fill_in_seeds(Vec{2, T}),
@@ -106,9 +105,6 @@ export perlin_fast
     #    calculated based on the direction towards that corner and a random gradient.
     expr_make_gradient = quote
         rng = ConstPRNG(pos_filtered..., seeds...)
-        for _ in 1:100
-            (_, rng) = rand(rng, Int)
-        end
     end
     # Generate code to compute the gradient, like:
     #     (gradient_x::T, rng) = rand(rng, T)
@@ -139,6 +135,7 @@ export perlin_fast
         # It's easier to use a mutable vector to insert the values,
         #    then copy into an immutable vector,
         #    and trust the compiler to optimze.
+        #TODO: Based on testing, we can expect a 2x speedup by removing the StaticArrays stuff and just using normal variables.
         #TODO: Instead of messing with StaticArrays, try directly writing N copies of the gradient/noise code. Profile the change in performance.
         corner_noise::SVector{$n_corners, T} =
             let output = MVector{$n_corners, T}(undef)
