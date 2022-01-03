@@ -96,7 +96,7 @@ const ALL_INTEGERS = TupleTools.vcat(ALL_SIGNED, ALL_UNSIGNED)
 
 const ALL_FLOATS = (Float16, Float32, Float64)
 
-const ALL_REALS = TupleTools.vcat(ALL_INTEGERS, ALL_FLOATS)
+const ALL_REALS = TupleTools.vcat(ALL_INTEGERS, ALL_FLOATS, (Bool, ))
 
 #############################
 

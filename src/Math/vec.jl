@@ -52,10 +52,15 @@ struct Vec{N, T} <: AbstractVector{T}
     # Construct by appending smaller vectors/components together.
     Vec(first::Vec{N, T}, rest::T2...) where {N, T, T2} = Vec(promote(first..., rest...))
     Vec(first::Vec{N, T}, rest::Vec{N2, T2}) where {N, N2, T, T2} = Vec(promote(first..., rest...))
+    Vec(v::Vec) = v
     Vec{T}(first::Vec{N, T2}, rest::T3...) where {N, T, T2, T3} = Vec{T}(first..., rest...)
     Vec{T}(first::Vec{N, T2}, rest::Vec{N2, T3}) where {N, N2, T, T2, T3} = Vec{T}(first..., rest...)
+    Vec{T}(v::Vec{N, T}) where {N, T} = v
+    Vec{T}(v::Vec{N, T2}) where {N, T, T2} = Vec{N, T}(v...)
     Vec{N, T}(first::Vec{N2, T2}, rest::T3...) where {N, N2, T, T2, T3} = Vec{N, T}(first..., rest...)
     Vec{N, T}(first::Vec{N2, T2}, rest::Vec{N3, T3}) where {N, N2, N3, T, T2, T3} = Vec{N, T}(first..., rest...)
+    Vec{N, T}(v::Vec{N, T}) where {N, T} = v
+    Vec{N, T}(v::Vec{N, T2}) where {N, T, T2} = Vec{N, T}(v...)
 
     # Construct with a lambda, like ntuple().
     @inline Vec(make_component::Function, n::Int) = Vec(ntuple(make_component, Val(n)))

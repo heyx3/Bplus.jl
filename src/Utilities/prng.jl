@@ -208,7 +208,7 @@ export ConstPRNG
 "
 Outputs a tuple of enough data to make 96 bits of PRNG input,
     given the existing data that will be fed in
-    and a seed value to customize this output.
+    and, optionally, a 32-bit UInt seed to customize this output.
 "
 fill_in_seeds(existing) = fill_in_seeds(Val(sizeof(existing)))
 fill_in_seeds(::Type{T}) where {T<:Tuple} = fill_in_seeds(Val(sum(sizeof, T.parameters, init=0)))

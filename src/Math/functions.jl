@@ -38,6 +38,11 @@ end
 export lerp, smoothstep, smootherstep
 
 
+"The inverse of `lerp()`. Given a min, max, and value, finds the interpolant for that value."
+@inline inv_lerp(a, b, x) = (x - a) / (b - a)
+export inv_lerp
+
+
 "Like typemin(), but returns a finite value for floats"
 typemin_finite(T) = typemin(T)
 typemin_finite(T::Type{<:AbstractFloat}) = nextfloat(typemin(T))

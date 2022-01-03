@@ -240,11 +240,11 @@ function refresh(context::Context)
     # Read the render state.
     # Viewport:
     viewport = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_VIEWPORT))
-    viewport = (min=viewport.xy, max=viewport.zw)
+    viewport = (min=v2i(viewport.xy), max=v2i(viewport.zw))
     # Scissor:
     if glIsEnabled(GL_SCISSOR_TEST)
         scissor = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_SCISSOR_BOX))
-        scissor = (min=scissor.xy, max=scissor.zw)
+        scissor = (min=v2i(scissor.xy), max=v2i(scissor.zw))
     else
         scissor = nothing
     end

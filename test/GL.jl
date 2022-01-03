@@ -60,7 +60,7 @@ function test_buffers()
     buf_actual = get_buffer_data(buf2; src_byte_offset = 11, src_elements = IntervalU(1, 2))
     @bp_check(buf_actual == [ 0x9, 0x19 ],
               "Copying buffers with offsets: expected [ 0x9, 0x19 ], got ", buf_actual)
-    
+
     # Clean up.
     close(buf2)
     close(buf)
@@ -165,15 +165,18 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
     @bp_check(context === GL.get_context(),
               "Just started this Context, but another one is the singleton")
 
-    test_buffers()
-    GL_TEST_FULL && test_textures()
-    
+    # Run some basic tests with GL resources.
+    if GL_TEST_FULL
+        test_buffers()
+        test_textures()
+    end
+
     # Set up a mesh with some triangles.
     # Each triangle has position, color, and "IDs".
     # The position data is in its own buffer.
-    buf_tris_poses = Buffer(false, [ v4f(-0.5, -0.5, 0.5, 1.0),
-                                     v4f(-0.5, 0.5, 0.5, 1.0),
-                                     v4f(0.5, 0.5, 0.5, 1.0) ])
+    buf_tris_poses = Buffer(false, [ v4f(-0.75, -0.75, 0.75, 1.0),
+                                     v4f(-0.75, 0.75, 0.75, 1.0),
+                                     v4f(0.75, 0.75, 0.75, 1.0) ])
     # The color and IDs are together in a second buffer.
     buf_tris_color_and_IDs = Buffer(false, Tuple{vRGBu8, Vec{2, UInt8}}[
         (vRGBu8(128, 128, 128), Vec{2, UInt8}(1, 0)),
@@ -226,7 +229,7 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
             float scale = float(u_colorCurveAt512[3][1][2]);
             fOut_color.rgb = pow(fOut_color.rgb, vec3(scale));
 
-            fOut_color.rgb *= texture(u_tex, gl_FragCoord.xy / 50.0).rgb;
+            fOut_color.rgb *= texture(u_tex, gl_FragCoord.xy / vec2(800, 500)).rgb;
         }
     """
     function check_uniform(name::String, type, array_size)
@@ -249,13 +252,19 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
     GL.set_culling(context, GL.FaceCullModes.Off)
 
     # Set up the texture used to draw the triangles.
-    tex_data = Array{vRGBf, 2}(undef, (64, 64))
-    for x in 1:64
-        for y in 1:64
+    T_SIZE::Int = 512
+    tex_data = Array{vRGBf, 2}(undef, (T_SIZE, T_SIZE))
+    for x in 1:T_SIZE
+        for y in 1:T_SIZE
+            perlin_pos::v2f = v2f(x, y) / @f32(T_SIZE)
+            perlin_pos *= 20
             tex_data[y, x] = vRGBf(
-                x/64,
-                y/64,
-                rand()
+                perlin(perlin_pos;
+                       seeds = fill_in_seeds(v2f, 0x90843277)),
+                perlin(perlin_pos;
+                       seeds = fill_in_seeds(v2f, 0xabfbcce2)),
+                perlin(perlin_pos;
+                       seeds = fill_in_seeds(v2f, 0x5678cbef))
             )
         end
     end
@@ -320,5 +329,6 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
               "GL.Mesh's handle isn't nulled out after closing")
 end
 
+# Make sure the Context got cleaned up.
 @bp_check(isnothing(GL.get_context()),
           "Just closed the context, but it still exists")

@@ -10,6 +10,21 @@
 @bp_test_no_allocations(Vec{Float64}(i -> i + 2, 3) isa Vec{3, Float64}, true)
 @bp_test_no_allocations(Vec{3, Float64}(i -> i + 2), Vec(3, 4, 5), true)
 @bp_test_no_allocations(v3f(Val(5)), v3f(5, 5, 5))
+@bp_test_no_allocations(v2f(v2f(4.0, 6.0)) isa v2f, true)
+@bp_test_no_allocations(v2f(v2i(4, 6)) isa v2f, true)
+
+# Sometimes the size of tuples is more than the sum of their parts
+#    (maybe it's an alignment thing?)
+# Make sure vectors are sized as expected.
+for comp_type in ALL_REALS
+    for comp_size in 1:16
+        T = Vec{comp_size, comp_type}
+        actual_size = sizeof(T)
+        expected_size = sizeof(comp_type) * comp_size
+        @bp_check(actual_size == expected_size,
+                  "Expected $T to have byte-size $expected_size but it's $actual_size")
+    end
+end
 
 # Test our ability to construct aliases.
 @bp_test_no_allocations(typeof(Vec3{Int8}(1, 2, 3)),
