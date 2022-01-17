@@ -100,11 +100,7 @@ end
 println()
 
 # Test some ConstPRNG functionality.
-print("\tTesting ConstPRNG features...\n\t\t")
 for i in 1:1000
-    if (i % 50) == 49
-        print(".")
-    end
     @bp_test_no_allocations(rand_ntuple(ConstPRNG(), (3, 4, 5))[1] in (3, 4, 5), true)
     @bp_check(rand(ConstPRNG(), (3, 4.0, 5))[1] in (3, 4.0, 5))  # Apparently rand((3, 4.0, 5)) inherently has heap-allocations
     @bp_test_no_allocations(rand(ConstPRNG(), 4:21)[1] in 4:21, true)
@@ -116,10 +112,8 @@ for i in 1:1000
     @bp_check(rand(ConstPRNG(), Dict(4=>50, 5=>10))[1][1] in 4:5, true)
     @bp_check(rand(ConstPRNG(), "ghi")[1] in "ghi", true)
 end
-println()
 
 # Test RandIterator.
-println("\tTesting RandIterator...")
 @bp_test_no_allocations(typeof(RandIterator(200)), RandIterator{Int, ConstPRNG})
 @bp_test_no_allocations_setup(
     begin
@@ -144,11 +138,10 @@ orderings = map(i -> collect(RandIterator(1000)),
 @bp_check(allunique(orderings),
           "RandIterator(1000) managed to generate the same sequence more than once; this is virtually impossible with proper randomness")
 
-println("\tRunning other tests...")
 const prng = PRNG(0x1234567)
 const prng2 = PRNG(0x1234567)
 
-const N_ITERATIONS = 9999999  # A balance between speed and having enough samples
+const N_ITERATIONS = 999999  # A balance between speed and having enough samples
 
 @bp_test_no_allocations(copy(prng) isa PRNG, true)
 
