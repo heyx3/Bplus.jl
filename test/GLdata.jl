@@ -23,4 +23,4 @@ using Bplus.GL
 @bp_test_no_allocations(get_component_count(Int8), 1)
 @bp_test_no_allocations(get_component_count(PixelBufferD{3, Vec{2, Float32}}), 2)
 
-#TODO: Test packed depth/stencil primitive types.
+println("#TODO: Test packed depth/stencil primitive types.")

@@ -146,7 +146,7 @@ end
 function Mesh( type::E_PrimitiveTypes,
                vertex_sources::AbstractVector{VertexDataSource},
                vertex_fields::AbstractVector{VertexAttribute},
-               index_data::Optional{Tuple{Buffer, Type{<:MeshIndexTypes}}} = nothing
+               index_data::Optional{Tuple{Buffer, DataType}} = nothing
              )
     @bp_check(exists(get_context()), "Trying to create a Mesh outside a GL Context")
     m::Mesh = Mesh(Ptr_Mesh(get_from_ogl(gl_type(Ptr_Mesh), glCreateVertexArrays, 1)),
@@ -157,7 +157,9 @@ function Mesh( type::E_PrimitiveTypes,
 
     # Configure the index buffer.
     if exists(index_data)
-        glVertexArrayElementBuffer(m.handle, index_data[1].buf.handle)
+        @bp_check(index_data[2] <: MeshIndexTypes,
+                  "Index type ", index_data[2], " is not <: ", MeshIndexTypes)
+        glVertexArrayElementBuffer(m.handle, index_data[1].handle)
     end
 
     # Configure the vertex buffers.
@@ -192,12 +194,12 @@ function Mesh( type::E_PrimitiveTypes,
         elseif vert.field_type <: VertexData_DVector
             gl_func = glVertexArrayAttribLFormat
         elseif vert.field_type <: VertexData_MatrixF
-            normalized_args = (GL_FALSE, )
+            normalized_args = tuple(GL_FALSE)
             gl_func = glVertexArrayAttribFormat
         elseif vert.field_type <: VertexData_MatrixD
             gl_func = glVertexArrayAttribLFormat
         elseif vert.field_type <: VertexData_FVector
-            normalized_args = (vert_data_is_normalized(vert.field_type) ? GL_TRUE : GL_FALSE, )
+            normalized_args = tuple(vert_data_is_normalized(vert.field_type) ? GL_TRUE : GL_FALSE)
             gl_func = glVertexArrayAttribFormat
         else
             error("Unhandled case: ", vert.field_type)
@@ -256,18 +258,18 @@ end
 
 "
 Gets the maximum number of vertices (or indices, if indexed)
-  this mesh can offer for rendering
+  this mesh can offer for rendering.z
 "
 function count_mesh_elements(m::Mesh)::Int
     if exists(m.index_data)
-        return get_max_elements(m.index_data[1])
+        return m.index_data[1].byte_size ÷ sizeof(m.index_data[2])
     else
         return count_mesh_vertices(m)
     end
 end
 
 
-#TODO: Operations to change vertex data
+println("#TODO: Operations to change vertex data")
 
 "Adds/changes the index data for this mesh"
 function set_index_data(m::Mesh, source::Buffer, type::Type{<:MeshIndexTypes})

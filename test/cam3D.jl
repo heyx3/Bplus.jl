@@ -28,9 +28,7 @@ ENABLE_CAM3D && bp_gl_context(v2i(800, 500), "Cam3D test"; vsync=VsyncModes.On) 
                           [ VertexAttribute(1, 0x0, VertexData_FVector(4, Float32)),  # The positions, pulled directly from a v4f
                             VertexAttribute(2, 0x0, VertexData_FVector(3, Float32)) # The colors, pulled directly fromm a v3f
                           ])
-
     # Set up a shader to render the triangles.
-    # Use a variety of uniforms and vertex attributes to mix up the colors.
     draw_triangles::Program = bp_glsl"""
         uniform vec2 u_clipPlanes = vec2(0.01, 10.0);
         float linearDepth(float z) {
@@ -64,11 +62,74 @@ ENABLE_CAM3D && bp_gl_context(v2i(800, 500), "Cam3D test"; vsync=VsyncModes.On) 
         }
     """
 
+    # Set up a "sky box".
+    buf_skybox_poses = Buffer(false, [
+        Vec3{Int8}(-1, -1, -1),
+        Vec3{Int8}(1, -1, -1),
+        Vec3{Int8}(-1, 1, -1),
+        Vec3{Int8}(1, 1, -1),
+        Vec3{Int8}(-1, -1, 1),
+        Vec3{Int8}(1, -1, 1),
+        Vec3{Int8}(-1, 1, 1),
+        Vec3{Int8}(1, 1, 1)
+    ])
+    buf_skybox_indices = Buffer(false, UInt8[
+        # -X
+        0, 2, 4,
+        2, 4, 6,
+
+        # +X
+        1, 3, 5,
+        3, 5, 7,
+
+        # -Y
+        0, 1, 4,
+        1, 4, 5,
+
+        # +Y
+        2, 3, 6,
+        3, 6, 7,
+
+        # -Z
+        0, 1, 2,
+        1, 2, 3,
+
+        # +Z
+        4, 5, 6,
+        5, 6, 7
+    ])
+    mesh_skybox = Mesh(PrimitiveTypes.triangle,
+                       [ VertexDataSource(buf_skybox_poses, sizeof(Vec3{Int8})) ],
+                       [ VertexAttribute(1, 0x0, VertexData_FVector(3, Int8, false)) ],
+                       (buf_skybox_indices, UInt8))
+    # Set up a shader to render the skybox.
+    draw_skybox::Program = bp_glsl"""
+        uniform vec3 u_camPos = vec3(0.0, 0.0, 0.0);
+    #START_VERTEX
+        in vec3 vIn_pos;
+        uniform mat4 u_mat_view, u_mat_projection;
+        out vec3 vOut_worldPos;
+        out vec3 vOut_edgeID;
+        void main() {
+            vOut_worldPos = (vIn_pos * 6.0) + u_camPos;
+            gl_Position = u_mat_projection * (u_mat_view * vec4(vOut_worldPos, 1.0));
+        }
+    #START_FRAGMENT
+        in vec3 vOut_worldPos;
+        //uniform samplerCubemap u_tex;
+        out vec4 fOut_color;
+        void main() {
+            vec3 eyeDir = normalize(vOut_worldPos - u_camPos);
+            vec3 skyColor = abs(eyeDir);
+
+            fOut_color = vec4(skyColor, 1.0);
+        }
+    """
+    println("#TODO: Add a cubemap texture to the skybox")
+
     # Configure the render state.
     println("#TODO: Test culling mode")
     GL.set_culling(context, GL.FaceCullModes.Off)
-
-    println("#TODO: Add a cubemap texture for the sky, with a second shader to draw it")
 
     # Set up the texture used to draw the triangles.
     # It's a one-channel texture containing perlin noise.
@@ -106,10 +167,7 @@ ENABLE_CAM3D && bp_gl_context(v2i(800, 500), "Cam3D test"; vsync=VsyncModes.On) 
         forward = vnorm(v3f(1, 1, -1)),
         up = v3f(0, 0, 1),
 
-        fov_degrees = 90,
-        aspect_width_over_height = 800 / 500,
-
-        clip_range = Box_minmax(0.01, 5.0)
+        clip_range = Box_minmax(0.01, 10.0)
     )
     cam_settings = Cam3D_Settings{Float32}(
         move_speed = 5
@@ -157,6 +215,8 @@ ENABLE_CAM3D && bp_gl_context(v2i(800, 500), "Cam3D test"; vsync=VsyncModes.On) 
         )
         old_cam = cam
         (cam, cam_settings) = cam_update(cam, cam_settings, cam_input, delta_seconds)
+        mat_view::fmat4x4 = cam_view_mat(cam)
+        mat_projection::fmat4x4 = cam_projection_mat(cam)
 
         # Clear the screen.
         set_viewport(context, zero(v2i), window_size)
@@ -164,14 +224,20 @@ ENABLE_CAM3D && bp_gl_context(v2i(800, 500), "Cam3D test"; vsync=VsyncModes.On) 
         GL.render_clear(context, GL.Ptr_Target(), clear_col)
         GL.render_clear(context, GL.Ptr_Target(), @f32 1.0)
 
+        # Draw the skybox.
+        #TODO: Move to be after the triangles to test depth-testing.
+        set_uniform(draw_skybox, "u_camPos", cam.pos)
+        set_uniform(draw_skybox, "u_mat_view", mat_view)
+        set_uniform(draw_skybox, "u_mat_projection", mat_projection)
+        GL.render_mesh(context, mesh_skybox, draw_skybox,
+                       elements = IntervalU(1, 36))
+
         # Draw the triangles.
         set_uniform(draw_triangles, "u_pixelSize", v2f(window_size))
         set_uniform(draw_triangles, "u_clipPlanes",
                     v2f(cam.clip_range.min, max_exclusive(cam.clip_range)))
-        set_uniform(draw_triangles, "u_mat_worldview",
-                    cam_view_mat(cam))
-        set_uniform(draw_triangles, "u_mat_projection",
-                    cam_projection_mat(cam))
+        set_uniform(draw_triangles, "u_mat_worldview", mat_view)
+        set_uniform(draw_triangles, "u_mat_projection", mat_projection)
         GL.render_mesh(context, mesh_triangles, draw_triangles,
                        elements = IntervalU(1, 4))
 
@@ -182,20 +248,16 @@ ENABLE_CAM3D && bp_gl_context(v2i(800, 500), "Cam3D test"; vsync=VsyncModes.On) 
         end
     end
 
-    # Clean up the textures.
+    # Clean up.
     close(tex)
-    @bp_check(tex.handle == GL.Ptr_Texture(),
-              "GL.Texture's handle isn't nulled out after closing")
-
-    # Clean up the shader.
     close(draw_triangles)
-    @bp_check(draw_triangles.handle == GL.Ptr_Program(),
-              "GL.Program's handle isn't nulled out after closing")
-
-    # Clean up the buffer.
+    close(draw_skybox)
     close(mesh_triangles)
-    @bp_check(mesh_triangles.handle == GL.Ptr_Mesh(),
-              "GL.Mesh's handle isn't nulled out after closing")
+    close(mesh_skybox)
+    close(buf_tris_poses)
+    close(buf_tris_colors)
+    close(buf_skybox_poses)
+    close(buf_skybox_indices)
 end
 
 # Make sure the Context got cleaned up.

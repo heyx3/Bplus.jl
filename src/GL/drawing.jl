@@ -176,7 +176,7 @@ function render_mesh( context::Context,
         end
         # Pre-compute data.
         index_type = get_index_ogl_enum(mesh.index_data[2])
-        index_byte_size = sizeof(get_index_type(mesh.index_data[2]))
+        index_byte_size = sizeof(mesh.index_data[2])
         # Make the draw calls.
         if elements isa AbstractArray{IntervalU}
             offsets = ntuple(i -> index_byte_size * (elements[i].min - 1), length(elements))
@@ -188,61 +188,67 @@ function render_mesh( context::Context,
                                           Ref(offsets),
                                           length(elements),
                                           Ref(value_offsets))
-        elseif indexed_params.value_offset == 0
-            if exists(instances)
-                if instances.min == 1
-                    glDrawElementsInstanced(shape, elements.size,
-                                            index_type,
-                                            index_byte_size * (elements.min - 1),
-                                            instances.size)
-                else
-                    glDrawElementsInstancedBaseInstance(shape, elements.size,
-                                                        index_type,
-                                                        index_byte_size * (elements.min - 1),
-                                                        instances.size,
-                                                        instances.min - 1)
-                end
-            elseif exists(known_vertex_range)
-                glDrawRangeElements(shape,
-                                    known_vertex_range.min - 1,
-                                    max_inclusive(known_vertex_range) - 1,
-                                    elements.size,
-                                    index_type,
-                                    index_byte_size * (elements.min - 1))
-            else
-                glDrawElements(shape, elements.size,
-                               index_type,
-                               index_byte_size * (elements.min - 1))
-            end
         else
-            if exists(instances)
-                if instances.min == 1
-                    glDrawElementsInstancedBaseVertex(shape, elements.size,
-                                                      index_type,
-                                                      index_byte_size * (elements.min - 1),
-                                                      instances.size,
-                                                      indexed_params.value_offset)
+            # OpenGL has a weird requirement that the index offset be a void*,
+            #    not a simple integer.
+            index_byte_offset = Ptr{Cvoid}(index_byte_size * (elements.min - 1))
+
+            if indexed_params.value_offset == 0
+                if exists(instances)
+                    if instances.min == 1
+                        glDrawElementsInstanced(shape, elements.size,
+                                                index_type,
+                                                index_byte_offset,
+                                                instances.size)
+                    else
+                        glDrawElementsInstancedBaseInstance(shape, elements.size,
+                                                            index_type,
+                                                            index_byte_offset,
+                                                            instances.size,
+                                                            instances.min - 1)
+                    end
+                elseif exists(known_vertex_range)
+                    glDrawRangeElements(shape,
+                                        known_vertex_range.min - 1,
+                                        max_inclusive(known_vertex_range) - 1,
+                                        elements.size,
+                                        index_type,
+                                        index_byte_offset)
                 else
-                    glDrawElementsInstancedBaseVertexBaseInstance(shape, elements.size,
-                                                                  index_type,
-                                                                  index_byte_size * (elements.min - 1),
-                                                                  instances.size,
-                                                                  indexed_params.value_offset,
-                                                                  instances.min - 1)
+                    glDrawElements(shape, elements.size,
+                                index_type,
+                                index_byte_offset)
                 end
-            elseif exists(known_vertex_range)
-                glDrawRangeElementsBaseVertex(shape,
-                                              known_vertex_range.min - 1,
-                                              max_inclusive(known_vertex_range) - 1,
-                                              elements.size,
-                                              index_type,
-                                              index_byte_size * (elements.min - 1),
-                                              indexed_params.value_offset)
             else
-                glDrawElementsBaseVertex(shape, elements.size,
-                                         index_type,
-                                         index_byte_size * (elements.min - 1),
-                                         indexed_params.value_offset)
+                if exists(instances)
+                    if instances.min == 1
+                        glDrawElementsInstancedBaseVertex(shape, elements.size,
+                                                        index_type,
+                                                        index_byte_offset,
+                                                        instances.size,
+                                                        indexed_params.value_offset)
+                    else
+                        glDrawElementsInstancedBaseVertexBaseInstance(shape, elements.size,
+                                                                    index_type,
+                                                                    index_byte_offset,
+                                                                    instances.size,
+                                                                    indexed_params.value_offset,
+                                                                    instances.min - 1)
+                    end
+                elseif exists(known_vertex_range)
+                    glDrawRangeElementsBaseVertex(shape,
+                                                known_vertex_range.min - 1,
+                                                max_inclusive(known_vertex_range) - 1,
+                                                elements.size,
+                                                index_type,
+                                                index_byte_offset,
+                                                indexed_params.value_offset)
+                else
+                    glDrawElementsBaseVertex(shape, elements.size,
+                                            index_type,
+                                            index_byte_offset,
+                                            indexed_params.value_offset)
+                end
             end
         end
     else
