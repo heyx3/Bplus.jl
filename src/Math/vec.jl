@@ -453,6 +453,7 @@ end
 # I had problems sending arrays of Vec into OpenGL through a pointer.
 Base.unsafe_convert(::Type{Ptr{T}}, r::Ref{Vec{N, T}}) where {N, T} =
     Base.unsafe_convert(Ptr{T}, Base.unsafe_convert(Ptr{Nothing}, r))
+#
 
 
 ################
@@ -551,6 +552,31 @@ export vlength_sqr, vlength
 vnorm(v::Vec) = v / vlength(v)
 export vnorm
 
+"
+Constructs an orthogonal 3D vector basis as similar as possible to the input vectors.
+If the vectors are equal, then the up axis will usually be calculated with the global up axis.
+Returns the new forward and right vectors.
+"
+function vbasis( forward::V3,
+                 right::V3
+               )::NTuple{2, V3} where {V3<:Vec3}
+    # Find the up vector.
+    local up::V3
+    if !isapprox(forward, right)
+        up = vnorm(forward × right) #TODO: Add unit tests, then check if this normalization is really necessary.
+    else
+        up = get_up_vector(V3.parameters[2])
+        if isapprox(right, up)
+            up = get_horz_vector(1, V3.parameters[2])
+        end
+    end
+
+    # Recalculate the right vector.
+    right = vnorm(up × forward)
+    return (forward, right)
+end
+export vbasis
+
 "Checks whether a vector is normalized, within the given epsilon"
 @inline is_normalized(v::Vec{N, T}, atol::T2 = 0.0) where {N, T, T2} =
     isapprox(vlength_sqr(v), one(T); atol=atol*atol)
@@ -622,7 +648,16 @@ get_up_sign()::Int = 1
         mod1(up_i + 1, 3),
         mod1(up_i + 2, 3)
     )
-    return TupleTools.sort(idcs)
+    if (idcs[1] > idcs[2])
+        idcs = (idcs[2], idcs[1])
+    end
+    return idcs
+end
+"Gets one of the two horizontal vectors."
+@inline function get_horz_vector(i::Int, F = Float32)::Vec3{F}
+    v = zero(Vec3{F})
+    @set! v[get_horz_axes()[i]] = one(F)
+    return v
 end
 
 "Extracts the horizontal components from a 3D vector."
@@ -648,7 +683,7 @@ get_vert(v::Vec3) = v[get_up_axis()]
 end
 
 export get_up_sign, get_up_axis, get_up_vector,
-       get_horz_axes,
+       get_horz_axes, get_horz_vector,
        get_horz, get_vert, to_3d
 #
 

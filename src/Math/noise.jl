@@ -136,7 +136,6 @@ export perlin_fast
         #    then copy into an immutable vector,
         #    and trust the compiler to optimze.
         #TODO: Based on testing, we can expect a 2x speedup by removing the StaticArrays stuff and just using normal variables.
-        #TODO: Instead of messing with StaticArrays, try directly writing N copies of the gradient/noise code. Profile the change in performance.
         corner_noise::SVector{$n_corners, T} =
             let output = MVector{$n_corners, T}(undef)
                 for i::Int in 1:$n_corners

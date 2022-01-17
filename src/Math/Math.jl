@@ -11,6 +11,7 @@ include("functions.jl")
 
 include("mat.jl")
 include("quat.jl")
+include("transformations.jl")
 
 include("box.jl")
 include("sphere.jl")

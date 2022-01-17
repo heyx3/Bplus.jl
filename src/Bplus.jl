@@ -14,4 +14,6 @@ end
 
 @submodule GL
 
+@submodule Helpers
+
 end # module

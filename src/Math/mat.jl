@@ -54,11 +54,44 @@ export Mat, MatF, MatD,
        fmat2, fmat3, fmat4, dmat2, dmat3, dmat4,
        fmat2x2, fmat2x3, fmat2x4, fmat3x2, fmat3x3, fmat3x4, fmat4x2, fmat4x3, fmat4x4,
        dmat2x2, dmat2x3, dmat2x4, dmat3x2, dmat3x3, dmat3x4, dmat4x2, dmat4x3, dmat4x4
+#
+
+
+@inline Base.:*(m::Mat, v::Vec) = Vec((m * SVector(v...))...)
+
+"Applies a transform matrix to the given coordinate."
+function m_apply_point(m::Mat{4, 4, F}, v::Vec{3, F})::Vec{3, F} where {F}
+    v4::Vec{4, F} = Vec(v, one(F))
+    v4 = m * v4
+    return v4.xyz / v4.w
+end
+function a_apply_point(m::Mat{3, 3, F}, v::Vec{2, F})::Vec{2, F} where {F}
+    v3::Vec{3, F} = Vec(v, one(F))
+    v3 = m * v3
+    return v3.xy / v3.z
+end
+"Applies a transform matrix to the given vector (i.e. ignoring translation)."
+function m_apply_vector(m::Mat{4, 4, F}, v::Vec{3, F}) where {F}
+    v4::Vec{4, F} = Vec(v, zero(F))
+    v4 = m * v4
+    return v4.xyz / v4.w
+end
+function m_apply_vector(m::Mat{3, 3, F}, v::Vec{2, F}) where {F}
+    v3::Vec{3, F} = Vec(v, zero(F))
+    v3 = m * v3
+    return v3.xy / v3.z
+end
+export m_apply_point, m_apply_vector
+#TODO: Fast version of these two functons which ignores the homogenous coordinate divide.
 
 
 "Inverts the given matrix"
 const m_invert = StaticArrays.inv
 export m_invert
+
+"Transposes the given matrix"
+const m_transpose = StaticArrays.transpose
+export m_transpose
 
 "Creates an identity matrix"
 m_identity(n_cols::Int, n_rows::Int, F::Type{<:AbstractFloat}) = one(Mat{n_cols, n_rows, F, n_cols*n_rows})
@@ -72,11 +105,12 @@ export m_identity, m_identityf, m_identityd
 Embeds a 3x3 matrix into a 4x4 matrix.
 A 4x4 matrix is needed to represent 3D translations.
 """
-to_mat4x4(m::Mat{3, 3, F, 9}) where {F} =
-    @SMatrix [ m[1]    m[4]    m[7]    zero(F)
-               m[2]    m[5]    m[8]    zero(F)
-               m[3]    m[6]    m[9]    zero(F)
-               zero(F) zero(F) zero(F) one(F)  ]
+@inline to_mat4x4(m::Mat{3, 3, F, 9}) where {F} = Mat{4, 4}(
+    m[:, 1]..., zero(F),
+    m[:, 2]..., zero(F),
+    m[:, 3]..., zero(F),
+    zero(F), zero(F), zero(F), one(F)
+)
 export to_mat4x4
 
 
@@ -89,5 +123,3 @@ I can't overload Base.convert, because Mat isn't really my type --
 bp_unsafe_convert(::Type{Ptr{T}}, r::Ref{Mat{C, R, T, Len}}) where {C, R, T, Len} =
     Base.unsafe_convert(Ptr{T}, Base.unsafe_convert(Ptr{Nothing}, r))
 export bp_unsafe_convert
-
-#TODO: another file 'transformations.jl' handling world, view, and projection math.
