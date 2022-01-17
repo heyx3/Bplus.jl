@@ -9,48 +9,6 @@
 @bp_test_no_allocations(typeof(rand(ConstPRNG(), 5.5:10:2000.5)[1]), Float64)
 @bp_test_no_allocations(typeof(rand(ConstPRNG(), range(1, length=13, stop=20))[1]), Float64)
 
-# Test fill_in_seeds().
-const DESIRED_FILL_IN_SIZE = Dict(
-    0 => 12,
-    1 => 10,
-    2 => 10,
-    3 => 9,
-    4 => 8,
-    5 => 6,
-    6 => 6,
-    7 => 5,
-    8 => 4,
-    9 => 2,
-    10 => 2,
-    11 => 1
-)
-function test_fill_in_seeds(::Type{T}) where {T}
-    existing_size = if T <: Tuple
-                        sum(sizeof, T.parameters, init=0)
-                    else
-                        sizeof(T)
-                    end
-
-    expected_size = get(DESIRED_FILL_IN_SIZE, existing_size, 0)
-
-    # Test without a hash seed.
-    @bp_test_no_allocations(
-        begin
-            actual_value = fill_in_seeds(T)
-            actual_size = sum(sizeof, typeof(actual_value).parameters, init=0)
-            actual_size
-        end,
-        expected_size,
-        "fill_in_seeds() output the wrong amount of bits"
-    )
-end
-test_fill_in_seeds.(ALL_REALS)
-test_fill_in_seeds.([ Tuple{x...} for x in Iterators.product(ALL_REALS, ALL_REALS) ])
-println(stderr, "\tTesting large types for fill_in_seeds()...")
-test_fill_in_seeds.([ Tuple{x...} for x in Iterators.product(ALL_UNSIGNED, ALL_SIGNED, ALL_FLOATS) ])
-test_fill_in_seeds.([ Tuple{x...} for x in Iterators.product(ALL_FLOATS, ALL_UNSIGNED, ALL_SIGNED) ])
-test_fill_in_seeds(NTuple{99, UInt8})
-
 "
 Runs the following tests for an RNG with N input seeds of any scalar type:
     1. Tests that constructing it doesn't allocate

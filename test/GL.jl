@@ -259,12 +259,9 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
             perlin_pos::v2f = v2f(x, y) / @f32(T_SIZE)
             perlin_pos *= 20
             tex_data[y, x] = vRGBf(
-                perlin(perlin_pos;
-                       seeds = fill_in_seeds(v2f, 0x90843277)),
-                perlin(perlin_pos;
-                       seeds = fill_in_seeds(v2f, 0xabfbcce2)),
-                perlin(perlin_pos;
-                       seeds = fill_in_seeds(v2f, 0x5678cbef))
+                perlin(perlin_pos, tuple(0x90843277)),
+                perlin(perlin_pos, tuple(0xabfbcce2)),
+                perlin(perlin_pos, tuple(0x5678cbef))
             )
         end
     end

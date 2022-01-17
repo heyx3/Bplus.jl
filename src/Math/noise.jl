@@ -2,76 +2,21 @@
 
 using StaticArrays
 
-
-function perlin_fast( v::Vec{2, T}
-                        ;
-                        seeds = fill_in_seeds(Vec{2, T}),
-                        t_curve::FCurve = smootherstep,
-                        pos_filter::FPosFilter = identity
-                      )::T where {FCurve, FPosFilter, T<:Union{AbstractFloat, Vec{2, <:AbstractFloat}}}
-    ONE = one(Vec{2, T})
-    TWO = Vec{2, T}(Val(2))
-
-    # Calculate the square this value falls inside.
-    v_min = map(floor, v)
-    v_minmax = (v_min, v_min + one(Vec{2, T}))
-    v_minmax_filtered = map(pos_filter, v_minmax)
-
-    noise_min = vdot(
-        let rng = ConstPRNG(v_minmax_filtered[1]..., seeds...)
-            (g_x, rng) = rand(rng, T)
-            (g_y, rng) = rand(rng, T)
-            ONE + (TWO * Vec(g_x, g_y))
-        end,
-        v_minmax[1] - v
-    )
-    noise_minXmaxY = vdot(
-        let rng = ConstPRNG(v_minmax_filtered[1].x, v_minmax_filtered[2].y, seeds...)
-            (g_x, rng) = rand(rng, T)
-            (g_y, rng) = rand(rng, T)
-            ONE + (TWO * Vec(g_x, g_y))
-        end,
-        Vec(v_minmax[1].x, v_minmax[2].y) - v
-    )
-    noise_maxXminY = vdot(
-        let rng = ConstPRNG(v_minmax_filtered[2].x, v_minmax_filtered[1].y, seeds...)
-            (g_x, rng) = rand(rng, T)
-            (g_y, rng) = rand(rng, T)
-            ONE + (TWO * Vec(g_x, g_y))
-        end,
-        Vec(v_minmax[2].x, v_minmax[1].y) - v
-    )
-    noise_max = vdot(
-        let rng = ConstPRNG(v_minmax_filtered[2]..., seeds...)
-            (g_x, rng) = rand(rng, T)
-            (g_y, rng) = rand(rng, T)
-            ONE + (TWO * Vec(g_x, g_y))
-        end,
-        v_minmax[2] - v
-    )
-
-    t = t_curve(v - v_min)
-    output = lerp(lerp(noise_min, noise_maxXminY, t.x),
-                  lerp(noise_minXmaxY, noise_max, t.x),
-                  t.y)
-    output = inv_lerp(-0.70710678118, 0.70710678118, output)
-    output = clamp(output, 0, 1)
-    return output
-end
-export perlin_fast
-
 @inline perlin(f::Real; kw...) = perlin(@f32(f), kw...)
 @inline perlin(f::AbstractFloat; kw...) = perlin(Vec(f); kw...)
-@generated function perlin( v::Vec{N, T};
+@generated function perlin( v::Vec{N, T},
                             # Extra seed data to randomize the output.
-                            seeds::TSeeds = fill_in_seeds(Vec{N, T}),
+                            seeds::TSeeds = tuple(),
+                            # With enough seed values, you can get away with a weaker PRNG
+                            #    without creating artifacts.
+                            prng_strength::TPrngStrength = Val(PrngStrength.medium),
                             # A function that filters the corner postions surrounding the input point.
                             # Use this to create wrapped or clamped noise.
                             filter_pos::TFuncFilter = identity,
                             # A mapping function applied to the noise interpolant.
                             # Smoother interpolants look better.
-                            t_curve::TFuncCurve = smootherstep
-                          )::T where {N, T, TFuncFilter, TFuncCurve, TSeeds<:Tuple}
+                            t_curve::TFuncCurve = smootherstep,
+                          )::T where {N, T, TFuncFilter, TFuncCurve, TPrngStrength, TSeeds<:Tuple}
     @bp_check((N isa Integer) && (N > 0),
               "Perlin noise must be done in a positive-dimensional space, but N == ", N)
 
@@ -104,7 +49,7 @@ export perlin_fast
     # Map each corner of the cube to its noise value,
     #    calculated based on the direction towards that corner and a random gradient.
     expr_make_gradient = quote
-        rng = ConstPRNG(pos_filtered..., seeds...)
+        rng = ConstPRNG(prng_strength, pos_filtered..., seeds...)
     end
     # Generate code to compute the gradient, like:
     #     (gradient_x::T, rng) = rand(rng, T)
@@ -117,7 +62,8 @@ export perlin_fast
         ))
     end
     push!(expr_make_gradient.args, :(
-        #TODO: This isn't a uniform distribution, it biases towards the corners. However, in practice it looks quite good...
+        #TODO: This isn't a uniform distribution, it biases towards the corners. However, in practice it looks quite good in 2D...
+        #TODO: See if we can get away with not normalizing the gradients. This would increase the range of possible output values.
         gradient::TVec = vnorm(lerp(-1, 1, TVec($(gradient_component_names...))))
     ))
     # Generate code that combines the gradient with the input position to get a noise value.
@@ -205,7 +151,7 @@ export perlin_fast
         return result
     end)
 
-    #println(string(output))
+    #@async println(output)
     return output
 end
 

@@ -18,9 +18,10 @@ You can also construct it with any number of scalar data parameters,
    to be hashed into seeds.
 If no seeds are given, one is generated with `rand(UInt32)`.
 
-The ideal number of seed bits is at least 96 (e.x. three 32-bit values);
-   less bits means more warmup time to mix the limited seed data
-   while extra bits cause a tiny bit of extra work to hash them with the first 96.
+When constructing it, you can optionally pass a 'mixing' strength as the first argument,
+    wrapped in the compile-time type `Val`.
+Weaker strengths result in better performance, but risk creating artifacts.
+The default is `Val(PrngStrength.strong)`, and with more seed values you can get away with weaker ones.
 "
 struct ConstPRNG <: Random.AbstractRNG
     state::UInt32
@@ -35,7 +36,19 @@ struct ConstPRNG <: Random.AbstractRNG
 end
 
 const PRNG_INITIAL_STATE = 0xf1ea5eed
-@inline @generated function ConstPRNG(seeds...)::ConstPRNG
+
+@bp_enum(PrngStrength,
+    weak=5,
+    medium=10,
+    strong=20
+)
+
+@inline ConstPRNG(seeds...) = ConstPRNG(Val(PrngStrength.strong), seeds...)
+@inline @generated function ConstPRNG( ::Val{IMixing},
+                                       seeds...
+                                     )::ConstPRNG where {IMixing}
+    @bp_check(IMixing isa E_PrngStrength,
+              "First argument to ConstPRNG() should be a Val{<:E_PrngStrength}")
     is_valid_seed_type(seed_type) = (seed_type <: Union{Scalar8, Scalar16, Scalar32, Scalar64, Scalar128})
     @bp_check(all(is_valid_seed_type, seeds),
               "Unexpected arguments, expected primitive scalar types: ",
@@ -144,43 +157,44 @@ const PRNG_INITIAL_STATE = 0xf1ea5eed
         end
     end
 
+    # If no arguments are given, generate a random starting seed.
+    if isempty(seeds)
+        return :( ConstPRNG(rand(UInt32)) )
+    end
+
     # If we get here, then all seeds are 32-bit data.
 
-    # If no arguments are given, generate a random starting seed.
-    if length(seeds) == 0
-        return :( ConstPRNG(rand(UInt32)) )
-    # If there's only one argument, use the original initialization logic from the article.
-    elseif length(seeds) == 1
+    # Once initialized, the bits have to be mixed to give good results.
+    mix_and_return = quote
+        for _ in 1:$(Int(IMixing))
+            (_, rng) = rand(rng, UInt32)
+        end
+        return rng
+    end
+
+    if length(seeds) == 1
         return quote
             seed::UInt32 = reinterpret(UInt32, seeds[1])
             rng::ConstPRNG = ConstPRNG(PRNG_INITIAL_STATE, (seed, seed, seed))
-            # I believe the reason for this is to weed out non-random initial behavior,
-            #    since we initialize 3 of the 4 state variables to the same value.
-            for _ in 1:20
-                (_, rng) = rand(rng, UInt32)
-            end
-            return rng
+            $mix_and_return
         end
-    # If there's two seeds, we do something similar
-    #    but don't need to run as many warm-up iterations.
     elseif length(seeds) == 2
         return quote
             u1::UInt32 = reinterpret(UInt32, seeds[1])
             u2::UInt32 = reinterpret(UInt32, seeds[2])
             rng::ConstPRNG = ConstPRNG(PRNG_INITIAL_STATE, (u1, u2, u1 ⊻ u2))
-            #TODO: Test how many iterations are needed to give good results.
-            for _ in 1:7
-                (_, rng) = rand(rng, UInt32)
-            end
-            return rng
+            $mix_and_return
         end
-    # If there's three seeds, we shouldn't need any warm-up iterations.
     elseif length(seeds) == 3
-        return :( ConstPRNG(PRNG_INITIAL_STATE, (reinterpret(UInt32, seeds[1]),
+        return quote
+            rng = ConstPRNG(PRNG_INITIAL_STATE, (reinterpret(UInt32, seeds[1]),
                                                  reinterpret(UInt32, seeds[2]),
-                                                 reinterpret(UInt32, seeds[3]))) )
+                                                 reinterpret(UInt32, seeds[3])))
+            $mix_and_return
+        end
     # If there are more than 3 seeds, hash the extras with the first 3.
     else
+        @bp_check(length(seeds) > 3)
         make_seeds = quote
             seed1::UInt32 = reinterpret(UInt32, seeds[1])
             seed2::UInt32 = reinterpret(UInt32, seeds[2])
@@ -194,72 +208,15 @@ const PRNG_INITIAL_STATE = 0xf1ea5eed
         end
         return quote
             $make_seeds
-            return ConstPRNG(PRNG_INITIAL_STATE, (seed1, seed2, seed3))
+            rng = ConstPRNG(PRNG_INITIAL_STATE, (seed1, seed2, seed3))
+            $mix_and_return
         end
     end
 end
 
 Base.copy(r::ConstPRNG) = r
 
-export ConstPRNG
-
-#####################################
-
-"
-Outputs a tuple of enough data to make 96 bits of PRNG input,
-    given the existing data that will be fed in
-    and, optionally, a 32-bit UInt seed to customize this output.
-"
-fill_in_seeds(existing) = fill_in_seeds(Val(sizeof(existing)))
-fill_in_seeds(::Type{T}) where {T<:Tuple} = fill_in_seeds(Val(sum(sizeof, T.parameters, init=0)))
-
-fill_in_seeds(existing, hash_seed::UInt32) = fill_in_seeds(Val(sizeof(existing)), hash_seed)
-fill_in_seeds(::Type{T}, hash_seed::UInt32) where {T<:Tuple} = fill_in_seeds(Val(sum(sizeof, T.parameters, init=0)), hash_seed)
-
-@inline fill_in_seeds(::Val{0}, hasher::UInt32) = (0x98765432 ⊻ hasher,
-                                                   0x87654321 ⊻ hasher,
-                                                   0x76543210 ⊻ hasher)
-@inline fill_in_seeds(::Val{1}, hasher::UInt32) = (0x23456789 ⊻ hasher,
-                                                   0x34567890 ⊻ hasher,
-                                                   0x4567 ⊻ UInt16(hasher & 0x0000ffff) ⊻
-                                                             UInt16(hasher >> 16))
-@inline fill_in_seeds(::Val{2}, hasher::UInt32) = fill_in_seeds(Val(1), hasher ⊻ 0xabcdef09)
-@inline fill_in_seeds(::Val{3}, hasher::UInt32) = (0x34567890 ⊻ hasher,
-                                                   0x4567890A ⊻ hasher,
-                                                   0x76 ⊻ UInt8(hasher & 0x000000ff) ⊻
-                                                          UInt8(hasher >> 24))
-
-@inline fill_in_seeds(::Val{4}, hasher::UInt32) = (0x567890AB ⊻ hasher,
-                                                   0x67890ABC ⊻ hasher)
-@inline fill_in_seeds(::Val{5}, hasher::UInt32) = (0x7890ABCD ⊻ hasher,
-                                                   0x5476 ⊻ UInt16(hasher & 0x0000ffff) ⊻
-                                                            UInt16(hasher >> 16))
-@inline fill_in_seeds(::Val{6}, hasher::UInt32) = fill_in_seeds(Val(5), hasher ⊻ 0x90fedcba)
-
-@inline fill_in_seeds(::Val{7}, hasher::UInt32) = (0x890ABCDE ⊻ hasher,
-                                                   0x67 ⊻ UInt8(hasher & 0x000000ff) ⊻
-                                                          UInt8(hasher >> 24))
-
-@inline fill_in_seeds(::Val{8}, hasher::UInt32) = (0x90ABCDEF ⊻ hasher, )
-@inline fill_in_seeds(::Val{9}, hasher::UInt32) = (0xCBFE ⊻ UInt16(hasher & 0x0000ffff) ⊻
-                                                            UInt16(hasher >> 16),
-                                                  )
-@inline fill_in_seeds(::Val{10}, hasher::UInt32) = fill_in_seeds(Val(9), hasher ⊻ 0x56473829)
-@inline fill_in_seeds(::Val{11}, hasher::UInt32) = (0xAA ⊻ UInt8(hasher & 0x000000ff) ⊻
-                                                           UInt8(hasher >> 24),
-                                                   )
-
-# Larger input data doesn't need any extra seeds.
-fill_in_seeds(::Val, hasher::UInt32) = (hasher, )
-@inline function fill_in_seeds(::Val{N}) where {N}
-    if (N > 11)
-        return ()
-    else
-        return fill_in_seeds(Val(N), 0x00000000)
-    end
-end
-
-export fill_in_seeds
+export ConstPRNG, PrngStrength, E_PrngStrength
 
 #####################################
 
@@ -272,7 +229,7 @@ mutable struct PRNG <: Random.AbstractRNG
     rng::ConstPRNG
 
     PRNG(rng::ConstPRNG) = new(rng)
-    PRNG(args...) = new(ConstPRNG(args...))
+    @inline PRNG(args...) = new(ConstPRNG(args...))
 end
 export PRNG
 

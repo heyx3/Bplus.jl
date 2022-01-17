@@ -77,9 +77,8 @@ ENABLE_CAM3D && bp_gl_context(v2i(800, 500), "Cam3D test"; vsync=VsyncModes.On) 
     for x in 1:T_SIZE
         for y in 1:T_SIZE
             perlin_pos::v2f = v2f(x, y) / @f32(T_SIZE)
-            perlin_pos *= 20
-            tex_data[y, x] = perlin(perlin_pos;
-                                    seeds = fill_in_seeds(v2f, 0xa8389337))
+            perlin_pos *= 10
+            tex_data[y, x] = perlin(perlin_pos)
         end
     end
     # Configure the texture swizzler to use the single channel for RGB,
