@@ -16,7 +16,7 @@ ENABLE_CAM3D && bp_gl_context(v2i(800, 500), "Cam3D test"; vsync=VsyncModes.On) 
     buf_tris_poses = Buffer(false, [ v4f(-0.75, -0.75, -0.75, 1.0),
                                      v4f(-0.75, 0.75, 0.25, 1.0),
                                      v4f(0.75, 0.75, 0.75, 1.0),
-                                     v4f(0.75, -0.75, -0.75, 1.0) ])
+                                     v4f(2.75, -0.75, -0.75, 1.0) ])
     buf_tris_colors = Buffer(false, [ v3f(1, 0, 0),
                                       v3f(0, 1, 0),
                                       v3f(0, 0, 1),
@@ -34,7 +34,7 @@ ENABLE_CAM3D && bp_gl_context(v2i(800, 500), "Cam3D test"; vsync=VsyncModes.On) 
     draw_triangles::Program = bp_glsl"""
         uniform vec2 u_clipPlanes = vec2(0.01, 10.0);
         float linearDepth(float z) {
-            return (z - u_clipPlanes.x) /
+            return -(z - u_clipPlanes.x) /
                    (u_clipPlanes.y - u_clipPlanes.x);
         }
         uniform vec2 u_pixelSize = vec2(800, 500);
@@ -53,7 +53,7 @@ ENABLE_CAM3D && bp_gl_context(v2i(800, 500), "Cam3D test"; vsync=VsyncModes.On) 
         in float vOut_depth;
         out vec4 fOut_color;
         void main() {
-            float depth_col = pow(vOut_depth, 0.5);
+            float depth_col = pow(vOut_depth, 1.0);
             fOut_color = vec4(depth_col, depth_col, depth_col,
                               1.0);
 
@@ -124,8 +124,13 @@ ENABLE_CAM3D && bp_gl_context(v2i(800, 500), "Cam3D test"; vsync=VsyncModes.On) 
         delta_seconds::Float32 = @f32(delta_time.value / 1000)
         current_time = new_time
 
+        window_size_data::NamedTuple = GLFW.GetWindowSize(context.window)
+        window_size::v2i = v2i(window_size_data.width, window_size_data.height)
+
         # Update the camera.
-        @set! cam.fov_degrees = convert(Float32, lerp(70, 110, 0.5 + (0.5 * sin((new_time - start_time).value / 2000))))
+        @set! cam.fov_degrees = @f32 lerp(70, 110,
+                                          0.5 + (0.5 * sin((new_time - start_time).value / 2000)))
+        @set! cam.aspect_width_over_height = @f32 window_size.x / window_size.y
         cam_input = Cam3D_Input{Float32}(
             # Enable rotation:
             GLFW.GetKey(context.window, GLFW.KEY_ENTER),
@@ -154,8 +159,6 @@ ENABLE_CAM3D && bp_gl_context(v2i(800, 500), "Cam3D test"; vsync=VsyncModes.On) 
         (cam, cam_settings) = cam_update(cam, cam_settings, cam_input, delta_seconds)
 
         # Clear the screen.
-        window_size_data::NamedTuple = GLFW.GetWindowSize(context.window)
-        window_size::v2i = v2i(window_size_data.width, window_size_data.height)
         set_viewport(context, zero(v2i), window_size)
         clear_col = vRGBAf(0.2, 0.2, 0.5, 0.0)
         GL.render_clear(context, GL.Ptr_Target(), clear_col)

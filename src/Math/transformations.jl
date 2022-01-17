@@ -104,12 +104,14 @@ end
                              up::Vec3{F}
                            )::Mat{4, 4, F} where {F}
     # Reference: https://www.geertarien.com/blog/2017/07/30/breakdown-of-the-lookAt-function-in-OpenGL/
+    
     forward::Vec3{F} = vnorm(target_pos - cam_pos)
     right::Vec3{F} = vnorm(vcross(forward, up))
     up = vcross(right, forward)
 
     forward = -forward
-    return m_transpose(Mat{4, 4, F}(
+    return m_transpose(Mat{4, 4, F}( # Notice the call to transpose --
+                                     #    these are the rows, not the columns.
         right..., -vdot(right, cam_pos),
         up..., -vdot(up, cam_pos),
         forward..., -vdot(forward, cam_pos),
