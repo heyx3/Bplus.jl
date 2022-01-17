@@ -1,5 +1,3 @@
-#TODO: Cubemap data definitions
-
 # The six faces of a cube, defined to match the OpenGL cubemap texture faces.
 # They are ordered in the same way that OpenGL orders them in memory.
 @bp_gl_enum(CubeFaces::GLenum,

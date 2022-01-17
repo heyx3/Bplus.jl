@@ -236,6 +236,9 @@ function refresh(context::Context)
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
     # Keep point sprite coordinates at their default origin: upper-left.
     glPointParameteri(GL_POINT_SPRITE_COORD_ORIGIN, GL_UPPER_LEFT)
+    # Make sure all cubemaps sample nicely around the edges.
+    # From what I understand, virtually all implementations can easily do this nowadays.
+    glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS)
 
     # Read the render state.
     # Viewport:
@@ -639,7 +642,10 @@ function set_viewport(context::Context, min::v2i, max::v2i)
     if context.state.viewport != new_view
         size = max - min + 1
         glViewport(min.x, min.y, size.x, size.y)
-        setfield!(context, :state, @set context.state.viewport = new_view)
+
+        render_state = context.state
+        @set! render_state.viewport = new_view
+        setfield!(context, :state, render_state)
     end
 end
 set_render_state(::Val{:viewport}, val::NamedTuple, c::Context) = set_viewport(c, val.min, val.max)

@@ -251,6 +251,8 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
     # Configure the render state.
     GL.set_culling(context, GL.FaceCullModes.Off)
 
+    println("#TODO: Add a cubemap texture for the sky, with a second shader to draw it")
+
     # Set up the texture used to draw the triangles.
     T_SIZE::Int = 512
     tex_data = Array{vRGBf, 2}(undef, (T_SIZE, T_SIZE))
