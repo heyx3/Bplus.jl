@@ -1,13 +1,13 @@
 # Test that ConstPRNG doesn't allocate.
-@bp_test_no_allocations(typeof(rand(ConstPRNG(), UInt)[1]), UInt)
-@bp_test_no_allocations(typeof(rand(ConstPRNG(), Int8)[1]), Int8)
-@bp_test_no_allocations(typeof(rand(ConstPRNG(), Bool)[1]), Bool)
-@bp_test_no_allocations(rand(ConstPRNG(), (1, 2.0))[1] isa Union{Int, Float64}, true)
-@bp_test_no_allocations(typeof(rand_ntuple(ConstPRNG(), (1, 2, 4))[1]), Int)
-@bp_test_no_allocations(typeof(rand(ConstPRNG(), 5:2000)[1]), Int)
-@bp_test_no_allocations(typeof(rand(ConstPRNG(), 5:10:2000)[1]), Int)
-@bp_test_no_allocations(typeof(rand(ConstPRNG(), 5.5:10:2000.5)[1]), Float64)
-@bp_test_no_allocations(typeof(rand(ConstPRNG(), range(1, length=13, stop=20))[1]), Float64)
+@bp_test_no_allocations(typeof(rand(ConstPRNG(0x12345678), UInt)[1]), UInt)
+@bp_test_no_allocations(typeof(rand(ConstPRNG(0x12345678), Int8)[1]), Int8)
+@bp_test_no_allocations(typeof(rand(ConstPRNG(0x12345678), Bool)[1]), Bool)
+@bp_test_no_allocations(rand(ConstPRNG(0x12345678), (1, 2.0))[1] isa Union{Int, Float64}, true)
+@bp_test_no_allocations(typeof(rand_ntuple(ConstPRNG(0x12345678), (1, 2, 4))[1]), Int)
+@bp_test_no_allocations(typeof(rand(ConstPRNG(0x12345678), 5:2000)[1]), Int)
+@bp_test_no_allocations(typeof(rand(ConstPRNG(0x12345678), 5:10:2000)[1]), Int)
+@bp_test_no_allocations(typeof(rand(ConstPRNG(0x12345678), 5.5:10:2000.5)[1]), Float64)
+@bp_test_no_allocations(typeof(rand(ConstPRNG(0x12345678), range(1, length=13, stop=20))[1]), Float64)
 
 "
 Runs the following tests for an RNG with N input seeds of any scalar type:
@@ -48,39 +48,63 @@ macro run_prng_test_for(n::Int)
 end
 # Test every combination of bits types with up to 4 seeds.
 print("\tRunning $(length(ALL_FLOATS)) sets of tests...\n\t\t")
-# Reduce the actual set of types tested to keep the tests fast.
-for (outer_i, T1) in enumerate(ALL_FLOATS)
-    if outer_i > 1
-        print(" | ")
-    end
-    print(outer_i, ":")
-
-    @run_prng_test_for(1)
-
-    for (inner_i, T2) in enumerate(ALL_UNSIGNED)
-        if inner_i > 1
+# Simplify the sets of types tested to keep the tests fast.
+type_combos = [
+    map(tuple, ALL_FLOATS)...,
+    Iterators.product(ALL_FLOATS, ALL_UNSIGNED)...,
+    Iterators.product(ALL_FLOATS, ALL_UNSIGNED, ALL_SIGNED)...,
+    Iterators.product(ALL_FLOATS, ALL_UNSIGNED, ALL_SIGNED, ALL_SIGNED)...
+]
+# Print some progress indicators to make it clear that tests are happening.
+const INNER_LENGTH = length(ALL_SIGNED) * length(ALL_SIGNED)
+const OUTER_LENGTH = length(ALL_UNSIGNED) * INNER_LENGTH
+for (i::Int, type_combo::NTuple{N, DataType} where N) in enumerate(type_combos)
+    n_types::Int = length(type_combo)
+    # Print the progress indicators:
+    i_0 = i-1
+    if (i_0 % OUTER_LENGTH) == 0
+        if (i_0 ÷ OUTER_LENGTH) > 0
+            print(" | ")
+        end
+        print((i_0 ÷ OUTER_LENGTH) + 1, ":")
+    elseif (i_0 % INNER_LENGTH) == 0
+        count = (i_0 ÷ INNER_LENGTH) % length(ALL_UNSIGNED)
+        if count > 1
             print(",")
         end
-        print(inner_i)
+        print(count + 1) 
+    end
+    # Run the test:
+    expr_make_seeds = map(t -> :( rand($t) ), collect(type_combo))
+    @eval begin
+        # Make sure the constructor doesn't allocate.
+        @bp_test_no_allocations(typeof(ConstPRNG($(expr_make_seeds...))), ConstPRNG,
+                                "Using ", $n_types, " seeds: ", join($type_combo, ", "))
+    end
+    # Make sure each seed value is important.
+    for seed_idx::Int in 1:n_types
+        seeds1 = eval(:( tuple($(expr_make_seeds...)) ))
 
-        @run_prng_test_for(2)
-
-        # Don't print the inner layers, they run too frequently.
-        for T3 in ALL_SIGNED
-            @run_prng_test_for(3)
-
-            # The fourth layer is important, giving us tests with an extra seed value
-            #    beyond the ideal 3.
-            for T4 in ALL_SIGNED
-                @run_prng_test_for(4)
-            end
+        TT = type_combo[seed_idx]
+        seeds2 = seeds1
+        while seeds2[seed_idx] == seeds1[seed_idx]
+            seeds2 = @set(seeds1[seed_idx] = rand(TT))
         end
+
+        @bp_check(rand(ConstPRNG(seeds1...), UInt32) !=
+                      rand(ConstPRNG(seeds2...), UInt32),
+                  "No change detected from changing seed ", seed_idx, " in the param set ",
+                    join(type_combo, ","), ":\n\t", seeds1, " vs ", seeds2)
     end
 end
 println()
 
 # Test some ConstPRNG functionality.
+print("\tTesting ConstPRNG features...\n\t\t")
 for i in 1:1000
+    if (i % 50) == 49
+        print(".")
+    end
     @bp_test_no_allocations(rand_ntuple(ConstPRNG(), (3, 4, 5))[1] in (3, 4, 5), true)
     @bp_check(rand(ConstPRNG(), (3, 4.0, 5))[1] in (3, 4.0, 5))  # Apparently rand((3, 4.0, 5)) inherently has heap-allocations
     @bp_test_no_allocations(rand(ConstPRNG(), 4:21)[1] in 4:21, true)
@@ -92,8 +116,10 @@ for i in 1:1000
     @bp_check(rand(ConstPRNG(), Dict(4=>50, 5=>10))[1][1] in 4:5, true)
     @bp_check(rand(ConstPRNG(), "ghi")[1] in "ghi", true)
 end
+println()
 
-# Test RandIterator
+# Test RandIterator.
+println("\tTesting RandIterator...")
 @bp_test_no_allocations(typeof(RandIterator(200)), RandIterator{Int, ConstPRNG})
 @bp_test_no_allocations_setup(
     begin
@@ -118,7 +144,7 @@ orderings = map(i -> collect(RandIterator(1000)),
 @bp_check(allunique(orderings),
           "RandIterator(1000) managed to generate the same sequence more than once; this is virtually impossible with proper randomness")
 
-
+println("\tRunning other tests...")
 const prng = PRNG(0x1234567)
 const prng2 = PRNG(0x1234567)
 

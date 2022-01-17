@@ -26,13 +26,7 @@ The default is `Val(PrngStrength.strong)`, and with more seed values you can get
 struct ConstPRNG <: Random.AbstractRNG
     state::UInt32
     seeds::NTuple{3,UInt32}
-
-    function ConstPRNG( state::S,
-                        seeds::Tuple{S1, S2, S3}
-                      ) where {S<:Integer, S1<:Integer, S2<:Integer, S3<:Integer}
-        new(convert(UInt32, state),
-            map(s -> convert(UInt32, s), seeds))
-    end
+    ConstPRNG(state::UInt32, seeds::NTuple{3, UInt32}) = new(state, seeds)
 end
 
 const PRNG_INITIAL_STATE = 0xf1ea5eed
@@ -43,16 +37,24 @@ const PRNG_INITIAL_STATE = 0xf1ea5eed
     strong=20
 )
 
-@inline ConstPRNG(seeds...) = ConstPRNG(Val(PrngStrength.strong), seeds...)
-@inline @generated function ConstPRNG( ::Val{IMixing},
-                                       seeds...
-                                     )::ConstPRNG where {IMixing}
-    @bp_check(IMixing isa E_PrngStrength,
+@inline ConstPRNG(strength::E_PrngStrength, seeds...)::ConstPRNG = ConstPRNG(Val(strength), seeds...)
+@inline ConstPRNG(seeds...)::ConstPRNG = ConstPRNG(PrngStrength.strong, seeds...)
+# Note: Originally this @generated function was also @inline.
+#   But it turns out that can create unexpected heap allocations!
+@generated function ConstPRNG( ::Val{IMixing},
+                               seeds...
+                             )::ConstPRNG where {IMixing}
+    @bp_check(IMixing isa E_PrngStrength || IMixing isa Integer,
               "First argument to ConstPRNG() should be a Val{<:E_PrngStrength}")
     is_valid_seed_type(seed_type) = (seed_type <: Union{Scalar8, Scalar16, Scalar32, Scalar64, Scalar128})
     @bp_check(all(is_valid_seed_type, seeds),
               "Unexpected arguments, expected primitive scalar types: ",
                  join(collect(enumerate(filter(is_valid_seed_type, seeds))), ", "))
+
+    # If no arguments are given, generate a random starting seed.
+    if isempty(seeds)
+        return :( ConstPRNG(Val($IMixing), rand(UInt32)) )
+    end
 
     # The seeds are natively 32-bit values.
     # If we have any other bit sizes,
@@ -153,13 +155,8 @@ const PRNG_INITIAL_STATE = 0xf1ea5eed
 
         return quote
             $vars_expr
-            return ConstPRNG($(call_params.args...))
+            return ConstPRNG(Val($IMixing), $(call_params.args...))
         end
-    end
-
-    # If no arguments are given, generate a random starting seed.
-    if isempty(seeds)
-        return :( ConstPRNG(rand(UInt32)) )
     end
 
     # If we get here, then all seeds are 32-bit data.

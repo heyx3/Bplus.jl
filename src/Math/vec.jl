@@ -527,7 +527,7 @@ swizzle(v::Vec, ::Val{T}) where {T} = swizzle(v, string(T))
 end
 
 "Computes the dot product of two vectors"
-vdot(v1::Vec, v2::Vec) = sum(Iterators.map(t->t[1]*t[2], zip(v1, v2)))
+@inline vdot(v1::Vec, v2::Vec) = +(((t[1] * t[2]) for t in zip(v1, v2))...)
 export vdot
 
 "Computes the square distance between two vectors"
