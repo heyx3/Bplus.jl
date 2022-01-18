@@ -30,7 +30,11 @@ mutable struct Texture <: Resource
 
     # The mixing of this texture's channels when it's being sampled by a shader.
     swizzle::SwizzleRGBA
+
+    # This texture's cached view handles.
+    known_views::Dict{ViewParams, View}
 end
+
 export Texture
 
 function Base.close(t::Texture)
@@ -227,10 +231,15 @@ function generate_texture( type::E_TexTypes,
     @bp_check(is_supported(format, type),
               "Texture type ", type, " doesn't support the format ", sprint(show, format))
 
+    # Make sure the global store of samplers has been initialized.
+    init_sampler_service(get_context())
+
+    # Construct the Texture instance.
     tex::Texture = Texture(Ptr_Texture(get_from_ogl(gl_type(Ptr_Texture),
                                                     glCreateTextures, GLenum(type), 1)),
                            type, format, n_mips, size,
-                           sampler, depth_stencil_sampling, swizzling)
+                           sampler, depth_stencil_sampling, swizzling,
+                           Dict{ViewParams, View}())
 
     # Configure the texture with OpenGL calls.
     set_tex_swizzling(tex, swizzling)
@@ -347,6 +356,24 @@ end
 ##########################
 
 get_ogl_handle(t::Texture) = t.handle
+
+"
+Gets a view of this texture, using the given sampler
+    (or the texture's built-in sampler settings).
+"
+function get_view(t::Texture, sampler::Optional{Sampler} = nothing)::View
+    return get!(() -> View(t, sampler),
+                t.known_views, sampler)
+end
+"
+Gets a view of this texture's pixels without sampling,
+    which allows for other uses like writing to the pixels.
+"
+function get_view(t::Texture, view::SimpleViewParams)::View
+    return get!(() -> View(t, view),
+                t.known_views, view)
+end
+
 
 "Changes how a texture's pixels are mixed when it's sampled on the GPU"
 function set_tex_swizzling(t::Texture, new::SwizzleRGBA)
@@ -709,15 +736,9 @@ function get_tex_depthstencil( t::Texture,
 end
 #TODO: get_tex_compressed() for compressed-format textures
 
-export set_tex_swizzling, set_tex_depthstencil_source,
+export get_view,
+       set_tex_swizzling, set_tex_depthstencil_source,
        get_mip_byte_size, get_gpu_byte_size,
        clear_tex_color, clear_tex_depth, clear_tex_stencil, clear_tex_depthstencil,
        set_tex_pixels, set_tex_color, set_tex_depth, set_tex_stencil,
        get_tex_color, get_tex_depth, get_tex_stencil, get_tex_depthstencil
-
-
-##########################
-#    TexView/ImgView     #
-##########################
-
-#TODO: Implement

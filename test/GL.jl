@@ -296,9 +296,7 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
                   sampler = Sampler{2}(wrapping = WrapModes.repeat))
     check_gl_logs("creating the simple triangles' texture")
     # Give the texture to the shader.
-    glActiveTexture(GL_TEXTURE0)
-    glBindTexture(GL_TEXTURE_2D, tex.handle)
-    glProgramUniform1i(draw_triangles.handle, draw_triangles.uniforms["u_tex"].handle, 0)
+    set_uniform(draw_triangles, "u_tex", tex)
     check_gl_logs("giving the texture to the simple triangles' shader")
 
     timer::Int = 5 * 60  #Vsync is on, assume 60fps

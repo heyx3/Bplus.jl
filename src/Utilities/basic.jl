@@ -1,5 +1,5 @@
 const Optional{T} = Union{T, Nothing}
-exists(x) = !isnothing(x)
+@inline exists(x) = !isnothing(x)
 export Optional, exists
 
 
@@ -63,6 +63,27 @@ export ConstVector
 #TODO: Change ConstVector to be an actual struct inheriting from AbstractArray
 
 
+# Building-block for Contiguous{T, N}:
+const ContiguousRaw{T, N} = Union{
+    Array{T, N},
+    SArray{S, T, N} where S,
+    MArray{S, T, N} where S
+}
+
+"
+Any kind of contiguous data,
+  suitable for passing into a C function as a raw pointer.
+"
+const Contiguous{T, N} = Union{
+    ContiguousRaw{T, N},
+    # Views, created with Base.@view().
+    # I was not able to find a way to prove through the type definition
+    #    that the view is actually contiguous, so we're trusting the user a little bit.
+    # There is a built-in function, `Base.iscontiguous()`.
+    SubArray{T, N, <:ContiguousRaw{T, N}},
+}
+export Contiguous
+
 
 """
 Game math is mostly done with 32-bit floats,
@@ -82,6 +103,7 @@ const Scalar128 = Union{UInt128, Int128}
 const ScalarBits = Union{Scalar8, Scalar16, Scalar32, Scalar64, Scalar128}
 export Scalar8, Scalar16, Scalar32, Scalar64, Scalar128,
        ScalarBits
+#
 
 "Takes two zipped pieces of data and unzips them into two tuples."
 @inline unzip2(zipped) = (tuple((first(a) for a in zipped)...),
@@ -99,3 +121,11 @@ export unzip2
     return result
 end
 export reduce_some
+
+"Creates a vector pre-allocated for some expected size."
+function preallocated_vector(::Type{T}, capacity::Int) where {T}
+    v = Vector{T}(undef, capacity)
+    empty!(v)
+    return v
+end
+export preallocated_array

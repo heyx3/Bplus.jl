@@ -22,7 +22,7 @@ const Uniform = Union{UniformScalar,
                       )...,
                       # "Opaque" types:
                       Ptr_Buffer,  #TODO: Use Buffer instead of the raw pointer, and decorate them with SSBO-vs-UBO and binding-index.
-                      Ptr_View   #TODO: Use an actual texture view, once I've defined those
+                      Texture, Ptr_View, View #TODO: Also support the old-school texture, decorated with the texture-unit index to put it in.
                      }
 
 
@@ -42,11 +42,11 @@ end
 
 """
 `set_uniform(::Program, ::String, ::T[, array_index::Int])`
-`set_uniforms(::Program, ::String, ::AbstractVector{T}[, dest_offset=0])`
+`set_uniforms(::Program, ::String, ::Contiguous{T}[, dest_offset=0])`
 
 Sets a program's uniform to the given value.
 
-If the uniform is an array, you must provide an array of values, or a (1-based) index.
+If the uniform is an array, you must provide a contiguous array of values, or a (1-based) index.
 
 If the uniform is a struct or array of structs, you must name the individual fields/elements,
     e.x. `set_uniform(p, "my_lights[0].pos", new_pos)`
@@ -431,6 +431,7 @@ get_uniform(program::Program, name::String) =
     else
         error("Uniform not found (was it optimized out?): '", name, "'")
     end
+#
 
 
 function set_uniform(program::Program, name::String, value::T) where {T}
@@ -438,6 +439,8 @@ function set_uniform(program::Program, name::String, value::T) where {T}
     @bp_check(u_data.array_size == 1, "No index given for the array uniform '", name, "'")
     if T <: Vec
         set_uniform(u_data.type, T, Ref(value.data), program.handle, u_data.handle, 1)
+    elseif T <: Union{Texture, View}
+        set_uniform(u_data.type, T, value, program.handle, u_data.handle, 1)
     else
         set_uniform(u_data.type, T, Ref(value), program.handle, u_data.handle, 1)
     end
@@ -455,14 +458,16 @@ function set_uniform( program::Program, name::String,
 
     if T <: Vec
         set_uniform(u_data.type, T, Ref(value.data), program.handle, handle, 1)
+    elseif T <: Union{Texture, View}
+        set_uniform(u_data.type, T, value, program.handle, handle, 1)
     else
         set_uniform(u_data.type, T, Ref(value), program.handle, handle, 1)
     end
 end
 function set_uniforms( program::Program, name::String,
-                       values::AbstractVector{T},
+                       values::TVector,
                        offset::Integer = 0
-                     ) where {T}
+                     ) where {T<:Uniform, TVector<:Contiguous{T}}
     u_data::UniformData = get_uniform(program, name)
 
     @bp_check(length(values) + offset <= u_data.array_size,
@@ -470,7 +475,44 @@ function set_uniforms( program::Program, name::String,
                 " and you're trying to set elements ", (offset+1), ":", (offset+length(values)))
     handle = Ptr_Uniform(gl_type(u_data.handle) + offset)
 
-    set_uniform(u_data.type, T, Ref(values, 1), program.handle, handle, 1)
+    count::Int = min(length(values), u_data.array_size - offset)
+
+    if T <: Union{Texture, View}
+        set_uniform(u_data.type, T, values, program.handle, handle, count)
+    else
+        set_uniform(u_data.type, T, Ref(values, 1), program.handle, handle, count)
+    end
+end
+
+
+# Below are the actual implementations, calling through to OpenGL functions.
+
+function set_uniform( ::Type{Ptr_View}, ::Type{<:Union{Texture, View}},
+                      data::TexData,
+                      program::Ptr_Program,
+                      first_param::Ptr_Uniform,
+                      n_params::Integer
+                    ) where {TexData<:Union{Texture, View, AbstractVector{<:Union{Texture, View}}}}
+    # We need to convert each texture/view into a handle.
+    if TexData isa AbstractVector
+        #TODO: Use some kind of pooling for the temp array.
+        handles::Vector{gl_type(Ptr_View)} = map(data) do element::Union{Texture, View}
+            if element isa Texture
+                return gl_type(get_view(element).handle)
+            elseif element isa View
+                return gl_type(element.handle)
+            else
+                error("Unhandled case: ", typeof(element))
+            end
+        end
+        glProgramUniformHandleui64vARB(program, first_param, n_params, Ref(handles, 1))
+    elseif TexData <: Union{Texture, View}
+        @bp_gl_assert(n_params == 1, "Trying to set ", n_params, " params with a single texture")
+        view::View = (TexData isa View) ? data : get_view(data)
+        glProgramUniformHandleui64ARB(program, first_param, gl_type(view.handle))
+    else
+        error("Unhandled case: ", TexData)
+    end
 end
 
 @generated function set_uniform( ::Type{OutT}, ::Type{InT},
@@ -478,31 +520,35 @@ end
                                  first_param::Ptr_Uniform, n_params::Integer
                                ) where {InT, OutT<:Uniform, TRef<:Ref}
     if OutT == Ptr_View
-        @bp_check(InT == Ptr_View, "Can't set a Ptr_View using a ", InT)
-        return :( glProgramUniformHandleui64ARB(program, first_param, n_params, data_ptr) )
+        # Any input type other than raw Ptr_View's
+        #    should have been handled by other function overloads.
+        @bp_check(InT <: Union{Ptr_View, Contiguous{Ptr_View}},
+                  "Can't set a texture uniform with a ", InT,
+                     " using ref-type ", TRef)
+        return :( glProgramUniformHandleui64vARB(program, first_param, n_params, data_ptr) )
     elseif OutT <: UniformScalar
-        @bp_check((InT == OutT) || (InT == Vec{1, OutT}),
+        @bp_check(InT <: Union{OutT, Vec{1, OutT}},
                   "Uniform type is a scalar ", OutT, ", but you're trying to set a ", InT)
         gl_func_name = Symbol(:glProgramUniform1, get_uniform_ogl_letter(OutT), :v)
         return :( $gl_func_name(program, first_param, n_params, data_ptr) )
     elseif OutT <: UniformVector
         (N, T) = OutT.parameters
-        @bp_check((InT == OutT) || (InT == Vector{T}),
+        @bp_check(InT <: Union{OutT, Contiguous{T}},
                   "Uniform type is ", OutT, ", which isn't compatible with your input type ", InT)
         gl_func_name = Symbol(:glProgramUniform, N, get_uniform_ogl_letter(T), :v)
         return :( $gl_func_name(program, first_param, n_params, data_ptr) )
     elseif OutT <: UniformMatrix
         (C, R, T) = mat_params(OutT)
-        @bp_check((InT == OutT) || (InT == Vector{T}),
+        @bp_check(InT <: Union{OutT, Contiguous{T}},
                   "Uniform type is ", OutT, ", which isn't compatible with your input type ", InT)
         gl_func_name = Symbol(:glProgramUniformMatrix,
-                                (C == R) ? C : Symbol(C, :x, R),
-                                get_uniform_ogl_letter(T),
-                                :v)
-        return quote
+                              (C == R) ? C : Symbol(C, :x, R),
+                              get_uniform_ogl_letter(T),
+                              :v)
+        return :(
             $gl_func_name(program, first_param, n_params, GL_FALSE,
                           bp_unsafe_convert(Ptr{$T}, data_ptr))
-        end
+        )
     else
         error("Unexpected uniform type ", OutT, " being set with a ", InT, " value")
     end

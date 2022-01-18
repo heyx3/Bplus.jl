@@ -1,5 +1,7 @@
 module Utilities
 
+using StaticArrays
+
 include("asserts.jl")
 @make_toggleable_asserts bp_utils_
 

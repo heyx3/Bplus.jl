@@ -50,8 +50,17 @@ end
             Union{Array{Int, 4}, Array{Int, 5}},
           @unionspec(Array{Int, _}, 4, 5))
 
-# Test ConstVector
+# Test ConstVector:
 @bp_check((4.0, 3.0, 1.0, 4.0) isa ConstVector{Float64})
+
+# Test Contiguous:
+@bp_check([ 4, 5.0, 6, 7 ] isa Contiguous{Float64, 1})
+@bp_check(!([ 4, 5, 6, :hi ] isa Contiguous{Float64, 1}))
+@bp_check([ 4 5.0 ; 6 7 ] isa Contiguous{Float64, 2})
+@bp_check(@view([4 5.0 ; 6 7][1:1, 2:2]) isa Contiguous{Float64, 2})
+@bp_check(!(Set([4, 5, 6.0]) isa Contiguous{Float64, 1}))
+@bp_check(!(keys(Dict(1.0=>5, 4.0=>7, 2.345354=>123.123)) isa Contiguous{Float64, 1}))
+@bp_check(!(keys(Dict(1.0=>5, 4.0=>7, 2.345354=>"hi")) isa Contiguous{Float64, 1}))
 
 # Test @optional
 @bp_check(tuple(@optional 4>0   3 4.0 true "hi" :world) ==

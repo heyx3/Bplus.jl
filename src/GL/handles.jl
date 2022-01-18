@@ -17,7 +17,7 @@ macro ogl_handle(name::Symbol, gl_type_name,
     @bp_gl_assert(gl_type <: Integer,
                   "Unexpected GL type: ", gl_type, ".",
                   " I only really planned for integers in this macro")
-                  
+
     type_name = esc(Symbol(:Ptr_, name))
     null_val = esc(null_val)
     gl_type_name = esc(gl_type_name)
