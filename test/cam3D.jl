@@ -119,16 +119,42 @@ ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
         }
     #START_FRAGMENT
         in vec3 vOut_worldPos;
-        //uniform samplerCubemap u_tex;
+        uniform samplerCube u_tex;
         out vec4 fOut_color;
         void main() {
             vec3 eyeDir = normalize(vOut_worldPos - u_camPos);
-            vec3 skyColor = abs(eyeDir);
+            vec3 skyColor = abs(eyeDir) * texture(u_tex, eyeDir).rgb;
 
             fOut_color = vec4(skyColor, 1.0);
         }
     """
-    println("#TODO: Add a cubemap texture to the skybox")
+    SKYBOX_TEX_LENGTH = 512
+    NOISE_SCALE = Float32(17)
+    pixels_skybox = Array{Float32, 3}(undef, (SKYBOX_TEX_LENGTH, SKYBOX_TEX_LENGTH, 6))
+    for face in 1:6
+        for y in 1:SKYBOX_TEX_LENGTH
+            for x in 1:SKYBOX_TEX_LENGTH
+                uv::v2f = (v2f(x, y) - @f32(0.5)) / SKYBOX_TEX_LENGTH
+                cube_dir::v3f = vnorm(get_cube_dir(CUBEMAP_MEMORY_LAYOUT[face], uv))
+                pixels_skybox[x, y, face] = perlin(cube_dir * NOISE_SCALE)
+            end
+        end
+    end
+    tex_skybox = Texture_cube(SimpleFormat(FormatTypes.normalized_uint,
+                                           SimpleFormatComponents.R,
+                                           SimpleFormatBitDepths.B8),
+                              pixels_skybox
+                              ;
+                              swizzling=SwizzleRGBA(
+                                  SwizzleSources.red,
+                                  SwizzleSources.red,
+                                  SwizzleSources.red,
+                                  SwizzleSources.one
+                              ))
+    glActiveTexture(GL_TEXTURE1)
+    glBindTexture(GL_TEXTURE_CUBE_MAP, tex_skybox.handle)
+    glProgramUniform1i(draw_skybox.handle, draw_skybox.uniforms["u_tex"].handle, 1)
+
 
     # Configure the render state.
     println("#TODO: Test culling mode")
@@ -253,6 +279,7 @@ ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
 
     # Clean up.
     close(tex)
+    close(tex_skybox)
     close(draw_triangles)
     close(draw_skybox)
     close(mesh_triangles)
