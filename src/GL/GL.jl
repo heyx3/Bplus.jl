@@ -33,6 +33,8 @@ const GLSL_HEADER = string(
 )
 
 include("utils.jl")
+include("debugging.jl")
+
 include("handles.jl")
 include("depth_stencil.jl")
 include("blending.jl")

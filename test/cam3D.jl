@@ -11,7 +11,10 @@ using Bplus.GL, Bplus.Helpers
 
 
 # Create a GL Context and window, add some 3D stuff, and a controllable 3D camera.
-ENABLE_CAM3D && bp_gl_context(v2i(800, 500), "Cam3D test"; vsync=VsyncModes.On) do context::Context
+ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
+                               vsync=VsyncModes.On,
+                               debug_mode=true
+                             ) do context::Context
     # Set up a mesh with some 3D triangles.
     buf_tris_poses = Buffer(false, [ v4f(-0.75, -0.75, -0.75, 1.0),
                                      v4f(-0.75, 0.75, 0.25, 1.0),

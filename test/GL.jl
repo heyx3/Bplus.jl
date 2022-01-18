@@ -160,15 +160,35 @@ function test_textures()
     end 
 end
 
+function check_gl_logs(context::String)
+    logs = pull_gl_logs()
+    for log in pull_gl_logs()
+        if log.severity in (DebugEventSeverities.high, DebugEventSeverities.medium)
+            @error "While $context. $(sprint(show, log))"
+        elseif log.severity == DebugEventSeverities.low
+            @warn "While $context. $(sprint(show, log))"
+        elseif log.severity == DebugEventSeverities.none
+            @info "While $context. $(sprint(show, log))"
+        else
+            error("Unhandled case: ", log.severity)
+        end
+    end
+end
+
 # Create a GL Context and window, and put the framework through its paces.
-bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do context::Context
+bp_gl_context( v2i(800, 500), "Press Enter to close me";
+               vsync=VsyncModes.On,
+               debug_mode=true
+             ) do context::Context
     @bp_check(context === GL.get_context(),
               "Just started this Context, but another one is the singleton")
+    check_gl_logs("just starting up")
 
     # Run some basic tests with GL resources.
     if GL_TEST_FULL
         test_buffers()
         test_textures()
+        check_gl_logs("running test battery")
     end
 
     # Set up a mesh with some triangles.
@@ -192,6 +212,7 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
                             VertexAttribute(2, 0x0, VertexData_FVector(3, UInt8, true)), # The colors, normalized from [0,255] to [0,1]
                             VertexAttribute(2, sizeof(vRGBu8), VertexData_IVector(2, UInt8)) # The IDs, left as integers
                           ])
+    check_gl_logs("creating the simple triangle mesh")
     @bp_check(count_mesh_vertices(mesh_triangles) == 3,
               "The mesh has 3 vertices, but thinks it has ", count_mesh_vertices(mesh_triangles))
     @bp_check(count_mesh_elements(mesh_triangles) == count_mesh_vertices(mesh_triangles),
@@ -247,6 +268,7 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
     check_uniform("u_colorTransform", fmat3x3, 1)
     check_uniform("u_colorCurveAt512", dmat2x4, 10)
     check_uniform("u_tex", GL.Ptr_View, 1)
+    check_gl_logs("creating the simple triangle shader")
 
     # Configure the render state.
     GL.set_culling(context, GL.FaceCullModes.Off)
@@ -272,18 +294,23 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
                                SimpleFormatBitDepths.B8),
                   tex_data;
                   sampler = Sampler{2}(wrapping = WrapModes.repeat))
+    check_gl_logs("creating the simple triangles' texture")
     # Give the texture to the shader.
     glActiveTexture(GL_TEXTURE0)
     glBindTexture(GL_TEXTURE_2D, tex.handle)
     glProgramUniform1i(draw_triangles.handle, draw_triangles.uniforms["u_tex"].handle, 0)
+    check_gl_logs("giving the texture to the simple triangles' shader")
 
     timer::Int = 5 * 60  #Vsync is on, assume 60fps
     while !GLFW.WindowShouldClose(context.window)
+        check_gl_logs("starting a new tick")
+
         clear_col = lerp(vRGBAf(0.4, 0.4, 0.2, 1.0),
                          vRGBAf(0.6, 0.45, 0.6, 1.0),
                          rand(Float32))
         GL.render_clear(context, GL.Ptr_Target(), clear_col)
         GL.render_clear(context, GL.Ptr_Target(), @f32 1.0)
+        check_gl_logs("clearing the screen")
 
         # Randomly shift some uniforms every N ticks.
         if timer % 30 == 0
@@ -300,9 +327,11 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
                     dmat2x4(0, 0, 0, 0,
                             0, 0, pow_val, 0),
                     4)
+        check_gl_logs("setting uniforms during tick")
 
         GL.render_mesh(context, mesh_triangles, draw_triangles,
                        elements = IntervalU(1, 3))
+        check_gl_logs("drawing the triangles")
 
         GLFW.SwapBuffers(context.window)
         GLFW.PollEvents()
@@ -326,6 +355,8 @@ bp_gl_context(v2i(800, 500), "Press Enter to close me"; vsync=VsyncModes.On) do 
     close(mesh_triangles)
     @bp_check(mesh_triangles.handle == GL.Ptr_Mesh(),
               "GL.Mesh's handle isn't nulled out after closing")
+
+    check_gl_logs("cleaning up resources")
 end
 
 # Make sure the Context got cleaned up.
