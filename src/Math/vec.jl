@@ -369,6 +369,12 @@ Base.:(|)(a::VecB{N}, b::Bool) where {N} = map(x -> x|b, a)
 @inline Base.:(|)(a::Bool, b::VecB) = b | a
 
 
+# I had problems sending arrays of Vec into OpenGL through a pointer.
+Base.unsafe_convert(::Type{Ptr{T}}, r::Ref{Vec{N, T}}) where {N, T} =
+    Base.unsafe_convert(Ptr{T}, Base.unsafe_convert(Ptr{Nothing}, r))
+#
+
+
 #######################
 #    Colon Operator   #
 #######################
@@ -449,11 +455,6 @@ end
 end
 
 #TODO: Implement Base.in and Base.intersect for VecRange
-
-# I had problems sending arrays of Vec into OpenGL through a pointer.
-Base.unsafe_convert(::Type{Ptr{T}}, r::Ref{Vec{N, T}}) where {N, T} =
-    Base.unsafe_convert(Ptr{T}, Base.unsafe_convert(Ptr{Nothing}, r))
-#
 
 
 ################

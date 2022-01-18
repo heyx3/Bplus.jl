@@ -16,7 +16,6 @@ end
 export @ano_enum
 
 
-
 """
 An alternative to the @enum macro, with the following differences:
     * Keeps the enum values in a singleton struct to prevent name collisions.
@@ -87,7 +86,7 @@ function generate_enum(name, definitions, args)
 
         return Meta.isexpr(arg, :escape) ? arg.args[1] : arg
     end
-    
+
     #TODO: Is it possible to add the @__doc__ back in safely?
     output = Expr(:toplevel, :(
         module $enum_name
@@ -98,6 +97,10 @@ function generate_enum(name, definitions, args)
             $converter_dispatch
             Base.parse(::Type{$(esc(inner_name))}, s::AbstractString) = $converter_name(Val(Symbol(s)))
             $(esc(:instances))() = $args_tuple
+            # Add support for passing an array of enum values into a C function
+            #    as if it's an array of the underlying type.
+            Base.unsafe_convert(::Type{Ptr{$enum_type}}, r::Ref{$(esc(inner_name))}) =
+                Base.unsafe_convert(Ptr{$enum_type}, Base.unsafe_convert(Ptr{Nothing}, r))
         end), :(
             const $alias_name = $enum_name.$inner_name
         )

@@ -177,22 +177,24 @@ function Texture_cube( format::TexFormat,
     )
 end
 function Texture_cube( format::TexFormat,
-                       initial_faces_data::PixelBuffer{3},
+                       initial_faces_data::PixelBufferD{3},
                        data_bgr_ordering::Bool = false
                        ;
                        sampler::Sampler{1} = Sampler{1}(),
-                       n_mips::Integer = get_n_mips(size(initial_faces_data[1:2])),
+                       n_mips::Integer = get_n_mips(Vec(size(initial_faces_data[1:2]))),
                        depth_stecil_sampling::Optional{E_DepthStencilSources} = nothing,
                        swizzling::SwizzleRGBA = SwizzleRGBA()
                      )
     return generate_texture(
         TexTypes.cube_map, format,
         v3u(size(initial_faces_data)[1:2]..., 1),
-        covert(Sampler{3}, sampler),
+        convert(Sampler{3}, sampler),
         n_mips, depth_stecil_sampling, swizzling,
         (initial_faces_data, data_bgr_ordering)
     )
 end
+
+export Texture_cube
 
 
 ################################
@@ -291,7 +293,7 @@ function texture_data( tex::Texture,
     range::Box{v3u} = get_subset_range(full_subset, full_size)
     if (tex.type == TexTypes.cube_map)
         range = Box{v3u}(v3u(range.min.xy, cube_face_range[1]),
-                         v3u(range.size.xy, cube_face_range[2] - cube_face_range[1]))
+                         v3u(range.size.xy, cube_face_range[2] - cube_face_range[1] + 1))
     end
 
     # Perform the requested operation.
@@ -448,10 +450,12 @@ function clear_tex_depthstencil( t::Texture,
                                )
     if t.format == DepthStencilFormats.depth24u_stencil8
         return clear_tex_depthstencil(t, Depth24uStencil8u(depth, stencil),
-                                      subset=subset, recompute_mips=recompute_mips)
+                                      subset=subset, recompute_mips=recompute_mips,
+                                      cube_face_range=cube_face_range)
     elseif t.format == DepthStencilFormats.depth32f_stencil8
         return clear_tex_depthstencil(t, Depth32fStencil8u(depth, stencil),
-                                      subset=subset, recompute_mips=recompute_mips)
+                                      subset=subset, recompute_mips=recompute_mips,
+                                      cube_face_range=cube_face_range)
     else
         error("Texture doesn't appear to be a depth/stencil hybrid format: ", t.format)
     end
@@ -501,16 +505,23 @@ function set_tex_pixels( t::Texture,
     if is_color(t.format)
         set_tex_color(t, pixels; subset=subset,
                       bgr_ordering=color_bgr_ordering,
-                      recompute_mips=recompute_mips)
+                      recompute_mips=recompute_mips,
+                      cube_face_range=cube_face_range)
     else
         @bp_check(!color_bgr_ordering,
                   "Supplied the 'color_bgr_ordering' parameter for a non-color texture")
         if is_depth_only(t.format)
-            set_tex_depth(t, pixels; subset=subset, recompute_mips=recompute_mips)
+            set_tex_depth(t, pixels; subset=subset,
+                                     recompute_mips=recompute_mips,
+                                     cube_face_range=cube_face_range)
         elseif is_stencil_only(t.format)
-            set_tex_stencil(t, pixels; subset=subset, recompute_mips=recompute_mips)
+            set_tex_stencil(t, pixels; subset=subset,
+                                       recompute_mips=recompute_mips,
+                                       cube_face_range=cube_face_range)
         elseif is_depth_and_stencil(t.format)
-            set_tex_depthstencil(t, pixels; subset=subset, recompute_mips=recompute_mips)
+            set_tex_depthstencil(t, pixels; subset=subset,
+                                            recompute_mips=recompute_mips,
+                                            cube_face_range=cube_face_range)
         else
             error("Unhandled case: ", t.format)
         end
