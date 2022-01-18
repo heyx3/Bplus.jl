@@ -129,8 +129,11 @@ Sampler( wrapping::NTuple{N, E_WrapModes},
 )
 
 # Convert a sampler to a different-dimensional one.
+# Fill in the extra dimensions with a constant pre-chosen value,
+#    to make it easier to use 3D samplers as dictionary keys.
 Base.convert(::Type{Sampler{N2}}, s::Sampler{N1}) where {N1, N2} = Sampler{N2}(
-    Vec(ntuple(i -> s.wrapping[min(i, N1)], N2)),
+    Vec(ntuple(i -> s.wrapping[i], Val(min(N1, N2)))...,
+        ntuple(i -> WrapModes.repeat, Val(max(0, N2 - N1)))...),
     s.pixel_filter, s.mip_filter,
     s.anisotropy, s.mip_offset, s.mip_range,
     s.depth_comparison_mode
@@ -213,3 +216,61 @@ export Sampler, get_wrapping, apply,
     stencil = GL_STENCIL_INDEX
 )
 export DepthStencilSources, E_DepthStencilSources
+
+
+#################################
+#   Sampler Service Interface   #
+#################################
+
+# Samplers can be re-used between textures, so you only need to define a few sampler objects
+#    across an entire rendering context.
+
+"Gets an OpenGL sampler object matching the given settings."
+@inline get_sampler(settings::Sampler)::Ptr_Sampler = get_sampler(get_context(), settings)
+function get_sampler(context::Context, settings::Sampler{N})::Ptr_Sampler where {N}
+    if N < 3
+        get_sampler(context, convert(Sampler{3}, settings))
+    else
+        service::SamplerService = get_sampler_service(context)
+        if !haskey(service, settings)
+            handle = get_from_ogl(gl_type(Ptr_Sampler), glCreateSamplers, 1)
+            apply(settings, handle)
+
+            ptr = Ptr_Sampler(handle)
+            service[settings] = ptr
+            return ptr
+        else
+            return service[settings]
+        end
+    end
+end
+
+"
+Ensures the service which provides sampler objects is initialized.
+This will get called within the constructor of Texture,
+    so that it's always available before it's first needed
+    without having to check every single time a sampler is requested.
+"
+function init_sampler_service(context::Context)
+    try_register_service(context, SERVICE_NAME_SAMPLERS) do
+        return Service(SamplerService(),
+                       on_destroyed = close_sampler_service)
+    end
+end
+
+
+######################################
+#   Sampler Service Implementation   #
+######################################
+
+const SERVICE_NAME_SAMPLERS = :sampler_global_lookup
+const SamplerService = Dict{Sampler{3}, Ptr_Sampler}
+
+function close_sampler_service(s::SamplerService)
+    for handle in values(s)
+        glDeleteSamplers(1, Ref(gl_type(handle)))
+    end
+    empty!(s)
+end
+
+get_sampler_service(context::Context)::SamplerService = get_service(context, SERVICE_NAME_SAMPLERS)

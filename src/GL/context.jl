@@ -61,6 +61,26 @@ function Device()
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_DRAW_BUFFERS))
 end
 
+"A Context-wide singleton, providing some kind of resource for users."
+struct Service
+    # The actual service being provided.
+    data::Any
+
+    # Called when the context refreshes, a.k.a. some external library
+    #    has messed with OpenGL state in an unpredictable way.
+    # The `data` field is passed into this function for convenience.
+    on_refresh::Function
+
+    # Called when the service (or the entire Context) is being destroyed.
+    # The `data` field is passed into this function for convenience.
+    on_destroyed::Function
+
+    Service(data;
+            on_refresh = (data -> nothing),
+            on_destroyed = (data -> nothing)) =
+        new(data, on_refresh, on_destroyed)
+end
+
 
 ############################
 #         Context          #
@@ -88,9 +108,12 @@ mutable struct Context
 
     #TODO: current binding points for UBO's and SSBO's: https://computergraphics.stackexchange.com/questions/6045/how-to-use-the-data-manipulated-in-opengl-compute-shader
 
+    services::Dict{Symbol, Service}
+
     function Context( size::v2i, title::String
                       ;
                       vsync::Optional{E_VsyncModes} = nothing,
+                      debug_mode::Bool = false, # See GL/debugging.jl
                       glfw_hints::Dict{UInt, UInt} = Dict{UInt, UInt}()
                     )::Context
         # Create the window:
@@ -114,8 +137,16 @@ mutable struct Context
         # Set up the Context singleton.
         @bp_check(isnothing(get_context()), "A Context already exists on this thread")
         GLFW.MakeContextCurrent(window)
-        con::Context = new(window, vsync, Device(), RenderState())
+        con::Context = new(window, vsync, Device(), RenderState(),
+                           Ptr_Program(), Ptr_Mesh(),
+                           Dict{Symbol, Service}())
         CONTEXTS_PER_THREAD[Threads.threadid()] = con
+
+        if debug_mode
+            glEnable(GL_DEBUG_OUTPUT)
+            # Below is the call for the original callback-based logging:
+            # glDebugMessageCallback(ON_OGL_MSG_ptr, C_NULL)
+        end
 
         # Check whether our required extensions are provided.
         for ext in OGL_REQUIRED_EXTENSIONS
@@ -148,6 +179,11 @@ export Context
 end
 
 function Base.close(c::Context)
+    # Clean up all services.
+    for service::Service in values(c.services)
+        service.on_destroyed(service.data)
+    end
+
     GLFW.DestroyWindow(c.window)
 
     if CONTEXTS_PER_THREAD[Threads.threadid()] === c
@@ -174,45 +210,9 @@ export bp_gl_context
 @inline get_context()::Optional{Context} = CONTEXTS_PER_THREAD[Threads.threadid()]
 export get_context
 
-"Gets the stencil test being used for front-faces"
-get_stencil_test_front(context::Context)::StencilTest =
-    (context.state.stencil_test isa StencilTest) ?
-        context.state.stencil_test :
-        context.state.stencil_test.front
-"Gets the stencil test being used for back-faces"
-get_stencil_test_back(context::Context)::StencilTest =
-    (context.state.stencil_test isa StencilTest) ?
-        context.state.stencil_test :
-        context.state.stencil_test.back
-export get_stencil_test_front, get_stencil_test_back
-
-"Gets the stencil ops being performed on front-faces"
-get_stencil_results_front(context::Context)::StencilResult =
-    (context.state.stencil_result isa StencilResult) ?
-        context.state.stencil_result :
-        context.state.stencil_result.front
-"Gets the stencil ops being performed on back-faces"
-get_stencil_results_back(context::Context)::StencilResult =
-    (context.state.stencil_result isa StencilResult) ?
-        context.state.stencil_result :
-        context.state.stencil_result.back
-export get_stencil_results_front, get_stencil_results_back
-
-"Gets the stencil write mask for front-faces"
-get_stencil_write_mask_front(context::Context)::GLuint =
-    (context.state.stencil_write_mask isa GLuint) ?
-        context.state.stencil_write_mask :
-        context.state.stencil_write_mask.front
-"Gets the stencil write mask for back-faces"
-get_stencil_write_mask_back(context::Context)::GLuint =
-    (context.state.stencil_write_mask isa GLuint) ?
-        context.state.stencil_write_mask :
-        context.state.stencil_write_mask.back
-export get_stencil_write_mask_front, get_stencil_write_mask_back
-
 "
 You can call this after some external tool messes with OpenGL state,
-   causing the Context to read the new state and update itself.
+   to force the Context to read the new state and update itself.
 However, keep in mind this function is pretty slow!
 "
 function refresh(context::Context)
@@ -326,8 +326,106 @@ function refresh(context::Context)
         context, :active_program,
         Ptr_Program(get_from_ogl(GLint, glGetIntegerv, GL_CURRENT_PROGRAM))
     )
+
+    # Update any attached services.
+    for service::Service in values(context.services)
+        service.on_refresh(service.data)
+    end
 end
 export refresh
+
+
+################
+#   Services   #
+################
+
+"Registers some kind of singleton associated with a Context."
+function register_service( context::Context,
+                           service_key::Symbol,
+                           service_value::Service
+                         )
+    @bp_check(!haskey(context.services, service_key),
+              "Service :", service_key, " already registered with the Context")
+    context.services[service_key] = service_value
+end
+"
+Registers a service with a Context, **if** it doesn't already exist.
+The first parameter is a lambda which generates the `Service` as needed.
+"
+function try_register_service( service_creator::Function,
+                               context::Context,
+                               service_key::Symbol
+                             )
+    if !haskey(context.services, service_key)
+        context.services[service_key] = service_creator()
+    end
+end
+"
+Gets the data for a service that has been registered with this Context
+    (NOT the `Service` object itself! Just the data inside).
+"
+function get_service(context::Context, service_key::Symbol)
+    @bp_gl_assert(haskey(context.services, service_key))
+    return context.services[service_key].data
+end
+"
+Destroys a registered service.
+Note that the context will clean up services automatically when closing,
+    so you only need to call this if the service should be killed early.
+"
+function destroy_service(context::Context, service_key::Symbol)
+    @bp_check(haskey(context.services, service_key),
+              "Service :", service_key, " doesn't exist in this Context")
+
+    # Run the cleanup code for the service before removing it.
+    service::Service = context.services[service_key]
+    service.on_destroyed(service.data)
+
+    delete!(context.services, service_key)
+end
+
+# Not exported, because specific services should offer their own simplified interfaces.
+
+
+############################
+#   Render State getters   #
+############################
+
+"Gets the stencil test being used for front-faces"
+get_stencil_test_front(context::Context)::StencilTest =
+    (context.state.stencil_test isa StencilTest) ?
+        context.state.stencil_test :
+        context.state.stencil_test.front
+"Gets the stencil test being used for back-faces"
+get_stencil_test_back(context::Context)::StencilTest =
+    (context.state.stencil_test isa StencilTest) ?
+        context.state.stencil_test :
+        context.state.stencil_test.back
+export get_stencil_test_front, get_stencil_test_back
+
+"Gets the stencil ops being performed on front-faces"
+get_stencil_results_front(context::Context)::StencilResult =
+    (context.state.stencil_result isa StencilResult) ?
+        context.state.stencil_result :
+        context.state.stencil_result.front
+"Gets the stencil ops being performed on back-faces"
+get_stencil_results_back(context::Context)::StencilResult =
+    (context.state.stencil_result isa StencilResult) ?
+        context.state.stencil_result :
+        context.state.stencil_result.back
+export get_stencil_results_front, get_stencil_results_back
+
+"Gets the stencil write mask for front-faces"
+get_stencil_write_mask_front(context::Context)::GLuint =
+    (context.state.stencil_write_mask isa GLuint) ?
+        context.state.stencil_write_mask :
+        context.state.stencil_write_mask.front
+"Gets the stencil write mask for back-faces"
+get_stencil_write_mask_back(context::Context)::GLuint =
+    (context.state.stencil_write_mask isa GLuint) ?
+        context.state.stencil_write_mask :
+        context.state.stencil_write_mask.back
+export get_stencil_write_mask_front, get_stencil_write_mask_back
 
 
 ############################
@@ -704,8 +802,6 @@ set_stencil_write_mask_back(write_mask::GLuint) = set_stencil_write_mask_back(ge
 set_stencil_write_mask(front::GLuint, back::GLuint) = set_stencil_write_mask(get_context(), front, back)
 set_viewport(min::v2i, max::v2i) = set_viewport(get_context(), min, max)
 set_scissor(min_max::Optional{Tuple{v2i, v2i}}) = set_scissor(get_context(), min_max)
-
-#TODO: Set up callbacks for 'destroyed' and 'refresh state'.
 
 ####################################
 #   Thread-local context storage   #
