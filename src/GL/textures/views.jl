@@ -95,8 +95,12 @@ function View(owner::Resource, sampler::Optional{Sampler})
         handle = glGetTextureHandleARB(get_ogl_handle(owner))
     end
 
-    return View(Ptr_View(handle), owner, true,
-                glIsTextureHandleResidentARB(handle))
+    # Create the instance, and register it with the View-Debugger.
+    instance = View(Ptr_View(handle), owner, true,
+                    glIsTextureHandleResidentARB(handle))
+    service_view_debugger_add_view(get_context(), instance.handle, instance)
+
+    return instance
 end
 
 "
@@ -116,6 +120,11 @@ function View(owner::Resource, params::SimpleViewParams)
         isnothing(params.layer) ? 0 : params.layer,
         Int(params.access)
     )
-    return View(Ptr_View(handle), owner, false,
-                glIsImageHandleResidentARB(handle))
+
+    # Create the instance, and register it with the View-Debugger.
+    instance = View(Ptr_View(handle), owner, false,
+                    glIsImageHandleResidentARB(handle))
+    service_view_debugger_add_view(get_context(), instance.handle, instance)
+
+    return instance
 end

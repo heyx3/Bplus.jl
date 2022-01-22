@@ -52,6 +52,7 @@ include("textures/sampling.jl")
 include("textures/data.jl")
 include("textures/cube.jl")
 include("textures/views.jl")
+include("textures/view_debugging.jl")
 include("textures/texture.jl")
 
 include("program.jl")

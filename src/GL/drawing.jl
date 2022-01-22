@@ -131,6 +131,9 @@ function render_mesh( context::Context,
               "Trying to use more than one of the mutually-exclusive features: ",
                 "instancing, multi-draw, and known_vertex_range!")
 
+    # Let the View-Debugger know that we are rendering with this program.
+    service_view_debugger_check(get_ogl_handle(program))
+
     # Activate the mesh and program.
     if context.active_program != program.handle
         glUseProgram(program.handle)

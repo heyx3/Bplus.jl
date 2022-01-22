@@ -295,7 +295,6 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
                   tex_data;
                   sampler = Sampler{2}(wrapping = WrapModes.repeat))
     check_gl_logs("creating the simple triangles' texture")
-    # Give the texture to the shader.
     set_uniform(draw_triangles, "u_tex", tex)
     check_gl_logs("giving the texture to the simple triangles' shader")
 
@@ -327,6 +326,7 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
                     4)
         check_gl_logs("setting uniforms during tick")
 
+        activate(get_view(tex))
         GL.render_mesh(context, mesh_triangles, draw_triangles,
                        elements = IntervalU(1, 3))
         check_gl_logs("drawing the triangles")

@@ -16,6 +16,6 @@ Base.setproperty!(::Resource, name::Symbol, val) = error("Cannot set the field o
                                                          r, ".", name, " = ", val)
 Base.deepcopy(::Resource) = error("Do not try to copy OpenGL resources")
 
-#TODO: Track/warn about leaked resources, and provide resource lookups by handle
+#TODO: All resources know about their owning Context, and double-check that they're not used in the wrong thread before any expensive ops
 
 export Resource, get_ogl_handle

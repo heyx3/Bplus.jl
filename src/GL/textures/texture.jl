@@ -38,6 +38,12 @@ end
 export Texture
 
 function Base.close(t::Texture)
+    # Release the texture's Views.
+    for view::View in values(t.known_views)
+        service_view_debugger_remove_view(view.handle)
+        view.handle = Ptr_View()
+    end
+
     glDeleteTextures(1, Ref(gl_type(t.handle)))
     setfield!(t, :handle, Ptr_Texture())
 end

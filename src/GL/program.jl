@@ -256,11 +256,16 @@ function Program(vert_shader::String, frag_shader::String
     result = compile_program(compiler)
     if result isa Ptr_Program
         return Program(result)
-    else
+    elseif result isa String
         error(result)
+    else
+        error("Unhandled case: ", typeof(result), "\n\t: ", result)
     end
 end
 function Program(handle::Ptr_Program)
+    context = get_context()
+    @bp_check(exists(context), "Creating a Program without a valid Context")
+
     # Get the uniforms.
     uniforms = Dict{String, UniformData}()
     glu_array_count = Ref{GLint}()  # The length of this uniform array (1 if it's not an array).
@@ -294,16 +299,20 @@ function Program(handle::Ptr_Program)
         )
     end
 
+    # Connect to the view-debugger service.
+    service_view_debugger_add_program(context, handle)
+
     return Program(handle, uniforms)
 end
 
 function Base.close(p::Program)
+    service_view_debugger_remove_program(p.handle)
     @bp_check(p.handle != Ptr_Program(), "Already closed this Program")
     glDeleteProgram(p.handle)
     setfield!(p, :handle, Ptr_Program())
 end
 
-"Gets the Julia type from a GLenum value representing a uniform type"
+"Gets the raw Julia type of a uniform with the given OpenGL type."
 const UNIFORM_TYPE_FROM_GL_ENUM = Dict{GLenum, Type{<:Uniform}}(
     GL_FLOAT => Float32,
     GL_FLOAT_VEC2 => v2f,
@@ -505,10 +514,14 @@ function set_uniform( ::Type{Ptr_View}, ::Type{<:Union{Texture, View}},
                 error("Unhandled case: ", typeof(element))
             end
         end
+        # Let the View-Debugger know about these new texture views.
+        service_view_debugger_set_views(program, first_param, handles)
         glProgramUniformHandleui64vARB(program, first_param, n_params, Ref(handles, 1))
     elseif TexData <: Union{Texture, View}
         @bp_gl_assert(n_params == 1, "Trying to set ", n_params, " params with a single texture")
         view::View = (TexData isa View) ? data : get_view(data)
+        # Let the View-Debugger know about these new texture views.
+        service_view_debugger_set_view(program, first_param, view.handle)
         glProgramUniformHandleui64ARB(program, first_param, gl_type(view.handle))
     else
         error("Unhandled case: ", TexData)
