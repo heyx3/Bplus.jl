@@ -269,12 +269,6 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
     check_uniform("u_colorCurveAt512", dmat2x4, 10)
     check_uniform("u_tex", GL.Ptr_View, 1)
     check_gl_logs("creating the simple triangle shader")
-
-    # Configure the render state.
-    GL.set_culling(context, GL.FaceCullModes.Off)
-
-    println("#TODO: Add a cubemap texture for the sky, with a second shader to draw it")
-
     # Set up the texture used to draw the triangles.
     T_SIZE::Int = 512
     tex_data = Array{vRGBf, 2}(undef, (T_SIZE, T_SIZE))
@@ -298,10 +292,97 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
     set_uniform(draw_triangles, "u_tex", tex)
     check_gl_logs("giving the texture to the simple triangles' shader")
 
+    # Generate a screen quad to draw the "skybox" texture.
+    buf_skybox_corners = Buffer(false, [
+        Vec2{Int8}(-1, -1),
+        Vec2{Int8}(-1, 1),
+        Vec2{Int8}(1, -1),
+        Vec2{Int8}(1, 1)
+    ])
+    buf_skybox_indices = Buffer(false, UInt8[
+        0, 2, 1,
+        1, 2, 3
+    ])
+    mesh_skybox = Mesh(PrimitiveTypes.triangle,
+                       [ VertexDataSource(buf_skybox_corners, sizeof(Vec2{Int8})) ],
+                       [ VertexAttribute(1, 0x0, VertexData_FVector(2, Int8, false)) ],
+                       (buf_skybox_indices, UInt8))
+    check_gl_logs("creating the 'skybox' mesh data")
+    # Set up a shader for the "skybox",
+    #    which takes a yaw angle and aspect ratio to map the screen quad to a 3D view range.
+    draw_skybox::Program = bp_glsl"""
+    #START_VERTEX
+        in vec2 vIn_corner;
+        uniform float u_yaw_radians = 0.0,
+                      u_width_over_height = 1.0,
+                      u_fov_width = 1.0;
+        out vec3 vOut_cubeUV;
+        vec2 Rot(vec2 v, float radians) {
+            vec2 cossin = vec2(cos(radians), sin(radians));
+            vec4 cossin4 = vec4(cossin, -cossin);
+            return vec2(dot(v, cossin4.xw),
+                        dot(v, cossin4.yx));
+        }
+        void main() {
+            gl_Position = vec4(vIn_corner, 0.9999, 1.0);
+
+            vec2 uvHorzMin = Rot(vec2(-u_fov_width, 1.0), u_yaw_radians),
+                 uvHorzMax = Rot(vec2(u_fov_width, 1.0), u_yaw_radians);
+
+            vec3 uvMax = vec3(uvHorzMax, u_fov_width * u_width_over_height),
+                 uvMin = vec3(uvHorzMin, -u_fov_width * u_width_over_height);
+
+            vec3 t = vec3(0.5 + (0.5 * vIn_corner.xxy));
+            vOut_cubeUV = normalize(mix(uvMin, uvMax, t));
+        }
+    #START_FRAGMENT
+        in vec3 vOut_cubeUV;
+        uniform samplerCube u_tex;
+        out vec4 fOut_color;
+        void main() {
+            fOut_color = vec4(texture(u_tex, normalize(vOut_cubeUV)).rgb,
+                              1.0);
+        }
+    """
+    check_gl_logs("compiling the 'skybox' shader")
+    # Create the skybox texture.
+    SKYBOX_TEX_LENGTH = 512
+    NOISE_SCALE = Float32(17)
+    pixels_skybox = Array{Float32, 3}(undef, (SKYBOX_TEX_LENGTH, SKYBOX_TEX_LENGTH, 6))
+    for face in 1:6
+        for y in 1:SKYBOX_TEX_LENGTH
+            for x in 1:SKYBOX_TEX_LENGTH
+                uv::v2f = (v2f(x, y) - @f32(0.5)) / SKYBOX_TEX_LENGTH
+                cube_dir::v3f = vnorm(get_cube_dir(CUBEMAP_MEMORY_LAYOUT[face], uv))
+                pixels_skybox[x, y, face] = perlin(cube_dir * NOISE_SCALE)
+            end
+        end
+    end
+    tex_skybox = Texture_cube(SimpleFormat(FormatTypes.normalized_uint,
+                                           SimpleFormatComponents.R,
+                                           SimpleFormatBitDepths.B8),
+                              pixels_skybox
+                              ;
+                              swizzling=SwizzleRGBA(
+                                  SwizzleSources.red,
+                                  SwizzleSources.red,
+                                  SwizzleSources.red,
+                                  SwizzleSources.one
+                              ))
+    check_gl_logs("creating the 'skybox' texture")
+    set_uniform(draw_skybox, "u_tex", tex_skybox)
+    check_gl_logs("giving the 'skybox' texture to its shader")
+
+    # Configure the render state.
+    GL.set_culling(context, GL.FaceCullModes.Off)
+
+    camera_yaw_radians::Float32 = 0
     timer::Int = 5 * 60  #Vsync is on, assume 60fps
     while !GLFW.WindowShouldClose(context.window)
+        window_size::v2i = get_window_size(context)
         check_gl_logs("starting a new tick")
 
+        # Clear the screen.
         clear_col = lerp(vRGBAf(0.4, 0.4, 0.2, 1.0),
                          vRGBAf(0.6, 0.45, 0.6, 1.0),
                          rand(Float32))
@@ -326,10 +407,24 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
                     4)
         check_gl_logs("setting uniforms during tick")
 
+        # Draw the triangles.
         activate(get_view(tex))
         GL.render_mesh(context, mesh_triangles, draw_triangles,
                        elements = IntervalU(1, 3))
+        deactivate(get_view(tex))
         check_gl_logs("drawing the triangles")
+
+        # Update the skybox uniforms.
+        camera_yaw_radians += deg2rad(1)
+        set_uniform(draw_skybox, "u_yaw_radians", camera_yaw_radians)
+        set_uniform(draw_skybox, "u_fov_width", @f32(1))
+        set_uniform(draw_skybox, "u_width_over_height", @f32(window_size.x / window_size.y))
+        check_gl_logs("setting the skybox's uniforms")
+        # Draw the skybox.
+        activate(get_view(tex_skybox))
+        GL.render_mesh(context, mesh_skybox, draw_skybox)
+        deactivate(get_view(tex_skybox))
+        check_gl_logs("drawing the skybox")
 
         GLFW.SwapBuffers(context.window)
         GLFW.PollEvents()
@@ -343,16 +438,33 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
     close(tex)
     @bp_check(tex.handle == GL.Ptr_Texture(),
               "GL.Texture's handle isn't nulled out after closing")
+    close(tex_skybox)
+    @bp_check(tex_skybox.handle == GL.Ptr_Texture())
 
     # Clean up the shader.
     close(draw_triangles)
     @bp_check(draw_triangles.handle == GL.Ptr_Program(),
               "GL.Program's handle isn't nulled out after closing")
+    close(draw_skybox)
+    @bp_check(draw_skybox.handle == GL.Ptr_Program())
 
-    # Clean up the buffer.
+    # Clean up the meshes.
     close(mesh_triangles)
     @bp_check(mesh_triangles.handle == GL.Ptr_Mesh(),
               "GL.Mesh's handle isn't nulled out after closing")
+    close(mesh_skybox)
+    @bp_check(mesh_skybox.handle == GL.Ptr_Mesh())
+
+    # Clean up the buffers.
+    close(buf_tris_poses)
+    @bp_check(get_ogl_handle(buf_tris_poses) == GL.Ptr_Buffer(),
+              "GL.Buffer's handle isn't nulled out after closing")
+    close(buf_tris_color_and_IDs)
+    @bp_check(get_ogl_handle(buf_tris_color_and_IDs) == GL.Ptr_Buffer())
+    close(buf_skybox_corners)
+    @bp_check(get_ogl_handle(buf_skybox_corners) == GL.Ptr_Buffer())
+    close(buf_skybox_indices)
+    @bp_check(get_ogl_handle(buf_skybox_indices) == GL.Ptr_Buffer())
 
     check_gl_logs("cleaning up resources")
 end
