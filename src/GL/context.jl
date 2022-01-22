@@ -173,6 +173,8 @@ export Context
         set_render_state(Val(name), new_val, c)
     elseif name == :vsync
         set_vsync(c, new_val)
+    elseif name == :state
+        error("Don't set GL.Context::state manually; call one of the setter functions")
     else
         error("Bplus.GL.Context has no field '", name, "'")
     end
@@ -209,6 +211,13 @@ export bp_gl_context
 "Gets the current context, if it exists"
 @inline get_context()::Optional{Context} = CONTEXTS_PER_THREAD[Threads.threadid()]
 export get_context
+
+"Gets the pixel size of the context's window."
+function get_window_size(context::Context = get_context())::v2i
+    window_size_data::NamedTuple = GLFW.GetWindowSize(context.window)
+    return v2i(window_size_data.width, window_size_data.height)
+end
+export get_window_size
 
 "
 You can call this after some external tool messes with OpenGL state,
@@ -484,9 +493,7 @@ function set_culling(context::Context, cull::E_FaceCullModes)
         end
 
         # Update the context's fields.
-        st = context.state
-        setfield!(context, :state,
-                  @set st.cull_mode = cull)
+        set_render_state_field!(context, :cull_mode, cull)
     end
 end
 set_render_state(::Val{:cull_mode}, val::E_FaceCullModes, c::Context) = set_culling(c, val)
@@ -496,8 +503,7 @@ export set_culling
 function set_color_writes(context::Context, enabled::vRGBA{Bool})
     if context.state.color_write_mask != enabled
         glColorMask(enabled...)
-        setfield!(context, :state,
-                  @set context.state.color_write_mask = enabled)
+        set_render_state_field!(context, :color_write_mask, enabled)
     end
 end
 set_render_state(::Val{:color_write_mask}, val::vRGBA{Bool}, c::Context) = set_color_writes(c, val)
@@ -507,8 +513,7 @@ export set_color_writes
 function set_depth_test(context::Context, test::E_ValueTests)
     if context.state.depth_test != test
         glDepthFunc(GLenum(test))
-        setfield!(context, :state,
-                  @set context.state.depth_test = test)
+        set_render_state_field!(context, :depth_test, test)
     end
 end
 set_render_state(::Val{:depth_test}, val::E_ValueTests, c::Context) = set_depth_test(c, val)
@@ -518,8 +523,7 @@ export set_depth_test
 function set_depth_writes(context::Context, enabled::Bool)
     if context.state.depth_write != enabled
         glDepthMask(enabled)
-        setfield!(context, :state,
-                  @set context.state.depth_write = enabled)
+        set_render_state_field!(context, :depth_write, enabled)
     end
 end
 set_render_state(::Val{:depth_write}, val::Bool, c::Context) = set_depth_writes(c, val)
@@ -541,8 +545,7 @@ function set_blending(context::Context, blend::BlendStateRGBA)
                          " is outside the allowed 0-1 range!")
         glBlendColor(blend.constant...)
 
-        setfield!(context, :state,
-                  @set context.state.blend_mode = new_blend)
+        set_render_state_field!(context, :blend_mode, new_blend)
     end
 end
 "Sets the blend mode for RGB channels, leaving Alpha unchanged"
@@ -553,8 +556,10 @@ function set_blending(context::Context, blend_rgb::BlendStateRGB)
                             GLenum(blend_a.src), GLenum(blend_a.dest))
         glBlendEquationSeparate(GLenum(blend_rgb.op), GLenum(blend_a.op))
         glBlendColor(blend_rgb.constant..., blend_a.constant)
-        setfield!(context, :state,
-                  @set context.state.blend_mode.rgb = blend_rgb)
+        set_render_state_field!(context, :blend_mode, (
+            rgb = blend_rgb,
+            alpha = context.state.blend_mode.alpha
+        ))
     end
 end
 "Sets the blend mode for Alpha channels, leaving the RGB unchanged"
@@ -565,8 +570,10 @@ function set_blending(context::Context, blend_a::BlendStateAlpha)
                             GLenum(blend_a.src), GLenum(blend_a.dest))
         glBlendEquationSeparate(GLenum(blend_rgb.op), GLenum(blend_a.op))
         glBlendColor(blend_rgb.constant..., blend_a.constant)
-        setfield!(context, :state,
-                  @set context.state.blend_mode.alpha = blend_alpha)
+        set_render_state_field!(context, :blend_mode, (
+            rgb = context.state.blend_mode.rgb,
+            alpha = blend_alpha
+        ))
     end
 end
 "Sets the blend mode for RGB and Alpha channels separately"
@@ -577,8 +584,10 @@ function set_blending(context::Context, blend_rgb::BlendStateRGB, blend_a::Blend
                             GLenum(blend_a.src), GLenum(blend_a.dest))
         glBlendEquationSeparate(GLenum(blend_rgb.op), GLenum(blend_a.op))
         glBlendColor(blend_rgb.constant..., blend_a.constant)
-        setfield!(context, :state,
-                  @set context.state.blend_mode.alpha = blend_alpha)
+        set_render_state_field!(context, :blend_mode, (
+            rgb = context.state.blend_mode.rgb,
+            alpha = blend_alpha
+        ))
     end
 end
 set_render_state(::Val{:blend_mode}, val::@NamedTuple{rgb::BlendStateRGB, alpha::BlendStateAlpha}, c::Context) =
@@ -589,7 +598,7 @@ export set_blending
 function set_stencil_test(context::Context, test::StencilTest)
     if context.state.stencil_test != test
         glStencilFunc(GLenum(test.test), test.reference, test.bitmask)
-        setfield!(context, :state, @set context.state.stencil_test = test)
+        set_render_state_field!(context, stencil_test, test)
     end
 end
 "Sets the stencil test to use for front-faces, leaving the back-faces test unchanged"
@@ -598,8 +607,7 @@ function set_stencil_test_front(context::Context, test::StencilTest)
         glStencilFuncSeparate(GL_FRONT, GLenum(test.test), test.reference, test.bitmask)
 
         current_back::StencilTest = get_stencil_test_back(context)
-        setfield!(context, :state,
-                  @set context.state.stencil_test = (front=test, back=current_back))
+        set_render_state_field!(context, stencil_test, (front=test, back=current_back))
     end
 end
 "Sets the stencil test to use for back-faces, leaving the front-faces test unchanged"
@@ -608,8 +616,7 @@ function set_stencil_test_back(context::Context, test::StencilTest)
         glStencilFuncSeparate(GL_BACK, GLenum(test.test), test.reference, test.bitmask)
 
         current_front::StencilTest = get_stencil_test_front(context)
-        setfield!(context, :state,
-                  @set context.state.stencil_test = (front=current_front, back=test))
+        set_render_state_field!(context, :stencil_test, (front=current_front, back=test))
     end
 end
 "Sets the stencil test to use on front-faces and back-faces, separately"
@@ -630,8 +637,7 @@ function set_stencil_result(context::Context, ops::StencilResult)
         glStencilOp(GLenum(ops.on_failed_stencil),
                     GLenum(ops.on_passed_stencil_failed_depth),
                     GLenum(ops.on_passed_all))
-        setfield!(context, :state,
-                  @set context.state.stencil_result = ops)
+        set_render_state_field!(context, :stencil_result, ops)
     end
 end
 "Sets the stencil operations to use on front-faces, based on the stencil and depth tests"
@@ -642,12 +648,10 @@ function set_stencil_result_front(context::Context, ops::StencilResult)
                             GLenum(ops.on_failed_stencil),
                             GLenum(ops.on_passed_stencil_failed_depth),
                             GLenum(ops.on_passed_all))
-        setfield!(context, :state,
-                  @set context.state.stencil_result = (
-                      front=ops,
-                      back=current_back_ops
-                  )
-        )
+        set_render_state_field!(context, :stencil_result, (
+            front=ops,
+            back=current_back_ops
+        ))
     end
 end
 "Sets the stencil operations to use on back-faces, based on the stencil and depth tests"
@@ -658,12 +662,10 @@ function set_stencil_result_back(context::Context, ops::StencilResult)
                             GLenum(ops.on_failed_stencil),
                             GLenum(ops.on_passed_stencil_failed_depth),
                             GLenum(ops.on_passed_all))
-        setfield!(context, :state,
-                  @set context.state.stencil_result = (
-                      front=current_front_ops,
-                      back=ops
-                  )
-        )
+        set_render_state_field!(context, :stencil_result, (
+            front=current_front_ops,
+            back=ops
+        ))
     end
 end
 "
@@ -682,7 +684,7 @@ export set_stencil_result, set_stencil_result_front, set_stencil_result_back
 function set_stencil_write_mask(context::Context, mask::GLuint)
     if context.state.stencil_write_mask != mask
         glStencilMask(mask)
-        setfield!(context, :state, @set context.state.stencil_write_mask = mask)
+        set_render_state_field!(context, :stencil_write_mask, mask)
     end
 end
 "
@@ -693,12 +695,10 @@ function set_stencil_write_mask_front(context::Context, mask::GLuint)
     if get_stencil_write_mask_front(context.state.stencil_write_mask) != mask
         current_back_mask::GLuint = context.state.stencil_write_mask.back
         glStencilMaskSeparate(GL_FRONT, mask)
-        setfield!(context, :state,
-                  @set context.state.stencil_write_mask = (
-                      front=mask,
-                      back=current_back_mask
-                  )
-        )
+        set_render_state_field!(context, :stencil_write_mask, (
+            front=mask,
+            back=current_back_mask
+        ))
     end
 end
 "
@@ -709,12 +709,10 @@ function set_stencil_write_mask_back(context::Context, mask::GLuint)
     if get_stencil_write_mask_back(context.state.stencil_write_mask) != mask
         current_front_mask::GLuint = context.state.stencil_write_mask.front
         glStencilMaskSeparate(GL_BACK, mask)
-        setfield!(context, :state,
-                  @set context.state.stencil_write_mask = (
-                      front=current_front_mask,
-                      back=mask
-                  )
-        )
+        set_render_state_field!(context, :stencil_write_mask, (
+            front=current_front_mask,
+            back=mask
+        ))
     end
 end
 "
@@ -740,10 +738,7 @@ function set_viewport(context::Context, min::v2i, max::v2i)
     if context.state.viewport != new_view
         size = max - min + 1
         glViewport(min.x, min.y, size.x, size.y)
-
-        render_state = context.state
-        @set! render_state.viewport = new_view
-        setfield!(context, :state, render_state)
+        set_render_state_field!(context, :viewport, new_view)
     end
 end
 set_render_state(::Val{:viewport}, val::NamedTuple, c::Context) = set_viewport(c, val.min, val.max)
@@ -771,7 +766,7 @@ function set_scissor(context::Context, min_max::Optional{Tuple{v2i, v2i}})
             glDisable(GL_SCISSOR_TEST)
         end
 
-        setfield!(context, :state, @set context.state.scissor = new_scissor)
+        set_render_state_field!(context, :scissor, new_scissor)
     end
 end
 set_render_state(::Val{:scissor}, val::NamedTuple, c::Context) = set_scissor(c, val)
@@ -802,6 +797,18 @@ set_stencil_write_mask_back(write_mask::GLuint) = set_stencil_write_mask_back(ge
 set_stencil_write_mask(front::GLuint, back::GLuint) = set_stencil_write_mask(get_context(), front, back)
 set_viewport(min::v2i, max::v2i) = set_viewport(get_context(), min, max)
 set_scissor(min_max::Optional{Tuple{v2i, v2i}}) = set_scissor(get_context(), min_max)
+
+
+###############
+#  Utilities  #
+###############
+
+@inline function set_render_state_field!(c::Context, field::Symbol, value)
+    rs = c.state
+    set(rs, Setfield.PropertyLens{field}(), value)
+    setfield!(c, :state, rs)
+end
+
 
 ####################################
 #   Thread-local context storage   #
