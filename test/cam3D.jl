@@ -151,9 +151,7 @@ ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
                                   SwizzleSources.red,
                                   SwizzleSources.one
                               ))
-    glActiveTexture(GL_TEXTURE1)
-    glBindTexture(GL_TEXTURE_CUBE_MAP, tex_skybox.handle)
-    glProgramUniform1i(draw_skybox.handle, draw_skybox.uniforms["u_tex"].handle, 1)
+    set_uniform(draw_skybox, "u_tex", tex_skybox)
 
 
     # Configure the render state.
@@ -185,9 +183,7 @@ ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
                       SwizzleSources.one
                   ))
     # Give the texture to the shader.
-    glActiveTexture(GL_TEXTURE0)
-    glBindTexture(GL_TEXTURE_2D, tex.handle)
-    glProgramUniform1i(draw_triangles.handle, draw_triangles.uniforms["u_tex"].handle, 0)
+    set_uniform(draw_triangles, "u_tex", tex)
 
     # Configure the 3D camera.
     cam = Cam3D{Float32}(
@@ -211,8 +207,7 @@ ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
         delta_seconds::Float32 = @f32(delta_time.value / 1000)
         current_time = new_time
 
-        window_size_data::NamedTuple = GLFW.GetWindowSize(context.window)
-        window_size::v2i = v2i(window_size_data.width, window_size_data.height)
+        window_size::v2i = get_window_size(context)
 
         # Update the camera.
         @set! cam.fov_degrees = @f32 lerp(70, 110,
@@ -258,8 +253,9 @@ ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
         set_uniform(draw_skybox, "u_camPos", cam.pos)
         set_uniform(draw_skybox, "u_mat_view", mat_view)
         set_uniform(draw_skybox, "u_mat_projection", mat_projection)
-        GL.render_mesh(context, mesh_skybox, draw_skybox,
-                       elements = IntervalU(1, 36))
+        activate(get_view(tex_skybox))
+        GL.render_mesh(context, mesh_skybox, draw_skybox)
+        deactivate(get_view(tex_skybox))
 
         # Draw the triangles.
         set_uniform(draw_triangles, "u_pixelSize", v2f(window_size))
@@ -267,8 +263,10 @@ ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
                     v2f(cam.clip_range.min, max_exclusive(cam.clip_range)))
         set_uniform(draw_triangles, "u_mat_worldview", mat_view)
         set_uniform(draw_triangles, "u_mat_projection", mat_projection)
+        activate(get_view(tex))
         GL.render_mesh(context, mesh_triangles, draw_triangles,
                        elements = IntervalU(1, 4))
+        deactivate(get_view(tex))
 
         GLFW.SwapBuffers(context.window)
         GLFW.PollEvents()
