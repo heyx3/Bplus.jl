@@ -117,12 +117,14 @@ else
     end
     for f_path in test_files
         f_name = split(f_path, ('/', '\\'))[end]
-        println("Running ", f_name, "...")
-        include(f_path)
+        println("\nRunning ", f_name, "...")
+        try
+            include(f_path)
+        finally end
     end
 end
 
 # If we haven't crashed yet, then I guess the tests worked.
-println("All tests passed!")
+println("Tests finished!")
 
 #TODO: Add tests for "toggleable assert" macros

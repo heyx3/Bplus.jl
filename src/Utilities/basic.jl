@@ -63,28 +63,6 @@ export ConstVector
 #TODO: Change ConstVector to be an actual struct inheriting from AbstractArray
 
 
-# Building-block for Contiguous{T, N}:
-const ContiguousRaw{T, N} = Union{
-    Array{T, N},
-    SArray{S, T, N} where S,
-    MArray{S, T, N} where S
-}
-
-"
-Any kind of contiguous data,
-  suitable for passing into a C function as a raw pointer.
-"
-const Contiguous{T, N} = Union{
-    ContiguousRaw{T, N},
-    # Views, created with Base.@view().
-    # I was not able to find a way to prove through the type definition
-    #    that the view is actually contiguous, so we're trusting the user a little bit.
-    # There is a built-in function, `Base.iscontiguous()`.
-    SubArray{T, N, <:ContiguousRaw{T, N}},
-}
-export Contiguous
-
-
 """
 Game math is mostly done with 32-bit floats,
    especially when interacting with computer graphics.

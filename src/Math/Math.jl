@@ -1,6 +1,6 @@
 module Math
 
-using Setfield
+using Setfield, StaticArrays
 using ..Utilities
 
 # Define @bp_math_assert.
@@ -8,6 +8,7 @@ using ..Utilities
 
 include("vec.jl")
 include("functions.jl")
+include("contiguous.jl")
 
 include("mat.jl")
 include("quat.jl")

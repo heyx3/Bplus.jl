@@ -112,14 +112,3 @@ A 4x4 matrix is needed to represent 3D translations.
     zero(F), zero(F), zero(F), one(F)
 )
 export to_mat4x4
-
-
-"""
-This is a stand-in for Base.unsafe_convert(Ptr{T}, Mat{C, R, T}), because
-    I had problems sending matrix data into OpenGL through a pointer.
-I can't overload Base.convert, because Mat isn't really my type --
-    it's an alias for SMatrix.
-"""
-bp_unsafe_convert(::Type{Ptr{T}}, r::Ref{Mat{C, R, T, Len}}) where {C, R, T, Len} =
-    Base.unsafe_convert(Ptr{T}, Base.unsafe_convert(Ptr{Nothing}, r))
-export bp_unsafe_convert

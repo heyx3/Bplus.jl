@@ -175,7 +175,7 @@ function check_gl_logs(context::String)
     end
 end
 
-# Create a GL Context and window, and put the framework through its paces.
+# Create a GL Context and window, and put the GL library through its paces.
 bp_gl_context( v2i(800, 500), "Press Enter to close me";
                vsync=VsyncModes.On,
                debug_mode=true

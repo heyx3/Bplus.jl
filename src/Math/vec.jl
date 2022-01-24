@@ -368,11 +368,11 @@ Base.:(&)(a::VecB{N}, b::Bool) where {N} = map(x -> x&b, a)
 Base.:(|)(a::VecB{N}, b::Bool) where {N} = map(x -> x|b, a)
 @inline Base.:(|)(a::Bool, b::VecB) = b | a
 
-
-# I had problems sending arrays of Vec into OpenGL through a pointer.
-Base.unsafe_convert(::Type{Ptr{T}}, r::Ref{Vec{N, T}}) where {N, T} =
-    Base.unsafe_convert(Ptr{T}, Base.unsafe_convert(Ptr{Nothing}, r))
-#
+Core.Ref(v::Vec) = Ref(v.data)
+Core.Ref(v::Vec, i::Int) = error(
+    "I can't figure out how to get a reference to the Nth element of a tuple.",
+    " Feel free to fix this if you know how!"
+)
 
 
 #######################

@@ -1,5 +1,8 @@
 # This test involves a user-controlled camera.
 # By default, it is disabled so that unit tests are still automated.
+# Only run the test if it's been specifically requested,
+#    through the ENABLE_CAM3D global or by specifically asking for this file.
+
 if !@isdefined ENABLE_CAM3D
     # If this test was specifically requested, enable it.
     ENABLE_CAM3D = @isdefined(TEST_NAME) && (lowercase(TEST_NAME) == "cam3d")
@@ -10,7 +13,6 @@ using ModernGL, GLFW
 using Bplus.GL, Bplus.Helpers
 
 
-# Create a GL Context and window, add some 3D stuff, and a controllable 3D camera.
 ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
                                vsync=VsyncModes.On,
                                debug_mode=true
@@ -28,8 +30,8 @@ ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
                           [ VertexDataSource(buf_tris_poses, sizeof(v4f)),
                             VertexDataSource(buf_tris_colors, sizeof(v3f))
                           ],
-                          [ VertexAttribute(1, 0x0, VertexData_FVector(4, Float32)),  # The positions, pulled directly from a v4f
-                            VertexAttribute(2, 0x0, VertexData_FVector(3, Float32)) # The colors, pulled directly fromm a v3f
+                          [ VertexAttribute(1, 0x0, VertexData_FVector(4, Float32)),
+                            VertexAttribute(2, 0x0, VertexData_FVector(3, Float32))
                           ])
     # Set up a shader to render the triangles.
     draw_triangles::Program = bp_glsl"""
