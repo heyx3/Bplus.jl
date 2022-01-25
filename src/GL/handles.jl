@@ -52,3 +52,22 @@ end
 
 @ogl_handle Buffer GLuint
 @ogl_handle Mesh GLuint
+
+
+# Some pointer types benefit from supporting pointer arithmetic.
+for TP in (Ptr_Uniform, )
+    for op in (:+, :-, :*, :/)
+        @eval begin
+            Base.$op(p::$TP, i::Integer) = $TP(
+                gl_type($TP)(
+                    $op(gl_type(p), gl_type($TP)(i))
+                )
+            )
+            Base.$op(i::Integer, p::Ptr_Uniform) = $TP(
+                gl_type($TP)(
+                    $op(gl_type($TP)(i), gl_type(p))
+                )
+            )
+        end
+    end
+end

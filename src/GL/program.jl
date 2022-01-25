@@ -42,12 +42,22 @@ end
 
 """
 `set_uniform(::Program, ::String, ::T[, array_index::Int])`
+
+Sets a program's uniform to the given value.
+
+If the uniform is an array, you must provide a (1-based) index.
+
+If the uniform is a struct or array of structs, you must name the individual fields/elements,
+    e.x. `set_uniform(p, "my_lights[0].pos", new_pos)`
+"""
+function set_uniform end
+"""
 `set_uniforms(::Program, ::String, ::AbstractVector{T}[, dest_offset=0])`
 `set_uniforms(::Program, ::String, T, ::Contiguous{T}[, dest_offset=0])`
 
 Sets a program's uniform to the given value.
 
-If the uniform is an array, you must provide a contiguous array of values, or a (1-based) index.
+You must provide an array of *contiguous* values.
 If the contiguous array is more nested than a mere `Array{T}`, `Vec{N, T}`, `NTuple{N, T}`, etc
     (e.x. `Vector{NTuple{5, v2f}}`), then you must also pass the `T` value to remove ambiguity.
 If you are passing an array of `Texture`/`View` instances, rather than raw `Ptr_View`s,
@@ -56,19 +66,8 @@ If you are passing an array of `Texture`/`View` instances, rather than raw `Ptr_
 If the uniform is a struct or array of structs, you must name the individual fields/elements,
     e.x. `set_uniform(p, "my_lights[0].pos", new_pos)`
 """
-function set_uniform end
-"""
-`set_uniform(::Program, ::String, ::T[, array_index::Int])`
-`set_uniforms(::Program, ::String, ::AbstractVector{T}[, offset=0])`
-
-Sets a program's uniform to the given value.
-
-If the uniform is an array, you must provide an array of values, or a (1-based) index.
-
-If the uniform is a struct or array of structs, you must name the individual fields/elements,
-    e.x. `set_uniform(p, "my_lights[0].pos", new_pos)`
-"""
 function set_uniforms end
+println("#TODO: Support taking raw pointers for uniform marray data")
 
 
 export Uniform, UniformData, set_uniform, set_uniforms
@@ -448,35 +447,49 @@ get_uniform(program::Program, name::String) =
 #
 
 
+# Setting a single uniform:
 function set_uniform(program::Program, name::String, value::T) where {T}
-    u_data::UniformData = get_uniform(program, name)
-    @bp_check(u_data.array_size == 1, "No index given for the array uniform '", name, "'")
-    if T <: Vec
-        set_uniform(u_data.type, T, Ref(value.data), program.handle, u_data.handle, 1)
-    elseif T <: Union{Texture, View}
-        set_uniform(u_data.type, T, value, program.handle, u_data.handle, 1)
+    # If the data is a higher-level object, convert it into its lowered form.
+    if T == Texture
+        set_uniform(program, name, get_view(value))
+    elseif T == View
+        set_uniform(program, name, value.handle)
     else
-        set_uniform(u_data.type, T, Ref(value), program.handle, u_data.handle, 1)
+        u_data::UniformData = get_uniform(program, name)
+        @bp_check(u_data.array_size == 1, "No index given for the array uniform '", name, "'")
+
+        ref = Ref(value)
+        GC.@preserve ref begin
+            ptr = Base.unsafe_convert(Ptr{T}, ref)
+            set_uniform(u_data.type, T, ptr, program.handle, u_data.handle, 1)
+        end
     end
 end
 
+# Setting an element of a uniform array:
 function set_uniform(program::Program, name::String, value::T, index::Int) where {T<:Uniform}
-    u_data::UniformData = get_uniform(program, name)
-
-    @bp_check(index <= u_data.array_size,
-              "Array uniform '", name, "' only has ", u_data.array_size, " elements,",
-                " and you're trying to set index ", index)
-    handle = Ptr_Uniform(gl_type(u_data.handle) + (index - 1))
-
-    if T <: Vec
-        set_uniform(u_data.type, T, Ref(value.data), program.handle, handle, 1)
-    elseif T <: Union{Texture, View}
-        set_uniform(u_data.type, T, value, program.handle, handle, 1)
+    # If the data is a higher-level object, convert it into its lowered form.
+    if T == Texture
+        set_uniform(program, name, get_view(value), index)
+    elseif T == View
+        set_uniform(program, name, value.handle, index)
     else
-        set_uniform(u_data.type, T, Ref(value), program.handle, handle, 1)
+        u_data::UniformData = get_uniform(program, name)
+        @bp_check(index <= u_data.array_size,
+                "Array uniform '", name, "' only has ", u_data.array_size, " elements,",
+                    " and you're trying to set index ", index)
+
+        handle = Ptr_Uniform(gl_type(u_data.handle) + (index - 1))
+
+        ref = Ref(value)
+        GC.@preserve ref begin
+            ptr = Base.unsafe_convert(Ptr{T}, ref)
+            set_uniform(u_data.type, T, ptr, program.handle, handle, 1)
+        end
     end
 end
 
+# Setting an array of uniforms:
 @inline set_uniforms( program::Program, name::String,
                       values::TContiguousSimple,
                       dest_offset::Integer = 0
@@ -487,45 +500,12 @@ function set_uniforms( program::Program, name::String,
                        ::Type{T}, values::TCollection,
                        dest_offset::Integer = 0
                      ) where {T<:Uniform, TCollection}
-    u_data::UniformData = get_uniform(program, name)
-    n_available_uniforms::Int = u_data.array_size - dest_offset
-
-    is_contiguous = (TCollection <: Contiguous{T})
-    count::Int = is_contiguous ? contiguous_length(values, T) : length(values)
-
-    @bp_check(count <= n_available_uniforms,
-                "Array uniform '", name, "' only has ", u_data.array_size, " elements,",
-                " and you're trying to set elements ",
-                (dest_offset + 1), ":", (dest_offset + count))
-    handle = Ptr_Uniform(gl_type(u_data.handle) + dest_offset)
-
-    # The collection must be contiguous, unless it's higher-level data
-    #    which will need to be translated anyway.
+    # If the incoming data is higher-level objects, convert them to their lowered version.
     if T <: Union{Texture, View}
         @bp_check(TCollection <: Union{ConstVector{T}, AbstractArray{T}},
                   "Passing a collection of textures/views to set a uniform array,",
-                  " but the collection isn't array-like! It's ", TCollection)
-        set_uniform(u_data.type, T, values, program.handle, handle, count)
-    else
-        @bp_check(TCollection <: Contiguous{T},
-                  "Passing an array of data to set a uniform array,",
-                  " but the data isn't contiguous! It's ", TCollection)
-        ref = contiguous_ref(values, T)
-        set_uniform(u_data.type, T, contiguous_ptr(ref, T), program.handle, handle, count)
-    end
-end
+                  " but the collection isn't array-like! It's a ", TCollection)
 
-
-# Below are the actual implementations, calling through to OpenGL functions.
-
-function set_uniform( ::Type{Ptr_View}, ::Type{<:Union{Texture, View}},
-                      data::TexData,
-                      program::Ptr_Program,
-                      first_param::Ptr_Uniform,
-                      n_params::Integer
-                    ) where {TexData<:Union{Texture, View, AbstractVector{<:Union{Texture, View}}}}
-    # We need to convert each texture/view into a handle.
-    if TexData isa AbstractVector
         #TODO: Use some kind of pooling for the temp array.
         handles::Vector{Ptr_View} = map(data) do element::Union{Texture, View}
             if element isa Texture
@@ -536,58 +516,67 @@ function set_uniform( ::Type{Ptr_View}, ::Type{<:Union{Texture, View}},
                 error("Unhandled case: ", typeof(element))
             end
         end
-        set_uniform(Ptr_View, typeof(handles), Ref(handles, 1),
-                    program, first_param, n_params)
-    elseif TexData <: Union{Texture, View}
-        @bp_gl_assert(n_params == 1, "Trying to set ", n_params, " params with a single texture")
-        view::View = (TexData isa View) ? data : get_view(data)
-        set_uniform(Ptr_View, Ptr_View, Ref(view.handle), program, first_param, n_params)
+        set_uniforms(program, name, Ptr_View, handles, dest_offset)
     else
-        error("Unhandled case: ", TexData)
+        # The collection must be contiguous to be uploaded to OpenGL through the C API.
+        @bp_check(TCollection <: Contiguous{T},
+                 "Passing an array of data to set a uniform array,",
+                 " but the data isn't contiguous! It's a ", TCollection)
+
+        u_data::UniformData = get_uniform(program, name)
+        n_available_uniforms::Int = u_data.array_size - dest_offset
+
+        count::Int = contiguous_length(values, T)
+        @bp_check(count <= n_available_uniforms,
+                    "Array uniform '", name, "' only has ", u_data.array_size, " elements,",
+                    " and you're trying to set elements ",
+                    (dest_offset + 1), ":", (dest_offset + count))
+
+        handle = Ptr_Uniform(gl_type(u_data.handle) + dest_offset)
+        ref = contiguous_ref(values, T)
+        GC.@preserve ref begin
+            ptr = contiguous_ptr(ref, T)
+            set_uniform(u_data.type, T, ptr, program.handle, handle, count)
+        end
     end
 end
 
+
+# The actual implementation, which calls into the proper OpenGL function
+#    based on the uniform type:
 @generated function set_uniform( ::Type{TOut}, ::Type{TIn},
-                                 data_ptr::Union{Ref, Ptr{TOut}},
+                                 data_ptr::Ptr,
                                  program::Ptr_Program,
                                  first_param::Ptr_Uniform, n_params::Integer
-                               ) where {TOut<:Uniform, TIn<:Contiguous{TOut}}
-    expr_make_ptr = :(
-        if data_ptr isa Ref
-            data_ptr = contiguous_ptr(data_ptr, TOut)
-        end
-    )
+                               ) where {TOut<:Uniform, TIn<:Contiguous}
     if TOut == Ptr_View
         return quote
-            $expr_make_ptr
-            service_view_debugger_set_views(program, first_param,
-                                            unsafe_wrap(Array, data_ptr, n_params))
+            # Update the view-debugger service with these new uniforms.
+            # REPL tests indicate that the unsafe_wrap() call always happens,
+            #    even if the view-debugger code is compiled into a no-op.
+            # This apparently leads to a heap-allocation.
+            # Avoid this by manually wrapping in the "debug-only" macro.
+            @bp_gl_debug service_view_debugger_set_views(
+                program, first_param,
+                unsafe_wrap(Array, data_ptr, n_params)
+            )
+
             glProgramUniformHandleui64vARB(program, first_param, n_params, data_ptr)
         end
     elseif TOut <: UniformScalar
         gl_func_name = Symbol(:glProgramUniform1, get_uniform_ogl_letter(TOut), :v)
-        return quote
-            $expr_make_ptr
-            $gl_func_name(program, first_param, n_params, data_ptr)
-        end
+        return :( $gl_func_name(program, first_param, n_params, data_ptr) )
     elseif TOut <: UniformVector
         (N, T) = TOut.parameters
         gl_func_name = Symbol(:glProgramUniform, N, get_uniform_ogl_letter(T), :v)
-        return quote
-            $expr_make_ptr
-            $gl_func_name(program, first_param, n_params, data_ptr)
-        end
+        return :( $gl_func_name(program, first_param, n_params, data_ptr) )
     elseif TOut <: UniformMatrix
         (C, R, T) = mat_params(TOut)
         gl_func_name = Symbol(:glProgramUniformMatrix,
                               (C == R) ? C : Symbol(C, :x, R),
                               get_uniform_ogl_letter(T),
                               :v)
-        return quote
-           $expr_make_ptr
-           $gl_func_name(program, first_param, n_params, GL_FALSE,
-                         bp_unsafe_convert(Ptr{$T}, data_ptr))
-        end
+        return :( $gl_func_name(program, first_param, n_params, GL_FALSE, data_ptr) )
     else
         error("Unexpected uniform type ", TOut, " being set with a ", TIn, " value")
     end

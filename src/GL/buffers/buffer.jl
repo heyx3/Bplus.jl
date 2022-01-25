@@ -1,3 +1,5 @@
+println("#TODO: Take any `Contiguous{T}`, and also take a raw pointer")
+
 """
 A contiguous block of memory on the GPU,
    for storing any kind of data.
