@@ -105,7 +105,14 @@ function generate_enum(name, definitions, args)
             # For this reason, my understanding is that we want to NOT escape the names ourselves,
             #    as @inline will expect to do it.
             @inline $(index_converter_from_name.args[1])(i::Integer) = instances()[i]
-            @inline $(index_converter_to_name.args[1])(e::$inner_name) = find_matching(e, instances())
+            @inline $(index_converter_to_name.args[1])(e::$inner_name) = begin
+                for (key, value) in pairs(instances())
+                    if value == e
+                        return key
+                    end
+                end
+                return nothing
+            end
             $converter_dispatch
             Base.parse(::Type{$(esc(inner_name))}, s::AbstractString) = $converter_name(Val(Symbol(s)))
             $(esc(:instances))() = $args_tuple

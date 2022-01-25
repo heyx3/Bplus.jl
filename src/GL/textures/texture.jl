@@ -384,7 +384,7 @@ end
 "Changes how a texture's pixels are mixed when it's sampled on the GPU"
 function set_tex_swizzling(t::Texture, new::SwizzleRGBA)
     new_as_ints = reinterpret(Vec4{GLint}, new)
-    glTextureParameteriv(t.handle, GL_TEXTURE_SWIZZLE_RGBA, Ref(new_as_ints))
+    glTextureParameteriv(t.handle, GL_TEXTURE_SWIZZLE_RGBA, Ref(new_as_ints.data))
     setfield!(t, :swizzle, new)
 end
 "Changes the data that can be sampled from this texture, assuming it's a depth/stencil hybrid"
@@ -412,7 +412,7 @@ function get_gpu_byte_size(t::Texture)
 end
 
 
-#TODO: 'clear_tex_pixels()' infers the format type automatically. Do the same for getting
+#TODO: 'clear_tex_pixels()' infers the format type automatically. Do the same for getting.
 "Clears a color texture to a given value"
 function clear_tex_color( t::Texture,
                           color::PixelIOValue
@@ -435,9 +435,8 @@ function clear_tex_color( t::Texture,
 
     texture_data(t,
                  GLenum(get_pixel_io_type(T)),
-                 get_ogl_enum(get_pixel_io_channels(Val(N), bgr_ordering),
-                              is_integer(t.format)),
-                 subset, Ref(color), recompute_mips, Val(:Clear)
+                 get_ogl_enum(get_pixel_io_channels(Val(N), bgr_ordering), is_integer(t.format)),
+                 subset, contiguous_ref(color, T), recompute_mips, Val(:Clear)
                  ;
                  cube_face_range = cube_face_range)
 end

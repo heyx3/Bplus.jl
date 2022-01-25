@@ -460,7 +460,7 @@ function set_uniform(program::Program, name::String, value::T) where {T}
 
         ref = Ref(value)
         GC.@preserve ref begin
-            ptr = Base.unsafe_convert(Ptr{T}, ref)
+            ptr = contiguous_ptr(ref, T)
             set_uniform(u_data.type, T, ptr, program.handle, u_data.handle, 1)
         end
     end
@@ -483,7 +483,7 @@ function set_uniform(program::Program, name::String, value::T, index::Int) where
 
         ref = Ref(value)
         GC.@preserve ref begin
-            ptr = Base.unsafe_convert(Ptr{T}, ref)
+            ptr = contiguous_ptr(ref, T)
             set_uniform(u_data.type, T, ptr, program.handle, handle, 1)
         end
     end

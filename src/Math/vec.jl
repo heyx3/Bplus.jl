@@ -368,12 +368,6 @@ Base.:(&)(a::VecB{N}, b::Bool) where {N} = map(x -> x&b, a)
 Base.:(|)(a::VecB{N}, b::Bool) where {N} = map(x -> x|b, a)
 @inline Base.:(|)(a::Bool, b::VecB) = b | a
 
-Core.Ref(v::Vec) = Ref(v.data)
-Core.Ref(v::Vec, i::Int) = error(
-    "I can't figure out how to get a reference to the Nth element of a tuple.",
-    " Feel free to fix this if you know how!"
-)
-
 
 #######################
 #    Colon Operator   #
@@ -673,7 +667,7 @@ get_vert(v::Vec3) = v[get_up_axis()]
 "Inserts a vertical component into the given horizontal vector."
 @inline function to_3d(v_2d::Vec2{T}, vertical::T2 = zero(T))::Vec3{T} where {T, T2}
     v::Vec3{T} = zero(Vec3{T})
-    
+
     @set! v[get_up_axis()] = convert(T, vertical)
 
     (a::Int, b::Int) = get_horz_axes()

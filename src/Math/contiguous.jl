@@ -74,8 +74,27 @@ For example, `contiguous_ref(tuple(v2f(1, 2), v2f(3, 4)), Float32)`
 Note that the ref's type is not necessarily the type of the element `T`;
     use the function `contiguous_ptr()` to get the correctly-typed pointer to a contiguous Ref.
 "
-contiguous_ref(x::Contiguous{T}, ::Type{T}) where {T} = Ref(x, 1)
-contiguous_ref(x::Union{T, VecT{<:ContiguousRaw{T}}, ConstVector{<:ContiguousRaw{T}}}, ::Type{T}) where {T} = Ref(x)
+function contiguous_ref(x::TX, ::Type{T}) where {T, TX}
+    # Originally this was split up into different method overloads,
+    #    but Julia *really* hated that, I think the Contiguous{T} union is way too big.
+    if TX == T
+        return Ref(x)
+    elseif TX <: Vec
+        @bp_check(eltype(x) <: ContiguousRaw{T},
+                  "Outer type ", TX, " doesn't contain contiguous ", T, " data")
+        return Ref(x)
+    elseif TX <: NTuple
+        @bp_check(eltype(x) <: ContiguousRaw{T},
+                  "Outer type ", TX, " doesn't contain contiguous ", T, " data")
+        return Ref(x)
+    elseif TX <: AbstractArray
+        @bp_check(TX <: Contiguous{T},
+                  "Outer type ", TX, " isn't a contiguous set of ", T, " data")
+        return Ref(x, 1)
+    else
+        error("Unexpected outer type: ", TX)
+    end
+end
 
 "
 Gets a `Ptr{T}` to an element of a contiguous array of `T` data,
@@ -88,8 +107,13 @@ If the Ref wasn't generated with `contiguous_ref()`,
 Note that there's an implementation limit on how deeply-nested the array can really be;
     see `Contiguous{T}` if you get MethodErrors.
 "
-function contiguous_ptr(r::Ref, ::Type{T}, i::Int = 1) where {T}
+function contiguous_ptr(r::Ref{T2}, ::Type{T}, i::Int = 1) where {T, T2}
+    # Make sure the reference is to a contiguous chunk of T data.
+    # NOTE: I originally had this in the method signature, `r::Ref{<:Contiguous{T}}`,
+    #    but then Julia fails to call this overload for some reason.
+    @bp_check(T2 <: Contiguous{T}, "Reference to ", T2, " isn't a Contiguous{", T, "}")
+
     ptr = Base.unsafe_convert(Ptr{Nothing}, r)
-    return Base.unsafe_convert(Ptr{T}, ptr) +
-           ((i - 1) * sizeof(T))
+    ptr += (i - 1) * sizeof(T)
+    return Base.unsafe_convert(Ptr{T}, ptr)
 end
