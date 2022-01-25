@@ -23,9 +23,9 @@ macro test_enum(E::Symbol, a_val, b_val, c_val)
         @bp_test_no_allocations($E.from_index(2), $E.b)
         @bp_test_no_allocations($E.from_index(3), $E.c)
 
-        @bp_test_no_allocations(enum_to_index($E.a), 1)
-        @bp_test_no_allocations(enum_to_index($E.b), 2)
-        @bp_test_no_allocations(enum_to_index($E.c), 3)
+        @bp_test_no_allocations($E.to_index($E.a), 1)
+        @bp_test_no_allocations($E.to_index($E.b), 2)
+        @bp_test_no_allocations($E.to_index($E.c), 3)
 
         @bp_check($E.from("a") == $E.a, $E, " from string")
         @bp_check($E.from("b") == $E.b, $E, " from string")

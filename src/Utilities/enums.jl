@@ -36,9 +36,6 @@ macro bp_enum(name, args...)
 end
 
 
-enum_to_index(e) = error("to_index() not defined for ", typeof(e), " (is it a BPlus enum or just a plain one?)")
-export enum_to_index
-
 """
 The inner logic of @bp_enum.
 Also takes a block of "definitions", in case something needs to be imported into the enum's module.

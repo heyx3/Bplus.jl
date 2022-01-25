@@ -1,7 +1,7 @@
 "A light wrapper around OpenGL"
 module GL
 
-using Setfield, TupleTools
+using Setfield, TupleTools, ReadOnlyArrays
 using ModernGL, GLFW
 using ..Utilities, ..Math
 
@@ -55,10 +55,13 @@ include("textures/views.jl")
 include("textures/view_debugging.jl")
 include("textures/texture.jl")
 
+include("targets/target_buffer.jl")
+include("targets/target_output.jl")
+include("targets/target.jl")
+
 include("program.jl")
 include("drawing.jl")
 
 #TODO: Give various object names with glObjectLabel
-#TODO: Targets
 
 end # module
