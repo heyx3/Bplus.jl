@@ -91,6 +91,13 @@ contiguous_data_ref = contiguous_ref(contiguous_data, Int)
 @bp_check(ntuple(i -> unsafe_load(contiguous_ptr(contiguous_data_ref, Int, i)),
                  16) == (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16))
 
+# Test find_matching():
+@bp_test_no_allocations_setup(
+    vec = [ 4, 5, 6, 7 ],
+    find_matching(5, vec),
+    2
+)
+
 # Test @optional
 @bp_check(tuple(@optional 4>0   3 4.0 true "hi" :world) ==
            (3, 4.0, true, "hi", :world))

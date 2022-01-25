@@ -1,98 +1,54 @@
-# Test @ano_enum
+# Test @ano_enum:
 @bp_test_no_allocations(@ano_enum(ABC, DEF, GHI),
                         Union{Val{:ABC}, Val{:DEF}, Val{:GHI}})
+
 
 # Define some enums with the same value names.
 # Check that they work as expected, and that
 #    the new enums' values don't overwrite the old.
 
+macro test_enum(E::Symbol, a_val, b_val, c_val)
+    return quote
+        @bp_test_no_allocations($E.a isa $(Symbol(:E_, E)), true)
+        @bp_test_no_allocations($E.b isa $(Symbol(:E_, E)), true)
+        @bp_test_no_allocations($E.c isa $(Symbol(:E_, E)), true)
+
+        @bp_test_no_allocations($E.instances(), ($E.a, $E.b, $E.c))
+
+        @bp_test_no_allocations($E.from($a_val), $E.a)
+        @bp_test_no_allocations($E.from($b_val), $E.b)
+        @bp_test_no_allocations($E.from($c_val), $E.c)
+
+        @bp_test_no_allocations($E.from_index(1), $E.a)
+        @bp_test_no_allocations($E.from_index(2), $E.b)
+        @bp_test_no_allocations($E.from_index(3), $E.c)
+
+        @bp_test_no_allocations(enum_to_index($E.a), 1)
+        @bp_test_no_allocations(enum_to_index($E.b), 2)
+        @bp_test_no_allocations(enum_to_index($E.c), 3)
+
+        @bp_check($E.from("a") == $E.a, $E, " from string")
+        @bp_check($E.from("b") == $E.b, $E, " from string")
+        @bp_check($E.from("c") == $E.c, $E, " from string")
+    end
+end
+
 @bp_enum A a b c
-@bp_test_no_allocations(A.a, A.from(0))
-@bp_test_no_allocations(A.b, A.from(1))
-@bp_test_no_allocations(A.c, A.from(2))
-@assert(A.from("a") == A.a, "A from string")
-@assert(A.from("b") == A.b, "A from string")
-@assert(A.from("c") == A.c, "A from string")
-@bp_test_no_allocations(length(A.instances()), 3)
-@bp_test_no_allocations(A.a in A.instances(), true)
-@bp_test_no_allocations(A.b in A.instances(), true)
-@bp_test_no_allocations(A.c in A.instances(), true)
-@bp_test_no_allocations(A.a isa E_A, true)
-@bp_test_no_allocations(A.b isa E_A, true)
-@bp_test_no_allocations(A.c isa E_A, true)
+@test_enum A 0 1 2
 
 @bp_enum B a b=20 c=-10
-@bp_test_no_allocations(B.a, B.from(0))
-@bp_test_no_allocations(B.b, B.from(20))
-@bp_test_no_allocations(B.c, B.from(-10))
-@assert(B.from("a") == B.a, "B from string")
-@assert(B.from("b") == B.b, "B from string")
-@assert(B.from("c") == B.c, "B from string")
-@bp_test_no_allocations(length(B.instances()), 3)
-@bp_test_no_allocations(B.a in B.instances(), true)
-@bp_test_no_allocations(B.b in B.instances(), true)
-@bp_test_no_allocations(B.c in B.instances(), true)
-@bp_test_no_allocations(B.a isa E_B, true)
-@bp_test_no_allocations(B.b isa E_B, true)
-@bp_test_no_allocations(B.c isa E_B, true)
-# Test the other enum again, to make sure there wasn't a name collision.
-@bp_test_no_allocations(A.a, A.from(0))
-@bp_test_no_allocations(A.b, A.from(1))
-@bp_test_no_allocations(A.c, A.from(2))
-@bp_test_no_allocations(length(A.instances()), 3)
-@bp_test_no_allocations(A.a in A.instances(), true)
-@bp_test_no_allocations(A.b in A.instances(), true)
-@bp_test_no_allocations(A.c in A.instances(), true)
-@assert(A.from("a") == A.a, "A from string")
-@assert(A.from("b") == A.b, "A from string")
-@assert(A.from("c") == A.c, "A from string")
-@bp_test_no_allocations(A.a isa E_A, true)
-@bp_test_no_allocations(A.b isa E_A, true)
-@bp_test_no_allocations(A.c isa E_A, true)
+@test_enum B 0 20 -10
+# Test the other enum again, to make sure there weren't any name collisions.
+@test_enum A 0 1 2
 
 @bp_enum C::UInt8 a b=255 c=1
-@bp_test_no_allocations(C.a, C.from(0))
-@bp_test_no_allocations(C.b, C.from(255))
-@bp_test_no_allocations(C.c, C.from(1))
-@assert(C.from("a") == C.a, "C from string")
-@assert(C.from("b") == C.b, "C from string")
-@assert(C.from("c") == C.c, "C from string")
-@bp_test_no_allocations(length(C.instances()), 3)
-@bp_test_no_allocations(C.a in C.instances(), true)
-@bp_test_no_allocations(C.b in C.instances(), true)
-@bp_test_no_allocations(C.c in C.instances(), true)
-@bp_test_no_allocations(C.a isa E_C, true)
-@bp_test_no_allocations(C.b isa E_C, true)
-@bp_test_no_allocations(C.c isa E_C, true)
-# Test the other enums again, to make sure there wasn't a name collision.
-@bp_test_no_allocations(A.a, A.from(0))
-@bp_test_no_allocations(A.b, A.from(1))
-@bp_test_no_allocations(A.c, A.from(2))
-@bp_test_no_allocations(B.a, B.from(0))
-@bp_test_no_allocations(B.b, B.from(20))
-@bp_test_no_allocations(B.c, B.from(-10))
-@assert(A.from("a") == A.a, "A from string")
-@assert(A.from("b") == A.b, "A from string")
-@assert(A.from("c") == A.c, "A from string")
-@assert(B.from("a") == B.a, "B from string")
-@assert(B.from("b") == B.b, "B from string")
-@assert(B.from("c") == B.c, "B from string")
-@bp_test_no_allocations(length(A.instances()), 3)
-@bp_test_no_allocations(A.a in A.instances(), true)
-@bp_test_no_allocations(A.b in A.instances(), true)
-@bp_test_no_allocations(A.c in A.instances(), true)
-@bp_test_no_allocations(length(B.instances()), 3)
-@bp_test_no_allocations(B.a in B.instances(), true)
-@bp_test_no_allocations(B.b in B.instances(), true)
-@bp_test_no_allocations(B.c in B.instances(), true)
-@bp_test_no_allocations(A.a isa E_A, true)
-@bp_test_no_allocations(A.b isa E_A, true)
-@bp_test_no_allocations(A.c isa E_A, true)
-@bp_test_no_allocations(B.a isa E_B, true)
-@bp_test_no_allocations(B.b isa E_B, true)
-@bp_test_no_allocations(B.c isa E_B, true)
+@test_enum C 0 255 1
+# Test the other enum again, to make sure there weren't any name collisions.
+@test_enum A 0 1 2
+@test_enum B 0 20 -10
 
-# Test the ability of enums to reference dependencies.
+
+# Test the ability of enums to reference dependencies:
 module M
     const MyInt = Int8
     export MyInt

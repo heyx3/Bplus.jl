@@ -107,3 +107,17 @@ function preallocated_vector(::Type{T}, capacity::Int) where {T}
     return v
 end
 export preallocated_array
+
+"
+Finds the index/key of the first element matching a desired one.
+Returns `nothing` if no key was found.
+"
+function find_matching(target, collection, comparison = Base.:(==))::Optional
+    for (key, value) in pairs(collection)
+        if comparison(value, target)
+            return key
+        end
+    end
+    return nothing
+end
+export find_matching

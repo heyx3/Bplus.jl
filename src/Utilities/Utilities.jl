@@ -10,7 +10,6 @@ include("basic.jl")
 include("strings.jl")
 include("enums.jl")
 
-include("serialization.jl")
 include("up_to.jl")
 
 include("prng.jl")

@@ -66,7 +66,7 @@ function Texture( format::TexFormat,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
                 )
     return generate_texture(
-        TexTypes.oneD, format, v3u(width, v2u(1, 1)),
+        TexTypes.oneD, format, v3u(width, 1, 1),
         convert(Sampler{3}, sampler),
         n_mips,
         depth_stencil_sampling,
