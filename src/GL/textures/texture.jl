@@ -203,8 +203,18 @@ function Texture_cube( format::TexFormat,
         (initial_faces_data, data_bgr_ordering)
     )
 end
-
 export Texture_cube
+
+"
+Creates a texture similar to the given one, but with a different format.
+The new texture's data will not be initialized to anything.
+"
+Texture(template::Texture, format::TexFormat) = generate_texture(
+    template.type, format, template.size, template.sampler, template.n_mips,
+    (format isa E_DepthStencilFormats) ? template.depth_stencil_sampling : nothing,
+    template.swizzle, nothing
+)
+
 
 
 ################################

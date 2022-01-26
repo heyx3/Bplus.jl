@@ -56,7 +56,7 @@ end
 
 # Some pointer types benefit from supporting pointer arithmetic.
 for TP in (Ptr_Uniform, )
-    for op in (:+, :-, :*, :/)
+    for op in (:+, :-, :*, :÷)
         @eval begin
             Base.$op(p::$TP, i::Integer) = $TP(
                 gl_type($TP)(

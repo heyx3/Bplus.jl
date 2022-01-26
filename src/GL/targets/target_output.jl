@@ -39,7 +39,31 @@ end
 "Gets this output's render size."
 output_size(t::TargetOutput)::uvec2 = t.tex.size.xy
 
-"Gets this output's render layer."
+"Validates this output's combination of texture type and chosen layer."
+function output_validate(t::TargetOutput)
+    if t.tex.type == TexTypes.threeD
+        @bp_check(t.layer isa Union{Nothing, Int},
+                  "ThreeD texture has a TargetOutput layer of type ", typeof(t.layer),
+                  ", it should be `Int` (or `nothing`)")
+    elseif t.tex.type == TexTypes.cube_map
+        @bp_check(t.layer isa Union{Nothing, E_CubeFaces},
+                  "Cubemap texture has a TargetOutput layer of type ", typeof(t.layer),
+                  ", it should be `E_CubeFaces` (or `nothing`)")
+    else if t.tex.type in (TexTypes.oneD, TexTypes.twoD)
+        @bp_check(isnothing(t.layer),
+                  "Trying to set the layer ", typeof(t.layer), "(", t.layer, ")",
+                  " for a ", t.tex.type, " texture, which is a 1-layered texture")
+    else
+        error("Unhandled case: ", t.tex.type)
+    end
+end
+
+"Gets whether this output's texture could support multiple render layers."
+output_can_be_layered(t::TargetOutput) = (t.tex.type in (TexTypes.oneD, TexTypes.twoD))
+"Gets whether this output has multiple render layers."
+output_is_layered(t::TargetOutput) = isnothing(t.layer) && (t.tex.type in (TexTypes.threeD, TexTypes.cube_map))
+
+"Gets this output's single render layer."
 output_layer(t::TargetOutput) = output_layer(t.layer)
 output_layer(::Nothing) = 1
 output_layer(face::E_CubeFaces) = enum_to_index(face)
