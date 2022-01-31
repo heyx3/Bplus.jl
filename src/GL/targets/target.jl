@@ -96,12 +96,15 @@ Creates a target with the given output size, format, and mip levels,
 function Target(size::v2u, color::TexFormat, depth_stencil::E_DepthStencilFormats
                 ;
                 ds_is_target_buffer::Bool = true,
-                n_tex_mips::Integer = 0)
+                n_tex_mips::Integer = 0,
+                ds_tex_sampling_mode::E_DepthStencilSources = DepthStencilSources.depth)
     color = Texture(color, size, @optional(n_tex_mips > 0, n_mips=n_tex_mips))
     depth = ds_is_target_buffer ?
                 TargetBuffer(size, depth_stencil) :
                 TargetOutput(1,
                              Texture(depth_stencil, size,
+                                     @optional(is_depth_and_stencil(depth_stencil),
+                                               depth_stencil_sampling = ds_tex_sampling_mode),
                                      @optional(n_tex_mips > 0, n_mips=n_tex_mips)),
                              nothing)
 
@@ -127,12 +130,16 @@ By default, the depth/stencil will be a TargetBuffer and not a Texture.
 The Target is *not* responsible for cleaning up the color texture, only the new depth/stencil buffer.
 "
 function Target(color::TargetOutput, depth_stencil::E_DepthStencilFormats,
-                ds_is_target_buffer::Bool = true)
+                ds_is_target_buffer::Bool = true,
+                ds_tex_sampling_mode::E_DepthStencilSources = DepthStencilSources.depth)
     size::v2u = output_size(color)
     depth = ds_is_target_buffer ?
                 TargetBuffer(size, depth_stencil) :
                 TargetOutput(1,
-                             Texture(depth_stencil, size, n_mips=color.tex.n_mips),
+                             Texture(depth_stencil, size,
+                                     n_mips=color.tex.n_mips,
+                                     @optional(is_depth_and_stencil(depth_stencil),
+                                               depth_stencil_sampling = ds_tex_sampling_mode)),
                              nothing)
 
     return make_target(size, 1,

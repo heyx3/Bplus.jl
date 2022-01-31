@@ -102,12 +102,7 @@ Gets the OpenGL enum value representing this format,
 "
 function get_ogl_enum end
 
-println("#TODO: Don't export these, as the names are very generic and risk collision")
-export is_supported,
-       is_color, is_depth_only, is_stencil_only, is_depth_and_stencil,
-       is_integer, is_signed, stores_channel, get_n_channels,
-       get_pixel_bit_size, get_byte_size,
-       get_ogl_enum
+export get_ogl_enum
 #
 
 

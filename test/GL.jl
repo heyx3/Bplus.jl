@@ -105,7 +105,7 @@ function test_textures()
                 #TODO: Incorporate other formats, e.x. depth/stencil
             )
             for (I, format) in formats
-                components = get_n_channels(format)
+                components = GL.get_n_channels(format)
                 for n_mips::Int in 1:get_n_mips(sizeD)
                     #TODO: Another loop for which set of components to set/get
                     tex = Texture(format, sizeD; n_mips=n_mips)
