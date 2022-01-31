@@ -259,9 +259,12 @@ function refresh(context::Context)
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
     # Keep point sprite coordinates at their default origin: upper-left.
     glPointParameteri(GL_POINT_SPRITE_COORD_ORIGIN, GL_UPPER_LEFT)
-    # Make sure all cubemaps sample nicely around the edges.
-    # From what I understand, virtually all implementations can easily do this nowadays.
-    glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS)
+    # Originally we enabled GL_TEXTURE_CUBE_MAP_SEAMLESS,
+    #    because from my understanding virtually all implementations can easily do this nowadays,
+    #    but that apparently doesn't do anything for bindless textures.
+    # Instead, we use the extension 'ARB_seamless_cubemap_per_texture'
+    #    to make the 'seamless' setting a per-sampler parameter.
+    #glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS)
 
     # Read the render state.
     # Viewport:

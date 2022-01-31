@@ -68,65 +68,35 @@ end
 
 #TODO: Rename to TexSampler to avoid conflicts with the Random std module
 
-"Information about a sampler for an N-dimensional texture"
-struct Sampler{N}
+"Information about a sampler for an N-dimensional texture."
+Base.@kwdef struct Sampler{N}
     # The wrapping mode along each individual axis
-    wrapping::Vec{N, E_WrapModes}
+    wrapping::Vec{N, E_WrapModes} = Vec{N, E_WrapModes}(Val(WrapModes.clamp))
 
-    pixel_filter::E_PixelFilters
-    mip_filter::MipFilters
+    pixel_filter::E_PixelFilters = PixelFilters.smooth
+    mip_filter::MipFilters = pixel_filter
 
     # Anisotropic filtering.
     # Should have a value between 1 and get_context().device.max_anisotropy.
-    anisotropy::Float32
+    anisotropy::Float32 = 1
 
     # Offsets the mip level calculation, if using mipmapping.
     # For example, a value of 1 essentially forces all samples to go up one mip level.
-    mip_offset::Float32
+    mip_offset::Float32 = 0
     # Sets the boundaries of the mip levels used in sampling.
-    # As usual, 1 is the firt mip (i.e. original texture), and
+    # As usual, 1 is the first mip (i.e. original texture), and
     #    higher values represent smaller mips.
-    mip_range::IntervalU
+    mip_range::IntervalU = Box_minmax(UInt(1), UInt(1001))
 
     # If this is a depth (or depth-stencil) texture,
     #    this setting makes it a "shadow" sampler.
-    depth_comparison_mode::Optional{E_ValueTests}
-end
+    depth_comparison_mode::Optional{E_ValueTests} = nothing
 
-"Simplified constructors"
-Sampler{N}( wrapping,
-            filter = PixelFilters.smooth,
-            mip_filter = filter
-          ) where {N} = Sampler{N}(
-    wrapping=wrapping,
-    filter=filter,
-    mip_filter=mip_filter
-)
-Sampler{N}(; wrapping = WrapModes.clamp,
-             filter = PixelFilters.smooth,
-             anisotropy = @f32(1),
-             mip_filter = filter,
-             mip_offset = @f32(0),
-             mip_range = Box_minmax(UInt(1), UInt(1001)),
-             depth_comparison_mode = nothing
-          ) where {N} = Sampler{N}(
-    Vec(ntuple(i->wrapping, N)), filter, mip_filter,
-    anisotropy,
-    mip_offset, mip_range,
-    depth_comparison_mode
-)
-Sampler( wrapping::NTuple{N, E_WrapModes},
-         filter,
-         anisotropy = @f32(1),
-         mip_filter = filter,
-         mip_offset = @f32(0),
-         mip_range = Box_minmax(UInt(1), UInt(1001))
-       ) where {N} = Sampler{N}(
-    wrapping, filter, mip_filter,
-    anisotropy,
-    mip_offset, mip_range,
-    depth_comparison_mode
-)
+    # Whether cubemaps should be sampled seamlessly.
+    # This comes from the extension 'ARB_seamless_cubemap_per_texture',
+    #    and is important for bindless cubemap textures.
+    cubemap_seamless::Bool = true
+end
 
 # Convert a sampler to a different-dimensional one.
 # Fill in the extra dimensions with a constant pre-chosen value,
@@ -136,7 +106,8 @@ Base.convert(::Type{Sampler{N2}}, s::Sampler{N1}) where {N1, N2} = Sampler{N2}(
         ntuple(i -> WrapModes.repeat, Val(max(0, N2 - N1)))...),
     s.pixel_filter, s.mip_filter,
     s.anisotropy, s.mip_offset, s.mip_range,
-    s.depth_comparison_mode
+    s.depth_comparison_mode,
+    s.cubemap_seamless
 )
 
 "Gets a sampler's wrapping mode across all axes, assuming they're all the same"
@@ -196,6 +167,9 @@ function apply_impl( s::Sampler{N},
     for i::Int in 1:N
         gl_set_func_i(ptr, wrapping_keys[i], GLint(s.wrapping[i]))
     end
+
+    # Set cubemap sampling.
+    gl_set_func_i(ptr, GL_TEXTURE_CUBE_MAP_SEAMLESS, GLint(GL_TRUE))
 end
 
 

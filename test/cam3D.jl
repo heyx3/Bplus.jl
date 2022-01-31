@@ -113,25 +113,33 @@ ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
     #START_VERTEX
         in vec3 vIn_pos;
         uniform mat4 u_mat_view, u_mat_projection;
-        out vec3 vOut_worldPos;
-        out vec3 vOut_edgeID;
+        out vec3 vOut_cubeDir;
         void main() {
-            vOut_worldPos = (vIn_pos * 6.0) + u_camPos;
-            gl_Position = u_mat_projection * (u_mat_view * vec4(vOut_worldPos, 1.0));
+            vOut_cubeDir = vIn_pos;
+
+            vec3 world_pos = (vIn_pos * 6.0) + u_camPos;
+            gl_Position = u_mat_projection * (u_mat_view * vec4(world_pos, 1.0));
         }
     #START_FRAGMENT
-        in vec3 vOut_worldPos;
+        in vec3 vOut_cubeDir;
         uniform samplerCube u_tex;
         out vec4 fOut_color;
         void main() {
-            vec3 eyeDir = normalize(vOut_worldPos - u_camPos);
-            vec3 skyColor = abs(eyeDir) * texture(u_tex, eyeDir).rgb;
+            vec3 skyColor = texture(u_tex, vOut_cubeDir).rgb;
+
+            //Add some color at the center of each cube face.
+            //Note that this causes some slight seams at the cube faces.
+            vec3 cubeDirWeights = abs(normalize(vOut_cubeDir));
+            float colorStrength = max(cubeDirWeights.x, max(cubeDirWeights.y, cubeDirWeights.z));
+            colorStrength = pow(colorStrength, 3.0);
+            colorStrength = smoothstep(0.0, 1.0, smoothstep(0.0, 1.0, colorStrength));
+            skyColor *= mix(vec3(1.0), abs(vOut_cubeDir), colorStrength);
 
             fOut_color = vec4(skyColor, 1.0);
         }
     """
-    SKYBOX_TEX_LENGTH = 512
-    NOISE_SCALE = Float32(17)
+    SKYBOX_TEX_LENGTH = 64
+    NOISE_SCALE = Float32(4)
     pixels_skybox = Array{Float32, 3}(undef, (SKYBOX_TEX_LENGTH, SKYBOX_TEX_LENGTH, 6))
     for face in 1:6
         for y in 1:SKYBOX_TEX_LENGTH
@@ -153,7 +161,11 @@ ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
                                   SwizzleSources.red,
                                   SwizzleSources.one
                               ))
-    set_uniform(draw_skybox, "u_tex", tex_skybox)
+    tex_skybox_view = get_view(tex_skybox, GL.Sampler{3}(
+        pixel_filter = PixelFilters.smooth,
+        wrapping = Vec(WrapModes.clamp, WrapModes.clamp, WrapModes.clamp)
+    ))
+    set_uniform(draw_skybox, "u_tex", tex_skybox_view)
 
 
     # Configure the render state.
@@ -177,7 +189,7 @@ ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
                                SimpleFormatComponents.R,
                                SimpleFormatBitDepths.B8),
                   tex_data;
-                  sampler = Sampler{2}(wrapping = WrapModes.repeat),
+                  sampler = Sampler{2}(wrapping = Vec(WrapModes.repeat,WrapModes.repeat)),
                   swizzling = Vec4{E_SwizzleSources}(
                       SwizzleSources.red,
                       SwizzleSources.red,
@@ -255,9 +267,9 @@ ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
         set_uniform(draw_skybox, "u_camPos", cam.pos)
         set_uniform(draw_skybox, "u_mat_view", mat_view)
         set_uniform(draw_skybox, "u_mat_projection", mat_projection)
-        activate(get_view(tex_skybox))
+        view_activate(tex_skybox_view)
         GL.render_mesh(context, mesh_skybox, draw_skybox)
-        deactivate(get_view(tex_skybox))
+        view_deactivate(tex_skybox_view)
 
         # Draw the triangles.
         set_uniform(draw_triangles, "u_pixelSize", v2f(window_size))
@@ -265,10 +277,10 @@ ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
                     v2f(cam.clip_range.min, max_exclusive(cam.clip_range)))
         set_uniform(draw_triangles, "u_mat_worldview", mat_view)
         set_uniform(draw_triangles, "u_mat_projection", mat_projection)
-        activate(get_view(tex))
+        view_activate(get_view(tex))
         GL.render_mesh(context, mesh_triangles, draw_triangles,
                        elements = IntervalU(1, 4))
-        deactivate(get_view(tex))
+        view_deactivate(get_view(tex))
 
         GLFW.SwapBuffers(context.window)
         GLFW.PollEvents()
