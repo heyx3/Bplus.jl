@@ -9,7 +9,7 @@ end
              GL.gl_type(GL.Ptr_Uniform))
 @bp_check(GL.gl_type(GL.Ptr_Buffer) === GLuint)
 
-using ModernGL, GLFW
+using ModernGL, GLFW, Images, FileIO
 using Bplus.GL
 
 
@@ -184,6 +184,8 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
               "Just started this Context, but another one is the singleton")
     check_gl_logs("just starting up")
 
+    println("Device: ", context.device.gpu_name)
+
     # Run some basic tests with GL resources.
     if GL_TEST_FULL
         test_buffers()
@@ -191,11 +193,14 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
         check_gl_logs("running test battery")
     end
 
+    # Keep track of the resources to clean up, in the order they should be cleaned up.
+    to_clean_up = Resource[ ]
+
     # Set up a mesh with some triangles.
     # Each triangle has position, color, and "IDs".
     # The position data is in its own buffer.
-    buf_tris_poses = Buffer(false, [ v4f(-0.75, -0.75, 0.75, 1.0),
-                                     v4f(-0.75, 0.75, 0.75, 1.0),
+    buf_tris_poses = Buffer(false, [ v4f(-0.75, -0.75, -0.35, 1.0),
+                                     v4f(-0.75, 0.75, 0.25, 1.0),
                                      v4f(0.75, 0.75, 0.75, 1.0) ])
     # The color and IDs are together in a second buffer.
     buf_tris_color_and_IDs = Buffer(false, Tuple{vRGBu8, Vec{2, UInt8}}[
@@ -219,6 +224,7 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
               "The mesh isn't indexed, yet it gives a different result for 'count vertices' (",
                   count_mesh_vertices(mesh_triangles), ") vs 'count elements' (",
                   count_mesh_elements(mesh_triangles), ")")
+    push!(to_clean_up, mesh_triangles, buf_tris_poses, buf_tris_color_and_IDs)
 
     # Set up a shader to render the triangles.
     # Use a variety of uniforms and vertex attributes to mix up the colors.
@@ -268,6 +274,7 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
     check_uniform("u_colorTransform", fmat3x3, 1)
     check_uniform("u_colorCurveAt512", dmat2x4, 10)
     check_uniform("u_tex", GL.Ptr_View, 1)
+    push!(to_clean_up, draw_triangles)
     check_gl_logs("creating the simple triangle shader")
     # Set up the texture used to draw the triangles.
     T_SIZE::Int = 512
@@ -288,26 +295,13 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
                                SimpleFormatBitDepths.B8),
                   tex_data;
                   sampler = Sampler{2}(wrapping = WrapModes.repeat))
+    push!(to_clean_up, tex)
     check_gl_logs("creating the simple triangles' texture")
     set_uniform(draw_triangles, "u_tex", tex)
     check_gl_logs("giving the texture to the simple triangles' shader")
 
-    # Generate a screen quad to draw the "skybox" texture.
-    buf_skybox_corners = Buffer(false, [
-        Vec2{Int8}(-1, -1),
-        Vec2{Int8}(-1, 1),
-        Vec2{Int8}(1, -1),
-        Vec2{Int8}(1, 1)
-    ])
-    buf_skybox_indices = Buffer(false, UInt8[
-        0, 2, 1,
-        1, 2, 3
-    ])
-    mesh_skybox = Mesh(PrimitiveTypes.triangle,
-                       [ VertexDataSource(buf_skybox_corners, sizeof(Vec2{Int8})) ],
-                       [ VertexAttribute(1, 0x0, VertexData_FVector(2, Int8, false)) ],
-                       (buf_skybox_indices, UInt8))
-    check_gl_logs("creating the 'skybox' mesh data")
+    # Draw the skybox as a full-screen triangle with some in-shader projection math.
+    resources::CResources = get_resources(context)
     # Set up a shader for the "skybox",
     #    which takes a yaw angle and aspect ratio to map the screen quad to a 3D view range.
     draw_skybox::Program = bp_glsl"""
@@ -333,7 +327,7 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
                  uvMin = vec3(uvHorzMin, -u_fov_width * u_width_over_height);
 
             vec3 t = vec3(0.5 + (0.5 * vIn_corner.xxy));
-            vOut_cubeUV = normalize(mix(uvMin, uvMax, t));
+            vOut_cubeUV = mix(uvMin, uvMax, t);
         }
     #START_FRAGMENT
         in vec3 vOut_cubeUV;
@@ -344,6 +338,7 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
                               1.0);
         }
     """
+    push!(to_clean_up, draw_skybox)
     check_gl_logs("compiling the 'skybox' shader")
     # Create the skybox texture.
     SKYBOX_TEX_LENGTH = 512
@@ -369,12 +364,13 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
                                   SwizzleSources.red,
                                   SwizzleSources.one
                               ))
+    push!(to_clean_up, tex_skybox)
     check_gl_logs("creating the 'skybox' texture")
     set_uniform(draw_skybox, "u_tex", tex_skybox)
     check_gl_logs("giving the 'skybox' texture to its shader")
 
     # Configure the render state.
-    GL.set_culling(context, GL.FaceCullModes.Off)
+    set_culling(context, FaceCullModes.Off)
 
     camera_yaw_radians::Float32 = 0
     timer::Int = 5 * 60  #Vsync is on, assume 60fps
@@ -407,24 +403,30 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
                     4)
         check_gl_logs("setting uniforms during tick")
 
-        # Draw the triangles.
-        activate(get_view(tex))
-        GL.render_mesh(context, mesh_triangles, draw_triangles,
-                       elements = IntervalU(1, 3))
-        deactivate(get_view(tex))
-        check_gl_logs("drawing the triangles")
+        function draw_scene(triangle_tex, msg_context...)
+            # Update the triangle uniforms.
+            set_uniform(draw_triangles, "u_tex", triangle_tex)
+            # Draw the triangles.
+            view_activate(get_view(triangle_tex))
+            GL.render_mesh(context, mesh_triangles, draw_triangles,
+                           elements = IntervalU(1, 3))
+            view_deactivate(get_view(triangle_tex))
+            check_gl_logs(string("drawing the triangles ", msg_context...))
 
-        # Update the skybox uniforms.
-        camera_yaw_radians += deg2rad(1)
-        set_uniform(draw_skybox, "u_yaw_radians", camera_yaw_radians)
-        set_uniform(draw_skybox, "u_fov_width", @f32(1))
-        set_uniform(draw_skybox, "u_width_over_height", @f32(window_size.x / window_size.y))
-        check_gl_logs("setting the skybox's uniforms")
-        # Draw the skybox.
-        activate(get_view(tex_skybox))
-        GL.render_mesh(context, mesh_skybox, draw_skybox)
-        deactivate(get_view(tex_skybox))
-        check_gl_logs("drawing the skybox")
+            # Update the skybox uniforms.
+            camera_yaw_radians += deg2rad(.05)
+            set_uniform(draw_skybox, "u_yaw_radians", camera_yaw_radians)
+            set_uniform(draw_skybox, "u_fov_width", @f32(1))
+            set_uniform(draw_skybox, "u_width_over_height", @f32(window_size.x / window_size.y))
+            check_gl_logs(string("setting the skybox's uniforms ", msg_context...))
+            # Draw the skybox.
+            view_activate(get_view(tex_skybox))
+            GL.render_mesh(context, resources.screen_triangle, draw_skybox)
+            view_deactivate(get_view(tex_skybox))
+            check_gl_logs(string("drawing the skybox ", msg_context...))
+        end
+        set_depth_test(context, ValueTests.LessThan)
+        draw_scene(tex, "into a Target")
 
         GLFW.SwapBuffers(context.window)
         GLFW.PollEvents()
@@ -434,39 +436,19 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
         end
     end
 
-    # Clean up the textures.
-    close(tex)
-    @bp_check(tex.handle == GL.Ptr_Texture(),
-              "GL.Texture's handle isn't nulled out after closing")
-    close(tex_skybox)
-    @bp_check(tex_skybox.handle == GL.Ptr_Texture())
+    # Clean up the resources.
+    for rs::Resource in to_clean_up
+        close(rs)
 
-    # Clean up the shader.
-    close(draw_triangles)
-    @bp_check(draw_triangles.handle == GL.Ptr_Program(),
-              "GL.Program's handle isn't nulled out after closing")
-    close(draw_skybox)
-    @bp_check(draw_skybox.handle == GL.Ptr_Program())
+        # Make sure the resource's handle is nulled out, to prevent potential errors.
+        closed_handle = get_ogl_handle(rs)
+        null_handle = typeof(closed_handle)()
+        @bp_check(closed_handle == null_handle,
+                  "After closing a ", typeof(rs), " its handle wasn't nulled out: ",
+                    closed_handle, " vs ", null_handle)
 
-    # Clean up the meshes.
-    close(mesh_triangles)
-    @bp_check(mesh_triangles.handle == GL.Ptr_Mesh(),
-              "GL.Mesh's handle isn't nulled out after closing")
-    close(mesh_skybox)
-    @bp_check(mesh_skybox.handle == GL.Ptr_Mesh())
-
-    # Clean up the buffers.
-    close(buf_tris_poses)
-    @bp_check(get_ogl_handle(buf_tris_poses) == GL.Ptr_Buffer(),
-              "GL.Buffer's handle isn't nulled out after closing")
-    close(buf_tris_color_and_IDs)
-    @bp_check(get_ogl_handle(buf_tris_color_and_IDs) == GL.Ptr_Buffer())
-    close(buf_skybox_corners)
-    @bp_check(get_ogl_handle(buf_skybox_corners) == GL.Ptr_Buffer())
-    close(buf_skybox_indices)
-    @bp_check(get_ogl_handle(buf_skybox_indices) == GL.Ptr_Buffer())
-
-    check_gl_logs("cleaning up resources")
+        check_gl_logs("cleaning up $(typeof(rs))")
+    end
 end
 
 # Make sure the Context got cleaned up.
