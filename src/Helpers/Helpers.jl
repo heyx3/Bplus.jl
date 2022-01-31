@@ -2,7 +2,7 @@ module Helpers
 
 using Setfield
 
-using ..Utilities, ..Math
+using ..Utilities, ..Math, ..GL
 
 
 # Define @bp_helpers_assert.
@@ -10,5 +10,6 @@ using ..Utilities, ..Math
 
 
 include("cam3D.jl")
+include("resources.jl")
 
 end # module
