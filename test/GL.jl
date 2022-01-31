@@ -369,8 +369,25 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
     set_uniform(draw_skybox, "u_tex", tex_skybox)
     check_gl_logs("giving the 'skybox' texture to its shader")
 
+    # Set up a Target for rendering into.
+    target = Target(v2u(800, 600),
+                    SimpleFormat(FormatTypes.normalized_uint,
+                                 SimpleFormatComponents.RGB,
+                                 SimpleFormatBitDepths.B8),
+                    DepthStencilFormats.depth_24u
+                    ;
+                    ds_is_target_buffer=false)
+    push!(to_clean_up, target)
+    check_gl_logs("creating the Target")
+
     # Configure the render state.
     set_culling(context, FaceCullModes.Off)
+    set_depth_writes(context, true)
+    set_depth_test(context, ValueTests.LessThan)
+    set_blending(context, make_blend_opaque(BlendStateRGBA))
+
+    #DEBUG: Counter for the first frame
+    f = false
 
     camera_yaw_radians::Float32 = 0
     timer::Int = 5 * 60  #Vsync is on, assume 60fps
@@ -403,6 +420,9 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
                     4)
         check_gl_logs("setting uniforms during tick")
 
+        # Render the triangles into the render-target,
+        #    then we'll re-render them while sampling from that target
+        #    to create a trippy effect.
         function draw_scene(triangle_tex, msg_context...)
             # Update the triangle uniforms.
             set_uniform(draw_triangles, "u_tex", triangle_tex)
@@ -426,9 +446,30 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
             check_gl_logs(string("drawing the skybox ", msg_context...))
         end
         set_depth_test(context, ValueTests.LessThan)
+        target_activate(target)
+        target_clear(target, vRGBAf(1, 0, 1, 0))
+        target_clear(target, @f32 1.0)
         draw_scene(tex, "into a Target")
 
+        # Draw the Target's data onto the screen.
+        target_activate(nothing)
+        render_clear(context, GL.Ptr_Target(), vRGBAf(1, 0, 1, 0))
+        render_clear(context, GL.Ptr_Target(), @f32 1.0)
+        set_depth_test(context, ValueTests.Pass)
+        check_gl_logs("clearing the screen")
+        target_tex = target.attachment_colors[1].tex
+        view_activate(get_view(target_tex))
+        resource_blit(resources, target_tex)
+        view_deactivate(get_view(target_tex))
+
         GLFW.SwapBuffers(context.window)
+        #DEBUG: Pause on the first frame.
+        if !f
+            f = true
+            println("#TODO: Why does depth-testing only seem to work correctly on the very first frame?")
+            sleep(2)
+        end
+
         GLFW.PollEvents()
         timer -= 1
         if (timer <= 0) || GLFW.GetKey(context.window, GLFW.KEY_ENTER)
