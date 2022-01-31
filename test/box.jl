@@ -41,7 +41,7 @@
 @bp_test_no_allocations(get_dimensions(Box(Float64)), 1)
 
 @bp_test_no_allocations(get_number_type(Box(v4f)), Float32)
-@bp_test_no_allocations(get_number_type(Box(v4u)), UInt64)
+@bp_test_no_allocations(get_number_type(Box(v4u)), UInt32)
 @bp_test_no_allocations(get_number_type(Box(Int8)), Int8)
 
 @bp_test_no_allocations(max_inclusive(Box_minmax(1, 3)), 3)

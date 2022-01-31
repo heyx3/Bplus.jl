@@ -30,7 +30,7 @@ end
 @bp_test_no_allocations(typeof(Vec3{Int8}(1, 2, 3)),
                         Vec{3, Int8})
 @bp_test_no_allocations(typeof(v3u(3, 4, 5)),
-                        Vec{3, UInt})
+                        Vec{3, UInt32})
 @bp_test_no_allocations(typeof(Vec(UInt8(2), UInt8(5), UInt8(10))),
                         Vec{3, UInt8})
 
@@ -50,7 +50,7 @@ end
 @bp_test_no_allocations(reinterpret(v3u, v3i(4, 5, 6)),
                         v3u(4, 5, 6))
 @bp_test_no_allocations(reinterpret(v3u, v3i(-4, 5, -6)),
-                        Vec(-UInt(4), UInt(5), -UInt(6)))
+                        Vec(-UInt32(4), UInt32(5), -UInt32(6)))
 
 # Test properties.
 @bp_test_no_allocations(Vec(2, 3, 4).x, 2)
@@ -200,6 +200,7 @@ end
                         Vec(2, 10))
 
 # Test the dot product.
+const ⋅ = Bplus.Math.:⋅  # It's also defined by the Images package
 @bp_test_no_allocations(vdot(Vec(1, 2), Vec(4, 5)),  14)
 @bp_test_no_allocations(Vec(1, 2) ⋅ Vec(4, 5), vdot(Vec(1, 2), Vec(4, 5)))
 @bp_test_no_allocations(Vec(1, 2) ∘ Vec(4, 5), vdot(Vec(1, 2), Vec(4, 5)))
@@ -245,7 +246,7 @@ Bplus.Math.@fast_swizzle x x y y z 0 1 ∇ ∆ w
                         Bplus.Math.VecRange(Vec(1, 1), Vec(11, 21), Vec(2, 2)))
 function f()::Int
     i::Int = 0
-    for p::v2i in Vec(1, 2) : Vec(30, 2)
+    for p::v2i in v2i(1, 2) : v2i(30, 2)
         i += p.x
     end
     return i

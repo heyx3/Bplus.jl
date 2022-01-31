@@ -223,7 +223,7 @@ struct TexSubset{N}
     TexSubset(pixels::Box{Vec{N, T}}, mip = 1) where {N, T} = new{N}(convert(Box{VecU{N}}, pixels), mip)
 
     # Convenience constructors using an Interval for the pixel range
-    TexSubset{1}(pixels::Box{<:Integer}, mip = 1) = new{1}(Box{Vec{1, UInt}}(Vec(pixels.min), Vec(pixels.size)), mip)
+    TexSubset{1}(pixels::Box{<:Integer}, mip = 1) = new{1}(Box{Vec{1, UInt32}}(Vec(pixels.min), Vec(pixels.size)), mip)
     TexSubset(pixels::Box{<:Integer}, mip = 1) = TexSubset{1}(pixels, mip)
 end
 
@@ -242,7 +242,7 @@ Converts a subset to a lower- or higher-dimensional one.
 @inline change_dimensions(subset::TexSubset{N}, N2::Int) where {N} = TexSubset{N2}(
     isnothing(subset.pixels) ?
         nothing :
-        reshape(subset.pixels, 3; new_dims_value=UInt(1)),
+        reshape(subset.pixels, 3; new_dims_value=one(UInt32)),
     subset.mip
 )
 

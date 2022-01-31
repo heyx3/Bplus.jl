@@ -294,7 +294,7 @@ bp_gl_context( v2i(800, 500), "Press Enter to close me";
                                SimpleFormatComponents.RGB,
                                SimpleFormatBitDepths.B8),
                   tex_data;
-                  sampler = Sampler{2}(wrapping = WrapModes.repeat))
+                  sampler = Sampler{2}(wrapping = Vec(WrapModes.repeat, WrapModes.repeat)))
     push!(to_clean_up, tex)
     check_gl_logs("creating the simple triangles' texture")
     set_uniform(draw_triangles, "u_tex", tex)

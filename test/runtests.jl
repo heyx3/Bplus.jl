@@ -17,10 +17,6 @@ using Bplus.Utilities, Bplus.Math, Bplus.GL, Bplus.Helpers
 @inline Bplus.GL.bp_gl_asserts_enabled() = true
 @inline Bplus.Helpers.bp_helpers_asserts_enabled() = true
 
-# Ensure the @timed macro is precompiled by timing some arbitrary code.
-println("#TODO: remove this, shouldn't be needed")
-_ = @timed sin(Threads.nthreads())
-
 
 #############################
 #          Helpers          #
