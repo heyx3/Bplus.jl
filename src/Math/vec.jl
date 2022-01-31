@@ -79,8 +79,8 @@ export Vec
 #   Aliases   #
 ###############
 
-# Note that in gamedev, 32-bit floats are far more common than 64-bit, for performance reasons.
-# Especially when passing data to the GPU --
+# Note that in gamedev, 32-bit data are far more common than 64-bit, for performance reasons.
+# Especially when talking about float data on the GPU --
 #    commercial gaming GPU's can have pretty terrible float64 performance.
 
 const Vec2{T} = Vec{2, T}
@@ -96,11 +96,11 @@ const v2d = VecD{2}
 const v3d = VecD{3}
 const v4d = VecD{4}
 
-const VecU{N} = Vec{N, UInt64}
+const VecU{N} = Vec{N, UInt32}
 const v2u = VecU{2}
 const v3u = VecU{3}
 const v4u = VecU{4}
-const VecI{N} = Vec{N, Int64}
+const VecI{N} = Vec{N, Int32}
 const v2i = VecI{2}
 const v3i = VecI{3}
 const v4i = VecI{4}
@@ -116,18 +116,22 @@ const VecT{T, N} = Vec{N, T}
 const vRGB{T} = Vec{3, T}
 const vRGBu8 = vRGB{UInt8}
 const vRGBi8 = vRGB{Int8}
+const vRGBu = vRGB{UInt32}
+const vRGBi = vRGB{Int32}
 const vRGBf = vRGB{Float32}
 
 const vRGBA{T} = Vec{4, T}
 const vRGBAu8 = vRGBA{UInt8}
 const vRGBAi8 = vRGBA{Int8}
 const vRGBAf = vRGBA{Float32}
+const vRGBAu = vRGBA{UInt32}
+const vRGBAi = vRGBA{Int32}
 
 
 export Vec2, Vec3, Vec4,
        vRGB, vRGBA,
-       vRGBu8, vRGBi8, vRGBf,
-       vRGBAu8, vRGBAi8, vRGBAf,
+       vRGBu8, vRGBi8, vRGBf, vRGBu, vRGBi,
+       vRGBAu8, vRGBAi8, vRGBAf, vRGBAu, vRGBAi,
        VecF, VecI, VecU, VecB, VecD,
        v2f, v3f, v4f,
        v2i, v3i, v4i,
@@ -367,6 +371,12 @@ Base.:(&)(a::VecB{N}, b::Bool) where {N} = map(x -> x&b, a)
 @inline Base.:(|)(a::VecB{N}, b::VecB{N}) where {N} = Vec((i|j for (i,j) in zip(a, b))...)
 Base.:(|)(a::VecB{N}, b::Bool) where {N} = map(x -> x|b, a)
 @inline Base.:(|)(a::Bool, b::VecB) = b | a
+
+# Help convert a Ref(Vec{T}) to a Ptr{T}, for C calls.
+Base.unsafe_convert(::Type{Ptr{T}}, r::Base.RefValue{<:VecT{T}}) where {T} =
+    Base.unsafe_convert(Ptr{T}, Base.unsafe_convert(Ptr{Nothing}, r))
+Base.unsafe_convert(::Type{Ptr{NTuple{N, T}}}, r::Base.RefValue{Vec{N, T}}) where {N, T} =
+    Base.unsafe_convert(Ptr{NTuple{N, T}}, Base.unsafe_convert(Ptr{Nothing}, r))
 
 
 #######################

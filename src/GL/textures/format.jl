@@ -73,6 +73,12 @@ function is_depth_and_stencil end
 
 "Does the given format use FormatTypes.int or FormatTypes.uint?"
 function is_integer end
+"
+Does the given format have signed components, or unsigned components?
+NOTE that for color formats, this is primarily about the RGB components;
+    the Alpha may sometimes be in a different format.
+"
+function is_signed end
 
 "Does the given format store the given channel?"
 function stores_channel end
@@ -96,10 +102,10 @@ Gets the OpenGL enum value representing this format,
 "
 function get_ogl_enum end
 
-
+println("#TODO: Don't export these, as the names are very generic and risk collision")
 export is_supported,
        is_color, is_depth_only, is_stencil_only, is_depth_and_stencil,
-       is_integer, stores_channel, get_n_channels,
+       is_integer, is_signed, stores_channel, get_n_channels,
        get_pixel_bit_size, get_byte_size,
        get_ogl_enum
 #
@@ -177,6 +183,7 @@ is_stencil_only(f::SimpleFormat) = false
 is_depth_and_stencil(f::SimpleFormat) = false
 
 is_integer(f::SimpleFormat) = (f.type == FormatTypes.uint) || (f.type == FormatTypes.int)
+is_signed(f::SimpleFormat) = (f.type == FormatTypes.int) || (f.type == FormatTypes.float) || (f.type == FormatTypes.normalized_int)
 
 stores_channel(f::SimpleFormat, c::E_ColorChannels) =
     if f.components == SimpleFormatComponents.R
@@ -289,11 +296,11 @@ end
     #     and unsigned 10-bit float for Blue. No Alpha.
     # Floats of this size can represent values from .0000610 to 65500,
     #     with ~2 digits of precision.
-    rgb_tiny_floats = GL_R11F_G11F_B10F,
+    rgb_tiny_ufloats = GL_R11F_G11F_B10F,
 
     # Floating-point texture using unsigned 14-bit floats for RGB (no alpha), with a catch:
     # They share the same 5-bit exponent, to fit into 32 bits per pixel.
-    rgb_shared_exp_floats = GL_RGB9_E5,
+    rgb_shared_exp_ufloats = GL_RGB9_E5,
 
 
     # Each pixel is a 24-bit sRGB colorspace image (no alpha).
@@ -331,8 +338,8 @@ function is_integer(f::E_SpecialFormats)
        (f == SpecialFormats.r5_g6_b5) ||
        (f == SpecialFormats.rgb10_a2) ||
        (f == SpecialFormats.rgb5_a1) ||
-       (f == SpecialFormats.rgb_shared_exp_floats) ||
-       (f == SpecialFormats.rgb_tiny_floats) ||
+       (f == SpecialFormats.rgb_shared_exp_ufloats) ||
+       (f == SpecialFormats.rgb_tiny_ufloats) ||
        (f == SpecialFormats.sRGB) ||
        (f == SpecialFormats.sRGB_linear_alpha)
     #begin
@@ -343,12 +350,28 @@ function is_integer(f::E_SpecialFormats)
         error("Unhandled case: ", f)
     end
 end
+function is_signed(f::E_SpecialFormats)
+    if (f == SpecialFormats.r3_g3_b2) ||
+       (f == SpecialFormats.r5_g6_b5) ||
+       (f == SpecialFormats.rgb10_a2) ||
+       (f == SpecialFormats.rgb5_a1) ||
+       (f == SpecialFormats.rgb_shared_exp_ufloats) ||
+       (f == SpecialFormats.rgb_tiny_ufloats) ||
+       (f == SpecialFormats.sRGB) ||
+       (f == SpecialFormats.sRGB_linear_alpha) ||
+       (f == SpecialFormats.rgb10_a2_uint)
+    #begin
+        return false
+    else
+        error("Unhandled case: ", f)
+    end
+end
 
 function stores_channel(f::E_SpecialFormats, c::E_ColorChannels)
     if (f == SpecialFormats.r3_g3_b2) ||
        (f == SpecialFormats.r5_g6_b5) ||
-       (f == SpecialFormats.rgb_shared_exp_floats) ||
-       (f == SpecialFormats.rgb_tiny_floats) ||
+       (f == SpecialFormats.rgb_shared_exp_ufloats) ||
+       (f == SpecialFormats.rgb_tiny_ufloats) ||
        (f == SpecialFormats.sRGB)
     #begin
         return stores_channel(SimpleFormat(FormatTypes.normalized_uint,
@@ -373,8 +396,8 @@ stores_channel(f::E_SpecialFormats, c::E_OtherChannels) = false
 function get_n_channels(f::E_SpecialFormats)
     if (f == SpecialFormats.r3_g3_b2) ||
        (f == SpecialFormats.r5_g6_b5) ||
-       (f == SpecialFormats.rgb_shared_exp_floats) ||
-       (f == SpecialFormats.rgb_tiny_floats) ||
+       (f == SpecialFormats.rgb_shared_exp_ufloats) ||
+       (f == SpecialFormats.rgb_tiny_ufloats) ||
        (f == SpecialFormats.sRGB)
     #begin
         return 3
@@ -394,9 +417,9 @@ function get_pixel_bit_size(f::E_SpecialFormats)
         return 8
     elseif (f == SpecialFormats.r5_g6_b5)
         return 16
-    elseif (f == SpecialFormats.rgb_shared_exp_floats)
+    elseif (f == SpecialFormats.rgb_shared_exp_ufloats)
         return 32
-    elseif (f == SpecialFormats.rgb_tiny_floats)
+    elseif (f == SpecialFormats.rgb_tiny_ufloats)
         return 32
     elseif (f == SpecialFormats.sRGB)
         return 24
@@ -427,10 +450,10 @@ get_ogl_enum(f::E_SpecialFormats) = GLenum(f)
     greyscale_normalized_uint = GL_COMPRESSED_RED_RGTC1,
     # BC4 compression, with one color channel and a value range from -1 to 1.
     greyscale_normalized_int = GL_COMPRESSED_SIGNED_RED_RGTC1,
-            
+
     # BC5 compression, with two color channels and values range from 0 - 1.
     rg_normalized_uint = GL_COMPRESSED_RG_RGTC2,
-    # BC5 compression, with two color channels and values range from 0 - 1.
+    # BC5 compression, with two color channels and values range from -1 - 1.
     rg_normalized_int = GL_COMPRESSED_SIGNED_RG_RGTC2,
 
     # BC6 compression, with RGB color channels and floating-point values.
@@ -476,6 +499,22 @@ is_stencil_only(f::E_CompressedFormats) = false
 is_depth_and_stencil(f::E_CompressedFormats) = false
 
 is_integer(f::E_CompressedFormats) = false
+is_signed(f::E_CompressedFormats) = (
+    if (f == CompressedFormats.greyscale_normalized_uint) ||
+       (f == CompressedFormats.rg_normalized_uint) ||
+       (f == CompressedFormats.rgb_ufloat) ||
+       (f == CompressedFormats.rgba_normalized_uint) ||
+       (f == CompressedFormats.rgba_sRGB_normalized_uint)
+    #begin
+        false
+    elseif (f == CompressedFormats.greyscale_normalized_int) ||
+           (f == CompressedFormats.rg_normalized_int) ||
+           (f == CompressedFormats.rgb_float)
+        true
+    else
+        error("Unhandled case: ", f)
+    end
+)
 
 function stores_channel(f::E_CompressedFormats, c::E_ColorChannels)
     if (f == CompressedFormats.greyscale_normalized_uint) ||
@@ -604,11 +643,11 @@ function Base.split(pixel::Depth24uStencil8u)::Tuple{UInt32, UInt8}
         UInt8(u & 0xff)
     )
 end
-function Base.split(pixel::Depth32fStencil8u)::Tuple{UInt32, UInt8}
-    u = reinterpret(UInt32, pixel)
+function Base.split(pixel::Depth32fStencil8u)::Tuple{Float32, UInt8}
+    u = reinterpret(UInt64, pixel)
     return (
-        (u & 0xffffff00) >> 8,
-        UInt8(u & 0xff)
+        Float32((u & 0xffffffff00000000) >> 32),
+        UInt8(u & 0x00000000000000ff)
     )
 end
 

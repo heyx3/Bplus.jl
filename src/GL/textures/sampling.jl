@@ -233,12 +233,11 @@ function get_sampler(context::Context, settings::Sampler{N})::Ptr_Sampler where 
     else
         service::SamplerService = get_sampler_service(context)
         if !haskey(service, settings)
-            handle = get_from_ogl(gl_type(Ptr_Sampler), glCreateSamplers, 1)
+            handle = Ptr_Sampler(get_from_ogl(gl_type(Ptr_Sampler), glCreateSamplers, 1))
             apply(settings, handle)
 
-            ptr = Ptr_Sampler(handle)
-            service[settings] = ptr
-            return ptr
+            service[settings] = handle
+            return handle
         else
             return service[settings]
         end

@@ -35,7 +35,7 @@ macro make_toggleable_asserts(prefix::Symbol)
     return esc(quote
         macro $name_assert(condition, msg...)
             condition = esc(condition)
-            msg_expr = esc(:( string($msg...) ))
+            msg_expr = :( string($(map(esc, msg)...)) )
             name_toggler = Symbol($(string(name_toggler)))
             return :(
                 if $name_toggler()

@@ -10,7 +10,7 @@ The main use for this is as a depth or stencil buffer,
 This is a Resource, but it's managed internally by Target instances.
 You probably won't interact with it much yourself.
 """
-struct TargetBuffer <: Resource
+mutable struct TargetBuffer <: Resource
     handle::Ptr_TargetBuffer
     size::v2i
     format::TexFormat
@@ -25,7 +25,7 @@ function TargetBuffer(size::Vec2{<:Integer}, format::TexFormat)
     @bp_check(!(format isa E_CompressedFormats),
               "Can't use a compressed format (", format, ") for a TargetBuffer")
 
-    handle = Ptr_TargetBuffer(get_from_ogl(glCreateRenderbuffers, 1))
+    handle = Ptr_TargetBuffer(get_from_ogl(gl_type(Ptr_TargetBuffer), glCreateRenderbuffers, 1))
     glNamedRenderbufferStorage(handle, gl_format, size...)
 
     return TargetBuffer(handle, v2i(size), format)

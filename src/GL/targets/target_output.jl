@@ -49,7 +49,7 @@ function output_validate(t::TargetOutput)
         @bp_check(t.layer isa Union{Nothing, E_CubeFaces},
                   "Cubemap texture has a TargetOutput layer of type ", typeof(t.layer),
                   ", it should be `E_CubeFaces` (or `nothing`)")
-    else if t.tex.type in (TexTypes.oneD, TexTypes.twoD)
+    elseif t.tex.type in (TexTypes.oneD, TexTypes.twoD)
         @bp_check(isnothing(t.layer),
                   "Trying to set the layer ", typeof(t.layer), "(", t.layer, ")",
                   " for a ", t.tex.type, " texture, which is a 1-layered texture")
@@ -59,7 +59,7 @@ function output_validate(t::TargetOutput)
 end
 
 "Gets whether this output's texture could support multiple render layers."
-output_can_be_layered(t::TargetOutput) = (t.tex.type in (TexTypes.oneD, TexTypes.twoD))
+output_can_be_layered(t::TargetOutput) = (t.tex.type in (TexTypes.threeD, TexTypes.cube_map))
 "Gets whether this output has multiple render layers."
 output_is_layered(t::TargetOutput) = isnothing(t.layer) && (t.tex.type in (TexTypes.threeD, TexTypes.cube_map))
 

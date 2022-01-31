@@ -31,6 +31,13 @@ end
 
 "GPU- and context-specific constants"
 struct Device
+    # The max supported OpenGL major and minor version.
+    # You can assume it's at least 4.6.
+    gl_version::NTuple{2, Int}
+    # The name of the graphics device.
+    # Can help you double-check that you didn't accidentally start on the integrated GPU.
+    gpu_name::String
+
     # Texture/sampler anisotropy can be between 1.0 and this value.
     max_anisotropy::Float32
 
@@ -50,9 +57,12 @@ struct Device
 end
 
 "Reads the device constants from OpenGL using the current context"
-function Device()
+function Device(window::GLFW.Window)
     #TODO: A flag to instead use the minimum constants guaranteed by the standard.
-    return Device(get_from_ogl(GLfloat, glGetFloatv, GL_MAX_TEXTURE_MAX_ANISOTROPY),
+    return Device((GLFW.GetWindowAttrib(window, GLFW.CONTEXT_VERSION_MAJOR),
+                   GLFW.GetWindowAttrib(window, GLFW.CONTEXT_VERSION_MINOR)),
+                  unsafe_string(glGetString(GL_RENDERER)),
+                  get_from_ogl(GLfloat, glGetFloatv, GL_MAX_TEXTURE_MAX_ANISOTROPY),
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_VERTEX_UNIFORM_COMPONENTS),
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_FRAGMENT_UNIFORM_COMPONENTS),
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_ELEMENTS_VERTICES),
@@ -86,6 +96,8 @@ end
 #         Context          #
 ############################
 
+println("#TODO: Ensure the Context is created on a 'sticky' thread")
+
 "
 The OpenGL context, which owns all state and data, including the GLFW window it belongs to.
 This type is a per-thread singleton, because OpenGL only allows one active context per thread.
@@ -116,35 +128,37 @@ mutable struct Context
                       debug_mode::Bool = false, # See GL/debugging.jl
                       glfw_hints::Dict{UInt, UInt} = Dict{UInt, UInt}()
                     )::Context
-        # Create the window:
+        # Create the window and OpenGL context:
         for (hint_name, hint_val) in glfw_hints
             GLFW.WindowHint(hint_name, hint_val)
         end
         window = GLFW.CreateWindow(size..., title)
+        GLFW.MakeContextCurrent(window)
+
+        device = Device(window)
 
         # Check the version that GLFW gave us.
-        gl_version::NTuple{2, Int} = (GLFW.GetWindowAttrib(window, GLFW.CONTEXT_VERSION_MAJOR),
-                                      GLFW.GetWindowAttrib(window, GLFW.CONTEXT_VERSION_MINOR))
-        gl_version_str::String = join(map(string, gl_version), '.')
-        @bp_check((gl_version[1] > OGL_MAJOR_VERSION) ||
-                    ((gl_version[1] == OGL_MAJOR_VERSION) && (gl_version[2] >= OGL_MINOR_VERSION)),
-                  "OpenGL context is version ", gl_version_str, ", which is too old!",
-                    " Bplus requires ", string(OGL_MAJOR_VERSION, ".", OGL_MINOR_VERSION),
-                    ". If you're on a laptop with a discrete GPU, make sure you're not accidentally",
-                    " using the Integrated Graphics. This program was using the GPU '",
-                    unsafe_string(ModernGL.glGetString(GL_RENDERER)), "'.")
+        gl_version_str::String = join(map(string, device.gl_version), '.')
+        @bp_check(
+            (device.gl_version[1] > OGL_MAJOR_VERSION) ||
+            ((device.gl_version[1] == OGL_MAJOR_VERSION) && (device.gl_version[2] >= OGL_MINOR_VERSION)),
+            "OpenGL context is version ", device.gl_version[1], ".", device.gl_version[2],
+              ", which is too old! Bplus requires ", OGL_MAJOR_VERSION, ".", OGL_MINOR_VERSION,
+              ". If you're on a laptop with a discrete GPU, make sure you're not accidentally",
+              " using the Integrated Graphics.",
+              " This program was using the GPU '", device.gpu_name, "'."
+        )
 
         # Set up the Context singleton.
         @bp_check(isnothing(get_context()), "A Context already exists on this thread")
-        GLFW.MakeContextCurrent(window)
-        con::Context = new(window, vsync, Device(), RenderState(),
+        con::Context = new(window, vsync, device, RenderState(),
                            Ptr_Program(), Ptr_Mesh(),
                            Dict{Symbol, Service}())
         CONTEXTS_PER_THREAD[Threads.threadid()] = con
 
         if debug_mode
             glEnable(GL_DEBUG_OUTPUT)
-            # Below is the call for the original callback-based logging:
+            # Below is the call for the original callback-based logging, in case we ever fix that:
             # glDebugMessageCallback(ON_OGL_MSG_ptr, C_NULL)
         end
 
@@ -365,9 +379,7 @@ function try_register_service( service_creator::Function,
                                context::Context,
                                service_key::Symbol
                              )
-    if !haskey(context.services, service_key)
-        context.services[service_key] = service_creator()
-    end
+    return get!(service_creator, context.services, service_key).data
 end
 "
 Gets the data for a service that has been registered with this Context
@@ -728,16 +740,17 @@ set_render_state(::Val{:stencil_write_mask}, val::GLuint, c::Context) = set_sten
 export set_stencil_write_mask, set_stencil_write_mask_front, set_stencil_write_mask_back
 
 "
-Changes the area of the screen which rendering outputs to.
+Changes the area of the screen which rendering outputs to,
+    in terms of pixels (using 1-based indices).
 By default, the min/max corners of the render are the min/max corners of the screen,
    but you can set this to render to a subset of the whole screen.
 The max corner is inclusive.
 "
-function set_viewport(context::Context, min::v2i, max::v2i)
-    new_view = (min=min, max=max)
+function set_viewport(context::Context, min::v2i, max_inclusive::v2i)
+    new_view = (min=min, max=max_inclusive)
     if context.state.viewport != new_view
-        size = max - min + 1
-        glViewport(min.x, min.y, size.x, size.y)
+        size = max_inclusive - min + 1
+        glViewport(min.x - 1, min.y - 1, size.x, size.y)
         set_render_state_field!(context, :viewport, new_view)
     end
 end
@@ -795,7 +808,7 @@ set_stencil_write_mask(write_mask::GLuint) = set_stencil_write_mask(get_context(
 set_stencil_write_mask_front(write_mask::GLuint) = set_stencil_write_mask_front(get_context(), write_mask)
 set_stencil_write_mask_back(write_mask::GLuint) = set_stencil_write_mask_back(get_context(), write_mask)
 set_stencil_write_mask(front::GLuint, back::GLuint) = set_stencil_write_mask(get_context(), front, back)
-set_viewport(min::v2i, max::v2i) = set_viewport(get_context(), min, max)
+set_viewport(min::v2i, max_inclusive::v2i) = set_viewport(get_context(), min, max_inclusive)
 set_scissor(min_max::Optional{Tuple{v2i, v2i}}) = set_scissor(get_context(), min_max)
 
 
