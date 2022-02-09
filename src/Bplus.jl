@@ -17,5 +17,6 @@ end
 @submodule GL
 
 @submodule Helpers
+@submodule SceneTree
 
 end # module
