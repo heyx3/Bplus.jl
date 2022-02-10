@@ -106,7 +106,7 @@ function preallocated_vector(::Type{T}, capacity::Int) where {T}
     empty!(v)
     return v
 end
-export preallocated_array
+export preallocated_vector
 
 "
 Finds the index/key of the first element matching a desired one.
@@ -121,3 +121,27 @@ function find_matching(target, collection, comparison = Base.:(==))::Optional
     return nothing
 end
 export find_matching
+
+
+"
+Provides a do-while loop for Julia.
+
+Example:
+
+```
+i = 0
+@do_while begin
+    i += 1
+end (i < 5)
+@test (i == 5)
+```
+"
+macro do_while(to_do, condition)
+    return :(
+        while true
+            $(esc(to_do))
+            $(esc(condition)) || break
+        end
+    )
+end
+export @do_while

@@ -98,6 +98,18 @@ contiguous_data_ref = contiguous_ref(contiguous_data, Int)
     2
 )
 
+# Test @do_while:
+@bp_test_no_allocations_setup(
+    i::Int = 0,
+    @do_while (i += 1) (i < 5),
+    5
+)
+@bp_test_no_allocations_setup(
+    i::Int = 0,
+    @do_while (i += 1) false,
+    1
+)
+
 # Test @optional
 @bp_check(tuple(@optional 4>0   3 4.0 true "hi" :world) ==
            (3, 4.0, true, "hi", :world))
