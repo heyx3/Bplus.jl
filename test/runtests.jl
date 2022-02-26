@@ -9,13 +9,14 @@ using Random, TupleTools, Setfield, InteractiveUtils,
 
 # Import the main codebase.
 using Bplus
-using Bplus.Utilities, Bplus.Math, Bplus.GL, Bplus.Helpers
+using Bplus.Utilities, Bplus.Math, Bplus.GL, Bplus.Helpers, Bplus.SceneTree
 
 # Enable all asserts for the codebase.
 @inline Bplus.Utilities.bp_utils_asserts_enabled() = true
 @inline Bplus.Math.bp_math_asserts_enabled() = true
 @inline Bplus.GL.bp_gl_asserts_enabled() = true
 @inline Bplus.Helpers.bp_helpers_asserts_enabled() = true
+@inline Bplus.SceneTree.bp_scene_tree_asserts_enabled() = true
 
 
 #############################
@@ -25,8 +26,8 @@ using Bplus.Utilities, Bplus.Math, Bplus.GL, Bplus.Helpers
 """
 Tests that the given expression equals the given value,
    and does not allocate any heap memory when evaluating.
-NOTE: the expression is evaluated more than once, to ensure it's precompiled,
-   so don't mutate any state!
+NOTE: the expression could be evaluated more than once, to ensure it's precompiled,
+   so be careful with mutating expressions!
 """
 macro bp_test_no_allocations(expr, expected_value, msg...)
     return impl_bp_test_no_allocations(expr, expected_value, msg, :())
@@ -34,9 +35,9 @@ end
 """
 Tests that the given expression equals the given value,
    and does not allocate any heap memory when evaluating.
-Also takes some code which does initial setup and may allocate.
-NOTE: the expression is evaluated more than once, to ensure it's precompiled,
-   so don't mutate any important state!
+Also takes some code which does initial setup, and may allocate.
+NOTE: the expression could be evaluated more than once, to ensure it's precompiled,
+   so be careful with mutating expressions!
 """
 macro bp_test_no_allocations_setup(setup, expr, expected_value, msg...)
     return impl_bp_test_no_allocations(expr, expected_value, msg, setup)
@@ -50,14 +51,14 @@ function impl_bp_test_no_allocations(expr, expected_value, msg, startup)
     msg = map(esc, msg)
     startup = esc(startup)
     return quote
-        # Hide the expressions in a function to avoid issues with memory allocations and globals.
+        # Hide the expressions in a function to avoid global scope.
         @inline function run_test()
             $startup
             @inline function run_timer()
                 return @timed($expr)
             end
             # Try several times until we get a result which does't allocate,
-            #    in case the GC does any weird stuff (and to handle the initial precompilation)
+            #    to handle precompilation *and* the GC doing anything weird.
             result = nothing
             n_tries::Int = 0
             for i in 1:10

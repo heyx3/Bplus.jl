@@ -58,23 +58,33 @@ const SCENE_TREE = map(node -> ST_Entity(node, true), [
     ST_Node(v3f(3, 1, 6))  # 19
 ])
 
+
 # Set up the hierarchical relationships.
 # Keep in mind that new children are inserted at the front of the parent's list.
-SceneTree.set_parent(7, 1, context)
-SceneTree.set_parent(6, 1, context)
-SceneTree.set_parent(5, 1, context)
-SceneTree.set_parent(8, 2, context)
-SceneTree.set_parent(10, 3, context)
-SceneTree.set_parent(9, 3, context)
-SceneTree.set_parent(11, 5, context)
-SceneTree.set_parent(13, 7, context)
-SceneTree.set_parent(12, 7, context)
-SceneTree.set_parent(19, 9, context)
-SceneTree.set_parent(18, 9, context)
-SceneTree.set_parent(17, 9, context)
-SceneTree.set_parent(16, 9, context)
-SceneTree.set_parent(15, 9, context)
-SceneTree.set_parent(14, 9, context)
+function test_set_parent(child::Int, parent::Int, context = SCENE_TREE)
+    @bp_test_no_allocations(
+        begin
+            SceneTree.set_parent(SCENE_TREE[child], SCENE_TREE[parent], context)
+            (SCENE_TREE[child].parent, SCENE_TREE[parent].child_first)
+        end,
+        (SCENE_TREE[parent], SCENE_TREE[child])
+    )
+end
+test_set_parent(7, 1)
+test_set_parent(6, 1)
+test_set_parent(5, 1)
+test_set_parent(8, 2)
+test_set_parent(10, 3)
+test_set_parent(9, 3)
+test_set_parent(11, 5)
+test_set_parent(13, 7)
+test_set_parent(12, 7)
+test_set_parent(19, 9)
+test_set_parent(18, 9)
+test_set_parent(17, 9)
+test_set_parent(16, 9)
+test_set_parent(15, 9)
+test_set_parent(14, 9)
 
 
 ###########
