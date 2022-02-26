@@ -98,6 +98,8 @@ end
     )
 end
 
+println("#TODO: m_decompose(), which gets the position/rotation/scale for a matrix. https://math.stackexchange.com/questions/237369/given-this-transformation-matrix-how-do-i-decompose-it-into-translation-rotati")
+
 "Builds the view matrix for a camera looking at the given position."
 @inline function m4_look_at( cam_pos::Vec3{F},
                              target_pos::Vec3{F},

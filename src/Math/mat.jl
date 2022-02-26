@@ -92,6 +92,10 @@ end
 export m_apply_point, m_apply_vector
 #TODO: Fast version of these two functons which ignores the homogenous coordinate divide.
 
+"Combines transform matrices in the order they're given."
+@inline m_combine(first::Mat, rest::Mat...) = m_combine(rest...) * first
+@inline m_combine(m::Mat) = m
+export m_combine
 
 "Inverts the given matrix"
 const m_invert = StaticArrays.inv
