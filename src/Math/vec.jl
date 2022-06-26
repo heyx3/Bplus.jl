@@ -271,7 +271,17 @@ Base.size(::Vec{N, T}) where {N, T} = (N, )
 Base.IndexStyle(::Vec{N, T}) where {N, T} = IndexLinear()
 @inline Base.iterate(v::Vec, state...) = iterate(v.data, state...)
 
-@inline Base.map(f, v::Vec) = Vec((f(x) for x in v)...)
+# The simpler syntax does not appear to work for type inference :(
+@generated function Base.map(f, v::Vec{N, T})::Vec{N} where {N, T}
+    components = [ ]
+    exprs = quote end
+    for i in 1:N
+        push!(components, Symbol("a$i"))
+        push!(exprs.args, :( $(components[i]) = f(v[$i]) ))
+    end
+    push!(exprs.args, :( return Vec($(components...)) ))
+    return exprs
+end
 
 @inline function Base.foldl(func::F, v::Vec{N, T}) where {F, N, T}
     f::T = v[1]

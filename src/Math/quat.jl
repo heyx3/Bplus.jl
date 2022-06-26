@@ -1,3 +1,25 @@
+#################
+##   Snippets  ##
+#################
+
+# Breaking out some code into small functions to help with type inference.
+
+function pick_arbitrary_rot_axis(v::Vec3{F}) where {F}
+    axis::Vec3{F} = (abs(v.x) < one(F)) ?
+                       Vec3{F}(1, 0, 0) :
+                       Vec3{F}(0, 1, 0)
+    axis = vnorm(axis × from)
+end
+
+function pick_rot_axis(from::Vec3{F1}, to::Vec3{F2}, cos_angle::F) where {F, F1, F2}
+    norm::Vec3{F} = map(F, from × to)
+    theta::F = one(F) + convert(F, cos_angle)
+    return vnorm(Vec(norm, theta))
+end
+
+###################
+
+
 """
 Quaternions are great for representing 3D rotations.
 It is assumed to always be normalized, to optimize the math
@@ -5,7 +27,7 @@ It is assumed to always be normalized, to optimize the math
 """
 struct Quaternion{F}
     data::Vec4{F}
-    
+
     # Constructors that take the components:
     Quaternion(x, y, z, w) = Quaternion(promote(x, y, z, w))
     Quaternion(x::F, y::F, z::F, w::F) where {F} = new{F}(Vec(x, y, z, w))
@@ -48,17 +70,12 @@ struct Quaternion{F}
         if isapprox(cos_angle, one(F); atol=0.001)
             return Quaternion{F}()
         elseif isapprox(cos_angle, -one(F); atol=0.001)
+            # There is no rotation.
             # Get an arbitrary perpendicular axis to rotate around.
-            axis::Vec3{F2} = (abs(from.x) < 1) ?
-                                Vec3{F2}(1, 0, 0) :
-                                Vec3{F2}(0, 1, 0)
-            axis = vnorm(axis × from)
-            return new{F}(map(F, axis), convert(F, π))
+            return new{F}(map(F, pick_arbitrary_rot_axis(from)), convert(F, π))
         else
             # The axis is the cross product of the vectors.
-            norm::Vec3{F} = map(F, from × to)
-            theta::F = convert(F, 1) + convert(F, cos_angle)
-            return new{F}(vnorm(Vec(norm, theta)))
+            return new{F}(pick_rot_axis(from, to, cos_angle))
         end
     end
 

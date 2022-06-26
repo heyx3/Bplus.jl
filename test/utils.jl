@@ -101,12 +101,18 @@ contiguous_data_ref = contiguous_ref(contiguous_data, Int)
 # Test @do_while:
 @bp_test_no_allocations_setup(
     i::Int = 0,
-    @do_while (i += 1) (i < 5),
+    begin
+        @do_while((i += 1), (i < 5))
+        i
+    end,
     5
 )
 @bp_test_no_allocations_setup(
     i::Int = 0,
-    @do_while (i += 1) false,
+    begin
+        @do_while((i += 1), false)
+        i
+    end,
     1
 )
 

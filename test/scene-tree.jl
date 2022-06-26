@@ -1,5 +1,6 @@
 # Create a simple test scene-tree backed by a set of reference-types.
-
+#DEBUG: Disable the test
+if false
 ######################
 #  Data Definitions  #
 ######################
@@ -92,3 +93,5 @@ test_set_parent(14, 9)
 ###########
 
 println("#TODO: Add SceneTree unit tests")
+
+end # if fase

@@ -64,8 +64,8 @@ function Node{TNodeID, F}( local_pos::Vec3 = zero(Vec3{F})
                 convert(Vec3{F}, local_pos),
                 convert(Quaternion{F}, local_rot),
                 convert(Vec3{F}, local_scale),
-                false, m4_identity(4, 4, F),
-                false, m4_identity(4, 4, F), m4_identity(4, 4, F),
+                false, m_identity(4, 4, F),
+                false, m_identity(4, 4, F), m_identity(4, 4, F),
                 false, Quaternion{F}())
 end
 function Node{TNodeID}( local_pos::Vec3{F}
@@ -155,7 +155,7 @@ Note that the node's original storage in the context is not updated
 "
 function world_inverse_transform( node::Node{TNodeID, F},
                                   context::TContext
-                                )::Tuple{@Mat(4, 4, F), Node{TNodeID, F}}
+                                )::Tuple{@Mat(4, 4, F), Node{TNodeID, F}} where {TContext, TNodeID, F}
     # Make sure the cache is updated, then return the cached value.
     (_, node) = world_transform(node, context)
     return (node.cached_matrix_world_inverse, node)
@@ -687,7 +687,7 @@ function disconnect_parent( node::Node{TNodeID, F},
 
     # Update the next sibling in the tree.
     if !is_null_id(node.sibling_next)
-        sibling_data::Node{TNodeID, F} = deref_node(node.sibling_next, context)
+        sibling_data = deref_node(node.sibling_next, context)
         @bp_scene_tree_assert(sibling_data.sibling_prev == node_id,
                               "My 'next' sibling has a different 'previous' sibling; it isn't me")
 

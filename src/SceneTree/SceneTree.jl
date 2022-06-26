@@ -1,6 +1,6 @@
 "
 A scene-tree implementation, agnostic as to its memory layout.
-You an embed it in an ECS, or just throw Nodes in a Vector.
+You can embed it in an ECS, or just throw Nodes into a Vector.
 "
 module SceneTree
 
