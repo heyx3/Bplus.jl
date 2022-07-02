@@ -374,9 +374,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
                     SimpleFormat(FormatTypes.normalized_uint,
                                  SimpleFormatComponents.RGB,
                                  SimpleFormatBitDepths.B8),
-                    DepthStencilFormats.depth_24u
-                    ;
-                    ds_is_target_buffer=false)
+                    DepthStencilFormats.depth_24u)
     push!(to_clean_up, target)
     check_gl_logs("creating the Target")
 
@@ -386,11 +384,8 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
     set_depth_test(context, ValueTests.LessThan)
     set_blending(context, make_blend_opaque(BlendStateRGBA))
 
-    #DEBUG: Counter for the first frame
-    f = false
-
     camera_yaw_radians::Float32 = 0
-    timer::Int = 5 * 60  #Vsync is on, assume 60fps
+    timer::Int = (GL_TEST_FULL ? 5 : 500) * 60  #Vsync is on, assume 60fps
     while !GLFW.WindowShouldClose(context.window)
         window_size::v2i = get_window_size(context)
         check_gl_logs("starting a new tick")
@@ -424,6 +419,8 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
         #    then we'll re-render them while sampling from that target
         #    to create a trippy effect.
         function draw_scene(triangle_tex, msg_context...)
+            set_depth_test(context, ValueTests.LessThan)
+
             # Update the triangle uniforms.
             set_uniform(draw_triangles, "u_tex", triangle_tex)
             # Draw the triangles.
@@ -445,7 +442,6 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
             view_deactivate(get_view(tex_skybox))
             check_gl_logs(string("drawing the skybox ", msg_context...))
         end
-        set_depth_test(context, ValueTests.LessThan)
         target_activate(target)
         target_clear(target, vRGBAf(1, 0, 1, 0))
         target_clear(target, @f32 1.0)
@@ -453,7 +449,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
 
         # Draw the Target's data onto the screen.
         target_activate(nothing)
-        render_clear(context, GL.Ptr_Target(), vRGBAf(1, 0, 1, 0))
+        render_clear(context, GL.Ptr_Target(), vRGBAf(0, 1, 0, 0))
         render_clear(context, GL.Ptr_Target(), @f32 1.0)
         set_depth_test(context, ValueTests.Pass)
         check_gl_logs("clearing the screen")
@@ -463,12 +459,6 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
         view_deactivate(get_view(target_tex))
 
         GLFW.SwapBuffers(context.window)
-        #DEBUG: Pause on the first frame.
-        if !f
-            f = true
-            println("#TODO: Why does depth-testing only seem to work correctly on the very first frame?")
-            sleep(2)
-        end
 
         GLFW.PollEvents()
         timer -= 1

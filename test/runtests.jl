@@ -110,7 +110,7 @@ else
     test_files = readdir(@__DIR__, join=true)
     filter!(test_files) do name
         return !endswith(name, "runtests.jl") &&
-            endswith(name, ".jl")
+               endswith(name, ".jl")
     end
     for f_path in test_files
         f_name = split(f_path, ('/', '\\'))[end]

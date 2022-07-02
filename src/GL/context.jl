@@ -820,8 +820,7 @@ set_scissor(min_max::Optional{Tuple{v2i, v2i}}) = set_scissor(get_context(), min
 ###############
 
 @inline function set_render_state_field!(c::Context, field::Symbol, value)
-    rs = c.state
-    set(rs, Setfield.PropertyLens{field}(), value)
+    rs = set(c.state, Setfield.PropertyLens{field}(), value)
     setfield!(c, :state, rs)
 end
 
