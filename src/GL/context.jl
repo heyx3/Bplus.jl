@@ -130,7 +130,6 @@ mutable struct Context
                       # Below are GLFW input settings that can be changed at will,
                       #    but will be set to these specific values on initialization.
                       glfw_sticky_inputs::Bool = true,
-                      glfw_disable_mouse_acceleration::Bool = true,
                       glfw_cursor::@ano_enum(Normal, Hidden, Centered) = Val(:Normal)
                     )::Context
         # Create the window and OpenGL context.
@@ -143,7 +142,6 @@ mutable struct Context
         # Configure the window's inputs.
         GLFW.SetInputMode(window, GLFW.STICKY_KEYS, glfw_sticky_inputs)
         GLFW.SetInputMode(window, GLFW.STICKY_MOUSE_BUTTONS, glfw_sticky_inputs)
-        GLFW.SetInputMode(window, GLFW.RAW_MOUSE_MOTION, disable_mouse_acceleration)
         GLFW.SetInputMode(window, GLFW.CURSOR,
                           if glfw_cursor isa Val{:Normal}
                               GLFW.CURSOR_NORMAL
