@@ -126,14 +126,33 @@ mutable struct Context
                       ;
                       vsync::Optional{E_VsyncModes} = nothing,
                       debug_mode::Bool = false, # See GL/debugging.jl
-                      glfw_hints::Dict{UInt, UInt} = Dict{UInt, UInt}()
+                      glfw_hints::Dict{UInt, UInt} = Dict{UInt, UInt}(),
+                      # Below are GLFW input settings that can be changed at will,
+                      #    but will be set to these specific values on initialization.
+                      glfw_sticky_inputs::Bool = true,
+                      glfw_disable_mouse_acceleration::Bool = true,
+                      glfw_cursor::@ano_enum(Normal, Hidden, Centered) = Val(:Normal)
                     )::Context
-        # Create the window and OpenGL context:
+        # Create the window and OpenGL context.
         for (hint_name, hint_val) in glfw_hints
             GLFW.WindowHint(hint_name, hint_val)
         end
         window = GLFW.CreateWindow(size..., title)
         GLFW.MakeContextCurrent(window)
+
+        # Configure the window's inputs.
+        GLFW.SetInputMode(window, GLFW.STICKY_KEYS, glfw_sticky_inputs)
+        GLFW.SetInputMode(window, GLFW.STICKY_MOUSE_BUTTONS, glfw_sticky_inputs)
+        GLFW.SetInputMode(window, GLFW.RAW_MOUSE_MOTION, disable_mouse_acceleration)
+        GLFW.SetInputMode(window, GLFW.CURSOR,
+                          if glfw_cursor isa Val{:Normal}
+                              GLFW.CURSOR_NORMAL
+                          elseif glfw_cursor isa Val{:Hidden}
+                              GLFW.CURSOR_HIDDEN
+                          else
+                              @assert(glfw_cursor isa Val{:Centered})
+                              GLW.CURSOR_DISABLED
+                          end)
 
         device = Device(window)
 
