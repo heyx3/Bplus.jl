@@ -120,3 +120,32 @@ contiguous_data_ref = contiguous_ref(contiguous_data, Int)
 @bp_check(tuple(@optional 4>0   3 4.0 true "hi" :world) ==
            (3, 4.0, true, "hi", :world))
 @bp_check(tuple(@optional 4<0   3 4.0 true "hi" :world) == ())
+
+# Test union type wrangling:
+@assert union_types(Float32) == (Float32, )
+@assert Set(union_types(Union{Int64, Float32})) ==
+        Set([ Int64, Float32 ])
+@assert Set(union_types(Union{Float32, Int64, String})) ==
+        Set([ Int64, Float32, String])
+@assert Set(union_types(Union{Int, Float64, String, Vector{Float64}})) ==
+        Set([ Int, Float64, String, Vector{Float64} ])
+println("#TODO: Adding a type like `Dict{<:AbstractString, <:Integer} breaks this. Why?")
+@assert union_parse_order(Union{Int, Float64}) ==
+          union_parse_order(Union{Float64, Int}) ==
+          [ Int, Float64]
+@assert union_parse_order(Union{Float32, Int64, String}) ==
+          [ Int64, Float32, String ]
+@assert union_parse_order(Union{Int, String, Float64}) ==
+          union_parse_order(Union{Float64, Int, String}) ==
+          union_parse_order(Union{String, Float64, Int}) ==
+          union_parse_order(Union{Int, Float64, String}) ==
+          [ Int, Float64, String ]
+@assert union_parse_order(Union{Int, Float64, String, Vector, Dict}) ==
+          [ Int, Float64, String, Dict, Vector ]
+
+# Test SerializedUnion's ability to serialize things that StructTypes on its own can't.
+@enum SU1 su1_a su1_b su1_c
+@enum SU2 su2_a su2_b su2_c
+@assert(su2_c == JSON3.read(JSON3.write(su2_c), SerializedUnion{Union{SU1, SU2}}))
+@assert(su2_c == JSON3.read(JSON3.write(su2_c), SerializedUnion{Union{SU2, SU1}}))
+@assert(su2_c == JSON3.read(JSON3.write(su2_c), @SerializedUnion(SU1, SU2)))

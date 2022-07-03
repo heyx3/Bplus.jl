@@ -305,11 +305,11 @@ function texture_data( tex::Texture,
                        subset::TexSubset,
                        value::Ref,
                        recompute_mips::Bool,
-                       mode::TMode
+                       mode::@ano_enum(Set, Get, Clear)
                        ;
                        cube_face_range::Tuple{Int, Int},
                        get_buf_pixel_byte_size::Int = -1  # Only for Get ops
-                     ) where {TMode <: @ano_enum(Set, Get, Clear)}
+                     )
     #TODO: Check that the subset is the right number of dimensions
 
     full_size::v3u = get_mip_size(tex.size, subset.mip)
@@ -322,7 +322,7 @@ function texture_data( tex::Texture,
     end
 
     # Perform the requested operation.
-    if mode == Val(:Set)
+    if mode isa Val{:Set}
         if tex.type == TexTypes.oneD
             glTextureSubImage1D(tex.handle, subset.mip - 1,
                                 range.min.x - 1,
@@ -344,7 +344,7 @@ function texture_data( tex::Texture,
         else
             error("Unhandled case: ", tex.type)
         end
-    elseif mode == Val(:Get)
+    elseif mode isa Val{:Get}
         @bp_gl_assert(get_buf_pixel_byte_size > 0,
                       "Internal field 'get_buf_pixel_byte_size' not passed for getting texture data")
         @bp_gl_assert(!recompute_mips,
@@ -354,7 +354,7 @@ function texture_data( tex::Texture,
                              components, component_type,
                              prod(range.size) * get_buf_pixel_byte_size,
                              value)
-    elseif mode == Val(:Clear)
+    elseif mode isa Val{:Clear}
         glClearTexSubImage(tex.handle, subset.mip - 1,
                            (range.min - 1)..., range.size...,
                            components, component_type,

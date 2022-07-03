@@ -1,5 +1,3 @@
-# Julia enums are weirdly C-like, in that their elements are global objects.
-# This macro wraps them in a module to prevent name collisions.
 
 
 "
@@ -18,8 +16,8 @@ export @ano_enum
 
 """
 An alternative to the @enum macro, with the following differences:
-* Keeps the enum values in a singleton struct to prevent name collisions.
-* Provides an overlod of `base.Parse()` to parse the enum from a string.
+* Keeps the enum values in a module to prevent name collisions.
+* Provides an overload of `base.parse()` to parse the enum from a string.
 * Provides `MyEnum.from(i::Integer)` to convert from int to enum.
 * Provides `MyEnum.from_index(i::Integer)` to get an enum value
     from its index in the original declaration.

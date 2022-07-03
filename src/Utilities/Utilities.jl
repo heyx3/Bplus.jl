@@ -1,11 +1,12 @@
 module Utilities
 
-using StaticArrays, MacroTools
+using StaticArrays, MacroTools, Dates, StructTypes
 
 include("asserts.jl")
 @make_toggleable_asserts bp_utils_
 
 include("basic.jl")
+include("unions.jl")
 include("macros.jl")
 
 include("strings.jl")
