@@ -5,6 +5,8 @@ using ..Utilities, ..Math
 
 @make_toggleable_asserts bp_input_
 
+include("buttons.jl")
+
 
 "Manages all inputs for a GLFW window."
 mutable struct InputSystem
