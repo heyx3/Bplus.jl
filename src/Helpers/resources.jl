@@ -4,7 +4,7 @@ A Context service which defines a bunch of common, simple, useful resources:
  * `screen_triangle` : A 1-triangle mesh with 2D positions in NDC-space.
                        When drawn, it will perfectly cover the entire viewport,
                           making it easy to spin up post-processing effects.
-                       The UV coordinates can be calculated from the positions
+                       The UV coordinates can be calculated from the XY positions
                           (or from gl_FragCoord).
  * `quad` : A 2-triangle mesh describing a square, with 2D coordinates
                 in the range (-1, -1) to (+1, +1).
