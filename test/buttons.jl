@@ -21,7 +21,7 @@ button_warning = @capture_err(
 )
 @assert contains(button_warning, "Warn")
 
-bp_gl_context(v2i(200, 200), "Input test") do context::Context
+bp_gl_context(v2i(200, 200), "Button input test") do context::Context
     # Construct the test button with the custom constructor.
     test_button = Button_Test{UInt}(String) # Should trigger on every 4th tick
                                             #    after the string is set to null
@@ -50,7 +50,7 @@ end
     # Note that Button_Test has type parameters, and so
     #    is not deserializable except directly.
     buttons = [ Button_Key(GLFW.KEY_C),
-                Button_All(children=[
+                Button_All([
                     Button_Mouse(button=GLFW.MOUSE_BUTTON_MIDDLE),
                     Button_Key(AggregateKeys.shift),
                     Button_Manual(current_raw=true) # The 'true' shouldn't get serialized

@@ -1,108 +1,106 @@
 ##   Data   ##
 
-# The different ways a button can be pressed
-@bp_enum(ButtonModes,
-    is_on, is_off,
-    just_pressed, just_released
-)
-export E_ButtonModes, ButtonModes
-
-evaluate_button(mode::E_ButtonModes, previous::Bool, current::Bool)::Bool = (
-    if mode == ButtonModes.is_on
-        current
-    elseif mode == ButtonModes.is_off
-        !current
-    elseif mode == ButtonModes.just_pressed
-        current && !previous
-    elseif mode == ButtonModes.just_released
-        !current && previous
-    else
-        error("Unhandled case: ", mode)
-    end
-)
+#TODO: Deadzone calculation, nonlinear scaling
 
 
 ##   Core definitions   ##
 
 "
-Some kind of input that can be `on` or `off`.
-There are a lot of specific constraints on how a button should be defined,
-    so it's highly recommended to use the `@bp_button` macro to define them.
+Some kind of input that can range between
+    either 0,1 ('unsigned') or -1,+1 ('signed').
+There are a lot of specific constraints on how an Axis should be defined,
+    so it's highly recommended to use the `@bp_axis` macro to define them.
 
 In particular:
- * It should implement `button_value_raw(::AbstractButton)` to read the input's current value
-     (without regard for `ButtonModes`)
+ * It should implement `axis_value_raw(::AbstractAxis)` to read its current value
  * It should have the fields:
-     * `mode::E_ButtonModes = BM_IsOn`
      * `type::Symbol = [unique serialization key]`
-     * `current_raw::Bool = false`
-     * `previous_raw::Bool = false`
- * It should add itself to the named-tuple `BUTTON_SERIALIZATION_KEYS`,
+     * `current_raw::Float32`
+ * It should add itself to the named-tuple `AXIS_SERIALIZATION_KEYS`,
      for `StructTypes` to see it
  * It should set up serialization through `StructTypes`
+ * It should overload `axis_value_range()`
 
-Convention is that it should be a mutable struct named `Button_[X]`,
+Convention is that it should be a mutable struct named `Axis_[X]`,
     and the serialization key should be the symbol `:[X]`.
 "
-abstract type AbstractButton end
-export AbstractButton
-StructTypes.StructType(::Type{AbstractButton}) = StructTypes.AbstractType()
+abstract type AbstractAxis end
+export AbstractAxis
+StructTypes.StructType(::Type{AbstractAxis}) = StructTypes.AbstractType()
 
-"Global store of what button types there are, and what their 'key' is for de-serialization."
-const BUTTON_SERIALIZATION_KEYS = Ref{NamedTuple}(NamedTuple())
-export BUTTON_SERIALIZATION_KEYS # Exporting simplifies the @bp_button macro.
-StructTypes.subtypes(::Type{AbstractButton}) = BUTTON_SERIALIZATION_KEYS[]
+"Global store of what axis types there are, and what their 'key' is for de-serialization."
+const AXIS_SERIALIZATION_KEYS = Ref{NamedTuple}(NamedTuple())
+export AXIS_SERIALIZATION_KEYS # Exporting simplifies the @bp_axis macro.
+StructTypes.subtypes(::Type{AbstractAxis}) = AXIS_SERIALIZATION_KEYS[]
 
 
 ##   Functions   ##
 
-"Computes the button's immediate value (not considering `ButtonModes`."
-button_value_raw(b::AbstractButton, ::GLFW.Window) = error("button_value_raw() not implemented for ", typeof(b))
+"Computes the axis's immediate value."
+axis_value_raw(a::AbstractAxis, ::GLFW.Window) = error("axis_value_raw() not implemented for ", typeof(a))
 
-function button_update(b::AbstractButton, window::GLFW.Window)
-    b.previous_raw = b.current_raw
-    b.current_raw = button_value_raw(b, window)
+function axis_update(a::AbstractAxis, window::GLFW.Window)
+    a.current_raw = axis_value_raw(a, window)
 end
 
-button_value(b::AbstractButton) = evaluate_button(b.mode, b.previous_raw, b.current_raw)
-export button_value
+axis_value(a::AbstractAxis) = clamp(a.current_raw, axis_value_range(a)...)
+export axis_value
+
+"Gets the inclusive min and max of the input's range"
+axis_value_range(a::AbstractAxis)::NTuple{2, Float32} = axis_value_range(typeof(a))
+axis_value_range(T::Type{<:AbstractAxis}) = error("axis_value_range() not implemented for ", T)
+export axis_value_range
 
 
-##   Button definitions   ##
+##   Axis definitions   ##
 
 """
-Defines an input button (a struct inheriting from `Bplus.Input.AbstractButton`).
-Refer to *Bplus/src/Input/buttons.jl* for examples that show the full range of functionality.
+Defines an input axis (a struct inheriting from `Bplus.Input.AbstractAxis`).
+Refer to *Bplus/src/Input/axes.jl* for examples that show the full range of functionality.
 
-Below is one example, of a button that is triggered from two keys pressed at once:
+Below is one example, of a signed axis that is triggered from two keys pressed at once:
 ````
-@bp_button DualKey "Triggered from two simultaneous keypresses" begin
+@bp_axis signed DualKey "Triggered from two simultaneous keypresses" begin
     key1::GLFW.Key
-    key2::GLFW.Key = GLFW.KEY_LEFT_CONTROL
+    key2::GLFW.Key
 
     # Compute the value ('window' argument is optional):
-    RAW(b, window) = GLFW.GetKey(window, b.key1) && GLFW.GetKey(window, b.key2)
+    RAW(a, window) = if (GLFW.GetKey(window, a.key1) && GLFW.GetKey(window, a.key2))
+                         1.0
+                     else
+                         -1.0
+                     end
 
-    # Custom constructor that sets key1 to X, and leaves key2 at default:
-    Key() = Key(GLFW.KEY_X)
+    # Custom constructor that sets key2 to left-ctrl:
+    function Key(key1::GLFW.Key)
+        Key(key1=key1, key2=GLFW.KEY_LEFT_CONTROL)
+    end
 
-    # Optional update logic before button update ('window' argument is optional):
-    UPDATE(b, window) = println("tick")
+    # Optional update logic before axis update ('window' argument is optional):
+    UPDATE(a, window) = println("tick")
 end
 ````
 
-The new button type can be created with
-  `Button_Key(window=my_window[, mode=ButtonModes.just_pressed])`.
+The new axis type can be created with
+  `Axis_Key(window=my_window)`.
 """
-macro bp_button(name, definition)
+macro bp_axis(signed_value, name, definition)
     # Do error-checking.
     if !isa(name, Symbol) && !Meta.isexpr(name, :curly)
-        error("Button name must be a token (optionally with type parameters),",
+        error("Axis name must be a token (optionally with type parameters),",
               " but was ", typeof(name), "(", name, ")")
     elseif !Meta.isexpr(definition, :block)
-        error("Button definition must be a `begin ... end` block, but was ",
+        error("Axis definition must be a `begin ... end` block, but was ",
               (definition isa Expr) ? definition.head : definition)
+    elseif !in(signed_value, (:signed, :unsigned))
+        error("First parameter to @bp_axis must be 'signed' or 'unsigned'")
     end
+
+    # Process signed/unsigned.
+    is_signed::Bool = (signed_value == :signed)
+    value_min::Float32 = is_signed ? -one(Float32) : zero(Float32)
+    value_max::Float32 = one(Float32)
+    value_resting::Float32 = zero(Float32)
 
     # Generate names.
     local short_name::Symbol,
@@ -114,7 +112,7 @@ macro bp_button(name, definition)
           type_name_str::String
     if name isa Symbol
         short_name = name
-        struct_name = Symbol(:Button_, name)
+        struct_name = Symbol(:Axis_, name)
         struct_name_typed = struct_name
         struct_def = struct_name
         type_name_str = string(name)
@@ -122,7 +120,7 @@ macro bp_button(name, definition)
         type_param_names = [ ]
     elseif Meta.isexpr(name, :curly)
         short_name = name.args[1]
-        struct_name = Symbol(:Button_, short_name)
+        struct_name = Symbol(:Axis_, short_name)
         struct_def = deepcopy(name)
         struct_def.args[1] = struct_name
         type_name_str = string(short_name)
@@ -162,12 +160,10 @@ macro bp_button(name, definition)
         end
     end)
     filter!(exists, definitions_split)
-    # Inject the fields that all Buttons should have.
+    # Inject the fields that all Axes should have.
     insert!.(Ref(definitions_split), Ref(1), [
         (:type, Symbol, false, Some(:( Symbol($(type_name_str)) ))),
-        (:mode, E_ButtonModes, false, Some(ButtonModes.is_on)),
-        (:previous_raw, Bool, false, Some(false)),
-        (:current_raw, Bool, false, Some(false))
+        (:current_raw, Float32, false, Some(value_resting))
     ])
     # A constructor will be generated automatically.
     # We also need to ensure there's an empty constructor for deserialization.
@@ -189,12 +185,12 @@ macro bp_button(name, definition)
 
             # If no default is given, then it must be provided as an ordered parameter.
             # Otherwise, it can optionally be set from a keyword parameter.
-            push!(constructor_passed_args, field_name)
+            push!(constructor_passed_args, :( convert($field_type, $field_name) ))
             if isnothing(some_default_value)
-                push!(ordered_constructor_params, :( $field_name::$field_type ))
+                push!(ordered_constructor_params, :( $field_name ))
             else
                 push!(kw_constructor_params,
-                      Expr(:kw, :( $field_name::$field_type ), something(some_default_value)))
+                      Expr(:kw, field_name, something(some_default_value)))
             end
             return :( $field_name::$field_type )
         # Is it a constructor?
@@ -217,7 +213,7 @@ macro bp_button(name, definition)
                 end
                 return combinedef(def_data)
             else
-                error("Unexpected function syntax in @bp_button: ", combinedef(def_data))
+                error("Unexpected function syntax in @bp_axis: ", combinedef(def_data))
             end
         end
     end
@@ -247,17 +243,17 @@ macro bp_button(name, definition)
         (def_data isa Dict) && (def_data[:name] == :RAW)
     end
     if length(raw_decls) < 1
-        error("No button implementation found for ", name,
-              " (should look like 'RAW(b) = ...')")
+        error("No axis implementation found for ", name,
+              " (should look like 'RAW(a) = ...')")
     elseif length(raw_decls) > 1
-        error("More than one definition of RAW for button ", name)
+        error("More than one definition of RAW for axis ", name)
     end
     raw_decl = raw_decls[1]
-    raw_decl[:name] = :(Input.button_value_raw)
+    raw_decl[:name] = :(Input.axis_value_raw)
     if isempty(raw_decl[:args])
         push!(raw_decl[:args], :( _::$(esc(struct_name_typed)) ))
     elseif !isa(raw_decl[:args][1], Symbol)
-        error("The 'button' parameter for RAW() should be untyped!",
+        error("The 'axis' parameter for RAW() should be untyped!",
               " The type is added automatically")
     else
         raw_decl[:args][1] = :( $(raw_decl[:args][1])::$(esc(struct_name_typed)) )
@@ -273,7 +269,6 @@ macro bp_button(name, definition)
     if exists(type_params)
         raw_decl[:whereparams] = map(esc, tuple(type_params...))
     end
-    raw_decl[:rtype] = Bool
     raw_impl = combinedef(raw_decl)
 
     # Get the "update" implementation.
@@ -282,21 +277,21 @@ macro bp_button(name, definition)
         (def_data isa Dict) && (def_data[:name] == :UPDATE)
     end
     if length(update_decls) > 1
-        error("More than one definition of UPDATE for button ", name)
+        error("More than one definition of UPDATE for axis ", name)
     elseif length(update_decls) == 1
         update_decl = update_decls[1]
-        update_decl[:name] = :(Input.button_update)
-        # Add the first 'button' argument if not given.
-        local button_name
+        update_decl[:name] = :(Input.axis_update)
+        # Add the first 'axis' argument if not given.
+        local axis_name
         if isempty(update_decl[:args])
-            button_name = :b
-            push!(update_decl[:args], :( $button_name::$(esc(struct_name_typed)) ))
+            axis_name = :a
+            push!(update_decl[:args], :( $axis_name::$(esc(struct_name_typed)) ))
         elseif !isa(update_decl[:args][1], Symbol)
-            error("The 'button' parameter for UPDATE() should be untyped!",
+            error("The 'axis' parameter for UPDATE() should be untyped!",
                 " The type is added automatically")
         else
-            button_name = update_decl[:args][1]
-            update_decl[:args][1] = :( $button_name::$(esc(struct_name_typed)) )
+            axis_name = update_decl[:args][1]
+            update_decl[:args][1] = :( $axis_name::$(esc(struct_name_typed)) )
         end
         # Add the second 'window' argument if not given.
         window_name = :wnd
@@ -312,14 +307,13 @@ macro bp_button(name, definition)
         # Invoke the user's update behavior first, then the normal behavior.
         # Add the function alias 'UPDATE' for convenience.
         update_decl[:body] = quote
-            try let UPDATE = ($(esc(:button))::$(esc(struct_name_typed)) = $button_name, $(esc(:window))::GLFW.Window = $window_name) ->
-                                 $(update_decl[:name])(button, window)
+            try let UPDATE = ($(esc(:axis))::$(esc(struct_name_typed)) = $axis_name, $(esc(:window))::GLFW.Window = $window_name) ->
+                                 $(update_decl[:name])(axis, window)
                 $(update_decl[:body])
             end
             finally
-                invoke($(update_decl[:name]), Tuple{$AbstractButton, $(GLFW.Window)},
-                       $button_name, $window_name)
-                return nothing
+                invoke($(update_decl[:name]), Tuple{$AbstractAxis, $(GLFW.Window)},
+                       $axis_name, $window_name)
             end
         end
         if exists(type_params)
@@ -328,24 +322,25 @@ macro bp_button(name, definition)
         update_impl = combinedef(update_decl)
     end
 
-    struct_impl = :( Core.@__doc__ mutable struct $struct_def <: AbstractButton
+    struct_impl = :( Core.@__doc__ mutable struct $struct_def <: AbstractAxis
         $(definitions_impl...)
     end )
     output = quote
-        if haskey(BUTTON_SERIALIZATION_KEYS[], Symbol($type_name_str))
-            error("Button named '", $type_name_str, "' already exists")
+        if haskey(AXIS_SERIALIZATION_KEYS[], Symbol($type_name_str))
+            error("Axis named '", $type_name_str, "' already exists")
         end
 
         $struct_impl
+        $(:(Input.axis_value_range))(::Type{<:$(esc(struct_name))}) = ($value_min, $value_max)
 
         StructTypes.StructType(::Type{<:$(esc(struct_name))}) = StructTypes.Mutable()
-        StructTypes.excludes(::Type{<:$(esc(struct_name))}) = tuple(:previous_raw, :current_raw)
+        StructTypes.excludes(::Type{<:$(esc(struct_name))}) = tuple(:current_raw)
 
         if $(!isnothing(type_params))
-            @warn "Button '$($type_name_str)' has type parameters, and so StructTypes \
-cannot deserialize it through the abstract type `AbstractButton`."
+            @warn "Axis '$($type_name_str)' has type parameters, and so StructTypes \
+cannot deserialize it through the abstract type `AbstractAxis`."
         else
-            BUTTON_SERIALIZATION_KEYS[] = (BUTTON_SERIALIZATION_KEYS[]...,
+            AXIS_SERIALIZATION_KEYS[] = (AXIS_SERIALIZATION_KEYS[]...,
                                            $(Symbol(type_name_str)) = $(esc(struct_name)), )
         end
 
@@ -354,74 +349,51 @@ cannot deserialize it through the abstract type `AbstractButton`."
     end
     return output
 end
-export @bp_button
+export @bp_axis
 
 
-@bp_enum AggregateKeys alt ctrl shift os
-"
-For some keys that appear on both sides of the keyboard,
-    you can use a special alias that means 'either key'.
-"
-const InputKey = Union{GLFW.Key, E_AggregateKeys}
-export AggregateKeys, E_AggregateKeys
-export InputKey
-
-check_key(input::GLFW.Key, window::GLFW.Window) = GLFW.GetKey(window, input)
-check_key(input::E_AggregateKeys, window::GLFW.Window) = (
-    if input == AggregateKeys.alt
-        GLFW.GetKey(window, GLFW.KEY_LEFT_ALT) ||
-        GLFW.GetKey(window, GLFW.KEY_RIGHT_ALT)
-    elseif input == AggregateKeys.ctrl
-        GLFW.GetKey(window, GLFW.KEY_LEFT_CONTROL) ||
-        GLFW.GetKey(window, GLFW.KEY_RIGHT_CONTROL)
-    elseif input == AggregateKeys.shift
-        GLFW.GetKey(window, GLFW.KEY_LEFT_SHIFT) ||
-        GLFW.GetKey(window, GLFW.KEY_RIGHT_SHIFT)
-    elseif input == AggregateKeys.os
-        GLFW.GetKey(window, GLFW.KEY_LEFT_SUPER) ||
-        GLFW.GetKey(window, GLFW.KEY_RIGHT_SUPER)
-    else
-        error("Unhandled case: ", input)
-    end
-)
-
-
-"A button that's triggered by a keyboard key."
-@bp_button Key begin
+"An unsigned axis that's stuck at 0 until triggered by a keyboard key, which sets it to 1."
+@bp_axis unsigned Key begin
     key::SerializedUnion{InputKey}
     Key(k::InputKey; kw...) = Key(SerializedUnion{InputKey}(k); kw...)
-    RAW(b, wnd) = check_key(b.key, wnd)
+    RAW(a, wnd) = (check_key(a.key, wnd) ? 1 : 0)
 end
-"A button that's triggered by a mouse click"
-@bp_button Mouse begin
+"A signed axis that's stuck at 0, pulled towards -1 by one key, and towards +1 by another key."
+@bp_axis signed Key2 begin
+    key_negative::SerializedUnion{InputKey}
+    key_positive::SerializedUnion{InputKey}
+    Key2(key_negative::InputKey, key_positive::InputKey; kw...) = Key2(
+        SerializedUnion{InputKey}(key_negative),
+        SerializedUnion{InputKey}(key_positive),
+        kw...
+    )
+    RAW(a, wnd) = (0 +
+                   (check_key(a.key_positive, wnd) ? 1 : 0) +
+                   (check_key(a.key_negative, wnd) ? -1 : 0))
+end
+"A 0-1 axis that's triggered by a mouse click"
+@bp_axis unsigned Mouse begin
     button::GLFW.MouseButton = GLFW.MOUSE_BUTTON_LEFT
-    RAW(b, wnd) = GLFW.GetMouseButton(wnd, b.button)
+    RAW(a, wnd) = (GLFW.GetMouseButton(wnd, a.button) ? 1 : 0)
 end
-#TODO: More GLFW inputs
 
-"A button that's triggered by any one of a group of buttons"
-@bp_button Any begin
-    children::Vector{AbstractButton}
-    RAW(b) = any(button_value(c) for c in b.children)
-    UPDATE(b) = for c in children
-        UPDATE(c)
-    end
-end
-"A button that's triggered if all buttons in a group are simultaneously on"
-@bp_button All begin
-    children::Vector{AbstractButton}
-    RAW(b) = all(button_value(c) for c in b.children)
-    UPDATE(b) = for c in children
+"The sum of several 'child' axes. Marked as 'signed' because that has the largest range."
+@bp_axis signed Sum begin
+    children::Vector{AbstractAxis}
+    RAW(a) = sum(axis_value, a.children, init=zero(Float32))
+    UPDATE(a) = for c in children
         UPDATE(c)
     end
 end
 
 "
-A button that's on or off when you say it is (useful for testing).
-    Controlled through its `current_raw` field.
+An axis that keeps whatever value you set it to (useful for testing).
+Controlled through its `current_raw` field.
+
+Marked as 'signed' because that has the largest range.
 "
-@bp_button Manual begin
-    RAW(b) = b.current_raw
+@bp_axis signed Manual begin
+    RAW(a) = a.current_raw
 end
 
-export Button_Key, Button_Mouse, Button_Any, Button_All, Button_Manual
+export Axis_Key, Axis_Key2, Axis_Mouse, Axis_Sum, Axis_Manual

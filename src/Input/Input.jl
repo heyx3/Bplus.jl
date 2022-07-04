@@ -6,6 +6,7 @@ using ..Utilities, ..Math
 @make_toggleable_asserts bp_input_
 
 include("buttons.jl")
+include("axes.jl")
 
 
 "Manages all inputs for a GLFW window."
