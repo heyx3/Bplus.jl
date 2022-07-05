@@ -126,7 +126,7 @@ mutable struct Context
                       ;
                       vsync::Optional{E_VsyncModes} = nothing,
                       debug_mode::Bool = false, # See GL/debugging.jl
-                      glfw_hints::Dict{UInt, UInt} = Dict{UInt, UInt}(),
+                      glfw_hints::Dict{Int32, Int32} = Dict{Int32, Int32}(),
                       # Below are GLFW input settings that can be changed at will,
                       #    but will be set to these specific values on initialization.
                       glfw_sticky_inputs::Bool = true,
@@ -149,7 +149,7 @@ mutable struct Context
                               GLFW.CURSOR_HIDDEN
                           else
                               @assert(glfw_cursor isa Val{:Centered})
-                              GLW.CURSOR_DISABLED
+                              GLFW.CURSOR_DISABLED
                           end)
 
         device = Device(window)
@@ -232,6 +232,8 @@ end
         to_do(c)
     finally
         if exists(c)
+            # Make sure the mouse doesn't get stuck after a crash.
+            GLFW.SetInputMode(c.window, GLFW.CURSOR, GLFW.CURSOR_NORMAL)
             close(c)
         end
     end

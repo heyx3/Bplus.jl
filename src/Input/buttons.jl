@@ -390,7 +390,7 @@ check_key(input::E_AggregateKeys, window::GLFW.Window) = (
 @bp_button Key begin
     key::SerializedUnion{InputKey}
     Key(k::InputKey; kw...) = Key(SerializedUnion{InputKey}(k); kw...)
-    RAW(b, wnd) = check_key(b.key, wnd)
+    RAW(b, wnd) = check_key(b.key.data, wnd)
 end
 "A button that's triggered by a mouse click"
 @bp_button Mouse begin

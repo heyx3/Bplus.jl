@@ -64,8 +64,8 @@ end
         @assert axes[2].children[1] isa Axis_Mouse
         @assert axes[2].children[1].button == GLFW.MOUSE_BUTTON_MIDDLE
         @assert axes[2].children[2] isa Axis_Key2
-        @assert axes[2].children[2].key_negative == GLFW.KEY_J
-        @assert axes[2].children[2].key_positive == AggregateKeys.shift
+        @assert axes[2].children[2].key_positive == GLFW.KEY_J
+        @assert axes[2].children[2].key_negative == AggregateKeys.shift
         @assert axes[2].children[3] isa Axis_Manual
         @assert isapprox(axes[2].children[3].current_raw,
                          (is_deserialized_version ? 0.0 : 0.5), # Shouldn't have been serialized

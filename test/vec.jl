@@ -251,6 +251,18 @@ function f()::Int
     end
     return i
 end
+@bp_test_no_allocations(v3i(4, 5, 6) in 1:v3i(6, 6, 6), true)
+@bp_test_no_allocations(v3i(4, 5, 6) in 1:6, true)
+@bp_test_no_allocations(v3i(4, 5, 6) in 4:v3i(6, 6, 6), true)
+@bp_test_no_allocations(v3i(4, 5, 6) in 5:v3i(6, 6, 6), false)
+@bp_test_no_allocations(v3i(5, 4, 6) in 5:v3i(6, 6, 6), false)
+@bp_test_no_allocations(v3i(5, 4, 6) in 5:6, false)
+@bp_test_no_allocations(v3i(6, 5, 4) in 5:v3i(6, 6, 6), false)
+@bp_test_no_allocations(v3i(4, 5, 6) in 7:v3i(1, 1, 1), false)
+@bp_test_no_allocations(v3i(4, 5, 6) in 7:1, false)
+@bp_test_no_allocations(v3i(4, 5, 6) in one(v3i):v3i(3, 2, 1):v3i(6, 6, 6), true)
+@bp_test_no_allocations(v3i(4, 5, 6) in one(v3i):v3i(3, 2, 1):v3i(4, 5, 6), true)
+@bp_test_no_allocations(v3i(4, 5, 6) in one(v3i):v3i(1, 2, 3):v3i(4, 5, 6), false)
 #TODO: In the REPL this doesn't seem to allocate, but here it does?
 #@bp_test_no_allocations(f(), sum(1:30))
 @bp_check(f() == sum(1:30))

@@ -85,8 +85,8 @@ count_attribs(::Type{VertexData_Matrix{Val{C}, Val{R}, F}}) where {C, R, F} = R
 ######################################
 
 "
-Vertex data that comes in as 1D-4D vectors of 32-bit ints or uints,
-   and comes out that way in the shader.
+Vertex data that comes in as 1D-4D vectors of 8-/16-/32-bit ints or uints,
+   and comes out as corresponding 32-bit ints in the shader.
 "
 abstract type VertexData_IVector{ N<:VertexData_VecSizes,
                                   I<:Union{Int8, Int16, Int32,
@@ -94,9 +94,11 @@ abstract type VertexData_IVector{ N<:VertexData_VecSizes,
                                 } <: VertexData
 end
 
-VertexData_IVector(n::Integer, i::Type{<:Integer}) = VertexData_IVector{Val{Int(n)}, i}
+VertexData_IVector(n::Integer, i::Type{<:Integer} ) = VertexData_IVector{Val{Int(n)}, i}
+VertexData_UVector(n::Integer, i::Type{<:Unsigned}) = VertexData_IVector{Val{Int(n)}, i}
 
-export VertexData_IVector
+@doc (@doc VertexData_IVector) VertexData_UVector
+export VertexData_IVector, VertexData_UVector
 
 
 vertex_data_byte_size(::Type{VertexData_IVector{Val{N}, I}}) where {N, I} = (N * sizeof(I))

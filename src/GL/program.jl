@@ -596,6 +596,7 @@ get_uniform_ogl_letter(::Type{UInt64}) = :ui64
 
 "
 Compiles an OpenGL Program from a string literal containing the various shader stages.
+
 The code at the top of the shader is shared between all shader stages.
 The Vertex Shader starts with the custom command `#START_VERTEX`.
 The Fragment Shader starts with the custom command `#START_FRAGMENT`.

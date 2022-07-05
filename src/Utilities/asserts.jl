@@ -23,17 +23,20 @@ This macro generates the ToggleableAsserts code on command,
    so that you can toggle asserts for a specifc module without affecting other ones.
 In particular it generates the following (assuming the prefix `X`):
   * `Xasserts_enabled()`, to test if asserts are enabled.
+        Redefine this function to enable/disable asserts.
   * `@Xassert`, to do an assert.
   * `@Xdebug`, to execute some code if asserts are enabled.
+
 These generated items are not exported, as the whole goal is to keep the asserts internal.
-By default, the asserts are disabled. You should enable them when running tests.
+The asserts are disabled by default, so that release builds don't pay extra JIT cost.
+You should redefine them when running tests.
 """
 macro make_toggleable_asserts(prefix::Symbol)
     name_toggler = Symbol(prefix, "asserts_enabled")
     name_assert = Symbol(prefix, "assert")
     name_code = Symbol(prefix, "debug")
     return esc(quote
-        macro $name_assert(condition, msg...)
+        Core.@__doc__ macro $name_assert(condition, msg...)
             condition = esc(condition)
             msg_expr = :( string($(map(esc, msg)...)) )
             name_toggler = Symbol($(string(name_toggler)))

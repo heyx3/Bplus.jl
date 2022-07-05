@@ -42,9 +42,9 @@ struct Vec{N, T} <: AbstractVector{T}
         @bp_check(!(T isa Int), "Constructors of the form 'VecN(x, y, ...)' aren't allowed. Try 'Vec(x, y, ...)', or 'VecN{T}(x, y, ...)'")
         return Vec{T}(data)
     end
-    Vec{N, T}(data::NTuple{N, T2}) where {N, T, T2} = new{N, T}(convert(NTuple{N, T}, data))
-    Vec{N, T}(data::T2...) where {N, T, T2} = Vec{N, T}(data)
-    @inline Vec{N, T}(data::Any...) where {N, T} = Vec{N, T}(promote(data...))
+    Vec{N, T}(data::NTuple{N, T2}) where {N, T, T2<:Union{Number, Enum}} = new{N, T}(convert(NTuple{N, T}, data))
+    Vec{N, T}(data::T2...) where {N, T, T2<:Union{Number, Enum}} = Vec{N, T}(data)
+    @inline Vec{N, T}(data::Union{Number, Enum}...) where {N, T} = Vec{N, T}(promote(data...))
 
     # "Empty" constructor makes a value with all 0's.
     Vec{N, T}() where {N, T} = new{N, T}(ntuple(i->zero(T), N))
@@ -69,9 +69,6 @@ struct Vec{N, T} <: AbstractVector{T}
         @bp_check(!(T isa Int), "Constructors of the form 'VecN(x, y, ...)' aren't allowed. Try 'Vec(x, y, ...)', or 'VecN{T}(x, y, ...)'")
         Vec{n, T}(make_component)
     end
-
-    # Constructed with the wrong number of components.
-    Vec{N, T}(components::NTuple{N2, T2}) where {N, N2, T, T2} = error("Expected ", N, " components, got ", N2, ": ", components)
 end
 export Vec
 
@@ -262,6 +259,7 @@ Base.promote_rule(::Type{Vec{N, T1}}, ::Type{Vec{N, T2}}) where {N, T1, T2} = Ve
 Base.reverse(v::Vec) = Vec(reverse(v.data))
 
 Base.getindex(a::Array, i::VecT{<:Integer}) = a[i...]
+Base.setindex!(a::Array, t, i::VecT{<:Integer}) = (a[i...] = t)
 
 Base.getindex(v::Vec, i::Int) = v.data[i]
 Base.getindex(v::Vec, r::UnitRange) = Vec(v.data[r])
@@ -393,6 +391,8 @@ Base.unsafe_convert(::Type{Ptr{NTuple{N, T}}}, r::Base.RefValue{Vec{N, T}}) wher
 #    Colon Operator   #
 #######################
 
+#TODO: Make it sized multidimensionally, so ranges can be mapped into a matrix/3D array
+
 Base.:(:)(a::Vec, b::Vec) = VecRange(a, b, one(typeof(a)))
 @inline function Base.:(:)(a::Vec, step::Vec, b::Vec)
     @bp_check(none(iszero, step), "Iterating with a step size of 0: ", step)
@@ -415,6 +415,12 @@ struct VecRange{N, T} <: AbstractRange{Vec{N, T}}
     step::Vec{N, T}
 end
 
+@inline Base.in(v::Vec{N, T2}, r::VecRange{N, T}) where {N, T, T2} = all(tuple(
+    (v[i] in r.a[i]:r.step[i]:r.b[i]) for i in 1:N
+)...)
+@inline Base.in(v::Vec{N, T}, range::AbstractRange) where {N, T} = all(tuple(
+    (v_ in range) for v_ in v
+)...)
 Base.eltype(::VecRange{N, T}) where {N, T} = T
 
 Base.first(r::TVecRange) where {TVecRange<:VecRange} = r.a
@@ -476,9 +482,9 @@ end
 ################
 
 Setfield.set(v::Vec,  ::Setfield.PropertyLens{field}, val) where {field} = Setfield.set(v, Val(field), val)
-Setfield.set(v::Vec, i::Setfield.IndexLens, val) = typeof(v)(Setfield.set(v.data, i, val))
-Setfield.set(v::Vec, f::Setfield.DynamicIndexLens, val) = typeof(v)(Setfield.set(v.data, f, val))
-Setfield.set(v::Vec, f::Setfield.FunctionLens, val) = typeof(v)(Setfield.set(v.data, f, val))
+Setfield.set(v::Vec, i::Setfield.IndexLens, val) = typeof(v)(Setfield.set(v.data, i, val)...)
+Setfield.set(v::Vec, f::Setfield.DynamicIndexLens, val) = typeof(v)(Setfield.set(v.data, f, val)...)
+Setfield.set(v::Vec, f::Setfield.FunctionLens, val) = typeof(v)(Setfield.set(v.data, f, val)...)
 
 Setfield.get(v::Vec, ::Setfield.PropertyLens{field}) where {field} = getproperty(v, Val(field))
 Setfield.get(v::Vec, i::Setfield.IndexLens) = v[i.indices...]

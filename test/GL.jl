@@ -215,7 +215,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
                           ],
                           [ VertexAttribute(1, 0x0, VertexData_FVector(4, Float32)),  # The positions, pulled directly from a v4f
                             VertexAttribute(2, 0x0, VertexData_FVector(3, UInt8, true)), # The colors, normalized from [0,255] to [0,1]
-                            VertexAttribute(2, sizeof(vRGBu8), VertexData_IVector(2, UInt8)) # The IDs, left as integers
+                            VertexAttribute(2, sizeof(vRGBu8), VertexData_UVector(2, UInt8)) # The IDs, left as integers
                           ])
     check_gl_logs("creating the simple triangle mesh")
     @bp_check(count_mesh_vertices(mesh_triangles) == 3,
@@ -300,8 +300,11 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
     set_uniform(draw_triangles, "u_tex", tex)
     check_gl_logs("giving the texture to the simple triangles' shader")
 
-    # Draw the skybox as a full-screen triangle with some in-shader projection math.
     resources::CResources = get_resources(context)
+    @assert(GL.count_mesh_vertices(resources.screen_triangle) == 3)
+    @assert(GL.count_mesh_vertices(resources.quad) == 4)
+
+    # Draw the skybox as a full-screen triangle with some in-shader projection math.
     # Set up a shader for the "skybox",
     #    which takes a yaw angle and aspect ratio to map the screen quad to a 3D view range.
     draw_skybox::Program = bp_glsl"""
@@ -425,8 +428,8 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
             set_uniform(draw_triangles, "u_tex", triangle_tex)
             # Draw the triangles.
             view_activate(get_view(triangle_tex))
-            GL.render_mesh(context, mesh_triangles, draw_triangles,
-                           elements = IntervalU(1, 3))
+            render_mesh(context, mesh_triangles, draw_triangles,
+                        elements = IntervalU(1, 3))
             view_deactivate(get_view(triangle_tex))
             check_gl_logs(string("drawing the triangles ", msg_context...))
 
@@ -438,7 +441,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
             check_gl_logs(string("setting the skybox's uniforms ", msg_context...))
             # Draw the skybox.
             view_activate(get_view(tex_skybox))
-            GL.render_mesh(context, resources.screen_triangle, draw_skybox)
+            render_mesh(context, resources.screen_triangle, draw_skybox)
             view_deactivate(get_view(tex_skybox))
             check_gl_logs(string("drawing the skybox ", msg_context...))
         end
@@ -454,9 +457,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
         set_depth_test(context, ValueTests.Pass)
         check_gl_logs("clearing the screen")
         target_tex = target.attachment_colors[1].tex
-        view_activate(get_view(target_tex))
         resource_blit(resources, target_tex)
-        view_deactivate(get_view(target_tex))
 
         GLFW.SwapBuffers(context.window)
 

@@ -356,20 +356,15 @@ export @bp_axis
 @bp_axis unsigned Key begin
     key::SerializedUnion{InputKey}
     Key(k::InputKey; kw...) = Key(SerializedUnion{InputKey}(k); kw...)
-    RAW(a, wnd) = (check_key(a.key, wnd) ? 1 : 0)
+    RAW(a, wnd) = (check_key(a.key.data, wnd) ? 1 : 0)
 end
 "A signed axis that's stuck at 0, pulled towards -1 by one key, and towards +1 by another key."
 @bp_axis signed Key2 begin
-    key_negative::SerializedUnion{InputKey}
     key_positive::SerializedUnion{InputKey}
-    Key2(key_negative::InputKey, key_positive::InputKey; kw...) = Key2(
-        SerializedUnion{InputKey}(key_negative),
-        SerializedUnion{InputKey}(key_positive),
-        kw...
-    )
+    key_negative::SerializedUnion{InputKey}
     RAW(a, wnd) = (0 +
-                   (check_key(a.key_positive, wnd) ? 1 : 0) +
-                   (check_key(a.key_negative, wnd) ? -1 : 0))
+                   (check_key(a.key_positive.data, wnd) ? 1 : 0) +
+                   (check_key(a.key_negative.data, wnd) ? -1 : 0))
 end
 "A 0-1 axis that's triggered by a mouse click"
 @bp_axis unsigned Mouse begin

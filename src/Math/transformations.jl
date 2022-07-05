@@ -11,7 +11,13 @@
 
 #TODO: 2D matrix math
 
-"Generates a 4x4 translation matrix"
+"Generates a 2D translation matrix"
+@inline m3_translate(amount::Vec{2, F}) where {F<:AbstractFloat} = Mat{3, 3, F}(
+    1, 0, 0,
+    0, 1, 0,
+    amount..., 1
+)
+"Generates a 3D translation matrix"
 @inline m4_translate(amount::Vec{3, F}) where {F<:AbstractFloat} = Mat{4, 4, F}(
     1, 0, 0, 0,
     0, 1, 0, 0,
@@ -22,7 +28,7 @@
 "Generates a scale matrix"
 @inline m_scale(amount::Vec{N, F}) where {N, F} = let output = zero(MMatrix{N, N, F})
     for i in 1:N
-        output[i] = amount[i]
+        output[i, i] = amount[i]
     end
     return SMatrix(output)
 end
@@ -70,27 +76,28 @@ end
                            rot::Quaternion{F},
                            scale::Vec3{F}
                          )::Mat{4, 4, F} where {F}
-    # Reference: Reference: https://old.reddit.com/r/Unity3D/comments/flwreg/how_do_i_make_a_trs_matrix_manually/fl1m45x/
+    # Reference: https://old.reddit.com/r/Unity3D/comments/flwreg/how_do_i_make_a_trs_matrix_manually/fl1m45x/
 
-    rot_mul_sqr::Vec3{F} = rot.data.xyz * rot.data.xyz
-    rot_mul_w::Vec3{F} = rot.data.xyz * rot.data.w
+    rotv = Vec4{F}(rot.data...)
+    rot_mul_sqr::Vec3{F} = rotv.xyz * rotv.xyz
+    rot_mul_w::Vec3{F} = rotv.xyz * rotv.w
 
     ONE::F = one(F)
     TWO::F = convert(F, 2)
 
     return Mat{4, 4, F}(
         (ONE - (TWO * (rot_mul_sqr.y + rot_mul_sqr.z))) * scale.x,
-          ((rot.data.x * rot.data.y) + rot_mul_w.z) * scale.x * TWO,
-          ((rot.data.x * rot.data.z) - rot_mul_w.y) * scale.x * TWO,
+          ((rotv.x * rotv.y) + rot_mul_w.z) * scale.x * TWO,
+          ((rotv.x * rotv.z) - rot_mul_w.y) * scale.x * TWO,
           zero(F),
 
-        ((rot.data.x * rot.data.y) - rot_mul_w.z) * scale.y * TWO,
+        ((rotv.x * rotv.y) - rot_mul_w.z) * scale.y * TWO,
           (ONE - (TWO * (rot_mul_sqr.x + rot_mul_sqr.z))) * scale.y,
-          ((rot.data.y * rot.data.z) + rot_mul_w.x) * scale.y * TWO,
+          ((rotv.y * rotv.z) + rot_mul_w.x) * scale.y * TWO,
           zero(F),
 
-        ((rot.data.x * rot.data.z) + rot_mul_w.y) * scale.z * TWO,
-          ((rot.data.y * rot.data.z) - rot_mul_w.x) * scale.z * TWO,
+        ((rotv.x * rotv.z) + rot_mul_w.y) * scale.z * TWO,
+          ((rotv.y * rotv.z) - rot_mul_w.x) * scale.z * TWO,
           (ONE - (TWO * (rot_mul_sqr.x + rot_mul_sqr.y))) * scale.z,
           zero(F),
 
@@ -141,10 +148,11 @@ end
 #TODO: Projection matrix for 0-1 Z (a.k.a. DirectX)
 
 
-export m4_translate, m_scale,
+export m3_translate, m4_translate, m_scale,
        m3_rotateX, m3_rotateY, m3_rotateZ,
        m4_rotateX, m4_rotateY, m4_rotateZ,
        m4_rotate,
+       m4_world,
        m3_reorient, m4_look_at, m4_reorient, m4_projection
 
 

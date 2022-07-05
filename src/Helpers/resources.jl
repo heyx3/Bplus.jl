@@ -107,10 +107,19 @@ function resource_blit(resources::CResources,
                        ;
                        quad_transform::fmat3x3 = m_identityf(3, 3),
                        color_transform::fmat4x4 = m_identityf(4, 4),
-                       disable_depth_test::Bool = true
+                       disable_depth_test::Bool = true,
+                       manage_tex_view::Bool = true
                       )
+                      view_activate
     resources = get_resources(context)
-    set_uniform(resources.blit, "u_tex", tex)
+
+    tex_view = get_view(tex)
+    if manage_tex_view
+        was_active::Bool = tex_view.is_active
+        view_activate(tex_view)
+    end
+
+    set_uniform(resources.blit, "u_tex", tex_view)
     set_uniform(resources.blit, "u_mesh_transform", quad_transform)
     set_uniform(resources.blit, "u_color_map", color_transform)
 
@@ -126,6 +135,10 @@ function resource_blit(resources::CResources,
                     resources.screen_triangle :
                     resources.quad,
                 resources.blit)
+
+    if manage_tex_view && !was_active
+        view_deactivate(tex_view)
+    end
 
     set_depth_test(context, old_depth_test)
 end
