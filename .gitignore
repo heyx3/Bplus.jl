@@ -104,3 +104,5 @@ Build
 imgui.ini
 # B+ app configuration
 **/Config.toml
+**/Manifest.toml
+.vs/
