@@ -151,8 +151,7 @@ function Mesh( type::E_PrimitiveTypes,
     @bp_check(exists(get_context()), "Trying to create a Mesh outside a GL Context")
     m::Mesh = Mesh(Ptr_Mesh(get_from_ogl(gl_type(Ptr_Mesh), glCreateVertexArrays, 1)),
                    type,
-                   ntuple(i -> vertex_sources[i], length(vertex_sources)),
-                   ntuple(i -> vertex_fields[i], length(vertex_fields)),
+                   tuple(vertex_sources...), tuple(vertex_fields...),
                    index_data)
 
     # Configure the index buffer.

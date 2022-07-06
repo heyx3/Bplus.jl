@@ -6,8 +6,7 @@
 ##   Core definitions   ##
 
 "
-Some kind of input that can range between
-    either 0,1 ('unsigned') or -1,+1 ('signed').
+Some kind of input. Usually ranges between 0,1 ('unsigned') or -1,+1 ('signed').
 There are a lot of specific constraints on how an Axis should be defined,
     so it's highly recommended to use the `@bp_axis` macro to define them.
 
@@ -16,6 +15,7 @@ In particular:
  * It should have the fields:
      * `type::Symbol = [unique serialization key]`
      * `current_raw::Float32`
+     * `scale::Float32 = 1`
  * It should add itself to the named-tuple `AXIS_SERIALIZATION_KEYS`,
      for `StructTypes` to see it
  * It should set up serialization through `StructTypes`
@@ -43,7 +43,7 @@ function axis_update(a::AbstractAxis, window::GLFW.Window)
     a.current_raw = axis_value_raw(a, window)
 end
 
-axis_value(a::AbstractAxis) = clamp(a.current_raw, axis_value_range(a)...)
+axis_value(a::AbstractAxis) = clamp(a.current_raw * a.scale, axis_value_range(a)...)
 export axis_value
 
 "Gets the inclusive min and max of the input's range"
@@ -57,6 +57,9 @@ export axis_value_range
 """
 Defines an input axis (a struct inheriting from `Bplus.Input.AbstractAxis`).
 Refer to *Bplus/src/Input/axes.jl* for examples that show the full range of functionality.
+
+The first argument should be "signed" (-1 to +1 range), "unsigned" (0 to 1 range),
+    or "raw" (unlimited range).
 
 Below is one example, of a signed axis that is triggered from two keys pressed at once:
 ````
@@ -92,14 +95,27 @@ macro bp_axis(signed_value, name, definition)
     elseif !Meta.isexpr(definition, :block)
         error("Axis definition must be a `begin ... end` block, but was ",
               (definition isa Expr) ? definition.head : definition)
-    elseif !in(signed_value, (:signed, :unsigned))
-        error("First parameter to @bp_axis must be 'signed' or 'unsigned'")
     end
 
     # Process signed/unsigned.
-    is_signed::Bool = (signed_value == :signed)
-    value_min::Float32 = is_signed ? -one(Float32) : zero(Float32)
-    value_max::Float32 = one(Float32)
+    value_min::Float32 = if signed_value == :signed
+                             -one(Float32)
+                         elseif signed_value == :unsigned
+                             zero(Float32)
+                         elseif signed_value == :raw
+                             typemin(Float32)
+                         else
+                             error("First argument to @bp_axis must be 'signed', 'unsigned', or 'raw'")
+                         end
+    value_max::Float32 = if signed_value == :signed
+                             one(Float32)
+                         elseif signed_value == :unsigned
+                             one(Float32)
+                         elseif signed_value == :raw
+                             typemax(Float32)
+                         else
+                             error("First argument to @bp_axis must be 'signed', 'unsigned', or 'raw'")
+                         end
     value_resting::Float32 = zero(Float32)
 
     # Generate names.
@@ -163,6 +179,7 @@ macro bp_axis(signed_value, name, definition)
     # Inject the fields that all Axes should have.
     insert!.(Ref(definitions_split), Ref(1), [
         (:type, Symbol, false, Some(:( Symbol($(type_name_str)) ))),
+        (:scale, Float32, false, Some(Float32(1))),
         (:current_raw, Float32, false, Some(value_resting))
     ])
     # A constructor will be generated automatically.
@@ -205,10 +222,22 @@ macro bp_axis(signed_value, name, definition)
                 # The user gave the short name of the struct.
                 # Modify the function definition to support that.
                 def_data[:name] = struct_name
+                if haskey(def_data, :whereparams)
+                    def_data[:whereparams] = map(esc, def_data[:whereparams])
+                end
+                if haskey(def_data, :params)
+                    def_data[:params] = map(esc, def_data[:params])
+                end
+                if haskey(def_data, :args)
+                    def_data[:args] = map(esc, def_data[:args])
+                end
+                if haskey(def_data, :kwargs)
+                    def_data[:kwargs] = map(esc, def_data[:kwargs])
+                end
                 # Let the short name map to the long name.
                 def_data[:body] = quote
-                    let $short_name = $struct_name
-                        $(def_data[:body])
+                    let $(esc(short_name)) = $struct_name
+                        $(esc(def_data[:body]))
                     end
                 end
                 return combinedef(def_data)

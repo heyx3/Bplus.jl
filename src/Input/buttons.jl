@@ -209,10 +209,22 @@ macro bp_button(name, definition)
                 # The user gave the short name of the struct.
                 # Modify the function definition to support that.
                 def_data[:name] = struct_name
+                if haskey(def_data, :whereparams)
+                    def_data[:whereparams] = map(esc, def_data[:whereparams])
+                end
+                if haskey(def_data, :params)
+                    def_data[:params] = map(esc, def_data[:params])
+                end
+                if haskey(def_data, :args)
+                    def_data[:args] = map(esc, def_data[:args])
+                end
+                if haskey(def_data, :kwargs)
+                    def_data[:kwargs] = map(esc, def_data[:kwargs])
+                end
                 # Let the short name map to the long name.
                 def_data[:body] = quote
-                    let $short_name = $struct_name
-                        $(def_data[:body])
+                    let $(esc(short_name)) = $struct_name
+                        $(esc(def_data[:body]))
                     end
                 end
                 return combinedef(def_data)

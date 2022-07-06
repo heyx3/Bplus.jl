@@ -32,10 +32,10 @@ function CResources()
                       [ VertexAttribute(1, 0x0, VertexData_FVector(2, Int8, false)) ])
 
     quad_poses = Buffer(false, map(Vec{2, Int8}, [
-        (1, -1),
-        (1, 1),
         (-1, -1),
-        (-1, 1)
+        (1, -1),
+        (-1, 1),
+        (1, 1)
     ]))
     quad = Mesh(PrimitiveTypes.triangle_strip,
                 [ VertexDataSource(quad_poses, sizeof(Vec{2, Int8})) ],

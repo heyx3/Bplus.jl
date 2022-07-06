@@ -25,7 +25,7 @@ In particular it generates the following (assuming the prefix `X`):
   * `Xasserts_enabled()`, to test if asserts are enabled.
         Redefine this function to enable/disable asserts.
   * `@Xassert`, to do an assert.
-  * `@Xdebug`, to execute some code if asserts are enabled.
+  * `@Xdebug a [b]`, to evaluate 'a' if asserts are enabled, and optionally 'b' otherwise.
 
 These generated items are not exported, as the whole goal is to keep the asserts internal.
 The asserts are disabled by default, so that release builds don't pay extra JIT cost.
@@ -46,11 +46,17 @@ macro make_toggleable_asserts(prefix::Symbol)
                 end
             )
         end
-        macro $name_code(to_do)
+        macro $name_code(to_do, to_do_else...)
             name_toggler = Symbol($(string(name_toggler)))
-            return :(
+            return isempty(to_do_else) ? :(
                 if $name_toggler()
                     $(esc(to_do))
+                end
+            ) : :(
+                if $name_toggler()
+                    $(esc(to_do))
+                else
+                    $(map(esc, to_do_else)...)
                 end
             )
         end
