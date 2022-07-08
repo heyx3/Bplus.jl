@@ -246,8 +246,9 @@ export bp_gl_context
 export get_context
 
 "Gets the pixel size of the context's window."
-function get_window_size(context::Context = get_context())::v2i
-    window_size_data::NamedTuple = GLFW.GetWindowSize(context.window)
+get_window_size(context::Context = get_context()) = get_window_size(context.window)
+function get_window_size(window::GLFW.Window)::v2i
+    window_size_data::NamedTuple = GLFW.GetWindowSize(window)
     return v2i(window_size_data.width, window_size_data.height)
 end
 export get_window_size

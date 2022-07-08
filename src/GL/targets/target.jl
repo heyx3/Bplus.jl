@@ -101,28 +101,44 @@ function Target(size::v2u, color::TexFormat, depth_stencil::E_DepthStencilFormat
     color = Texture(color, size, @optional(n_tex_mips > 0, n_mips=n_tex_mips))
     depth = ds_is_target_buffer ?
                 TargetBuffer(size, depth_stencil) :
-                TargetOutput(1,
-                             Texture(depth_stencil, size,
-                                     @optional(is_depth_and_stencil(depth_stencil),
-                                               depth_stencil_sampling = ds_tex_sampling_mode),
-                                     @optional(n_tex_mips > 0, n_mips=n_tex_mips)),
-                             nothing)
+                TargetOutput(tex = Texture(
+                                 depth_stencil, size,
+                                 @optional(is_depth_and_stencil(depth_stencil),
+                                           depth_stencil_sampling = ds_tex_sampling_mode),
+                                 @optional(n_tex_mips > 0,
+                                           n_mips = n_tex_mips)
+                ))
 
     return make_target(size, 1,
-                       [ TargetOutput(1, color, nothing) ],
+                       [ TargetOutput(tex=color) ],
                        depth,
                        [ color, @optional(!ds_is_target_buffer, depth.tex) ])
 end
 
 "
-Creates a Target which uses already-existing textures.
-The Target is *not* responsible for cleaning up these textures.
+Creates a Target which uses already-existing texture[s].
+The Target is *not* responsible for cleaning them up.
 "
-Target(color::TargetOutput, depth::TargetOutput) = make_target(
-    min(output_size(color), output_size(depth)),
-    min(output_layer_count(color), output_layer_count(depth)),
-    [ color ], depth, Texture[ ]
-)
+function Target(color::Union{TargetOutput, Vector{TargetOutput}}, depth::TargetOutput)
+    local min_color_size::v2u,
+          color_layer_count::Int,
+          color_array::Vector{TargetOutput}
+    if color isa TargetOutput
+        min_color_size = output_size(color)
+        color_layer_count = output_layer_count(color)
+        color_array = [ color ]
+    else
+        min_color_size = minimum(output_size, color)
+        color_layer_count = minimum(output_layer_count, color)
+        color_array = color
+    end
+
+    return make_target(
+        min(min_color_size, output_size(depth)),
+        min(color_layer_count, output_layer_count(depth)),
+        color_array, depth, Texture[ ]
+    )
+end
 
 "
 Creates a target with the given color output, and generates a corresponding depth/stencil buffer.
@@ -135,18 +151,19 @@ function Target(color::TargetOutput, depth_stencil::E_DepthStencilFormats,
     size::v2u = output_size(color)
     depth = ds_is_target_buffer ?
                 TargetBuffer(size, depth_stencil) :
-                TargetOutput(1,
-                             Texture(depth_stencil, size,
-                                     n_mips=color.tex.n_mips,
-                                     @optional(is_depth_and_stencil(depth_stencil),
-                                               depth_stencil_sampling = ds_tex_sampling_mode)),
-                             nothing)
+                TargetOutput(tex = Texture(
+                                depth_stencil, size,
+                                n_mips=color.tex.n_mips,
+                                @optional(is_depth_and_stencil(depth_stencil),
+                                          depth_stencil_sampling = ds_tex_sampling_mode)
+                ))
 
     return make_target(size, 1,
-                       [ TargetOutput(1, color, nothing) ],
+                       [ TargetOutput(tex=color) ],
                        depth,
                        [ @optional(!ds_is_target_buffer, depth.tex) ])
 end
+
 
 println("#TODO: The other Target constructors")
 

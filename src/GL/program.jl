@@ -48,7 +48,8 @@ Sets a program's uniform to the given value.
 If the uniform is an array, you must provide a (1-based) index.
 
 If the uniform is a struct or array of structs, you must name the individual fields/elements,
-    e.x. `set_uniform(p, "my_lights[0].pos", new_pos)`
+    e.x. `set_uniform(p, "my_lights[0].pos", new_pos)`.
+This naming is 0-based, not 1-based, unfortunately.
 """
 function set_uniform end
 """
@@ -64,7 +65,8 @@ If you are passing an array of `Texture`/`View` instances, rather than raw `Ptr_
     then the collection does not need to be contiguous.
 
 If the uniform is a struct or array of structs, you must name the individual fields/elements,
-    e.x. `set_uniform(p, "my_lights[0].pos", new_pos)`
+    e.x. `set_uniform(p, "my_lights[0].pos", new_pos)`.
+This naming is 0-based, not 1-based, unfortunately.
 """
 function set_uniforms end
 println("#TODO: Support taking raw pointers for uniform marray data")
@@ -205,7 +207,7 @@ function compile_program( p::ProgramCompiler,
     if get_from_ogl(GLint, glGetProgramiv, out_ptr, GL_LINK_STATUS) == GL_FALSE
         msg_len = get_from_ogl(GLint, glGetProgramiv, out_ptr, GL_INFO_LOG_LENGTH)
         msg_data = Vector{UInt8}(undef, msg_len)
-        glGetProgramInfoLog(out_ptr, msg_len, Ref(Int(msg_len)), Ref(msg_data, 1))
+        glGetProgramInfoLog(out_ptr, msg_len, Ref(Int32(msg_len)), Ref(msg_data, 1))
 
         glDeleteProgram(out_ptr)
         return string("Error combining shaders: ", String(msg_data[1:msg_len]))

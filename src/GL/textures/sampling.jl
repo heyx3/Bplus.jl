@@ -71,7 +71,8 @@ end
 "Information about a sampler for an N-dimensional texture."
 Base.@kwdef struct Sampler{N}
     # The wrapping mode along each individual axis
-    wrapping::Vec{N, E_WrapModes} = Vec{N, E_WrapModes}(Val(WrapModes.clamp))
+    #TODO: make union with single wrap mode for all axes
+    wrapping::Union{E_WrapModes, Vec{N, E_WrapModes}} = WrapModes.clamp
 
     pixel_filter::E_PixelFilters = PixelFilters.smooth
     mip_filter::MipFilters = pixel_filter
@@ -98,12 +99,53 @@ Base.@kwdef struct Sampler{N}
     cubemap_seamless::Bool = true
 end
 
+# The "wrapping" being a union slightly complicates equality/hashing.
+Base.:(==)(a::Sampler{N}, b::Sampler{N}) where {N} = (
+    (a.pixel_filter == b.pixel_filter) &&
+    (a.mip_filter == b.mip_filter) &&
+    (a.anisotropy == b.anisotropy) &&
+    (a.mip_offset == b.mip_offset) &&
+    (a.mip_range == b.mip_range) &&
+    (a.depth_comparison_mode == b.depth_comparison_mode) &&
+    (a.cubemap_seamless == b.cubemap_seamless) &&
+    if a.wrapping isa E_WrapModes
+        if b.wrapping isa E_WrapModes
+            a.wrapping == b.wrapping
+        else
+            all(i -> b.wrapping[i] == a.wrapping, 1:N)
+        end
+    else
+        if b.wrapping isa E_WrapModes
+            all(i -> a.wrapping[i] == b.wrapping, 1:N)
+        else
+            a.wrapping == b.wrapping
+        end
+    end
+)
+Base.hash(s::Sampler{N}, u::UInt) where {N} = hash(
+    tuple(
+        s.pixel_filter, s.mip_filter, s.anisotropy,
+        s.mip_offset, s.mip_range,
+        s.depth_comparison_mode, s.cubemap_seamless,
+        if s.wrapping isa E_WrapModes
+            Vec(i -> s.wrapping, N)
+        else
+            s.wrapping
+        end
+    ),
+    u
+)
+
 # Convert a sampler to a different-dimensional one.
 # Fill in the extra dimensions with a constant pre-chosen value,
 #    to make it easier to use 3D samplers as dictionary keys.
 Base.convert(::Type{Sampler{N2}}, s::Sampler{N1}) where {N1, N2} = Sampler{N2}(
-    Vec(ntuple(i -> s.wrapping[i], Val(min(N1, N2)))...,
-        ntuple(i -> WrapModes.repeat, Val(max(0, N2 - N1)))...),
+    if s.wrapping isa E_WrapModes
+        s.wrapping
+    else
+        Vec(ntuple(i -> s.wrapping[i], Val(min(N1, N2)))...,
+            ntuple(i -> WrapModes.repeat, Val(max(0, N2 - N1)))...)
+    end,
     s.pixel_filter, s.mip_filter,
     s.anisotropy, s.mip_offset, s.mip_range,
     s.depth_comparison_mode,
@@ -112,9 +154,13 @@ Base.convert(::Type{Sampler{N2}}, s::Sampler{N1}) where {N1, N2} = Sampler{N2}(
 
 "Gets a sampler's wrapping mode across all axes, assuming they're all the same"
 @inline function get_wrapping(s::Sampler)
-    @bp_gl_assert(all(w-> w==s.wrapping[1], s.wrapping),
-                  "Sampler's wrapping setting has different values along each axis: ", s.wrapping)
-    return s.wrapping[1]
+    if s.wrapping isa E_WrapModes
+        return s.wrapping
+    else
+        @bp_gl_assert(all(w-> w==s.wrapping[1], s.wrapping),
+                      "Sampler's wrapping setting has different values along each axis: ", s.wrapping)
+        return s.wrapping[1]
+    end
 end
 
 "Applies a sampler's settings to a texture"
@@ -164,8 +210,14 @@ function apply_impl( s::Sampler{N},
     # Interesting note: OpenGL does *not* care if you try to set this value for higher dimensions
     #    than the texture actually has.
     wrapping_keys = (GL_TEXTURE_WRAP_S, GL_TEXTURE_WRAP_T, GL_TEXTURE_WRAP_R)
+    wrapping_vec = if s.wrapping isa E_WrapModes
+                       Vec(i -> s.wrapping, N)
+                   else
+                       s.wrapping
+                   end
+
     for i::Int in 1:N
-        gl_set_func_i(ptr, wrapping_keys[i], GLint(s.wrapping[i]))
+        gl_set_func_i(ptr, wrapping_keys[i], GLint(wrapping_vec[i]))
     end
 
     # Set cubemap sampling.

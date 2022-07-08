@@ -10,10 +10,10 @@ The layers of a 3D texture are its Z-slices.
 Note that mip levels and layers are counted starting at 1,
     to be consistent with Julia's 1-based convention.
 """
-struct TargetOutput
-    mip_level::Int
+Base.@kwdef struct TargetOutput
     tex::Texture
-    layer::Union{Nothing, E_CubeFaces, Int}
+    mip_level::Int = 1
+    layer::Union{Nothing, E_CubeFaces, Int} = nothing
 end
 
 function Base.show(io::IO, o::TargetOutput)
@@ -37,7 +37,7 @@ function Base.show(io::IO, o::TargetOutput)
 end
 
 "Gets this output's render size."
-output_size(t::TargetOutput)::uvec2 = t.tex.size.xy
+output_size(t::TargetOutput)::v2u = t.tex.size.xy
 
 "Validates this output's combination of texture type and chosen layer."
 function output_validate(t::TargetOutput)
