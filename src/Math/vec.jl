@@ -72,6 +72,9 @@ struct Vec{N, T} <: AbstractVector{T}
 end
 export Vec
 
+StructTypes.construct(T::Type{<:Vec}, components::Vector) = T(components...)
+
+
 ###############
 #   Aliases   #
 ###############

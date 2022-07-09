@@ -1,6 +1,6 @@
 module Math
 
-using Setfield, StaticArrays
+using Setfield, StaticArrays, StructTypes
 using ..Utilities
 
 # Define @bp_math_assert.

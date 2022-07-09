@@ -34,6 +34,7 @@ struct Box{T<:Union{Vec, Number}}
     Box{Vec{1, T}}(min::Vec{1, T2}, size::T3) where {T, T2<:Number, T3<:Number} = Box{Vec{1, T}}(Vec(convert(T, min.x)), Vec(convert(T, size)))
     Box{Vec{1, T}}(min::T2, size::Vec{1, T3}) where {T, T2<:Number, T3<:Number} = Box{Vec{1, T}}(Vec(convert(T, min)), Vec(convert(T, size.x)))
 end
+StructTypes.StructType(::Type{<:Box}) = StructTypes.OrderedStruct()
 
 Base.print(io::IO, b::Box) = print(io, box_typestr(typeof(b)), "(", b.min, ",", b.size, ")")
 Base.show(io::IO, b::Box) = print(io,

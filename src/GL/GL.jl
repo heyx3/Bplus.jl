@@ -1,7 +1,7 @@
 "A light wrapper around OpenGL"
 module GL
 
-using Setfield, TupleTools
+using Setfield, TupleTools, StructTypes
 using ModernGL, GLFW
 using ..Utilities, ..Math
 

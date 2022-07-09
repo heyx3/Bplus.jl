@@ -23,4 +23,19 @@ using Bplus.GL
 @bp_test_no_allocations(get_component_count(Int8), 1)
 @bp_test_no_allocations(get_component_count(PixelBufferD{3, Vec{2, Float32}}), 2)
 
+@bp_test_no_allocations(Sampler{2}(
+                            wrapping = Vec(WrapModes.clamp, WrapModes.repeat),
+                            pixel_filter = PixelFilters.smooth,
+                            depth_comparison_mode = ValueTests.LessThanOrEqual
+                        ),
+                        Sampler{2}(
+                            wrapping = Vec(WrapModes.clamp, WrapModes.repeat),
+                            pixel_filter = PixelFilters.smooth,
+                            depth_comparison_mode = ValueTests.LessThanOrEqual
+                        ))
+@bp_check(JSON3.read(JSON3.write(Sampler{2}(wrapping = WrapModes.mirrored_repeat)), Sampler{2}) ==
+             Sampler{2}(wrapping = WrapModes.mirrored_repeat))
+@bp_check(JSON3.read(JSON3.write(Sampler{2}(wrapping = Vec(WrapModes.repeat, WrapModes.mirrored_repeat))), Sampler{2}) !=
+             Sampler{2}(wrapping = WrapModes.repeat))
+
 println("#TODO: Test packed depth/stencil primitive types.")

@@ -99,6 +99,20 @@ Base.@kwdef struct Sampler{N}
     cubemap_seamless::Bool = true
 end
 
+StructTypes.StructType(::Type{<:Sampler}) = StructTypes.UnorderedStruct()
+Sampler(wrapping, pix_filter, mip_filter, anisotropy,
+        mip_offset, mip_range, depth_comparison_mode, cubemap_seamless) = Sampler(
+    #TODO: Make a macro for this use-case
+    @optional(isnothing(wrapping), wrapping=wrapping),
+    @optional(isnothing(pix_filter), pixel_filter=pix_filter),
+    @optional(isnothing(mip_filter), mip_filter=mip_filter),
+    @optional(isnothing(anisotropy), anisotropy=anisotropy),
+    @optional(isnothing(mip_offset), mip_offset=mip_offset),
+    @optional(isnothing(mip_range), mip_range=mip_range),
+    @optional(isnothing(depth_comparison_mode), depth_comparison_mode=depth_comparison_mode),
+    @optional(isnothing(cubemap_seamless), cubemap_seamless=cubemap_seamless)
+)
+
 # The "wrapping" being a union slightly complicates equality/hashing.
 Base.:(==)(a::Sampler{N}, b::Sampler{N}) where {N} = (
     (a.pixel_filter == b.pixel_filter) &&
