@@ -17,8 +17,9 @@ const UniformMatrix{C, R, L} = @unionspec Mat{C, R, _, L} Float32 Float64
 const Uniform = Union{UniformScalar,
                       @unionspec(UniformVector{_}, 1, 2, 3, 4),
                       # All Float32 and Float64 matrices from 2x2 to 4x4:
-                      map(size -> UniformMatrix{size..., prod(size)},
-                           tuple(Iterators.product(2:4, 2:4)...)
+                      (
+                          UniformMatrix{size..., prod(size)}
+                            for size in Iterators.product(2:4, 2:4)
                       )...,
                       # "Opaque" types:
                       Ptr_Buffer,  #TODO: Use Buffer instead of the raw pointer, and decorate them with SSBO-vs-UBO and binding-index.
@@ -253,22 +254,24 @@ export ProgramCompiler, compile_program
 mutable struct Program <: Resource
     handle::Ptr_Program
     uniforms::Dict{String, UniformData}
+    flexible_mode::Bool # Whether to silently ignore invalid uniforms
 end
 
 function Program(vert_shader::String, frag_shader::String
                  ;
-                 geom_shader::Optional{String} = nothing)
+                 geom_shader::Optional{String} = nothing,
+                 flexible_mode::Bool = false)
     compiler = ProgramCompiler(vert_shader, frag_shader; src_geometry = geom_shader)
     result = compile_program(compiler)
     if result isa Ptr_Program
-        return Program(result)
+        return Program(result, flexible_mode)
     elseif result isa String
         error(result)
     else
         error("Unhandled case: ", typeof(result), "\n\t: ", result)
     end
 end
-function Program(handle::Ptr_Program)
+function Program(handle::Ptr_Program, flexible_mode::Bool = false)
     context = get_context()
     @bp_check(exists(context), "Creating a Program without a valid Context")
 
@@ -308,7 +311,7 @@ function Program(handle::Ptr_Program)
     # Connect to the view-debugger service.
     service_view_debugger_add_program(context, handle)
 
-    return Program(handle, uniforms)
+    return Program(handle, uniforms, flexible_mode)
 end
 
 function Base.close(p::Program)
@@ -443,6 +446,8 @@ export Program
 get_uniform(program::Program, name::String) =
     if haskey(program.uniforms, name)
         program.uniforms[name]
+    elseif program.flexible_mode
+        nothing
     else
         error("Uniform not found (was it optimized out?): '", name, "'")
     end
@@ -457,7 +462,10 @@ function set_uniform(program::Program, name::String, value::T) where {T}
     elseif T == View
         set_uniform(program, name, value.handle)
     else
-        u_data::UniformData = get_uniform(program, name)
+        u_data::Optional{UniformData} = get_uniform(program, name)
+        if isnothing(u_data)
+            return
+        end
         @bp_check(u_data.array_size == 1, "No index given for the array uniform '", name, "'")
 
         ref = Ref(value)
@@ -476,7 +484,10 @@ function set_uniform(program::Program, name::String, value::T, index::Int) where
     elseif T == View
         set_uniform(program, name, value.handle, index)
     else
-        u_data::UniformData = get_uniform(program, name)
+        u_data::Optional{UniformData} = get_uniform(program, name)
+        if isnothing(u_data)
+            return
+        end
         @bp_check(index <= u_data.array_size,
                 "Array uniform '", name, "' only has ", u_data.array_size, " elements,",
                     " and you're trying to set index ", index)
@@ -525,9 +536,12 @@ function set_uniforms( program::Program, name::String,
                  "Passing an array of data to set a uniform array,",
                  " but the data isn't contiguous! It's a ", TCollection)
 
-        u_data::UniformData = get_uniform(program, name)
-        n_available_uniforms::Int = u_data.array_size - dest_offset
+        u_data::Optional{UniformData} = get_uniform(program, name)
+        if isnothing(u_data)
+            return
+        end
 
+        n_available_uniforms::Int = u_data.array_size - dest_offset
         count::Int = contiguous_length(values, T)
         @bp_check(count <= n_available_uniforms,
                     "Array uniform '", name, "' only has ", u_data.array_size, " elements,",
