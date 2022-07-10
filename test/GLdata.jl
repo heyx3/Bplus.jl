@@ -37,5 +37,7 @@ using Bplus.GL
              Sampler{2}(wrapping = WrapModes.mirrored_repeat))
 @bp_check(JSON3.read(JSON3.write(Sampler{2}(wrapping = Vec(WrapModes.repeat, WrapModes.mirrored_repeat))), Sampler{2}) !=
              Sampler{2}(wrapping = WrapModes.repeat))
+@bp_check(JSON3.read("{ \"pixel_filter\":\"rough\" }", Sampler{2}) ==
+             Sampler{2}(pixel_filter = PixelFilters.rough))
 
 println("#TODO: Test packed depth/stencil primitive types.")

@@ -21,7 +21,20 @@ macro optional(condition, exprs...)
     exprs = map(esc, exprs)
     return :( ($condition ? tuple($(exprs...)) : ())... )
 end
-export @optional
+"
+A keyword parameter to a function that may or may not exist.
+Example usage:
+
+    my_func(; @optionalkw(a>10, my_func_arg, a))
+
+"
+macro optionalkw(condition, name, value)
+    condition = esc(condition)
+    name = esc(name)
+    value = esc(value)
+    return :( ($condition ? ($name=$value, ) : NamedTuple())... )
+end
+export @optional, @optionalkw
 
 
 "

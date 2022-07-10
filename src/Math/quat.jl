@@ -258,6 +258,10 @@ The quaternions' 4 components must be normalized.
 end
 export q_slerp
 
+"Gets whether a quaternion represents 'no rotation'."
+@inline q_is_identity(q::Quaternion{F}) where {F} = (q == Quaternion{F}())
+export q_is_identity
+
 """
 Interpolation between two quaternions.
 It's simple (and fast) linear interpolation,

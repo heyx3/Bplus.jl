@@ -55,7 +55,7 @@ Base.@kwdef struct Cam3D_Settings{F<:AbstractFloat}
     # Scale in movement speed when holding the "boost" input:
     move_speed_boost_multiplier::F = convert(F, 3)
     # The change in movement speed due to the "change speed" input:
-    move_speed_scale::F = convert(F, 1.25)
+    move_speed_scale::F = convert(F, 1.05)
     move_speed_min::F = convert(F, 0.01)
     move_speed_max::F = convert(F, 9999)
 

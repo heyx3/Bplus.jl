@@ -71,23 +71,22 @@ end
 "Information about a sampler for an N-dimensional texture."
 Base.@kwdef struct Sampler{N}
     # The wrapping mode along each individual axis
-    #TODO: make union with single wrap mode for all axes
-    wrapping::Union{E_WrapModes, Vec{N, E_WrapModes}} = WrapModes.clamp
+    wrapping::Union{E_WrapModes, Vec{N, E_WrapModes}} = WrapModes.repeat
 
     pixel_filter::E_PixelFilters = PixelFilters.smooth
     mip_filter::MipFilters = pixel_filter
 
     # Anisotropic filtering.
     # Should have a value between 1 and get_context().device.max_anisotropy.
-    anisotropy::Float32 = 1
+    anisotropy::Float32 = one(Float32)
 
     # Offsets the mip level calculation, if using mipmapping.
     # For example, a value of 1 essentially forces all samples to go up one mip level.
-    mip_offset::Float32 = 0
+    mip_offset::Float32 = zero(Float32)
     # Sets the boundaries of the mip levels used in sampling.
     # As usual, 1 is the first mip (i.e. original texture), and
     #    higher values represent smaller mips.
-    mip_range::IntervalU = Box_minmax(UInt(1), UInt(1001))
+    mip_range::IntervalU = Box_minmax(UInt32(1), UInt32(1001))
 
     # If this is a depth (or depth-stencil) texture,
     #    this setting makes it a "shadow" sampler.
@@ -99,19 +98,38 @@ Base.@kwdef struct Sampler{N}
     cubemap_seamless::Bool = true
 end
 
+# StructTypes doesn't have any way to deserialize an immutable @kwdef struct.
+#    
 StructTypes.StructType(::Type{<:Sampler}) = StructTypes.UnorderedStruct()
-Sampler(wrapping, pix_filter, mip_filter, anisotropy,
-        mip_offset, mip_range, depth_comparison_mode, cubemap_seamless) = Sampler(
-    #TODO: Make a macro for this use-case
-    @optional(isnothing(wrapping), wrapping=wrapping),
-    @optional(isnothing(pix_filter), pixel_filter=pix_filter),
-    @optional(isnothing(mip_filter), mip_filter=mip_filter),
-    @optional(isnothing(anisotropy), anisotropy=anisotropy),
-    @optional(isnothing(mip_offset), mip_offset=mip_offset),
-    @optional(isnothing(mip_range), mip_range=mip_range),
-    @optional(isnothing(depth_comparison_mode), depth_comparison_mode=depth_comparison_mode),
-    @optional(isnothing(cubemap_seamless), cubemap_seamless=cubemap_seamless)
-)
+function StructTypes.construct(values::Vector{Any}, T::Type{<:Sampler})
+    kw_args = NamedTuple()
+    if isassigned(values, 1)
+        kw_args = (kw_args..., wrapping=values[1])
+    end
+    if isassigned(values, 2)
+        kw_args = (kw_args..., pixel_filter=values[2])
+    end
+    if isassigned(values, 3)
+        kw_args = (kw_args..., mip_filter=values[3])
+    end
+    if isassigned(values, 4)
+        kw_args = (kw_args..., anisotropy=values[4])
+    end
+    if isassigned(values, 5)
+        kw_args = (kw_args..., mip_offset=values[5])
+    end
+    if isassigned(values, 6)
+        kw_args = (kw_args..., mip_range=values[6])
+    end
+    if isassigned(values, 7)
+        kw_args = (kw_args..., depth_comparison_mode=values[7])
+    end
+    if isassigned(values, 8)
+        kw_args = (kw_args..., cubemap_seamless=values[8])
+    end
+
+    return T(; kw_args...)
+end
 
 # The "wrapping" being a union slightly complicates equality/hashing.
 Base.:(==)(a::Sampler{N}, b::Sampler{N}) where {N} = (

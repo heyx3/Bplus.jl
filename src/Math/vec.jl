@@ -26,46 +26,46 @@ struct Vec{N, T} <: AbstractVector{T}
     data::NTuple{N, T}
 
     # Construct with components.
-    Vec(data::NTuple{N, T}) where {N, T} = new{N, T}(data)
-    Vec(data::T...) where {T} = Vec(data)
-    Vec(data::Any...) = Vec(promote(data...))
+    @inline Vec(data::NTuple{N, T}) where {N, T} = new{N, T}(data)
+    @inline Vec(data::T...) where {T} = Vec(data)
+    @inline Vec(data::Any...) = Vec(promote(data...))
 
     # Construct a constant vector with all components set to one value.
-    Vec{N, T}(::Val{X}) where {N, T, X} = Vec{N, T}(i -> X)
+    @inline Vec{N, T}(::Val{X}) where {N, T, X} = Vec{N, T}(i -> X)
 
     # Construct with the type parameter, and components.
-    function Vec{T}(data::NTuple{N, T2}) where {N, T, T2}
+    @inline function Vec{T}(data::NTuple{N, T2}) where {N, T, T2}
         @bp_check(!(T isa Int), "Constructors of the form 'VecN(x, y, ...)' aren't allowed. Try 'Vec(x, y, ...)', or 'VecN{T}(x, y, ...)'")
         return new{N, T}(convert(NTuple{N, T}, data))
     end
-    function Vec{T}(data::T2...) where {T, T2}
+    @inline function Vec{T}(data::T2...) where {T, T2}
         @bp_check(!(T isa Int), "Constructors of the form 'VecN(x, y, ...)' aren't allowed. Try 'Vec(x, y, ...)', or 'VecN{T}(x, y, ...)'")
         return Vec{T}(data)
     end
-    Vec{N, T}(data::NTuple{N, T2}) where {N, T, T2<:Union{Number, Enum}} = new{N, T}(convert(NTuple{N, T}, data))
-    Vec{N, T}(data::T2...) where {N, T, T2<:Union{Number, Enum}} = Vec{N, T}(data)
+    @inline Vec{N, T}(data::NTuple{N, T2}) where {N, T, T2<:Union{Number, Enum}} = new{N, T}(convert(NTuple{N, T}, data))
+    @inline Vec{N, T}(data::T2...) where {N, T, T2<:Union{Number, Enum}} = Vec{N, T}(data)
     @inline Vec{N, T}(data::Union{Number, Enum}...) where {N, T} = Vec{N, T}(promote(data...))
 
     # "Empty" constructor makes a value with all 0's.
-    Vec{N, T}() where {N, T} = new{N, T}(ntuple(i->zero(T), N))
+    @inline Vec{N, T}() where {N, T} = new{N, T}(ntuple(i->zero(T), N))
 
     # Construct by appending smaller vectors/components together.
-    Vec(first::Vec{N, T}, rest::T2...) where {N, T, T2} = Vec(promote(first..., rest...))
-    Vec(first::Vec{N, T}, rest::Vec{N2, T2}) where {N, N2, T, T2} = Vec(promote(first..., rest...))
-    Vec(v::Vec) = v
-    Vec{T}(first::Vec{N, T2}, rest::T3...) where {N, T, T2, T3} = Vec{T}(first..., rest...)
-    Vec{T}(first::Vec{N, T2}, rest::Vec{N2, T3}) where {N, N2, T, T2, T3} = Vec{T}(first..., rest...)
-    Vec{T}(v::Vec{N, T}) where {N, T} = v
-    Vec{T}(v::Vec{N, T2}) where {N, T, T2} = Vec{N, T}(v...)
-    Vec{N, T}(first::Vec{N2, T2}, rest::T3...) where {N, N2, T, T2, T3} = Vec{N, T}(first..., rest...)
-    Vec{N, T}(first::Vec{N2, T2}, rest::Vec{N3, T3}) where {N, N2, N3, T, T2, T3} = Vec{N, T}(first..., rest...)
-    Vec{N, T}(v::Vec{N, T}) where {N, T} = v
-    Vec{N, T}(v::Vec{N, T2}) where {N, T, T2} = Vec{N, T}(v...)
+    @inline Vec(first::Vec{N, T}, rest::T2...) where {N, T, T2} = Vec(promote(first..., rest...))
+    @inline Vec(first::Vec{N, T}, rest::Vec{N2, T2}) where {N, N2, T, T2} = Vec(promote(first..., rest...))
+    @inline Vec(v::Vec) = v
+    @inline Vec{T}(first::Vec{N, T2}, rest::T3...) where {N, T, T2, T3} = Vec{T}(first..., rest...)
+    @inline Vec{T}(first::Vec{N, T2}, rest::Vec{N2, T3}) where {N, N2, T, T2, T3} = Vec{T}(first..., rest...)
+    @inline Vec{T}(v::Vec{N, T}) where {N, T} = v
+    @inline Vec{T}(v::Vec{N, T2}) where {N, T, T2} = Vec{N, T}(v...)
+    @inline Vec{N, T}(first::Vec{N2, T2}, rest::T3...) where {N, N2, T, T2, T3} = Vec{N, T}(first..., rest...)
+    @inline Vec{N, T}(first::Vec{N2, T2}, rest::Vec{N3, T3}) where {N, N2, N3, T, T2, T3} = Vec{N, T}(first..., rest...)
+    @inline Vec{N, T}(v::Vec{N, T}) where {N, T} = v
+    @inline Vec{N, T}(v::Vec{N, T2}) where {N, T, T2} = Vec{N, T}(v...)
 
     # Construct with a lambda, like ntuple().
     @inline Vec(make_component::Function, n::Int) = Vec(ntuple(make_component, Val(n)))
-    Vec{N, T}(make_component::Function) where {N, T} = Vec{N, T}(ntuple(make_component, Val(N)))
-    function Vec{T}(make_component::Function, n::Int) where {T}
+    @inline Vec{N, T}(make_component::Function) where {N, T} = Vec{N, T}(ntuple(make_component, Val(N)))
+    @inline function Vec{T}(make_component::Function, n::Int) where {T}
         @bp_check(!(T isa Int), "Constructors of the form 'VecN(x, y, ...)' aren't allowed. Try 'Vec(x, y, ...)', or 'VecN{T}(x, y, ...)'")
         Vec{n, T}(make_component)
     end
