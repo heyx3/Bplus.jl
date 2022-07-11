@@ -101,6 +101,11 @@ export Box_minmax, Box_minsize, Box_maxsize, Box_bounding
 Base.convert(::Type{Box{T}}, b::Box{T2}) where {T, T2} = Box(convert(T, b.min), convert(T, b.size))
 Base.convert(::Type{Box{T}}, b::Box{T2}) where {T<:Vec{1, <:Number}, T2<:Number} = Box{T}(T(b.min), T(b.size))
 
+# Iterate through the coordinates of integer boxes.
+@inline Base.iterate(b::Box{<:Union{Integer, VecT{<:Integer}}}       ) = iterate(b.min:max_inclusive(b)       )
+@inline Base.iterate(b::Box{<:Union{Integer, VecT{<:Integer}}}, state) = iterate(b.min:max_inclusive(b), state)
+#TODO: Unit tests for Box iteration
+
 
 ###########################
 #        Functions        #
@@ -141,7 +146,7 @@ export is_touching
 
 "
 Gets whether the point is fully inside the box, not touching the edges.
-This is more useful for integer boxes than floating-point ones.
+This is primarily for integer boxes.
 "
 is_inside(box::Box{T}, point::T) where {T} = all(
     (point > box.min) &

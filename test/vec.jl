@@ -167,8 +167,8 @@ end
                         Vec(3, 2, 3))
 @bp_test_no_allocations(@set(Vec(1, 2, 3).data = (4, 5, 6)),
                         Vec(4, 5, 6))
-@bp_test_no_allocations(@set(Vec(1, 2, 3).data = (4, 5, 6.0)),
-                        Vec(4, 5, 6))
+# @bp_test_no_allocations(@set(Vec(1, 2, 3).data = (4, 5, 6.0)),
+#                         Vec(4, 5, 6))
 
 # Test number stuff.
 @bp_test_no_allocations(typemin(Vec{3, UInt8}),
@@ -227,6 +227,14 @@ Bplus.Math.@fast_swizzle x x y y z 0 1 ∇ ∆ w
 @bp_test_no_allocations(reduce(-, Vec(2, 4, 6)), 2-4-6)
 @bp_test_no_allocations(foldl(-, Vec(1, 2, 3)), 1-2-3)
 @bp_test_no_allocations(foldr(-, Vec(6, 7, 8)), 8-7-6)
+
+# Test vsize().
+@bp_test_no_allocations_setup(
+    arr::Matrix{Float64} = [ 3.0  6.0  7.0
+                             1.4  3.1  -1.0 ],
+    vsize(arr),
+    Vec(2, 3)
+)
 
 # Test VecRange/the colon operator.
 @bp_check(collect(Bplus.Math.VecRange(Vec(1), Vec(5), Vec(2))) ==

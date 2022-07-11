@@ -44,7 +44,7 @@ struct Vec{N, T} <: AbstractVector{T}
     end
     @inline Vec{N, T}(data::NTuple{N, T2}) where {N, T, T2<:Union{Number, Enum}} = new{N, T}(convert(NTuple{N, T}, data))
     @inline Vec{N, T}(data::T2...) where {N, T, T2<:Union{Number, Enum}} = Vec{N, T}(data)
-    @inline Vec{N, T}(data::Union{Number, Enum}...) where {N, T} = Vec{N, T}(promote(data...))
+    # @inline Vec{N, T}(data::Union{Number, Enum}...) where {N, T} = Vec{N, T}(promote(data...))
 
     # "Empty" constructor makes a value with all 0's.
     @inline Vec{N, T}() where {N, T} = new{N, T}(ntuple(i->zero(T), N))
@@ -61,6 +61,7 @@ struct Vec{N, T} <: AbstractVector{T}
     @inline Vec{N, T}(first::Vec{N2, T2}, rest::Vec{N3, T3}) where {N, N2, N3, T, T2, T3} = Vec{N, T}(first..., rest...)
     @inline Vec{N, T}(v::Vec{N, T}) where {N, T} = v
     @inline Vec{N, T}(v::Vec{N, T2}) where {N, T, T2} = Vec{N, T}(v...)
+    @inline Vec{N, T}(a::Union{Number, Enum}, v::Vec, rest...) where {N, T} = Vec{N, T}(Vec{N, T}(a, v...), rest...)
 
     # Construct with a lambda, like ntuple().
     @inline Vec(make_component::Function, n::Int) = Vec(ntuple(make_component, Val(n)))
@@ -251,6 +252,10 @@ function Base.reinterpret(::Type{Vec{N, T2}}, v::Vec{N, T}) where {N, T, T2}
                 " as ", T2, " (", sizeof(T2), " bytes)")
     return map(x -> reinterpret(T2, x), v)
 end
+
+"Gets the size of an array as a `Vec`, rather than an `NTuple`."
+vsize(arr::AbstractArray) = Vec(size(arr)...)
+export vsize
 
 Base.clamp(v::Vec{N, T}, a::T2, b::T3) where {N, T, T2, T3} = Vec{N, T}(i -> clamp(v[i], a, b))
 Base.clamp(v::Vec{N, T}, a::Vec{N, T2}, b::Vec{N, T3}) where {N, T, T2, T3} = Vec{N, T}(i -> clamp(v[i], a[i], b[i]))
