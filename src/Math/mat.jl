@@ -5,7 +5,7 @@ using Setfield, StaticArrays
 
 # However, the way GLSL names matrices is with their column count THEN row count,
 #    while SMatrix uses row count THEN column count.
-# Hopefully this doesn't result in much confusion.
+# We will follow the GLSL convention; hopefully this doesn't result in much confusion.
 
 # Unfortunately, due to the nature of Julia and SMatrix, all matrices need an extra type parameter,
 #    for the total length of the matrix.
@@ -63,6 +63,13 @@ export Mat, @Mat, MatF, MatD,
        fmat2x2, fmat2x3, fmat2x4, fmat3x2, fmat3x3, fmat3x4, fmat4x2, fmat4x3, fmat4x4,
        dmat2x2, dmat2x3, dmat2x4, dmat3x2, dmat3x3, dmat3x4, dmat4x2, dmat4x3, dmat4x4
 #
+
+
+# Keep in mind that the matrix elements are grouped by column,
+#    which looks confusing because they're written out in rows.
+# E.x. the matrix Mat{2, 3, Float32}(1, 2, 3,
+#                                    4, 5, 6)
+#    has a column of "1, 2, 3" and a column of "4, 5, 6".
 
 
 @inline Base.:*(m::Mat, v::Vec) = Vec((m * SVector(v...))...)

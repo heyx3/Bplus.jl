@@ -128,8 +128,10 @@ function Target(color::Union{TargetOutput, Vector{TargetOutput}}, depth::TargetO
         color_layer_count = output_layer_count(color)
         color_array = [ color ]
     else
-        min_color_size = minimum(output_size, color)
-        color_layer_count = minimum(output_layer_count, color)
+        min_color_size = minimum(output_size, color,
+                                 init=v2u(Val(typemax(UInt32))))
+        color_layer_count = minimum(output_layer_count, color,
+                                    init=typemax(Int))
         color_array = color
     end
 
@@ -163,9 +165,6 @@ function Target(color::TargetOutput, depth_stencil::E_DepthStencilFormats,
                        depth,
                        [ @optional(!ds_is_target_buffer, depth.tex) ])
 end
-
-
-println("#TODO: The other Target constructors")
 
 
 function make_target( size::v2u, n_layers::Int,
@@ -467,5 +466,4 @@ function target_clear(target::Target, depth_stencil::Depth32fStencil8u,
 end
 
 
-#TODO: Implement copying: http://docs.gl/gl4/glBlitFramebuffer
 #TODO: A special singleton Target representing the screen?
