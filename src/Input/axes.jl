@@ -1,7 +1,7 @@
 ##   Data   ##
 
 #TODO: Deadzone calculation, nonlinear scaling
-
+println("#TODO: Add an INIT() along with UPDATE() for buttons *and* axes")
 
 ##   Core definitions   ##
 

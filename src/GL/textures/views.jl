@@ -32,10 +32,12 @@ function view_activate(view::View)
         if view.is_sampling
             glMakeTextureHandleResidentARB(view.handle)
         else
+            #TODO: This is broken. What is the missing argument about?
             glMakeImageHandleResidentARB(view.handle)
         end
     end
 end
+
 "Tells the GPU to deactivate this handle, potentially freeing up resources for other render passes."
 function view_deactivate(view::View)
     # Ideally we should check that the owning texture hasn't been destroyed, as with `view_activate()`,
@@ -50,6 +52,9 @@ function view_deactivate(view::View)
         end
     end
 end
+
+# Unfortunately, OpenGL allows implementations to re-use the handles of destroyed views;
+#    otherwise, I'd use that for hashing/equality.
 
 export View, view_activate, view_deactivate
 

@@ -391,6 +391,10 @@ function get_view(t::Texture, view::SimpleViewParams)::View
                 t.known_views, view)
 end
 
+# Overload some view functions to work with a texture's default view.
+view_activate(tex::Texture) = view_activate(get_view(tex))
+view_deactivate(tex::Texture) = view_deactivate(get_view(tex))
+
 
 "Changes how a texture's pixels are mixed when it's sampled on the GPU"
 function set_tex_swizzling(t::Texture, new::SwizzleRGBA)

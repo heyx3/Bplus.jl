@@ -5,9 +5,9 @@ struct RenderState
 
     cull_mode::E_FaceCullModes
     #TODO: Use Box2i for viewport and scissor
-    viewport::@NamedTuple{min::v2i, max::v2i}
-    scissor::Optional{@NamedTuple{min::v2i, max::v2i}}
-    # TODO: Changing viewport Y axis and depth (how can GLM support this depth mode?): https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glClipControl.xhtml
+    viewport::@NamedTuple{min::v2i, max::v2i} # 1-based; Max is inclusive
+    scissor::Optional{@NamedTuple{min::v2i, max::v2i}} # 1-based; Max is inclusive
+    # TODO: Changing viewport Y axis and depth (how can my matrix math support this depth mode?): https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glClipControl.xhtml
 
     blend_mode::@NamedTuple{rgb::BlendStateRGB, alpha::BlendStateAlpha}
 
@@ -224,17 +224,41 @@ function Base.close(c::Context)
     end
 end
 
-"Runs the given code on a new OpenGL context, ensuring the context will get cleaned up"
+"
+Runs the given code on a new OpenGL context, ensuring the context will get cleaned up.
+This call blocks as if the context runs on this thread/task,
+    but for Julia reasons it actually runs on a separate task.
+
+This is because tasks can get shifted to different threads
+    unless you explicitly mark it with `task.sticky = true`.
+"
 @inline function bp_gl_context(to_do::Function, args...; kw_args...)
-    c::Optional{Context} = nothing
+    task = Task() do
+        c::Optional{Context} = nothing
+        try
+            c = Context(args...; kw_args...)
+            return to_do(c)
+        finally
+            if exists(c)
+                # Make sure the mouse doesn't get stuck after a crash.
+                GLFW.SetInputMode(c.window, GLFW.CURSOR, GLFW.CURSOR_NORMAL)
+                close(c)
+            end
+        end
+    end
+
+    task.sticky = true
+    schedule(task)
+    # If the task throws, unwrap the TaskFailedException for convenience and rethrow.
     try
-        c = Context(args...; kw_args...)
-        to_do(c)
-    finally
-        if exists(c)
-            # Make sure the mouse doesn't get stuck after a crash.
-            GLFW.SetInputMode(c.window, GLFW.CURSOR, GLFW.CURSOR_NORMAL)
-            close(c)
+        return fetch(task)
+    catch e
+        if e isa TaskFailedException
+            # Unwrap the exception.
+            stack = current_exceptions(task)
+            throw(stack[end].exception) #TODO: Figure this out.
+        else
+            rethrow()
         end
     end
 end
@@ -288,12 +312,12 @@ function refresh(context::Context)
 
     # Read the render state.
     # Viewport:
-    viewport = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_VIEWPORT))
-    viewport = (min=v2i(viewport.xy), max=v2i(viewport.zw))
+    viewport = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_VIEWPORT)...)
+    viewport = (min=v2i(viewport.xy + 1), max=v2i(viewport.xy + 1 + viewport.zw - 1))
     # Scissor:
     if glIsEnabled(GL_SCISSOR_TEST)
-        scissor = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_SCISSOR_BOX))
-        scissor = (min=v2i(scissor.xy), max=v2i(scissor.zw))
+        scissor = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_SCISSOR_BOX)...)
+        scissor = (min=v2i(scissor.xy + 1), max=v2i(scissor.xy + 1 + scissor.zw - 1))
     else
         scissor = nothing
     end
@@ -621,7 +645,7 @@ function set_blending(context::Context, blend_rgb::BlendStateRGB, blend_a::Blend
         glBlendColor(blend_rgb.constant..., blend_a.constant)
         set_render_state_field!(context, :blend_mode, (
             rgb = context.state.blend_mode.rgb,
-            alpha = blend_alpha
+            alpha = blend_a
         ))
     end
 end
@@ -773,7 +797,7 @@ function set_viewport(context::Context, min::v2i, max_inclusive::v2i)
     new_view = (min=min, max=max_inclusive)
     if context.state.viewport != new_view
         size = max_inclusive - min + 1
-        glViewport(min.x - 1, min.y - 1, size.x, size.y)
+        glViewport((min - 1)..., size...)
         set_render_state_field!(context, :viewport, new_view)
     end
 end
@@ -781,7 +805,8 @@ set_render_state(::Val{:viewport}, val::NamedTuple, c::Context) = set_viewport(c
 export set_viewport
 
 "
-Changes the area of the screen where rendering can happen.
+Changes the area of the screen where rendering can happen,
+    in terms of pixels (using 1-based indices).
 Any rendering outside this view is discarded.
 Pass 'nothing' to disable the scissor.
 The 'max' corner is inclusive.
@@ -796,8 +821,7 @@ function set_scissor(context::Context, min_max::Optional{Tuple{v2i, v2i}})
                 glEnable(GL_SCISSOR_TEST)
             end
             size = new_scissor.max - new_scissor.min + 1
-            glScissor(new_scissor.min.x, new_scissor.min.y,
-                      size.x, size.y)
+            glScissor((new_scissor.min - 1)..., size...)
         else
             glDisable(GL_SCISSOR_TEST)
         end
