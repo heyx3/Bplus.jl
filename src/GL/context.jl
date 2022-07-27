@@ -133,6 +133,9 @@ mutable struct Context
                       glfw_cursor::@ano_enum(Normal, Hidden, Centered) = Val(:Normal)
                     )::Context
         # Create the window and OpenGL context.
+        if debug_mode
+            GLFW.WindowHint(GLFW.OPENGL_DEBUG_CONTEXT, true)
+        end
         for (hint_name, hint_val) in glfw_hints
             GLFW.WindowHint(hint_name, hint_val)
         end
@@ -216,10 +219,12 @@ function Base.close(c::Context)
     for service::Service in values(c.services)
         service.on_destroyed(service.data)
     end
+    empty!(c.services)
 
     GLFW.DestroyWindow(c.window)
+    setfield!(c, :window, GLFW.Window(C_NULL))
 
-    if CONTEXTS_PER_THREAD[Threads.threadid()] === c
+    if CONTEXTS_PER_THREAD[Threads.threadid()] === c #TODO: I think this should be asserted at the beginning of close() instead.
         CONTEXTS_PER_THREAD[Threads.threadid()] = nothing
     end
 end
@@ -292,7 +297,7 @@ function refresh(context::Context)
     # You can always soft-disable depth tests by setting them to "Pass".
     glEnable(GL_DEPTH_TEST)
     # Point meshes must always specify their pixel size in their shaders;
-    #    we don't bother with the global setting.n
+    #    we don't bother with the global setting.
     # See https://www.khronos.org/opengl/wiki/Primitive#Point_primitives
     glEnable(GL_PROGRAM_POINT_SIZE)
     # Don't force a "fixed index" for primitive restart;
@@ -301,6 +306,7 @@ function refresh(context::Context)
     # Force pixel upload/download to always use tightly-packed bytes, for simplicity.
     glPixelStorei(GL_PACK_ALIGNMENT, 1)
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0)
     # Keep point sprite coordinates at their default origin: upper-left.
     glPointParameteri(GL_POINT_SPRITE_COORD_ORIGIN, GL_UPPER_LEFT)
     # Originally we enabled GL_TEXTURE_CUBE_MAP_SEAMLESS,

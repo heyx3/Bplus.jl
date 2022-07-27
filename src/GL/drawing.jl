@@ -135,14 +135,15 @@ function render_mesh( context::Context,
     service_view_debugger_check(get_ogl_handle(program))
 
     # Activate the mesh and program.
-    if context.active_program != program.handle
+#TODO: OpenGL can re-use handles from destroyed objects! We should not go by handle, but by Program/Mesh references
+    #if context.active_program != program.handle
         glUseProgram(program.handle)
         setfield!(context, :active_program, program.handle)
-    end
-    if context.active_mesh != mesh.handle
+    #end
+    #if context.active_mesh != mesh.handle
         glBindVertexArray(mesh.handle)
         setfield!(context, :active_mesh, mesh.handle)
-    end
+    #end
 
     #=
      The notes I took when preparing the old C++ draw calls interface:

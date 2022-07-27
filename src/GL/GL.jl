@@ -5,9 +5,6 @@ using Setfield, TupleTools, StructTypes
 using ModernGL, GLFW
 using ..Utilities, ..Math
 
-# @bp_gl_assert
-@make_toggleable_asserts bp_gl_
-
 # A set of callbacks that can run on this module's __init__().
 const RUN_ON_INIT = [ ]
 function __init__()
