@@ -134,7 +134,7 @@ max_inclusive(b::Box) = box_typeprev(max_exclusive(b))
 export max_exclusive, max_inclusive
 
 "Gets the N-dimensional size of a Box"
-volume(b::Box) = reduce(*, b.size)
+volume(b::Box) = prod(b.size)
 export volume
 
 "Gets whether the point is somewhere in the box"

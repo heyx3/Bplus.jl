@@ -67,36 +67,6 @@ contiguous_length(x::Contiguous{T}, ::Type{T}) where {T} =
 #
 
 "
-Gets a `Ref` to some contiguous data.
-For example, `contiguous_ref(tuple(v2f(1, 2), v2f(3, 4)), Float32)`
-    gets a reference to the value `1`.
-
-Note that the ref's type is not necessarily the type of the element `T`;
-    use the function `contiguous_ptr()` to get the correctly-typed pointer to a contiguous Ref.
-"
-function contiguous_ref(x::TX, ::Type{T}) where {T, TX}
-    # Originally this was split up into different method overloads,
-    #    but Julia *really* hated that, I think the Contiguous{T} union is way too big.
-    if TX == T
-        return Ref(x)
-    elseif TX <: Vec
-        @bp_check(eltype(x) <: ContiguousRaw{T},
-                  "Outer type ", TX, " doesn't contain contiguous ", T, " data")
-        return Ref(x)
-    elseif TX <: NTuple
-        @bp_check(eltype(x) <: ContiguousRaw{T},
-                  "Outer type ", TX, " doesn't contain contiguous ", T, " data")
-        return Ref(x)
-    elseif TX <: AbstractArray
-        @bp_check(TX <: Contiguous{T},
-                  "Outer type ", TX, " isn't a contiguous set of ", T, " data")
-        return Ref(x, 1)
-    else
-        error("Unexpected outer type: ", TX)
-    end
-end
-
-"
 Gets a `Ptr{T}` to an element of a contiguous array of `T` data,
     regardless of how deeply it's nested.
 Takes an index into the element (defaulting to 1), but be aware
@@ -116,4 +86,42 @@ function contiguous_ptr(r::Ref{T2}, ::Type{T}, i::Int = 1) where {T, T2}
     ptr = Base.unsafe_convert(Ptr{Nothing}, r)
     ptr += (i - 1) * sizeof(T)
     return Base.unsafe_convert(Ptr{T}, ptr)
+end
+
+
+#################
+##  Reference  ##
+#################
+
+"
+Ref to a contiguous set of data, possibly nested (e.x. `Float32`s in a `Vector{NTuple{4, v3f}}`).
+Note that the index is in terms of the individual contiguous elements.
+"
+mutable struct ContiguousRef{TEl, TCollection<:Contiguous{TEl}} <: Ref{TEl}
+    data::TCollection
+    element_idx::UInt
+end
+@inline contiguous_ref(collection, ::Type{T}, idx::Integer = 1) where{T} = ContiguousRef{T, typeof(collection)}(collection, UInt(idx))
+
+function Base.unsafe_convert( P::Union{Type{Ptr{TEl}}, Type{Ptr{Cvoid}}},
+                              r::ContiguousRef{TEl, TC}
+                            )::P where {TEl, TC}
+    @bp_math_assert(isbitstype(TEl), "Can't have a contiguous reference to non-bits types")
+
+    n_elements::Int = contiguous_length(r.data, TEl)
+    @boundscheck(@bp_check(r.element_idx in 1:n_elements))
+
+    # Keep in mind that in Julia, pointer arithmetic is always in bytes,
+    #    regardless of the pointer's type.
+    byte_offset::UInt = convert(UInt, sizeof(TEl)) * (r.element_idx - 1)
+
+    if isbitstype(TC)
+        data_field_idx = Base.fieldindex(typeof(r), :data)
+        return pointer_from_objref(r) +
+               fieldoffset(typeof(r), data_field_idx) +
+               byte_offset
+    else
+        return Ptr{TEl}(pointer(r.data)) +
+               byte_offset
+    end
 end
