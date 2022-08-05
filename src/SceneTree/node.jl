@@ -15,7 +15,7 @@ These functions can cause the node's cached data to update,
 * `set_parent(node_id, new_parent, context, preserve_space = Spaces.self)`
 
 ## Iteration
-* `siblings(node, context, include_self = true)`
+* `siblings(node_id, context, include_self = true)`
 * `children(node, context)`
 * `parents(node, context)`
 * `family(node, context, include_self = true)` : uses an efficient depth-first search.
@@ -26,6 +26,7 @@ These functions can cause the node's cached data to update,
 
 ## Utilities
 * `try_deref_node(node_id, context)::Optional{TNode}`
+
 "
 struct Node{TNodeID, F<:AbstractFloat}
     #TODO: Generalize to any number of dimensions.
@@ -58,15 +59,21 @@ function Node{TNodeID, F}( local_pos::Vec3 = zero(Vec3{F})
                            local_rot::Quaternion = Quaternion{F}(),
                            local_scale::Vec3 = one(Vec3{F})
                          )::Node{TNodeID, F} where {TNodeID, F}
-    return Node(null_node_id(TNodeID), null_node_id(TNodeID),
-                null_node_id(TNodeID), null_node_id(TNodeID),
-                0,
-                convert(Vec3{F}, local_pos),
-                convert(Quaternion{F}, local_rot),
-                convert(Vec3{F}, local_scale),
-                false, m_identity(4, 4, F),
-                false, m_identity(4, 4, F), m_identity(4, 4, F),
-                false, Quaternion{F}())
+    if TNodeID isa Union
+        error("Cannot use a union type as a node ID, as it screws up internal type inference.",
+              " Consider wrapping it in Some, as in `Some{", TNodeID, "}`.")
+    end
+    return Node{TNodeID, F}(
+        null_node_id(TNodeID),
+        null_node_id(TNodeID), null_node_id(TNodeID),
+        0, null_node_id(TNodeID),
+        convert(Vec3{F}, local_pos),
+        convert(Quaternion{F}, local_rot),
+        convert(Vec3{F}, local_scale),
+        false, m_identity(4, 4, F),
+        false, m_identity(4, 4, F), m_identity(4, 4, F),
+        false, Quaternion{F}()
+    )
 end
 function Node{TNodeID}( local_pos::Vec3{F}
                         ;
@@ -76,6 +83,24 @@ function Node{TNodeID}( local_pos::Vec3{F}
     return Node{TNodeID, F}(local_pos; local_rot=local_rot, local_scale=local_scale)
 end
 
+Base.print(io::IO, node::Node) = print(io, "Node(",
+    node.parent, ",  ",   node.sibling_prev, ",", node.sibling_next,
+    ",  ",  node.n_children, ",", node.child_first,
+    ",  ",  node.local_pos, ",", node.local_rot, ",", node.local_scale,
+    ",  ", node.is_cached_self, ",", typeof(node.cached_matrix_self), "(...)",
+    ",   ", node.is_cached_world_mat, ",", typeof(node.cached_matrix_world), "(...)",
+        ",", typeof(node.cached_matrix_world_inverse), "(...)",
+    ",   ", node.is_cached_world_rot, ",", typeof(node.cached_rot_world), "(...)",
+")")
+Base.show(io::IO, node::Node) = print(io, '<',
+    "localPos:", node.local_pos,
+    @optional(!q_is_identity(node.local_rot),
+              " localRot:", node.local_rot),
+    @optional(node.local_scale != v3u(1, 1, 1),
+              " localScale:", node.local_scale),
+    @optional(node.n_children != 0,
+              " children:", node.n_children),
+'>')
 
 println("#TODO: The inability to put mutable nodes in contiguous memory is hugely painful; pick one of the below ideas to alleviate it.")
 # 1. Add a macro where the node data is copied into a mutable version,
@@ -155,7 +180,7 @@ Note that the node's original storage in the context is not updated
 "
 function world_inverse_transform( node::Node{TNodeID, F},
                                   context::TContext
-                                )::Tuple{@Mat(4, 4, F), Node{TNodeID, F}} where {TContext, TNodeID, F}
+                                )::Tuple{@Mat(4, 4, F), Node{TNodeID, F}} where {TNodeID, F, TContext}
     # Make sure the cache is updated, then return the cached value.
     (_, node) = world_transform(node, context)
     return (node.cached_matrix_world_inverse, node)
@@ -187,7 +212,7 @@ function set_parent( node_id::TNodeID,
     # Check some edge-cases:
     if new_parent == old_parent
         return node
-    elseif is_deep_child_of(node_id, new_parent)
+    elseif is_deep_child_of(node_id, new_parent, context)
         error("Trying to create an infinite loop of node parents")
     end
 
@@ -284,19 +309,20 @@ end
 ##  Iteration  ##
 
 "Iterates over the siblings of a node, from start to finish, optionally ignoring the given one."
-@inline siblings(node::Node, context, include_self::Bool = true) = Siblings(node, context, !include_self)
-"Overload that takes a node ID instead of a `Node` instance."
-@inline siblings(node_id, context, args...) = siblings(deref_node(node_id, context), context, args...)
+@inline siblings(node_id, context, include_self::Bool = true) = Siblings(node_id, context, include_self)
+@inline siblings(node_id,          include_self::Bool = true) = Siblings(node_id, nothing, include_self)
 
 "Iterates over the children of a node."
 @inline children(node::Node, context) = Children(node, context)
-"Overload that takes a node ID instead of a `Node` instance."
+@inline children(node::Node) = Children(node, nothing)
 @inline children(node_id, context) = children(deref_node(node_id, context), context)
+@inline children(node_id) = children(deref_node(node_id))
 
 "Iterates over the parent, grand-parent, etc. of a node."
 @inline parents(node::Node, context) = Parents(node, context)
-"Overload that takes a node ID instead of a `Node` instance."
+@inline parents(node::Node) = Parents(node, nothing)
 @inline parents(node_id, context) = parents(deref_node(node_id, context), context)
+@inline parents(node_id) = parents(deref_node(node_id))
 
 "
 Iterates over all nodes underneath this one, in Depth-First order.
@@ -346,7 +372,7 @@ println("#TODO: Implement BFS via queue")
 end
 
 "Gets whether a node is somewhere inside the 'family' of another node."
-is_deep_child_of(parent_id::ID, child_id::ID) where {ID} = (parent_id in parents(child_id, context))
+is_deep_child_of(parent_id::ID, child_id::ID, context) where {ID} = (parent_id in parents(child_id, context))
 
 
 export siblings, children, parents,
@@ -359,56 +385,79 @@ export siblings, children, parents,
 #  Simple Iterators  #
 ######################
 
-struct Siblings{TNodeID, TContext, F}
-    root::Node{TNodeID, F}
+struct Siblings{TNodeID, TContext}
+    root_id::TNodeID
     context::TContext
     include_root::Bool
 end
-struct Siblings_State{TNodeID, F}
+struct Siblings_State{TNodeID}
     prev_idx::Int
     next_node::TNodeID
     idx_to_ignore::Int
 end
 
 # If the node has a parent, then we can access its cached child count.
-@inline Base.haslength(s::Siblings) = !is_null_id(s.root.parent)
-@inline Base.length(s::Siblings) = deref_node(s.root.parent, context).n_children
+@inline function Base.IteratorSize(s::Siblings)
+    root_node = deref_node(s.root_id, s.context)
+    if is_null_id(root_node.parent)
+        return Base.SizeUnknown()
+    else
+        return Base.HasLength()
+    end
+end
+@inline function Base.length(s::Siblings)
+    root_node = deref_node(s.root_id, s.context)
+    return deref_node(root_node.parent, s.context).n_children
+end
 
 Base.eltype(::Siblings{TNodeID}) where {TNodeID} = TNodeID
 @inline Base.iterate(s::Siblings) = iterate(s, start_sibling_iter(s))
 @inline Base.iterate(::Siblings, ::Nothing) = nothing
-@inline function Base.iterate( s::Siblings{TNodeID, TContext, F},
-                               state::Siblings_State{TNodeID, F}
-                             ) where {TNodeID, TContext, F}
+@inline function Base.iterate( s::Siblings{TNodeID, TContext},
+                               state::Siblings_State{TNodeID}
+                             ) where {TNodeID, TContext}
     if is_null_id(state.next_node)
         return nothing
     else
-        next_node = deref_node(state.next_node, s.context)
+        next_node::Node{TNodeID} = deref_node(state.next_node, s.context)
         new_state = Siblings_State(
             state.prev_idx + 1,
             next_node.sibling_next,
             state.idx_to_ignore
         )
-        return (next_node, new_state)
+
+        # If this is the root node for the search, and we're supposed to skip over it,
+        #    then call through to the next iteration.
+        if new_state.prev_idx == new_state.idx_to_ignore
+            return iterate(s, new_state)
+        else
+            return (state.next_node, new_state)
+        end
     end
 end
 function start_sibling_iter( s::TSiblings,
                              offset::Int = 1  # Which index from here
                                               #    is the actual root of the search?
                            )::Optional{Siblings_State} where {TNodeID, TSiblings<:Siblings{TNodeID}}
-    # Is the starting node the first sibling?
-    if is_null_id(s.root.sibling_prev)
-        # Start with the next sibling.
-        # If there's no "next" sibling, then there aren't any siblings at all.
-        if is_null_id(s.root.sibling_next)
-            return nothing
+    root_node = deref_node(s.root_id, s.context)
+
+    # Is the root node the first sibling?
+    if is_null_id(root_node.sibling_prev)
+        if s.include_root
+            return Siblings_State(0, s.root_id, -1)
         else
-            idx_to_ignore = (s.include_root ? -1 : offset)
-            return Siblings_State(0, s.root.sibling_next, idx_to_ignore)
+            # Start with the next sibling.
+            # If there's no "next" sibling, then there aren't any siblings at all.
+            if is_null_id(root_node.sibling_next)
+                return nothing
+            else
+                idx_to_ignore = (s.include_root ? -1 : offset)
+                return Siblings_State(0, root_node.sibling_next, idx_to_ignore)
+            end
         end
     # Otherwise, look backwards for the first sibling.
     else
-        next_iter = Siblings(deref_node(s.root.sibling_prev, s.context),
+        next_iter = Siblings(deref_node(root_node.sibling_prev, s.context),
                              s.context, s.include_root)
         return start_sibling_iter(next_iter, offset + 1)
     end
@@ -438,7 +487,7 @@ struct Parents{TNodeID, TContext, F}
     start::Node{TNodeID, F}
     context::TContext
 end
-@inline Base.haslength(::Parents) = false
+Base.IteratorSize(::Parents) = Base.SizeUnknown()
 @inline Base.eltype(::Parents{TNodeID}) where {TNodeID} = TNodeID
 @inline Base.iterate(p::Parents) = (is_null_id(p.start.parent) ?
                                         nothing :
@@ -471,7 +520,7 @@ struct FamilyDFS_State{TNodeID}
     # Needed for FamilyBFS_NoHeap.
     previous_depth_delta::Int
 end
-@inline Base.haslength(::FamilyDFS) = false
+@inline Base.IteratorSize(::FamilyDFS) = Base.SizeUnknown()
 @inline Base.eltype(::FamilyDFS{TNodeID}) where {TNodeID} = TNodeID
 @inline function Base.iterate(f::FamilyDFS{TNodeID})::Optional{Tuple} where {TNodeID}
     if f.include_self
@@ -532,7 +581,7 @@ struct FamilyBFS_NoHeap_State{TNodeID}
     #    whether the next depth level has any nodes.
     next_depth_any_nodes::Bool
 end
-@inline Base.haslength(::FamilyBFS_NoHeap) = false
+@inline Base.IteratorSize(::FamilyBFS_NoHeap) = Base.SizeUnknown()
 @inline Base.eltype(::FamilyBFS_NoHeap{TNodeID}) where {TNodeID} = TNodeID
 @inline function Base.iterate(f::FamilyBFS_NoHeap{TNodeID})::Optional{Tuple} where {TNodeID}
     first_iter::Optional{Tuple{TNodeID, FamilyDFS_State{TNodeID}}} =
@@ -613,7 +662,7 @@ function invalidate_world_space( node::Node{TNodeID, F},
                                  include_rotation::Bool
                                )::Node{TNodeID, F} where {TNodeID, F, TContext}
     # Skip the work if caches are already invalidated.
-    if !node.is_cached_world_mat && (!include_rotation || !node.cached_rot_world)
+    if !node.is_cached_world_mat && (!include_rotation || !node.is_cached_world_rot)
         # If this node doesn't have a cached world transform, then its children shouldn't either.
         @bp_scene_tree_debug begin
             for child_id::TNodeID in children(node, context)
