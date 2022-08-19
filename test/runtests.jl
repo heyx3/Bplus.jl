@@ -12,13 +12,14 @@ using Random, TupleTools, Setfield, InteractiveUtils,
 # Import the main codebase.
 using Bplus
 using Bplus.Utilities, Bplus.Math, Bplus.GL,
-      Bplus.Helpers, Bplus.SceneTree, Bplus.Input
+      Bplus.Helpers, Bplus.Fields, Bplus.SceneTree, Bplus.Input
 
 # Enable all asserts for the codebase.
 @inline Bplus.Utilities.bp_utils_asserts_enabled() = true
 @inline Bplus.Math.bp_math_asserts_enabled() = true
 @inline Bplus.GL.bp_gl_asserts_enabled() = true
 @inline Bplus.Helpers.bp_helpers_asserts_enabled() = true
+@inline Bplus.Fields.bp_fields_asserts_enabled() = true
 @inline Bplus.SceneTree.bp_scene_tree_asserts_enabled() = true
 @inline Bplus.Input.bp_input_asserts_enabled() = true
 
@@ -26,6 +27,8 @@ using Bplus.Utilities, Bplus.Math, Bplus.GL,
 #############################
 #          Helpers          #
 #############################
+
+println("#TODO: Look at existing attempts to test memory allocations in Julia: https://github.com/JuliaObjects/ConstructionBase.jl/blob/master/test/runtests.jl#L349-L355")
 
 """
 Tests that the given expression equals the given value,
