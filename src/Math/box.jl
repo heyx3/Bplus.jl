@@ -195,8 +195,8 @@ By default, new dimensions are given the size 1 (both for integer and float boxe
                                new_dims_value::T = zero(T)
                              ) where {OldN, T}
     if (NewN > OldN)
-        return Box(Vec{NewN, T}(b.min, Vec{NewN - OldN, T}(i -> new_dims_value)),
-                   Vec{NewN, T}(b.size, Vec{NewN - OldN, T}(i -> new_dims_size)))
+        return Box(vappend(b.min, Vec{NewN - OldN, T}(i -> new_dims_value)),
+                   vappend(b.size, Vec{NewN - OldN, T}(i -> new_dims_size)))
     else
         return Box(b.min[1:NewN], b.size[1:NewN])
     end

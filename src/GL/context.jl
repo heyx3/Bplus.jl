@@ -96,16 +96,14 @@ end
 #         Context          #
 ############################
 
-println("#TODO: Ensure the Context is created on a 'sticky' thread")
-
 "
 The OpenGL context, which owns all state and data, including the GLFW window it belongs to.
 This type is a per-thread singleton, because OpenGL only allows one active context per thread.
 Like the other GL resource objects, you can't set the fields of this struct;
    use the provided functions to change its state.
 
-You should close the context with `Base.close(context)`, but even easier
-    is to use a `bp_gl_context()` block to control its lifetime.
+It's highly recommended to wrap a context with `bp_gl_context()`, as otherwise
+    Julia may juggle the Task running that context across threads, which breaks OpenGL.
 "
 mutable struct Context
     window::GLFW.Window
@@ -178,6 +176,7 @@ mutable struct Context
 
         if debug_mode
             glEnable(GL_DEBUG_OUTPUT)
+            #TODO: Try the callback again now that I've added the GLFW "debug context" hint.
             # Below is the call for the original callback-based logging, in case we ever fix that:
             # glDebugMessageCallback(ON_OGL_MSG_ptr, C_NULL)
         end
@@ -319,11 +318,11 @@ function refresh(context::Context)
     # Read the render state.
     # Viewport:
     viewport = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_VIEWPORT)...)
-    viewport = (min=v2i(viewport.xy + 1), max=v2i(viewport.xy + 1 + viewport.zw - 1))
+    viewport = (min=convert(v2i, viewport.xy + 1), max=convert(v2i, viewport.xy + 1 + viewport.zw - 1))
     # Scissor:
     if glIsEnabled(GL_SCISSOR_TEST)
         scissor = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_SCISSOR_BOX)...)
-        scissor = (min=v2i(scissor.xy + 1), max=v2i(scissor.xy + 1 + scissor.zw - 1))
+        scissor = (min=convert(v2i, scissor.xy + 1), max=convert(v2i, scissor.xy + 1 + scissor.zw - 1))
     else
         scissor = nothing
     end

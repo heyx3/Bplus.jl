@@ -67,7 +67,7 @@ function Texture( format::TexFormat,
                 )
     width = (width isa Integer) ? width : width.x
     return generate_texture(
-        TexTypes.oneD, format, v3u(width, one(typeof(width)), one(typeof(width))),
+        TexTypes.oneD, format, v3u(width, 1, 1),
         convert(Sampler{3}, sampler),
         n_mips,
         depth_stencil_sampling,
@@ -104,7 +104,7 @@ function Texture( format::TexFormat,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
                 )
     return generate_texture(
-        TexTypes.twoD, format, v3u(size, one(typeof(size.x))),
+        TexTypes.twoD, format, v3u(size..., 1),
         convert(Sampler{3}, sampler),
         n_mips,
         depth_stencil_sampling,
@@ -123,7 +123,7 @@ function Texture( format::TexFormat,
                 )
     return generate_texture(
         TexTypes.twoD, format,
-        v3u(Vec(size(initial_data)), 1),
+        v3u(size(initial_data)..., 1),
         convert(Sampler{3}, sampler),
         n_mips,
         depth_stencil_sampling,
@@ -318,8 +318,8 @@ function texture_data( tex::Texture,
 
     range::Box{v3u} = get_subset_range(full_subset, full_size)
     if (tex.type == TexTypes.cube_map)
-        range = Box{v3u}(v3u(range.min.xy, UInt32(cube_face_range[1])),
-                         v3u(range.size.xy, UInt32(cube_face_range[2] - cube_face_range[1] + 1)))
+        range = Box{v3u}(v3u(range.min.xy..., cube_face_range[1]),
+                         v3u(range.size.xy..., cube_face_range[2] - cube_face_range[1] + 1))
     end
 
     # Perform the requested operation.

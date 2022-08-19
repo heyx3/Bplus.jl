@@ -25,53 +25,65 @@ NOTE: Comparing two vectors with `==` or `!=` returns a boolean as expected,
 struct Vec{N, T} <: AbstractVector{T}
     data::NTuple{N, T}
 
-    # Construct with components.
-    @inline Vec(data::NTuple{N, T}) where {N, T} = new{N, T}(data)
-    @inline Vec(data::T...) where {T} = Vec(data)
-    @inline Vec(data::Any...) = Vec(promote(data...))
+    # Construct with components, and no type parameters.
+    Vec(data::NTuple{N, T}) where {N, T} = new{N, T}(data)
+    @inline Vec(data::Any...) = let promoted = promote(data...)
+        new{length(data), eltype(promoted)}(promoted)
+    end
+
+    # Construct a "0-dimensional" vector.
+    Vec{T}() where {T} = new{0, T}(tuple())
 
     # Construct a constant vector with all components set to one value.
-    @inline Vec{N, T}(::Val{X}) where {N, T, X} = Vec{N, T}(i -> X)
+    @inline Vec(n::Int, ::Val{X}) where {X} = new{n, typeof(X)}(tuple(Iterators.repeated(X, n)...))
+    @inline Vec{N}(::Val{X}) where {N, X} = new{N, typeof(X)}(tuple(Iterators.repeated(X, N)...))
+    @inline Vec{N, T}(::Val{X}) where {N, T, X} = new{N, T}(tuple(Iterators.repeated(X, N)...))
 
-    # Construct with the type parameter, and components.
-    @inline function Vec{T}(data::NTuple{N, T2}) where {N, T, T2}
+    # Construct with the type parameter (no length), and components.
+    function Vec{T}(data::TTuple) where {T, TTuple<:Tuple}
         @bp_check(!(T isa Int), "Constructors of the form 'VecN(x, y, ...)' aren't allowed. Try 'Vec(x, y, ...)', or 'VecN{T}(x, y, ...)'")
-        return new{N, T}(convert(NTuple{N, T}, data))
+        return new{length(data), T}(tuple((convert(T, d) for d in data)...))
     end
     @inline function Vec{T}(data::T2...) where {T, T2}
         @bp_check(!(T isa Int), "Constructors of the form 'VecN(x, y, ...)' aren't allowed. Try 'Vec(x, y, ...)', or 'VecN{T}(x, y, ...)'")
-        return Vec{T}(data)
+        return new{length(data), T}(tuple((convert(T, d) for d in data)...))
     end
-    @inline Vec{N, T}(data::NTuple{N, T2}) where {N, T, T2<:Union{Number, Enum}} = new{N, T}(convert(NTuple{N, T}, data))
-    @inline Vec{N, T}(data::T2...) where {N, T, T2<:Union{Number, Enum}} = Vec{N, T}(data)
-    # @inline Vec{N, T}(data::Union{Number, Enum}...) where {N, T} = Vec{N, T}(promote(data...))
+
+    # Construct with the type and length parameters.
+    Vec{N, T}(data::TTuple) where {N, T, TTuple<:Tuple} = begin
+        @bp_check(length(data) == N,
+                  "Expected ", N, " elements, got ", length(data))
+        return new{N, T}(tuple((
+            convert(T, d) for d in data
+        )...))
+    end
+    @inline Vec{N, T}(data::Any...) where {N, T} = new{N, T}(tuple((
+        convert(T, d) for d in data
+    )...))
+    @inline Vec{N, T}(data::T...) where {N, T} = new{N, T}(data)
 
     # "Empty" constructor makes a value with all 0's.
-    @inline Vec{N, T}() where {N, T} = new{N, T}(ntuple(i->zero(T), N))
-
-    # Construct by appending smaller vectors/components together.
-    @inline Vec(first::Vec{N, T}, rest::T2...) where {N, T, T2} = Vec(promote(first..., rest...))
-    @inline Vec(first::Vec{N, T}, rest::Vec{N2, T2}) where {N, N2, T, T2} = Vec(promote(first..., rest...))
-    @inline Vec(v::Vec) = v
-    @inline Vec{T}(first::Vec{N, T2}, rest::T3...) where {N, T, T2, T3} = Vec{T}(first..., rest...)
-    @inline Vec{T}(first::Vec{N, T2}, rest::Vec{N2, T3}) where {N, N2, T, T2, T3} = Vec{T}(first..., rest...)
-    @inline Vec{T}(v::Vec{N, T}) where {N, T} = v
-    @inline Vec{T}(v::Vec{N, T2}) where {N, T, T2} = Vec{N, T}(v...)
-    @inline Vec{N, T}(first::Vec{N2, T2}, rest::T3...) where {N, N2, T, T2, T3} = Vec{N, T}(first..., rest...)
-    @inline Vec{N, T}(first::Vec{N2, T2}, rest::Vec{N3, T3}) where {N, N2, N3, T, T2, T3} = Vec{N, T}(first..., rest...)
-    @inline Vec{N, T}(v::Vec{N, T}) where {N, T} = v
-    @inline Vec{N, T}(v::Vec{N, T2}) where {N, T, T2} = Vec{N, T}(v...)
-    @inline Vec{N, T}(a::Union{Number, Enum}, v::Vec, rest...) where {N, T} = Vec{N, T}(Vec{N, T}(a, v...), rest...)
+    Vec{N, T}() where {N, T} = new{N, T}(tuple(Iterators.repeated(zero(T), N)...))
 
     # Construct with a lambda, like ntuple().
-    @inline Vec(make_component::Function, n::Int) = Vec(ntuple(make_component, Val(n)))
-    @inline Vec{N, T}(make_component::Function) where {N, T} = Vec{N, T}(ntuple(make_component, Val(N)))
-    @inline function Vec{T}(make_component::Function, n::Int) where {T}
-        @bp_check(!(T isa Int), "Constructors of the form 'VecN(x, y, ...)' aren't allowed. Try 'Vec(x, y, ...)', or 'VecN{T}(x, y, ...)'")
-        Vec{n, T}(make_component)
-    end
+    Vec(make_component::TCallable, n::Int) where {TCallable<:Base.Callable} = Vec(ntuple(make_component, n)...)
+    Vec(make_component::TCallable, v::Val{N}) where {N, TCallable<:Base.Callable} = Vec(ntuple(make_component, v)...)
+    Vec{N, T}(make_component::TCallable) where {N, T, TCallable<:Base.Callable} = new{N, T}(
+        ntuple(i -> convert(T, make_component(i)), Val(N))
+    )
 end
 export Vec
+
+"
+Constructs a vector by appending smaller vectors and components together.
+Only works for `Real`-typed vectors, to prevent type inference problems.
+
+This is not a proper `Vec` constructor because that would cause havoc on type-inference.
+"
+@inline vappend(x) = Vec{1, typeof(x)}(x)
+@inline vappend(x::Vec) = x
+@inline vappend(first, rest...) = Vec(vappend(first)..., vappend(rest...)...)
+export vappend
 
 StructTypes.construct(T::Type{<:Vec}, components::Vector) = T(components...)
 
@@ -183,7 +195,7 @@ function Base.print(io::IO, v::Vec{N, T}) where {N, T}
 end
 
 "Runs the given code with VEC_N_DIGITS temporarily changed to the given value."
-function use_vec_digits(to_do::Function, n::Int)
+function use_vec_digits(to_do::Base.Callable, n::Int)
     global VEC_N_DIGITS
     old::Int = VEC_N_DIGITS
     VEC_N_DIGITS = n
@@ -209,18 +221,18 @@ export show_vec
 #   Arithmetic, Iteration, and other interfaces   #
 ###################################################
 
-Base.zero(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}()
-Base.one(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(ntuple(i->one(T), N))
+@inline Base.zero(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}()
+@inline Base.one(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(Val(one(T)))
 
-Base.typemin(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(ntuple(i -> typemin(T), N))
-Base.typemax(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(ntuple(i -> typemax(T), N))
+Base.typemin(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(Val(typemin(T)))
+Base.typemax(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(Val(typemax(T)))
 
-Base.min(v::Vec) = reduce(min, v)
+@inline Base.min(v::Vec) = reduce(min, v)
 Base.min(p1::Vec{N, T1}, p2::Vec{N, T2}) where {N, T1, T2} = Vec((min(p1[i], p2[i]) for i in 1:N)...)
 Base.min(p1::Vec{N, T1}, p2::T2) where {N, T1, T2} = Vec((min(p1[i], p2) for i in 1:N)...)
 @inline Base.min(p1::Number, p2::Vec) = min(p2, p1)
 
-Base.max(v::Vec) = reduce(max, v)
+@inline Base.max(v::Vec) = reduce(max, v)
 Base.max(p1::Vec{N, T1}, p2::Vec{N, T2}) where {N, T1, T2} = Vec((max(p1[i], p2[i]) for i in 1:N)...)
 Base.max(p1::Vec{N, T1}, p2::T2) where {N, T1, T2} = Vec((max(p1[i], p2) for i in 1:N)...)
 @inline Base.max(p1::Number, p2::Vec) = max(p2, p1)
@@ -289,34 +301,44 @@ Base.IndexStyle(::Vec{N, T}) where {N, T} = IndexLinear()
     return exprs
 end
 
-@inline function Base.foldl(func::F, v::Vec{N, T}) where {F, N, T}
+function Base.foldl(func::F, v::Vec{N, T}) where {F, N, T}
     f::T = v[1]
     for i in 2:N
         f = func(f, v[i])
     end
     return f
 end
-@inline function Base.foldl(func::F, v::Vec{N, T}, init::T2)::T2 where {F, N, T, T2}
+function Base.foldl(func::F, v::Vec{N, T}, init::T2)::T2 where {F, N, T, T2}
     output::T2 = init
     for f::T in v
         output = func(output, f)
     end
     return output
 end
-@inline function Base.foldr(func::F, v::Vec{N, T}) where {F, N, T}
+function Base.foldr(func::F, v::Vec{N, T}) where {F, N, T}
     f::T = v[end]
     for i in (N-1):-1:1
         f = func(f, v[i])
     end
     return f
 end
-@inline function Base.foldr(func::F, v::Vec{N, T}, init::T2)::T2 where {F, N, T, T2}
+function Base.foldr(func::F, v::Vec{N, T}, init::T2)::T2 where {F, N, T, T2}
     f::T2 = init
     for i in N:-1:1
         f = func(f, v[i])
     end
     return f
 end
+
+"
+Like a binary version of lerp, or like `step()`.
+Returns components of `a` when `t` is false, or `b` when `t` is true.
+"
+vselect(a::F, b::F, t::Bool) where {F} = (t ? b : a)
+vselect(a::Vec{N, T}, b::Vec{N, T}, t::Vec{N, Bool}) where {N, T} = Vec{N, T}((
+    vselect(xA, xB, xT) for (xA, xB, xT) in zip(a, b, t)
+)...)
+export vselect
 
 # I can't figure out how to make the general-case form of `isapprox()` work
 #   without heap allocations (I think it's related to the keyword arguments).
@@ -344,11 +366,9 @@ Base.isapprox(a::Vec{N, T1}, b::Vec{N, T2}, atol) where {N, T1, T2} =
 # getproperty() for fields:
 @inline Base.getproperty(v::Vec, ::Val{:data}) = getfield(v, :data)
 # getproperty() for swizzling:
-@inline Base.getproperty(v::Vec, ::Val{T}) where {T} = swizzle(v, T)
+@inline Base.getproperty(v::Vec, ::Val{T}) where {T} = swizzle(v, Val(T))
 
-Base.propertynames(::Vec, _) = (:x, :y, :z, :w, :data)
-swizzle(v::Vec{N, T}, n::Symbol) where {N, T} = swizzle(v, Val(n))
-#TODO: I think we can make all swizzles fast by using @generated with the argument type Val{S}.
+@inline Base.propertynames(::Vec, _) = (:x, :y, :z, :w, :data)
 
 Base.:(+)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i+j for (i,j) in zip(a, b))...)
 Base.:(-)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i-j for (i,j) in zip(a, b))...)
@@ -364,17 +384,17 @@ Base.:(/)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f/b), a)
 Base.:(÷)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f÷b), a)
 Base.:(%)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f%b), a)
 
-Base.:(+)(a::Number, b::Vec) = b+a
-Base.:(-)(a::Number, b::Vec) = (-b)+a
-Base.:(*)(a::Number, b::Vec) = b*a
-Base.:(/)(a::Number, b::Vec) = map(f->(a/f), b)
-Base.:(÷)(a::Number, b::Vec) = map(f->(a÷f), b)
-Base.:(%)(a::Number, b::Vec) = map(f->(a%f), b)
+@inline Base.:(+)(a::Number, b::Vec) = b+a
+@inline Base.:(-)(a::Number, b::Vec) = (-b)+a
+@inline Base.:(*)(a::Number, b::Vec) = b*a
+@inline Base.:(/)(a::Number, b::Vec) = map(f->(a/f), b)
+@inline Base.:(÷)(a::Number, b::Vec) = map(f->(a÷f), b)
+@inline Base.:(%)(a::Number, b::Vec) = map(f->(a%f), b)
 
-Base.:(-)(a::Vec)::Vec = map(-, a)
+@inline Base.:(-)(a::Vec)::Vec = map(-, a)
 
-Base.:(==)(a::Number, b::Vec) = b==a
-Base.:(==)(a::Vec, b::Number) = all(x->x==b, a)
+@inline Base.:(==)(a::Number, b::Vec) = b==a
+@inline Base.:(==)(a::Vec, b::Number) = all(x->x==b, a)
 
 Base.:(<)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i<j for (i,j) in zip(a, b))...)
 Base.:(<)(a::Vec{N, T}, b::T2) where {N, T, T2} = map(x -> x<b, a)
@@ -383,15 +403,16 @@ Base.:(<=)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i<=j for (i,j) i
 Base.:(<=)(a::Vec{N, T}, b::T2) where {N, T, T2} = map(x -> x<=b, a)
 Base.:(<=)(a::T2, b::Vec{N, T}) where {N, T, T2} = map(x -> a<=x, b)
 
-@inline Base.:(&)(a::VecB{N}, b::VecB{N}) where {N} = Vec((i&j for (i,j) in zip(a, b))...)
+Base.:(&)(a::VecB{N}, b::VecB{N}) where {N} = Vec((i&j for (i,j) in zip(a, b))...)
 Base.:(&)(a::VecB{N}, b::Bool) where {N} = map(x -> x&b, a)
 @inline Base.:(&)(a::Bool, b::VecB) = b & a
 
-@inline Base.:(|)(a::VecB{N}, b::VecB{N}) where {N} = Vec((i|j for (i,j) in zip(a, b))...)
+Base.:(|)(a::VecB{N}, b::VecB{N}) where {N} = Vec((i|j for (i,j) in zip(a, b))...)
 Base.:(|)(a::VecB{N}, b::Bool) where {N} = map(x -> x|b, a)
 @inline Base.:(|)(a::Bool, b::VecB) = b | a
 
 # Help convert a Ref(Vec{T}) to a Ptr{T}, for C calls.
+#TODO: Remove, add an overload of `Ref(::Vec)` that returns a ContiguousRef
 Base.unsafe_convert(::Type{Ptr{T}}, r::Base.RefValue{<:VecT{T}}) where {T} =
     Base.unsafe_convert(Ptr{T}, Base.unsafe_convert(Ptr{Nothing}, r))
 Base.unsafe_convert(::Type{Ptr{NTuple{N, T}}}, r::Base.RefValue{Vec{N, T}}) where {N, T} =
@@ -522,40 +543,39 @@ Setfield.set(v::Vec, ::Val{:data}, val) = return typeof(v)(val...)
 #   Other functions   #
 #######################
 
-# The general use-case of swizzle, which is forced to stringify the symbol
-#    to iterate its characters.
-# See below for specific optimized overloads.
-swizzle(v::Vec, ::Val{T}) where {T} = swizzle(v, string(T))
-@inline function swizzle(v::Vec{N, T}, c_str::S) where {N, T} where {S<:AbstractString}
-    # Unfortunately, no way to do this with symbols.
-    # Symbols don't provide a way to access their characters.
-    #TODO: Check whether this function is truly inlined, and if the stringification can get compiled out.
-    new_len::Int = length(c_str)
-    v2::Vec{new_len, T} = Vec{new_len, T}()
+@inline swizzle(v::Vec, components::Symbol) = swizzle(v, Val(components))
+@inline @generated swizzle(v::Vec{N, T}, components::Val{S}) where {N, T, S} = swizzle_ast(N, T, S, :v)
 
-    for (i::Int, component::Char) in enumerate(c_str)
-        if (component == 'x') | (component == 'r')
-            @set! v2[i] = v[1]
-        elseif (component == 'y') | (component == 'g')
-            @set! v2[i] = v[2]
-        elseif (component == 'z') | (component == 'b')
-            @set! v2[i] = v[3]
-        elseif (component == 'w') | (component == 'a')
-            @set! v2[i] = v[4]
-        elseif (component == '1')
-            @set! v2[i] = one(T)
-        elseif (component == '0')
-            @set! v2[i] = zero(T)
-        elseif (component == '∆')
-            @set! v2[i] = typemax_finite(T)
-        elseif (component == '∇')
-            @set! v2[i] = typemin_finite(T)
-        else
-            error("Invalid swizzle char: '", component, "'")
-        end
+function swizzle_ast(N::Int, T::Type, S::Symbol, var_name::Symbol)
+    chars = string(S)
+
+    outputs = [ ]
+    for char::Char in chars
+        push!(outputs,
+            if char in ('x', 'r')
+                :( $var_name.x )
+            elseif char in ('y', 'g')
+                :( $var_name.y )
+            elseif char in ('z', 'b')
+                :( $var_name.z )
+            elseif char in ('w', 'a')
+                :( $var_name.w )
+            elseif char == '1'
+                one(T)
+            elseif char == '0'
+                zero(T)
+            elseif char == 'Δ'
+                typemax_finite(T)
+            elseif char =='∇'
+                typemin_finite(T)
+            else
+                error("Invalid swizzle char: '", char, "'")
+            end
+        )
     end
 
-    return v2
+    N2 = length(outputs)
+    return :( Vec{$N2, T}($(outputs...)) )
 end
 
 "Computes the dot product of two vectors"
@@ -563,17 +583,16 @@ end
 export vdot
 
 "Computes the square distance between two vectors"
-@inline function vdist_sqr(v1::Vec{N, T1}, v2::Vec{N, T2})::promote_type(T1, T2) where {N, T1, T2}
+function vdist_sqr(v1::Vec{N, T1}, v2::Vec{N, T2})::promote_type(T1, T2) where {N, T1, T2}
     delta::Vec{N, promote_type(T1, T2)} = v1 - v2
-    delta = map(f -> f*f, delta)
-    return sum(delta)
+    return sum(delta * delta)
 end
 "Computes the distance between two vectors"
-vdist(v1::Vec, v2::Vec) = sqrt(vdist_sqr(v1, v2))
+@inline vdist(v1::Vec, v2::Vec) = sqrt(vdist_sqr(v1, v2))
 export vdist_sqr, vdist
 
 "Computes the square length of a vector"
-@inline function vlength_sqr(v::Vec{N, T})::T where {N, T}
+function vlength_sqr(v::Vec{N, T})::T where {N, T}
     return vdot(v, v)
 end
 "Computes the length of a vector"
@@ -581,7 +600,7 @@ end
 export vlength_sqr, vlength
 
 "Normalizes a vector"
-vnorm(v::Vec) = v / vlength(v)
+@inline vnorm(v::Vec) = v / vlength(v)
 export vnorm
 
 "
@@ -610,17 +629,19 @@ end
 export vbasis
 
 "Checks whether a vector is normalized, within the given epsilon"
-@inline is_normalized(v::Vec{N, T}, atol::T2 = 0.0) where {N, T, T2} =
+is_normalized(v::Vec{N, T}, atol::T2 = 0.0) where {N, T, T2} =
     isapprox(vlength_sqr(v), one(T); atol=atol*atol)
 export is_normalized
 
 "Computes the 3D cross product."
-@inline function vcross( a::Vec3{T1},
-                         b::Vec3{T2}
-                       )::Vec3{promote_type(T1, T2)} where {T1, T2}
-    return Vec(foldl(-, a.yz * b.zy),
-               foldl(-, a.zx * b.xz),
-               foldl(-, a.xy * b.yx))
+function vcross( a::Vec3{T1},
+                 b::Vec3{T2}
+               )::Vec3{promote_type(T1, T2)} where {T1, T2}
+    return Vec3{promote_type(T1, T2)}(
+        foldl(-, a.yz * b.zy),
+        foldl(-, a.zx * b.xz),
+        foldl(-, a.xy * b.yx)
+    )
 end
 export vcross
 
@@ -699,7 +720,7 @@ end
 end
 
 "Extracts the vertical component from a 3D vector."
-get_vert(v::Vec3) = v[get_up_axis()]
+@inline get_vert(v::Vec3) = v[get_up_axis()]
 
 "Inserts a vertical component into the given horizontal vector."
 @inline function to_3d(v_2d::Vec2{T}, vertical::T2 = zero(T))::Vec3{T} where {T, T2}
@@ -718,138 +739,3 @@ export get_up_sign, get_up_axis, get_up_vector,
        get_horz_axes, get_horz_vector,
        get_horz, get_vert, to_3d
 #
-
-###########################
-#   Optimized swizzling   #
-###########################
-
-"""
-Defines a fast implementation of swizzling for a specific swizzle.
-Valid swizzle chars are x, y, z, w, 0, 1, ∆, ∇.
-RGBA swizzles are generated along with the XYZW swizzles.
-Feel free to add this macro to your own code, for specific swizzles
-    that you want to be high-performance.
-"""
-macro fast_swizzle(components_xyzw::Union{Symbol, Int}...)
-    # If there is only one component, we don't actually need swizzling behavior for it.
-    # Handling this edge-case makes it easier to generate many fast swizzles with other helper macros.
-    if length(components_xyzw) == 1
-        return :()
-    end
-
-    # Compute the RGBA version of the components.
-    components_rgba = map(components_xyzw) do c
-        if c isa Int
-            return c
-        elseif c == :x
-            return :r
-        elseif c == :y
-            return :g
-        elseif c == :z
-            return :b
-        elseif c == :w
-            return :a
-        elseif c in (:∆, :∇)
-            return c
-        else
-            error("Swizzle char isn't valid (xyzw/rgba/01/!¡): '", c, "'")
-        end
-    end
-
-    component_sets = (components_xyzw, components_rgba)
-
-    # Generate the swizzle symbols (e.x. ":xyzw") for both XYZW and RGBA versions.
-    swizzle_symbol_exprs = map(cs -> QuoteNode(Symbol(cs...)),
-                               component_sets)
-    # Don't use the RGBA version if it isn't actually different
-    #   (e.x. the swizzle 'v.0001' -- very unlikely edge-case, but still).
-    if eval(swizzle_symbol_exprs[1]) == eval(swizzle_symbol_exprs[2])
-        component_sets = component_sets[1]
-        swizzle_symbol_exprs = swizzle_symbol_exprs[1]
-    end
-
-    # Generate expressions to evaluate each swizzle component.
-    # Note that this will always behave the same for the XYZW and RGBA versions,
-    #    so we only need one copy.
-    components_expr = map(component_sets[1]) do c
-        if c == 0
-            return :( zero(T) )
-        elseif c == 1
-            return :( one(T) )
-        elseif c == :∆
-            return :( typemax_finite(T) )
-        elseif c == :∇
-            return :( typemin_finite(T) )
-        elseif (c == :x) || (c == :r)
-            return :( data[1] )
-        elseif (c == :y) || (c == :g)
-            return :( data[2] )
-        elseif (c == :z) || (c == :b)
-            return :( data[3] )
-        elseif (c == :w) || (c == :a)
-            return :( data[4] )
-        else
-            error("Unknown component in macro: '", c, "'")
-        end
-    end
-
-    # Generate the XYZW and RGBA swizzle overloads.
-    output = Expr(:block)
-    for swizzle_symbol_expr in swizzle_symbol_exprs
-        push!(output.args, :(
-            @inline function Base.getproperty( v::Vec{N, T},
-                                               ::Val{$swizzle_symbol_expr}
-                                             ) where {N, T}
-                data::NTuple{N, T} = getfield(v, :data)
-                return Vec($(components_expr...))
-            end
-        ))
-    end
-    return esc(output)
-end
-
-# Define fast cases for all one-component swizzles like "v.xx", "v.yyyy", "v.bb", etc.
-macro fast_swizzle_single(component::Symbol)
-    @bp_check(length(string(component)) == 1)
-    return esc(quote
-        Math.@fast_swizzle $component $component
-        Math.@fast_swizzle $component $component $component
-        Math.@fast_swizzle $component $component $component $component
-    end)
-end
-@fast_swizzle_single x
-@fast_swizzle_single y
-@fast_swizzle_single z
-@fast_swizzle_single w
-# Define fast cases for all two-component swizzles of XYZ, and of XW (for red-alpha textures).
-@fast_swizzle x y
-@fast_swizzle y x
-@fast_swizzle x z
-@fast_swizzle z x
-@fast_swizzle y z
-@fast_swizzle z y
-@fast_swizzle x w
-@fast_swizzle w x
-@fast_swizzle x 0
-@fast_swizzle x 1
-@fast_swizzle x ∆
-@fast_swizzle x ∇
-# Define fast cases for simple three-component swizzles, optionally with constant alpha.
-@fast_swizzle x y z
-@fast_swizzle x y z 0
-@fast_swizzle x y z 1
-@fast_swizzle x y z ∆
-@fast_swizzle x y z ∇
-@fast_swizzle z y x
-@fast_swizzle z y x w
-@fast_swizzle z y x 0
-@fast_swizzle z y x 1
-@fast_swizzle z y x ∆
-@fast_swizzle z y x ∇
-# Define fast cases that turn Red-Alpha color data into RGBA data.
-@fast_swizzle x x x w
-# Define fast cases that turn greyscale data into RGBA data.
-@fast_swizzle x x x 0
-@fast_swizzle x x x 1
-@fast_swizzle x x x ∆
-@fast_swizzle x x x ∇
