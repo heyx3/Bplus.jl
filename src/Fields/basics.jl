@@ -1,3 +1,7 @@
+###################
+#  ConstantField  #
+###################
+
 "Outputs a constant value"
 struct ConstantField{NIn, NOut, F} <: AbstractField{NIn, NOut, F}
     value::Vec{NOut, F}
@@ -5,15 +9,27 @@ end
 export ConstantField
 ConstantField{NIn}(v::Vec{NOut, F}) where {NIn, NOut, F} = ConstantField{NIn, NOut, F}(v)
 
-@inline get_field(f::ConstantField{NIn, NOut, F}, pos::Vec{NIn, F}, ::Nothing = nothing) where {NIn, NOut, F} = f.value
-@inline get_field_gradient(f::ConstantField{NIn, NOut, F}, pos::Vec{NIn, F}, ::Nothing = nothing) where {NIn, NOut, F} = zero(GradientType(f))
+"
+Creates a constant field matching the output type of another field,
+    with all components set to the given value(s).
+"
+ConstantField(template::AbstractField{NIn, NOut, F}, value::Real) where {NIn, NOut, F} = ConstantField{NIn, NOut, F}(Vec(i -> convert(F, value), Val(NOut)))
+ConstantField(template::AbstractField{NIn, NOut, F}, value::Vec{NOut}) where {NIn, NOut, F} = ConstantField{NIn, NOut, F}(convert(Vec{NOut, F}, value))
 
+
+@inline get_field(f::ConstantField{NIn, NOut, F}, pos::Vec{NIn, F}, ::Nothing) where {NIn, NOut, F} = f.value
+@inline get_field_gradient(f::ConstantField{NIn, NOut, F}, pos::Vec{NIn, F}, ::Nothing) where {NIn, NOut, F} = zero(GradientType(f))
+
+
+##############
+#  PosField  #
+##############
 
 "Outputs the input position"
 struct PosField{N, F} <: AbstractField{N, N, F} end
 export PosField
-@inline get_field(f::PosField{N, F}, pos::Vec{N, F}, ::Nothing = nothing) where {N, F} = pos
-function get_field_gradient(f::PosField{N, F}, ::Vec{N, F}, ::Nothing = nothing) where {N, F}
+@inline get_field(f::PosField{N, F}, pos::Vec{N, F}, ::Nothing) where {N, F} = pos
+function get_field_gradient(f::PosField{N, F}, ::Vec{N, F}, ::Nothing) where {N, F}
     # Along each axis, the rate of change is 1 for that axis and 0 for the others.
     return Vec{N, Vec{N, F}}() do axis::Int
         derivative = zero(Vec{N, F})
@@ -133,7 +149,7 @@ end
 
 function get_field( tf::TextureField{NIn, NOut, F, TArray, Val{WrapMode}, Val{SampleMode}},
                     pos::Vec{NIn, F},
-                    ::Nothing = nothing
+                    ::Nothing
                   )::Vec{NOut, F} where {NIn, NOut, F, TArray, WrapMode, SampleMode}
     pos = map(x -> wrap_component(tf, x), pos)
 

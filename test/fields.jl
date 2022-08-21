@@ -45,6 +45,46 @@ for pos in (zero(v2f), one(v2f), v2f(2, -4))
                             Vec(v2f(3, 0), v2f(0, -5)))
 end
 
-#TODO: Next test should be pos * pos
+# Test swizzling.
+const field6 = SwizzleField(PosField{2, Float32}(), :xxyyx)
+for pos in (zero(v2f), one(v2f), v2f(2, -4))
+    @bp_test_no_allocations(get_field(field6, pos),
+                            pos.xxyyx)
+    @bp_test_no_allocations(get_field_gradient(field6, pos),
+                            Vec(Vec{5, Float32}(1, 1, 0, 0, 1),
+                                Vec{5, Float32}(0, 0, 1, 1, 0)))
+end
+
+# Multiply pos.xy * pos.yx.
+# f(x, y) = x * y
+# f' = (y, x)
+const field7 = PosField{2, Float32}()
+const field8 = MultiplyField(field7, SwizzleField(field7, :yx))
+for pos in (zero(v2f), one(v2f), v2f(2, -4), v2f(-4, 2))
+    @bp_test_no_allocations(get_field(field8, pos),
+                            pos.xy * pos.yx)
+    @bp_test_no_allocations(get_field_gradient(field8, pos),
+                            Vec(pos.yx, pos.yx))
+end
+
+# Try GradientFields with the input cosine(position).
+# The gradient of cos(pos) should be (-sin(pos.x), -sin(pos.y))
+const field9 = GradientField(CosField(PosField{2, Float32}()), 1)
+const field10 = GradientField(CosField(PosField{2, Float32}()), 2)
+const field11 = GradientField(CosField(PosField{2, Float32}()),
+                              ConstantField{2}(v2f(2, 3)))
+for pos in (zero(v2f), one(v2f), v2f(2, -4), v2f(-40, 2000))
+    # Round the result, to avoid floating-point error.
+    rounded_value(val::Vec) = map(x -> Int(round(x * 10000)), val)
+    rounded_field(field::AbstractField) = rounded_value(get_field(field, pos))
+    @bp_test_no_allocations(rounded_value(get_field(field9, pos)),
+                            rounded_value(v2f(-sin(pos.x), 0)))
+    @bp_test_no_allocations(rounded_value(get_field(field10, pos)),
+                            rounded_value(v2f(0, -sin(pos.y))))
+    @bp_test_no_allocations(rounded_value(get_field(field11, pos)),
+                            rounded_value(map(x -> -sin(x), pos) * v2f(2, 3)))
+end
 
 #TODO: Many 1D tests for more varieties of math
+
+#TODO: Test automatic promotion of 1D inputs to higher-D inputs
