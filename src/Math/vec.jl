@@ -269,8 +269,10 @@ end
 vsize(arr::AbstractArray) = Vec(size(arr)...)
 export vsize
 
-Base.clamp(v::Vec{N, T}, a::T2, b::T3) where {N, T, T2, T3} = Vec{N, T}(i -> clamp(v[i], a, b))
-Base.clamp(v::Vec{N, T}, a::Vec{N, T2}, b::Vec{N, T3}) where {N, T, T2, T3} = Vec{N, T}(i -> clamp(v[i], a[i], b[i]))
+Base.clamp(v::Vec{N, T}, a::T2, b::T3) where {N, T, T2, T3} = map(x -> convert(T, clamp(x, a, b)), v)
+Base.clamp(v::Vec{N, T}, a::Vec{N, T2}, b::Vec{N, T3}) where {N, T, T2, T3} = Vec{N, T}((
+    clamp(x, aa, bb) for (x, aa, bb) in zip(v, a, b)
+))
 
 Base.convert(::Type{Vec{N, T2}}, v::Vec{N, T}) where {N, T, T2} = map(x -> convert(T2, x), v)
 Base.convert(::Type{Vec{N, T}}, v::Vec{N, T}) where {N, T} = v
@@ -375,6 +377,7 @@ Base.:(-)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i-j for (i,j) in 
 Base.:(*)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i*j for (i,j) in zip(a, b))...)
 Base.:(/)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i/j for (i,j) in zip(a, b))...)
 Base.:(÷)(a::Vec{N, I1}, b::Vec{N, I2}) where {N, I1, I2} = Vec((i÷j for (i,j) in zip(a, b))...)
+Base.:(^)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i^j for (i,j) in zip(a, b))...)
 Base.:(%)(a::Vec{N, I1}, b::Vec{N, I2}) where {N, I1, I2} = Vec((i%j for (i,j) in zip(a, b))...)
 
 Base.:(+)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f+b), a)
@@ -382,6 +385,7 @@ Base.:(-)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f-b), a)
 Base.:(*)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f*b), a)
 Base.:(/)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f/b), a)
 Base.:(÷)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f÷b), a)
+Base.:(^)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f^b), a)
 Base.:(%)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f%b), a)
 
 @inline Base.:(+)(a::Number, b::Vec) = b+a
