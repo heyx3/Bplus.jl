@@ -59,7 +59,7 @@ end
 # f(x, y) = x * y
 # f' = (y, x)
 const field7 = PosField{2, Float32}()
-const field8 = MultiplyField(field7, SwizzleField(field7, :yx))
+const field8 = MultiplyField(field7, SwizzleField(field7, 2, 1))
 for pos in (zero(v2f), one(v2f), v2f(2, -4), v2f(-4, 2))
     @bp_test_no_allocations(get_field(field8, pos),
                             pos.xy * pos.yx)
@@ -88,3 +88,77 @@ end
 #TODO: Many 1D tests for more varieties of math
 
 #TODO: Test automatic promotion of 1D inputs to higher-D inputs
+
+#TODO: test AppendField
+
+#TODO: test that Lerp(), Smoothstep(), and Smootherstep() avoid heap allocations when running get_field() and get_field_gradient()
+
+# Test the DSL.
+const FIELD_DSL_POS = v2f(3, -5)
+# Each test is a tuple of (DSL, expected_type, expected_value).
+const FIELD_DSL_TESTS = Tuple{Any, Type{<:AbstractField{2}}, VecT{Float32}}[
+    (:( 4 ), ConstantField{2, 1, Float32}, Vec(@f32(4))),
+    (:( { 2, 3, 4, 5, 6 }), AppendField{2, 5, Float32}, Vec{5, Float32}(2, 3, 4, 5, 6)),
+    (:( 3 * 5 ), MultiplyField{2, 1, Float32}, Vec{1, Float32}(@f32(3) * @f32(5))),
+    (:( 3 * { 1, 2, 3 } ), MultiplyField{2, 3, Float32}, v3f(3, 6, 9)),
+    (:( pos ), PosField{2, Float32}, FIELD_DSL_POS),
+    (:( pos + 1.5 ), AddField{2, 2, Float32}, FIELD_DSL_POS + @f32(1.5)),
+    (:( pos + { 1.5, -3.5 }), AddField{2, 2, Float32}, FIELD_DSL_POS + v2f(1.5, -3.5)),
+    (:( sin(pos) ), SinField{2, 2, Float32}, map(sin, FIELD_DSL_POS)),
+    (:( let x = 4
+          x * { 4, 5, 6 }
+        end ),
+      MultiplyField{2, 3, Float32},
+      4 * v3f(4, 5, 6)
+    ),
+    (:( let x = 4,
+            y = 5
+          let x = 0
+              x * y
+          end + (x * y)
+        end
+      ),
+      AddField{2, 1, Float32},
+      Vec(@f32(4) * @f32(5))
+    )
+    #TODO: More tests
+]
+# Because the types aren't known at compile-time, we can't test for no-allocation here.
+# However, earlier tests that don't use the DSL should catch those problems already.
+for (dsl, expected_type, expected_value) in FIELD_DSL_TESTS
+    context = DslContext(length(FIELD_DSL_POS), -1, Float32) # Note that 'NOut' isn't useful here,
+                                                             #   as it's generally deduced from the DSL.
+    dsl_field = field_from_dsl(dsl, context)
+    @bp_check(dsl_field isa expected_type,
+              "Expected ", expected_type,
+                " from parsing the DSL \"", dsl, "\", but got ", typeof(dsl_field))
+
+    actual_value = get_field(dsl_field, FIELD_DSL_POS)
+    @bp_check(actual_value == expected_value,
+              "Expected ", expected_value,
+                " from the DSL \"", dsl, "\", but got ", actual_value)
+
+    # Check that converting the field back to DSL works, by re-parsing and re-evaluating it.
+    actual_dsl = dsl_from_field(dsl_field)
+    dsl_field = try
+        field_from_dsl(actual_dsl, context)
+    catch e
+        @error(
+            """Error converting dsl to field; "$actual_dsl"
+            
+            Original DSL: "$dsl"
+
+            """,
+            exception=(e, catch_backtrace())
+        )
+        error()
+    end
+    actual_value = get_field(dsl_field, FIELD_DSL_POS)
+    @bp_check(actual_value == expected_value,
+              "Converting into DSL and back yielded a different result!\n",
+                 "\tOriginal DSL: ", dsl,
+                 "\n\tGenerated DSL: ", actual_dsl,
+                 "\n\tExpected ", expected_value,
+                   ", got ", actual_value)
+
+end

@@ -1,17 +1,24 @@
 "Holds a tuple of arguments, and represents a specific math expression"
 abstract type AbstractMathField{NIn, NOut, F} <: AbstractField{NIn, NOut, F} end
 
+
+##################
+#  Helper macro  #
+##################
+
 """
 Short-hand for generating an `AbstractMathField`.
 Sample syntax:
 
 ````
-@make_math_field Add begin
+@make_math_field Add "+" begin
     INPUT_COUNT = 2
     value = input_values[1] + input_values[2]
     gradient = input_gradients[1] + input_gradients[2]
 end
 ````
+
+In this sample, the new field is `AddField`, and the corresponding DSL function/operator is `+`.
 
 You construct an instance by providing it with the input fields (and without any type parameters).
 Input fields with 1D outputs will be automatically promoted to the dimensionality of the other fields' outputs.
@@ -29,6 +36,7 @@ The full set of definitions you can provide is as follows:
     * `pos::Vec{NIn, F}`: the position within the field being sampled.
     * `input_values::NTuple{_, Vec{NOut, F}}` : the value of each input field at this position.
         * If you don't need this, you can disable it with `VALUE_CALC_ALL_INPUT_VALUES` (see below).
+    * `prep_data::Tuple` : the output of `prepare_field` for each input field.
 * `gradient = [expr]` computes the gradient of the field, given the following parameters:
     * `field`: your field instance
     * `NIn`, `NOut`, `F`, `TFields<:Tuple` : The type parameters for your field,
@@ -38,6 +46,7 @@ The full set of definitions you can provide is as follows:
         * If you don't need this, you can disable it with `GRADIENT_CALC_ALL_INPUT_GRADIENTS` (see below).
     * `input_values::NTuple{_, Vec{NOut, F}}` : the value of each input field at this position.
         * **Not provided** by default; you must enable it with `GRADIENT_CALC_ALL_INPUT_VALUES` (see below).
+    * `prep_data::Tuple` : the output of `prepare_field` for each input field.
     If not given, falls back to the default behavior of all fields (numerical solution).
 * `VALUE_CALC_ALL_INPUT_VALUES = [true|false]`. If true (the default value),
     then the computation of `value` has access to a local var, `input_values`,
@@ -52,17 +61,29 @@ The full set of definitions you can provide is as follows:
     containing all input fields' gradients. This can be disabled for performance if your math op
     doesn't always need every input's gradient.
 """
-macro make_math_field(name, defs_expr)
+macro make_math_field(name, dsl_func_name, defs_expr)
     # Do error-checking.
     if !isa(name, Symbol)
         error("First argument to @make_math_field should be a name, like 'Add'")
+    elseif !isa(dsl_func_name, String)
+        error("Second argument to @make_math_field should be a string literal")
     elseif !Meta.isexpr(defs_expr, :block)
-        error("Second argument should be a begin ... end block of definitions")
+        error("Third argument to @make_math_field should be a begin ... end block of definitions")
     end
 
     # Generate names.
     struct_name = Symbol(name, :Field)
     struct_name_esc = esc(struct_name)
+    NIn = esc(:NIn)
+    NOut = esc(:NOut)
+    F = esc(:F)
+    TInputs = esc(:TInputs)
+    field_inputs = :inputs
+    local_field = esc(:field)
+    local_pos = esc(:pos)
+    local_prep_data = esc(:prep_data)
+    local_input_values = esc(:input_values)
+    local_input_gradients = esc(:input_gradients)
 
     # Pull out the individual definitions.
     defs_list = filter(def -> !isa(def, LineNumberNode), defs_expr.args)
@@ -100,50 +121,63 @@ macro make_math_field(name, defs_expr)
     # Process output information.
     local value_computation, gradient_computation
     if haskey(defs, :value)
-        value_computation = defs[:value]
+        value_computation = esc(defs[:value])
     else
         error("Definition of 'value' is required but not given",
               " (e.x. 'value = reduce(+, input_values)')")
     end
-    gradient_computation = get(defs, :gradient, nothing)
+    gradient_computation = if haskey(defs, :gradient)
+                               esc(defs[:gradient])
+                           else
+                               nothing
+                           end
 
     # Generate data for value/derivative computation.
     locals_for_value = [ ]
     if get(defs, :VALUE_CALC_ALL_INPUT_VALUES, true)
         push!(locals_for_value,
-              :( input_values = math_field_input_values(field, pos, prep_data) ))
+              :( $local_input_values = math_field_input_values($local_field, $local_pos, $local_prep_data) ))
     end
     locals_for_gradient = [ ]
     if get(defs, :GRADIENT_CALC_ALL_INPUT_VALUES, false)
         push!(locals_for_gradient,
-              :( input_values = math_field_input_values(field, pos, prep_data) ))
+              :( $local_input_values = math_field_input_values($local_field, $local_pos, $local_prep_data) ))
     end
     if get(defs, :GRADIENT_CALC_ALL_INPUT_GRADIENTS, true)
         push!(locals_for_gradient,
-              :( input_gradients = math_field_input_gradients(field, pos, prep_data) ))
+              :( $local_input_gradients = math_field_input_gradients($local_field, $local_pos, $local_prep_data) ))
     end
 
     # Generate the final code.
     return quote
-        Core.@__doc__ struct $struct_name{NIn, NOut, F, TInputs <: Tuple} <: AbstractMathField{NIn, NOut, F}
-            inputs::TInputs
-            function $struct_name_esc(inputs::Union{AbstractField{NIn, NOut, F},
-                                                    AbstractField{NIn, 1, F}}...
-                                     ) where {NIn, NOut, F}
-                n_inputs::Int = length(inputs)
+        Core.@__doc__ struct $struct_name{$NIn, $NOut, $F, $TInputs <: Tuple} <: AbstractMathField{$NIn, $NOut, $F}
+            $field_inputs::$TInputs
+            function $struct_name_esc($field_inputs::Union{AbstractField{$NIn, NOut_, $F},
+                                                           AbstractField{$NIn, 1, $F}}...
+                                     ) where {$NIn, NOut_, $F}
+                # Type inference needs some help if all fields are 1D.
+                $NOut = if all(f -> field_output_size(f) == 1, $field_inputs)
+                            1
+                        else
+                            NOut_
+                        end
+
+                n_inputs::Int = length($field_inputs)
                 if !($input_is_valid_expr)
-                    error("Invalid number of inputs into '", $name, "' field: ", n_inputs,
-                          ". Constraints: ", $(string(input_is_valid_expr)))
+                    error("Invalid number of inputs into '", $dsl_func_name, "', ",
+                          $name, ". Constraints: ", $(string(input_is_valid_expr)))
                 end
 
-                processed_inputs = process_inputs(Val(NIn), Val(NOut), F, inputs)
-                return new{NIn, NOut, F, typeof(inputs)}(processed_inputs)
+                processed_inputs = process_inputs(Val($NIn), Val($NOut), $F, $field_inputs)
+                return new{$NIn, $NOut, $F, typeof(processed_inputs)}(processed_inputs)
             end
         end
-        function $(esc(:get_field))( field::$struct_name_esc{NIn, NOut, F, TInputs},
-                                     pos::Vec{NIn, F},
-                                     prep_data::Tuple = ntuple(i->nothing, Val(length(TInputs.parameters)))
-                                   ) where {NIn, NOut, F, TInputs}
+        export $struct_name
+
+        function $(esc(:get_field))( $local_field::$struct_name_esc{$NIn, $NOut, $F, $TInputs},
+                                     $local_pos::Vec{$NIn, $F},
+                                     $local_prep_data::Tuple
+                                   ) where {$NIn, $NOut, $F, $TInputs}
             $(locals_for_value...)
             return $value_computation
         end
@@ -151,17 +185,26 @@ macro make_math_field(name, defs_expr)
             if isnothing(gradient_computation)
                 :( )
             else; :(
-                function $(esc(:get_field_gradient))( field::$struct_name_esc{NIn, NOut, F, TInputs},
-                                                      pos::Vec{NIn, F},
-                                                      prep_data::Tuple = ntuple(i->nothing, Val(length(TInputs.parameters)))
-                                                    ) where {NIn, NOut, F, TInputs}
+                function $(esc(:get_field_gradient))( $local_field::$struct_name_esc{$NIn, $NOut, $F, $TInputs},
+                                                      $local_pos::Vec{$NIn, $F},
+                                                      $local_prep_data::Tuple
+                                                    ) where {$NIn, $NOut, $F, $TInputs}
                     $(locals_for_gradient...)
                     return $gradient_computation
                 end
             )
             end
         )
-        export $struct_name
+
+        function $(esc(:field_from_dsl_func))( ::Val{Symbol($dsl_func_name)},
+                                               context::DslContext, state::DslState,
+                                               args::Tuple
+                                             )
+            $struct_name(field_from_dsl.(args, Ref(context), Ref(state))...)
+        end
+        function $(esc(:dsl_from_field))(field::$struct_name_esc)
+            return :( $(Symbol($dsl_func_name))($(dsl_from_field.(field.$field_inputs)...)) )
+        end
     end
 end
 
@@ -244,18 +287,23 @@ end
     return :( tuple($(output_elements...)) )
 end
 
+
+####################
+#  Concrete types  #
+####################
+
 # Simple math ops
-@make_math_field Add begin
+@make_math_field Add "+" begin
     INPUT_COUNTS = 2:∞
     value = reduce(+, input_values)
     gradient = reduce(+, input_gradients)
 end
-@make_math_field Subtract begin
+@make_math_field Subtract "-" begin
     INPUT_COUNTS = 2:∞
     value = foldl(-, input_values)
     gradient = foldl(-, input_gradients)
 end
-@make_math_field Multiply begin
+@make_math_field Multiply "*" begin
     INPUT_COUNTS = 2:∞
 
     value = reduce(*, input_values)
@@ -273,7 +321,7 @@ end
         return current_gradient
     end
 end
-@make_math_field Divide begin
+@make_math_field Divide "/" begin
     INPUT_COUNTS = 2
 
     value = input_values[1] / input_values[2]
@@ -288,7 +336,7 @@ end
     end
 end
 "`pow(x, y) = x^y`"
-@make_math_field Pow begin
+@make_math_field Pow "pow" begin
     INPUT_COUNT = 2
     value = input_values[1] ^ input_values[2]
 
@@ -300,7 +348,7 @@ end
         (a^b) * ((b * (da / a)) + (db * map(log, a)))
     end
 end
-@make_math_field Sqrt begin
+@make_math_field Sqrt "sqrt" begin
     INPUT_COUNT = 1
     value = map(sqrt, input_values[1])
     # d/dx sqrt(x) = 1/(2 * sqrt(x))
@@ -310,14 +358,14 @@ end
 #TODO: Log
 
 # Trig functions
-@make_math_field Sin begin
+@make_math_field Sin "sin" begin
     INPUT_COUNTS = 1
     value = map(sin, input_values[1])
 
     GRADIENT_CALC_ALL_INPUT_VALUES = true
     gradient = input_gradients[1] * map(cos, input_values[1])
 end
-@make_math_field Cos begin
+@make_math_field Cos "cos" begin
     INPUT_COUNTS = 1
     value = map(cos, input_values[1])
 
@@ -325,7 +373,7 @@ end
     gradient = input_gradients[1] * map(sin, -input_values[1])
 end
 "Tangent trig function"
-@make_math_field Tan begin
+@make_math_field Tan "tan" begin
     INPUT_COUNTS = 1
     value = map(tan, input_values[1])
 
@@ -336,7 +384,7 @@ end
 
 # Numeric stuff
 "Floating-point modulo. The behavior with negative numbers matches Julia's modulo."
-@make_math_field Mod begin
+@make_math_field Mod "mod" begin
     INPUT_COUNT = 2
     value = Vec((
         mod(a, b)
@@ -345,7 +393,7 @@ end
     # Gradient seems a bit tricky to work out, and not particularly important.
 end
 "Rounds values down to the nearest integer."
-@make_math_field Floor begin
+@make_math_field Floor "floor" begin
     INPUT_COUNT = 1
     value = map(floor, input_values[1])
     # Gradient is zero almost everywhere. In the moment of transition between values, it's undefined.
@@ -353,14 +401,14 @@ end
     #    more aesthetically-useful value.
 end
 "Rounds values up to the nearest integer."
-@make_math_field Ceil begin
+@make_math_field Ceil "ceil" begin
     INPUT_COUNT = 1
     value = map(ceil, input_values[1])
     # Gradient is zero almost everywhere. In the moment of transition between values, it's undefined.
     # However, replacing this behavior with finite differences results in a less degenerative,
     #    more aesthetically-useful value.
 end
-@make_math_field Abs begin
+@make_math_field Abs "abs" begin
     INPUT_COUNT = 1
     value = map(abs, input_values[1])
     # If the value is negative, then the gradient will be flipped.
@@ -375,10 +423,18 @@ end
           for axis in 1:NIn
     )...)
 end
-"`clamp(x, min, max)`"
-@make_math_field Clamp begin
-    INPUT_COUNT = 3
-    value = clamp(input_values...)
+"`clamp(x, min=0, max=1)`"
+@make_math_field Clamp "clamp" begin
+    INPUT_COUNT = { 1, 3 }
+    value = if length(field.inputs) == 1
+                clamp(input_values[1],
+                      ConstantField(field.inputs[1], 0),
+                      ConstantField(field.inputs[1], 1))
+            elseif length(field.inputs) == 3
+                clamp(inputs_values...)
+            else
+                error("Unhandled case: ", length(field.inputs))
+            end
     # Gradient is unchanged within the clamp range, and 0 outside it.
     GRADIENT_CALC_ALL_INPUT_VALUES = true
     GRADIENT_CALC_ALL_INPUT_GRADIENTS = false
@@ -389,49 +445,56 @@ end
                 is_in_range)
     end
 end
-"`clamp(x)` = `clamp(x, 0, 1)`"
-ClampField(x) = ClampField(x, ConstantField(x, 0), ConstantField(x, 1))
 
 # Interpolation
 "`step(a, t)` outputs 1 if `t >= a`, or `0` otherwise."
-@make_math_field Step begin
+@make_math_field Step "step" begin
     INPUT_COUNT = 2
     value = vselect(zero(Vec{NOut, F}), one(Vec{NOut, F}),
                     input_values[2] >= input_values[1])
     # Gradient is zero almost everywhere. In the moment of transition between values, it's undefined.
     # However, using finite differences results in a more intuitive and useful gradient.
 end
-LerpField(a, b, t) = AddField(a, MultiplyField(t, SubtractField(b, a)))
-"Bends a 0-1 value to follow a smoother, sharper curve (and clamps it to 0-1)."
-SmoothstepField(t) = ClampField(
-    # x * x * (3 + (-2 * x))
-    MultiplyField(
-        t, t,
-        AddField(
-            ConstantField(t, 3),
-            MultiplyField(
-                ConstantField(t, -2),
-                t
-            )
-        )
+@make_math_field Lerp "lerp" begin
+    INPUT_COUNT = 3
+    value = input_values[1] + (input_values[3] * (input_values[2] - input_values[1]))
+
+    GRADIENT_CALC_ALL_INPUT_VALUES = true
+    gradient = +(
+        input_gradients[1],
+        input_values[3] * (input_gradients[2] - input_gradients[1]),
+        input_gradients[3] * (input_values[2] - input_values[1])
     )
-)
-"A stronger version of `SmoothstepField`, with zero second-derivative."
-SmootherstepField(t) = ClampField(
-    # (t * t * t) * (10 + (t * (-15 + (t * 6))))
-    MultiplyField(
-        t, t, t,
-        AddField(
-            ConstantField(t, 10),
-            MultiplyField(
-                t,
-                AddField(
-                    ConstantField(t, -15),
-                    MultiplyField(t, ConstantField(t, 6))
-                )
-            )
-        )
-    )
-)
+end
+@make_math_field Smoothstep "smoothstep" begin
+    INPUT_COUNT = 1
+    value = let t = clamp(input_values[1], convert(F, 0), convert(F, 1))
+        t * t * (convert(F, 3) + (convert(F, -2) * t))
+    end
+
+    GRADIENT_CALC_ALL_INPUT_VALUES = true
+    gradient = let t = input_values[1],
+                   tg = input_gradients[1]
+        raw_gradient = (convert(F, 6) * t) * tg *
+                       (convert(F, 1) * (convert(F, -6) * t))
+        is_outside_range::Vec{NIn, Vec{NOut, Bool}} = (t < 0) | (t > 1)
+        return vselect(raw_gradient, zero(GradientType(field)), is_outside_range)
+    end
+end
+@make_math_field Smootherstep "smootherstep" begin
+    INPUT_COUNT = 1
+    value = let t = clamp(input_values[1], convert(F, 0), convert(F, 1))
+        t * t * t * (convert(F, 10) + (t * (convert(F, -15) + (t * convert(F, 6)))))
+    end
+
+    GRADIENT_CALC_ALL_INPUT_VALUES = true
+    gradient = let t = input_values[1],
+                   tg = input_gradients[1]
+        raw_gradient = (t * t) * tg *
+                       (convert(F, 30) + (t * (convert(F, -60) + (convert(F, 30) * t))))
+        is_outside_range::Vec{NIn, Vec{NOut, Bool}} = (t < 0) | (t > 1)
+        return vselect(raw_gradient, zero(GradientType(field)), is_outside_range)
+    end
+end
 
 #TODO: MOOOORE

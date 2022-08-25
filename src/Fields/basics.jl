@@ -20,6 +20,20 @@ ConstantField(template::AbstractField{NIn, NOut, F}, value::Vec{NOut}) where {NI
 @inline get_field(f::ConstantField{NIn, NOut, F}, pos::Vec{NIn, F}, ::Nothing) where {NIn, NOut, F} = f.value
 @inline get_field_gradient(f::ConstantField{NIn, NOut, F}, pos::Vec{NIn, F}, ::Nothing) where {NIn, NOut, F} = zero(GradientType(f))
 
+# In the DSL, constant 1D fields can be created with a number literal.
+# AppendField then allows you to create constants of higher dimensions.
+function field_from_dsl(value::Real, context::DslContext, state::DslState)
+    return ConstantField{context.n_in}(Vec{1, context.float_type}(value))
+end
+function dsl_from_field(c::ConstantField{NIn, NOut, F}) where {NIn, NOut, F}
+    if NOut == 1
+        return c.value.x
+    else
+        component_constants = map(x -> ConstantField{NIn}(Vec(x)), c.value.data)
+        return dsl_from_field(AppendField(component_constants...))
+    end
+end
+
 
 ##############
 #  PosField  #
@@ -28,8 +42,8 @@ ConstantField(template::AbstractField{NIn, NOut, F}, value::Vec{NOut}) where {NI
 "Outputs the input position"
 struct PosField{N, F} <: AbstractField{N, N, F} end
 export PosField
-@inline get_field(f::PosField{N, F}, pos::Vec{N, F}, ::Nothing) where {N, F} = pos
-function get_field_gradient(f::PosField{N, F}, ::Vec{N, F}, ::Nothing) where {N, F}
+@inline get_field(::PosField{N, F}, pos::Vec{N, F}, ::Nothing) where {N, F} = pos
+function get_field_gradient(::PosField{N, F}, ::Vec{N, F}, ::Nothing) where {N, F}
     # Along each axis, the rate of change is 1 for that axis and 0 for the others.
     return Vec{N, Vec{N, F}}() do axis::Int
         derivative = zero(Vec{N, F})
@@ -37,6 +51,12 @@ function get_field_gradient(f::PosField{N, F}, ::Vec{N, F}, ::Nothing) where {N,
         return derivative
     end
 end
+
+# The pos field is represented in the DSL by the special constant "pos".
+const POS_FIELD_NAME = :pos
+push!(RESERVED_VAR_NAMES, POS_FIELD_NAME)
+field_from_dsl_var(::Val{POS_FIELD_NAME}, context::DslContext, ::DslState) = PosField{context.n_in, context.float_type}()
+dsl_from_field(::PosField) = POS_FIELD_NAME
 
 
 ##################
@@ -169,5 +189,7 @@ function get_field( tf::TextureField{NIn, NOut, F, TArray, Val{WrapMode}, Val{Sa
     end
 end
 #TODO: Implement an efficient derivative calculation
+
+#TODO: Special syntax to add this to the DSL, by pre-defining the texture data in a block
 
 export SampleModes, E_SampleModes, TextureField
