@@ -272,7 +272,7 @@ export vsize
 Base.clamp(v::Vec{N, T}, a::T2, b::T3) where {N, T, T2, T3} = map(x -> convert(T, clamp(x, a, b)), v)
 Base.clamp(v::Vec{N, T}, a::Vec{N, T2}, b::Vec{N, T3}) where {N, T, T2, T3} = Vec{N, T}((
     clamp(x, aa, bb) for (x, aa, bb) in zip(v, a, b)
-))
+)...)
 
 Base.convert(::Type{Vec{N, T2}}, v::Vec{N, T}) where {N, T, T2} = map(x -> convert(T2, x), v)
 Base.convert(::Type{Vec{N, T}}, v::Vec{N, T}) where {N, T} = v
@@ -337,7 +337,7 @@ Like a binary version of lerp, or like `step()`.
 Returns components of `a` when `t` is false, or `b` when `t` is true.
 "
 vselect(a::F, b::F, t::Bool) where {F} = (t ? b : a)
-vselect(a::Vec{N, T}, b::Vec{N, T}, t::Vec{N, Bool}) where {N, T} = Vec{N, T}((
+vselect(a::Vec{N, T}, b::Vec{N, T}, t::Vec{N}) where {N, T} = Vec{N, T}((
     vselect(xA, xB, xT) for (xA, xB, xT) in zip(a, b, t)
 )...)
 export vselect
@@ -407,13 +407,13 @@ Base.:(<=)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i<=j for (i,j) i
 Base.:(<=)(a::Vec{N, T}, b::T2) where {N, T, T2} = map(x -> x<=b, a)
 Base.:(<=)(a::T2, b::Vec{N, T}) where {N, T, T2} = map(x -> a<=x, b)
 
-Base.:(&)(a::VecB{N}, b::VecB{N}) where {N} = Vec((i&j for (i,j) in zip(a, b))...)
-Base.:(&)(a::VecB{N}, b::Bool) where {N} = map(x -> x&b, a)
-@inline Base.:(&)(a::Bool, b::VecB) = b & a
+Base.:(&)(a::Vec{N}, b::Vec{N}) where {N} = Vec((i&j for (i,j) in zip(a, b))...)
+Base.:(&)(a::Vec{N}, b::Bool) where {N} = map(x -> x&b, a)
+@inline Base.:(&)(a::Bool, b::Vec) = b & a
 
-Base.:(|)(a::VecB{N}, b::VecB{N}) where {N} = Vec((i|j for (i,j) in zip(a, b))...)
-Base.:(|)(a::VecB{N}, b::Bool) where {N} = map(x -> x|b, a)
-@inline Base.:(|)(a::Bool, b::VecB) = b | a
+Base.:(|)(a::Vec{N}, b::Vec{N}) where {N} = Vec((i|j for (i,j) in zip(a, b))...)
+Base.:(|)(a::Vec{N}, b::Bool) where {N} = map(x -> x|b, a)
+@inline Base.:(|)(a::Bool, b::Vec) = b | a
 
 # Help convert a Ref(Vec{T}) to a Ptr{T}, for C calls.
 #TODO: Remove, add an overload of `Ref(::Vec)` that returns a ContiguousRef

@@ -76,23 +76,23 @@ export Mat, @Mat, MatF, MatD,
 
 "Applies a transform matrix to the given coordinate."
 function m_apply_point(m::Mat{4, 4, F}, v::Vec{3, F})::Vec{3, F} where {F}
-    v4::Vec{4, F} = Vec(v, one(F))
+    v4::Vec{4, F} = vappend(v, one(F))
     v4 = m * v4
     return v4.xyz / v4.w
 end
 function a_apply_point(m::Mat{3, 3, F}, v::Vec{2, F})::Vec{2, F} where {F}
-    v3::Vec{3, F} = Vec(v, one(F))
+    v3::Vec{3, F} = vappend(v, one(F))
     v3 = m * v3
     return v3.xy / v3.z
 end
 "Applies a transform matrix to the given vector (i.e. ignoring translation)."
 function m_apply_vector(m::Mat{4, 4, F}, v::Vec{3, F}) where {F}
-    v4::Vec{4, F} = Vec(v, zero(F))
+    v4::Vec{4, F} = vappend(v, zero(F))
     v4 = m * v4
     return v4.xyz / v4.w
 end
 function m_apply_vector(m::Mat{3, 3, F}, v::Vec{2, F}) where {F}
-    v3::Vec{3, F} = Vec(v, zero(F))
+    v3::Vec{3, F} = vappend(v, zero(F))
     v3 = m * v3
     return v3.xy / v3.z
 end
