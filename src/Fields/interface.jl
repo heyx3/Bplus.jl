@@ -63,6 +63,8 @@ field_gradient_epsilon(f::AbstractField{NIn, NOut, F}, pos::Vec{NIn, F}, prepare
 field_gradient_epsilon(::Type{Float16}) = Float16(0.05)
 field_gradient_epsilon(::Type{Float32}) = Float32(0.0001)
 field_gradient_epsilon(::Type{Float64}) = Float64(0.0000001)
+# Fallback for unhandled types (e.x. fixed-point)
+field_gradient_epsilon(T::Type) = convert(T, 0.0001)
 
 
 export prepare_field, get_field, get_field_gradient, field_gradient_epsilon

@@ -68,22 +68,29 @@ dsl_from_field(::PosField) = POS_FIELD_NAME
 "Samples from a 'texture', in UV space (0-1)"
 struct TextureField{NIn, NOut, F,
                     TArray<:AbstractArray{Vec{NOut, F}, NIn},
-                    WrapMode, SampleMode
+                    WrapMode, SampleMode,
+                    TPos<:AbstractField{NIn, NIn, F}
                    } <: AbstractField{NIn, NOut, F}
     pixels::TArray
+    pos::TPos
 end
 function TextureField( pixels::AbstractArray{Vec{NOut, F}, NIn},
-                       wrapping::GL.E_WrapModes
+                       pos::AbstractField{NIn, NIn, F} = PosField{NIn}()
                        ;
+                       wrapping::GL.E_WrapModes = WrapModes.repeat,
                        sampling::E_SampleModes = SampleModes.linear
                      ) where {NIn, NOut, F}
-    return TextureField{NIn, NOut, F, typeof(pixels), Val(wrapping), Val(sampling)}(pixels)
+    return TextureField{NIn, NOut, F,
+                        typeof(pixels), Val(wrapping), Val(sampling),
+                        typeof(pos)
+                       }(pixels, pos)
 end
 
 "Applies a TextureField's wrapping to a given component of a position"
-function wrap_component( tf::TextureField{NIn, NOut, F, TArray, Val{WrapMode}, Val{SampleMode}},
+function wrap_component( tf::TField,
                          x::F
-                       )::F where {NIn, NOut, F, TArray, WrapMode, SampleMode}
+                       )::F where {NIn, NOut, F, TArray, WrapMode, SampleMode,
+                                   TField<:TextureField{NIn, NOut, F, TArray, Val{WrapMode}, Val{SampleMode}}}
     ZERO = zero(F)
     ONE = one(F)
     if WrapMode == GL.WrapModes.repeat
@@ -190,6 +197,43 @@ function get_field( tf::TextureField{NIn, NOut, F, TArray, Val{WrapMode}, Val{Sa
 end
 #TODO: Implement an efficient derivative calculation
 
-#TODO: Special syntax to add this to the DSL, by pre-defining the texture data in a block
+# TextureFields have special treatment.
+# The DslState has a lookup providing a name for each allocated array.
+# The syntax "a{b}" is used to look up array "a" with UV "b".
+# You can also provide wrapping and sampling arguments, e.x.
+#    "a{b, wrap=repeat, sampling=linear}".
+function field_from_dsl_expr(::Val{:curly}, ast::Expr, context::DslContext, state::DslState)
+    @bp_fields_assert(length(ast.args) == 2, "Weird AST: $ast")
+    @bp_check((ast.args[1] isa Symbol) && haskey(state.arrays, ast.args[1]),
+              "TextureField access should refer to one of the names: ",
+                  join(("'$name'" for (name, _) in state.arrays), ", "),
+                  ". Got: '", ast, "'")
+    @bp_check(length(ast.args) in 2:4,
+              "Expected one input to TextureField accessor, plus up to 2 optional args: '",
+                 ast, "'")
+
+    uv_field = field_from_dsl(ast.args[2], context, state)
+
+    # Read extra arguments.
+    wrapping::E_WrapModes = WrapModes.repeat
+    sampling::E_SampleModes = SampleModes.linear
+    for extra_arg in ast.args[3:end]
+        @bp_check(Meta.isexpr(extra_arg, :(=)) && all(a -> isa(a, Symbol), extra_arg.args),
+                  "Extra arguments should look like 'wrap=[value]', or 'sampling=[value]'. Got: $extra_arg")
+        if extra_arg.args[1] == :wrap
+            wrapping = parse(E_WrapModes, string(extra_arg.args[2]))
+        elseif extra_arg.args[1] == :sampling
+            sampling = parse(E_SampleModes, string(extra_arg.args[2]))
+        else
+            error("Unknown texture parameter '", extra_arg.args[1], "' in statement: ", extra_arg)
+        end
+    end
+
+    return TextureField(state.arrays[ast.args[1]],
+                        uv_field
+                        ;
+                        wrapping = wrapping,
+                        sampling = sampling)
+end
 
 export SampleModes, E_SampleModes, TextureField

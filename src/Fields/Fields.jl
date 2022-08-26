@@ -16,7 +16,7 @@ using ..Utilities, ..Math, ..GL
 A function of (`Vec{NIn, F} -> Vec{NOut, F}`.
 For example, 3D perlin noise could be a `Field{3, 1, Float32}`.
 "
-abstract type AbstractField{NIn, NOut, F<:AbstractFloat} end
+abstract type AbstractField{NIn, NOut, F<:Real} end
 export AbstractField
 
 field_input_size(f::AbstractField) = field_input_size(typeof(f))
@@ -37,7 +37,7 @@ include("modifiers.jl")
 include("math.jl")
 #TODO: Vector ops
 #TODO: Logical ops
-#TODO: Noise
+include("noise.jl")
 #TODO: Signed distance fields
 #TODO: Useful CG curves (e.x. https://iquilezles.org/articles/functions/)
 #TODO: Think of more

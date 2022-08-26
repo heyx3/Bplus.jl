@@ -85,16 +85,16 @@ for pos in (zero(v2f), one(v2f), v2f(2, -4), v2f(-40, 2000))
                             rounded_value(map(x -> -sin(x), pos) * v2f(2, 3)))
 end
 
+#TODO: Test ConversionField
+#TODO: Test TextureField
+#TODO: Test AppendField
 #TODO: Many 1D tests for more varieties of math
-
 #TODO: Test automatic promotion of 1D inputs to higher-D inputs
-
-#TODO: test AppendField
-
-#TODO: test that Lerp(), Smoothstep(), and Smootherstep() avoid heap allocations when running get_field() and get_field_gradient()
+#TODO: Test that Lerp(), Smoothstep(), and Smootherstep() avoid heap allocations when running get_field() and get_field_gradient()
 
 # Test the DSL.
 const FIELD_DSL_POS = v2f(3, -5)
+#TODO: Add a FIELD_DSL_STATE, and test TextureField
 # Each test is a tuple of (DSL, expected_type, expected_value).
 const FIELD_DSL_TESTS = Tuple{Any, Type{<:AbstractField{2}}, VecT{Float32}}[
     (:( 4 ), ConstantField{2, 1, Float32}, Vec(@f32(4))),
@@ -121,13 +121,11 @@ const FIELD_DSL_TESTS = Tuple{Any, Type{<:AbstractField{2}}, VecT{Float32}}[
       AddField{2, 1, Float32},
       Vec(@f32(4) * @f32(5))
     )
-    #TODO: More tests
 ]
 # Because the types aren't known at compile-time, we can't test for no-allocation here.
 # However, earlier tests that don't use the DSL should catch those problems already.
 for (dsl, expected_type, expected_value) in FIELD_DSL_TESTS
-    context = DslContext(length(FIELD_DSL_POS), -1, Float32) # Note that 'NOut' isn't useful here,
-                                                             #   as it's generally deduced from the DSL.
+    context = DslContext(length(FIELD_DSL_POS), Float32)
     dsl_field = field_from_dsl(dsl, context)
     @bp_check(dsl_field isa expected_type,
               "Expected ", expected_type,
@@ -145,7 +143,7 @@ for (dsl, expected_type, expected_value) in FIELD_DSL_TESTS
     catch e
         @error(
             """Error converting dsl to field; "$actual_dsl"
-            
+
             Original DSL: "$dsl"
 
             """,
@@ -162,3 +160,7 @@ for (dsl, expected_type, expected_value) in FIELD_DSL_TESTS
                    ", got ", actual_value)
 
 end
+
+#TODO: Come up with a meaningful test for noise fields
+
+#TODO: Test @field

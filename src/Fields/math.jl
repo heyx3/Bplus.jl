@@ -298,6 +298,7 @@ end
     value = reduce(+, input_values)
     gradient = reduce(+, input_gradients)
 end
+println("#TODO: Negation, interpreted as subtraction with 1 argument")
 @make_math_field Subtract "-" begin
     INPUT_COUNTS = 2:∞
     value = foldl(-, input_values)

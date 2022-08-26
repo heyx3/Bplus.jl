@@ -302,5 +302,50 @@ end
 dsl_from_field(a::AppendField) = :( { $(dsl_from_field.(a.inputs)...) } )
 
 
+######################
+#  Conversion field  #
+######################
+
+"
+Translates data from one float-type to another.
+You can't really get different float types within a single field expression,
+    but the full DSL allows you to compose multiple field expresions together.
+"
+struct ConversionField{ NIn, NOut, FIn, FOut,
+                        TInput<:AbstractField{NIn, NOut, FIn}
+                      } <: AbstractField{NIn, NOut, FOut}
+    input::TInput
+end
+ConversionField( input::AbstractField{NIn, NOut, FIn},
+                 FOut::Type{<:Real}
+               ) where {NIn, NOut, FIn} = ConversionField{NIn, NOut, FIn, FOut, typeof(input)}(input)
+
+prepare_field(c::ConversionField) = prepare_field(c.input)
+get_field(c::ConversionField{NIn, NOut, FIn, FOut}, pos::Vec{NIn, FOut}, prep_data) where {NIn, NOut, FIn, FOut} =
+    convert(Vec{NOut, FOut}, get_field(c.input, convert(Vec{NIn, FIn}, pos), prep_data))
+get_field_gradient(c::ConversionField{NIn, NOut, FIn, FOut}, pos::Vec{NIn, FOut}, prep_data) where {NIn, NOut, FIn, FOut} =
+    convert(Vec{NIn, Vec{NOut, FOut}}, get_field_gradient(c.input, convert(Vec{NIn, FIn}, pos), prep_data))
+
+# The DSL is done with the "=>" operator. E.x. "my_field => Float64"
+function field_from_dsl_func(::Val{:(=>)}, context::DslContext, state::DslState, args::Tuple)
+    @bp_fields_assert(length(args) == 2, "Huh? $args")
+    input = field_from_dsl(args[1], context, state)
+
+    #TODO: Would really like a safer way to convert a name to a Julia type.
+    @bp_check(args[2] isa Symbol, "Expected a name for the conversion, like 'Float32': ", args[2])
+    output_component_type = eval(args[2])
+
+    # Watch out for redundant conversions.
+    #TODO: Report warnings to the 'state::DslState' rather than logging them directly.
+    if field_component_type(input) == output_component_type
+        @warn("Conversion from $output_component_type to itself: \"$(args[1]) => $(args[2])\"")
+        return input
+    end
+
+    return ConversionField(input, output_component_type)
+end
+dsl_from_field(c::ConversionField) = :( $(dsl_from_field(c)) => $(field_component_type(c)) )
+
+
 
 #TODO: Transformations
