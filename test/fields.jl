@@ -86,7 +86,56 @@ for pos in (zero(v2f), one(v2f), v2f(2, -4), v2f(-40, 2000))
 end
 
 #TODO: Test ConversionField
-#TODO: Test TextureField
+
+# Test TextureField.
+const TEXTURE_FIELD_TESTS = Tuple{TextureField, Vector{<:Tuple{<:Union{Vec, Real}, Union{Vec, Real}}}}[
+    (
+        TextureField(v3f[
+                         v3f(0, 1, 2),
+                         v3f(3, 4, 5),
+                         v3f(6, 7, 8),
+                         v3f(9, 10, 11)
+                     ],
+                     wrapping = GL.WrapModes.clamp,
+                     sampling = SampleModes.nearest),
+        [
+            (@f32(0), v3f(0, 1, 2)),
+            (@f32(-20), v3f(0, 1, 2)),
+            (@f32(-0.32), v3f(0, 1, 2)),
+            (@f32(0.2), v3f(0, 1, 2)),
+            (@f32(0.1), v3f(0, 1, 2)),
+
+            (@f32(1), v3f(9, 10, 11)),
+            (@f32(1), v3f(9, 10, 11)),
+            (@f32(1.2), v3f(9, 10, 11)),
+            (@f32(10.2), v3f(9, 10, 11)),
+            (@f32(100), v3f(9, 10, 11)),
+
+            (@f32(0.34), v3f(3, 4, 5)),
+            (@f32(0.495), v3f(3, 4, 5)),
+
+            (@f32(0.667), v3f(6, 7, 8)),
+            (@f32(0.702), v3f(6, 7, 8)),
+
+            (@f32(0.755), v3f(9, 10, 11))
+        ]
+    )
+    #TODO: Multi-dimensional textures
+]
+for (field, tests) in TEXTURE_FIELD_TESTS
+    for (test_pos, expected_output) in tests
+        if test_pos isa Real
+            test_pos = Vec(test_pos)
+        end
+        actual_output = get_field(field, test_pos)
+        @bp_check(expected_output == actual_output,
+                  "Sampling ", length(size(field.pixels)), "D texture at ",
+                     test_pos,
+                     "\n\tExpected: ", expected_output, "\n\tActual: ", actual_output)
+    end
+end
+
+
 #TODO: Test AppendField
 #TODO: Many 1D tests for more varieties of math
 #TODO: Test automatic promotion of 1D inputs to higher-D inputs

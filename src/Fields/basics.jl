@@ -65,41 +65,45 @@ dsl_from_field(::PosField) = POS_FIELD_NAME
 
 @bp_enum(SampleModes, nearest, linear, cubic)
 
-"Samples from a 'texture', in UV space (0-1)"
-struct TextureField{NIn, NOut, F,
-                    TArray<:AbstractArray{Vec{NOut, F}, NIn},
+"
+Samples from a 'texture', in UV space (0-1).
+Pixels are positioned similarly to GPU textures, for example each pixel's center in UV space
+    is `(pixel_pos + 0.5) / texture_size`.
+"
+struct TextureField{NIn, NOut, F, NUV,
+                    TArray<:AbstractArray{Vec{NOut, F}, NUV},
                     WrapMode, SampleMode,
-                    TPos<:AbstractField{NIn, NIn, F}
+                    TPos<:AbstractField{NUV, NIn, F}
                    } <: AbstractField{NIn, NOut, F}
     pixels::TArray
     pos::TPos
 end
-function TextureField( pixels::AbstractArray{Vec{NOut, F}, NIn},
-                       pos::AbstractField{NIn, NIn, F} = PosField{NIn}()
+function TextureField( pixels::AbstractArray{Vec{NOut, F}, NUV},
+                       pos::AbstractField{NIn, NUV, F} = PosField{NUV, F}(),
                        ;
                        wrapping::GL.E_WrapModes = WrapModes.repeat,
                        sampling::E_SampleModes = SampleModes.linear
-                     ) where {NIn, NOut, F}
-    return TextureField{NIn, NOut, F,
+                     ) where {NIn, NOut, F, NUV}
+    return TextureField{NIn, NOut, F, NUV,
                         typeof(pixels), Val(wrapping), Val(sampling),
                         typeof(pos)
                        }(pixels, pos)
 end
 
-"Applies a TextureField's wrapping to a given component of a position"
+"Applies a TextureField's wrapping to a given component of a position, in UV space (0-1)."
 function wrap_component( tf::TField,
                          x::F
-                       )::F where {NIn, NOut, F, TArray, WrapMode, SampleMode,
-                                   TField<:TextureField{NIn, NOut, F, TArray, Val{WrapMode}, Val{SampleMode}}}
+                       )::F where {NIn, NOut, F, NUV, TArray, WrapMode, SampleMode,
+                                   TField<:TextureField{NIn, NOut, F, NUV, TArray, WrapMode, SampleMode}}
     ZERO = zero(F)
     ONE = one(F)
-    if WrapMode == GL.WrapModes.repeat
+    if WrapMode isa Val{GL.WrapModes.repeat}
         x -= trunc(x)
         if x < ZERO
             x += ONE
         end
         return x
-    elseif WrapMode == GL.WrapModes.mirrored_repeat
+    elseif WrapMode isa Val{GL.WrapModes.mirrored_repeat}
         x = abs(x)
         (fpart, ipart) = modf(x)
 
@@ -109,24 +113,24 @@ function wrap_component( tf::TField,
         else
             return fpart
         end
-    elseif WrapMode == GL.WrapModes.clamp
+    elseif WrapMode isa Val{GL.WrapModes.clamp}
         return clamp(x, zero(F), prevfloat(one(F)))
-    elseif WrapMode == GL.WrapModes.custom_border
+    elseif WrapMode isa Val{GL.WrapModes.custom_border}
         error("The 'custom border' wrap mode is not supported for fields")
     else
         error("Unhandled wrap mode: ", WrapMode)
     end
 end
-"Applies a TextureField's wrapping to a given component of a pixel index, assumed to be > 0"
-function wrap_index_positive( tf::TextureField{NIn, NOut, F, TArray, Val{WrapMode}, Val{SampleMode}},
+"Applies a TextureField's wrapping to a given component of a 1-based pixel index, assumed to be > 0"
+function wrap_index_positive( ::TextureField{NIn, NOut, F, NUV, TArray, WrapMode, SampleMode},
                               positive_x::Int,
                               range_max_inclusive::Int
-                            )::Int where {NIn, NOut, F, TArray, WrapMode, SampleMode}
-    @bp_fields_assert(positive_x > 0)
+                            )::Int where {NIn, NOut, F, NUV, TArray, WrapMode, SampleMode}
+    @bp_fields_assert(positive_x > 0, positive_x, " outside range 1:", range_max_inclusive)
 
-    if WrapMode == GL.WrapModes.repeat
+    if WrapMode isa Val{GL.WrapModes.repeat}
         return mod1(positive_x, pixels_length)
-    elseif WrapMode == GL.WrapModes.mirrored_repeat
+    elseif WrapMode isa Val{GL.WrapModes.mirrored_repeat}
         index::Int = mod1(positive_x, range_max_inclusive)
 
         counter::Int = (positive_x - 1) ÷ range_max_inclusive
@@ -136,28 +140,31 @@ function wrap_index_positive( tf::TextureField{NIn, NOut, F, TArray, Val{WrapMod
         end
 
         return index
-    elseif WrapMode == GL.WrapModes.clamp
-        return clamp(x, zero(F), prevfloat(one(F)))
-    elseif WrapMode == GL.WrapModes.custom_border
+    elseif WrapMode isa Val{GL.WrapModes.clamp}
+        return clamp(positive_x, 0, range_max_inclusive)
+    elseif WrapMode isa Val{GL.WrapModes.custom_border}
         error("The 'custom border' wrap mode is not supported for fields")
     else
         error("Unhandled wrap mode: ", WrapMode)
     end
 end
 
-"Recursively performs linear sampling across a specific axis"
-function linear_sample_axis( tf::TextureField{NIn, NOut, F, TArray, Val{WrapMode}, Val{SampleMode}},
-                             t::Vec{NIn, F},
-                             i::Vec{NIn, Int},
+"
+Recursively performs linear sampling across a specific axis.
+Takes as input the UV coordinate, and the pixel coordinate (1-based, not 0-based).
+"
+function linear_sample_axis( tf::TextureField{NIn, NOut, F, NUV, TArray, WrapMode, SampleMode},
+                             t::Vec{NUV, F},
+                             i::Vec{NUV, Int},
                              ::Val{Axis} = Val(NIn)
-                           )::Vec{NOut, F} where {NIn, NOut, F, TArray, WrapMode, SampleMode, Axis}
+                           )::Vec{NOut, F} where {NIn, NOut, F, NUV, TArray, WrapMode, SampleMode, Axis}
     @bp_fields_assert(Axis > 0, "Bad Axis: $Axis")
 
     i2 = i
     @set! i2[Axis] = wrap_index_positive(tf, i2[Axis] + 1, size(tf.pixels, Axis))
 
-    local a::Vec{NIn, F},
-          b::Vec{NIn, F}
+    local a::Vec{NUV, F},
+          b::Vec{NUV, F}
     if Axis == 1
         if @bp_fields_debug()
             a = tf.pixels[i...]
@@ -174,25 +181,36 @@ function linear_sample_axis( tf::TextureField{NIn, NOut, F, TArray, Val{WrapMode
     return lerp(a, b, t[Axis])
 end
 
-function get_field( tf::TextureField{NIn, NOut, F, TArray, Val{WrapMode}, Val{SampleMode}},
-                    pos::Vec{NIn, F},
-                    ::Nothing
-                  )::Vec{NOut, F} where {NIn, NOut, F, TArray, WrapMode, SampleMode}
-    pos = map(x -> wrap_component(tf, x), pos)
+# Prepare the field by calculating the texel size of the array being sampled.
+prepare_field(t::TextureField{NIn, NOut, F, NUV}) where {NIn, NOut, F, NUV} = tuple(
+    Vec{NUV, F}(size(t.pixels)...),
+    prepare_field(t.pos)
+)
+function get_field( tf::TextureField{NIn, NOut, F, NUV, TArray, WrapMode, SampleMode},
+                    field_pos::Vec{NIn, F},
+                    (texture_size_f, pos_field_prep)::Tuple{Vec{NUV, F}, Any}
+                  )::Vec{NOut, F} where {NIn, NOut, F, NUV, TArray, WrapMode, SampleMode}
+    texture_pos::Vec{NUV, F} = get_field(tf.pos, field_pos, pos_field_prep)
+    texture_pos = map(x -> wrap_component(tf, x), texture_pos)
 
-    pixelF = pos * texel
-    pixelI = VecI{NIn}(pixelF)
-    pixelT = pixelF - pixelI
+    pixelF = (texture_pos * texture_size_f) + @f32(1) # Remember Julia is 1-based
+    pixelI = map(x::F -> Int(floor(x)), pixelF)
 
-    if SampleMode == SampleModes.nearest
+    if SampleMode isa Val{SampleModes.nearest}
+        # Apply the WrapMode, then look up the nearest pixel.
+        pixelI = Vec{NUV, Int}((
+            wrap_index_positive(tf, x, x_max)
+              for (x, x_max) in zip(pixelI, size(tf.pixels))
+        )...)
         return @bp_fields_debug() ?
-                   tf.pixels[pixel...] :
-                   @inbounds(tf.pixels[pixel])
-    elseif SampleMode == SampleModes.linear
+                   tf.pixels[pixelI...] :
+                   @inbounds(tf.pixels[pixelI...])
+    elseif SampleMode isa Val{SampleModes.linear}
+        pixelT = pixelF - pixelI
         return linear_sample_axis(tf, pixelT, pixelI)
     #TODO: Implement cubic sampling, using Cubic Lagrange: https://www.shadertoy.com/view/MllSzX
     else
-        error("Unhandled sample mode: ", SampleMode)
+        error("Unhandled sample mode: ", SampleMode.parameters[1])
     end
 end
 #TODO: Implement an efficient derivative calculation
