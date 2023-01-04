@@ -13,7 +13,7 @@ struct DslContext
     float_type::DataType
 end
 
-"Stateful information that's built up when parsing a field DSL."
+"A lookup for variables, arrays, etc. Gets modified during DSL parsing."
 mutable struct DslState
     # New variables can hide previous ones.
     vars::Dict{Symbol, Stack{AbstractField}}
@@ -108,7 +108,7 @@ function field_from_dsl_var(name_param::Val, ::DslContext, state::DslState)
     end
 end
 
-export field_from_dsl, DslContext
+export field_from_dsl, DslContext, DslState
 
 
 ######################
@@ -131,7 +131,7 @@ Defines a single Julia field.
 Takes 3 or 4 arguments:
 * The input dimensions, as an integer.
 * The number type being used (e.x. `Float32`).
-* **[Optional]** A dictionary providing lookups to "variables" storing other fields
+* **[Optional]** An instance of a `DslState`
 * The field's value (e.x. `perlin(pos.yzx * 7)`)
 
 Sample uses:

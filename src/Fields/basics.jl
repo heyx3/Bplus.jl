@@ -68,7 +68,7 @@ dsl_from_field(::PosField) = POS_FIELD_NAME
 "
 Samples from a 'texture', in UV space (0-1).
 Pixels are positioned similarly to GPU textures, for example each pixel's center in UV space
-    is `(pixel_pos + 0.5) / texture_size`.
+    is `(pixel_idx_0_based + 0.5) / texture_size`.
 "
 struct TextureField{NIn, NOut, F, NUV,
                     TArray<:AbstractArray{Vec{NOut, F}, NUV},
@@ -89,6 +89,19 @@ function TextureField( pixels::AbstractArray{Vec{NOut, F}, NUV},
                         typeof(pos)
                        }(pixels, pos)
 end
+
+@inline texture_field_wrapping(tf::TextureField)::E_WrapModes = texture_field_wrapping(typeof(tf))
+@inline function texture_field_wrapping(::Type{<:TextureField{NIn, NOut, F, NUV, TArray, WrapMode}}
+                                       )::E_WrapModes where {NIn, NOut, F, NUV, TArray, WrapMode}
+    return typeof(WrapMode).parameters[1]
+end
+
+@inline texture_field_sampling(tf::TextureField)::E_SampleModes = texture_field_sampling(typeof(tf))
+@inline function texture_field_sampling(::Type{<:TextureField{NIn, NOut, F, NUV, TArray, WrapMode, SamplingMode}}
+                                       )::E_SampleModes where {NIn, NOut, F, NUV, TArray, WrapMode, SamplingMode}
+    return typeof(SamplingMode).parameters[1]
+end
+
 
 "Applies a TextureField's wrapping to a given component of a position, in UV space (0-1)."
 function wrap_component( tf::TField,
@@ -121,27 +134,31 @@ function wrap_component( tf::TField,
         error("Unhandled wrap mode: ", WrapMode)
     end
 end
-"Applies a TextureField's wrapping to a given component of a 1-based pixel index, assumed to be > 0"
-function wrap_index_positive( ::TextureField{NIn, NOut, F, NUV, TArray, WrapMode, SampleMode},
-                              positive_x::Int,
-                              range_max_inclusive::Int
-                            )::Int where {NIn, NOut, F, NUV, TArray, WrapMode, SampleMode}
-    @bp_fields_assert(positive_x > 0, positive_x, " outside range 1:", range_max_inclusive)
-
+"
+Applies a TextureField's wrapping to the given pixel index component,
+    returning a value between `1` and `range_max_inclusive`.
+"
+function wrap_index( ::TextureField{NIn, NOut, F, NUV, TArray, WrapMode, SampleMode},
+                     x::Int,
+                     range_max_inclusive::Int
+                   )::Int where {NIn, NOut, F, NUV, TArray, WrapMode, SampleMode}
     if WrapMode isa Val{GL.WrapModes.repeat}
-        return mod1(positive_x, pixels_length)
+        return mod1(x, range_max_inclusive)
     elseif WrapMode isa Val{GL.WrapModes.mirrored_repeat}
-        index::Int = mod1(positive_x, range_max_inclusive)
+        # Find how many times this coordinate wraps around.
+        # Every other time, the coordinate should flip.
+        offset::Int = (x >= 1) ? -1 : -range_max_inclusive
+        counter::Int = (x + offset) ÷ range_max_inclusive
+        is_flipped::Bool = (counter % 2) != 0 # Could be +1 or -1 depending on input sign
 
-        counter::Int = (positive_x - 1) ÷ range_max_inclusive
-        is_odd::Bool = (counter % 2) == 1
-        if is_odd
+        # Apply wrapping, then mirroring.
+        index::Int = mod1(x, range_max_inclusive)
+        if is_flipped
             index = range_max_inclusive - index + 1
         end
-
         return index
     elseif WrapMode isa Val{GL.WrapModes.clamp}
-        return clamp(positive_x, 0, range_max_inclusive)
+        return clamp(x, 1, range_max_inclusive)
     elseif WrapMode isa Val{GL.WrapModes.custom_border}
         error("The 'custom border' wrap mode is not supported for fields")
     else
@@ -151,31 +168,46 @@ end
 
 "
 Recursively performs linear sampling across a specific axis.
-Takes as input the UV coordinate, and the pixel coordinate (1-based, not 0-based).
+Takes as input the interpolant between min and max pixels,
+    the min/max pixel coordinates for all axes up to the current one,
+    and the constant pixel coordinates for all axes past the current one.
 "
-function linear_sample_axis( tf::TextureField{NIn, NOut, F, NUV, TArray, WrapMode, SampleMode},
-                             t::Vec{NUV, F},
-                             i::Vec{NUV, Int},
+function linear_sample_axis( tf::TextureField{NIn, NOut, F, NAxes, TArray, WrapMode, SampleMode},
+                             t::Vec{NAxes, F},
+                             min_coords::Vec{NVaryingAxes, Int},
+                             max_coords::Vec{NVaryingAxes, Int},
+                             const_coords::Vec{NStaticAxes, Int},
                              ::Val{Axis} = Val(NIn)
-                           )::Vec{NOut, F} where {NIn, NOut, F, NUV, TArray, WrapMode, SampleMode, Axis}
+                           )::Vec{NOut, F} where {NIn, NOut, F, NAxes, TArray, WrapMode, SampleMode,
+                                                  Axis, NVaryingAxes, NStaticAxes}
     @bp_fields_assert(Axis > 0, "Bad Axis: $Axis")
+    @bp_fields_assert(NVaryingAxes == Axis,
+                      "Axis count doesn't line up with the number of varying axes: ",
+                          NVaryingAxes, " != ", Axis)
+    @bp_fields_assert(NVaryingAxes + NStaticAxes == NAxes,
+                      "Axis miscount: $NVaryingAxes + $NStaticAxes != $NAxes")
 
-    i2 = i
-    @set! i2[Axis] = wrap_index_positive(tf, i2[Axis] + 1, size(tf.pixels, Axis))
-
-    local a::Vec{NUV, F},
-          b::Vec{NUV, F}
+    local a::Vec{NOut, F},
+          b::Vec{NOut, F}
+    # If we're down to the last axis, read directly from the array.
     if Axis == 1
-        if @bp_fields_debug()
-            a = tf.pixels[i...]
-            b = tf.pixels[i2...]
-        else
-            a = @inbounds tf.pixels[i...]
-            b = @inbounds tf.pixels[i2...]
-        end
+        # Pick the min and max pixel coordinates along the sampling axis.
+        i1::Vec{NAxes, Int} = vappend(min_coords, const_coords)
+        i2::Vec{NAxes, Int} = vappend(max_coords, const_coords)
+        (a, b) = @bp_fields_debug() ?
+                     (@inbounds(tf.pixels[i1...]), @inbounds(tf.pixels[i2...])) :
+                     (tf.pixels[i1...], tf.pixels[i2...])
+    # Otherwise, sample along "lower" axes.
     else
-        a = linear_sample_axis(tf, t, i, Val(Axis - 1))
-        b = linear_sample_axis(tf, t, i2, Val(Axis - 1))
+        # Peel off the last varying coordinate for the next recursive call.
+        min_coords2 = min_coords[1 : (end-1)]
+        max_coords2 = max_coords[1 : (end-1)]
+        a = linear_sample_axis(tf, t, min_coords2, max_coords2,
+                               vappend(min_coords[end], const_coords),
+                               Val(Axis - 1))
+        b = linear_sample_axis(tf, t, min_coords2, max_coords2,
+                               vappend(max_coords[end], const_coords),
+                               Val(Axis - 1))
     end
 
     return lerp(a, b, t[Axis])
@@ -190,24 +222,42 @@ function get_field( tf::TextureField{NIn, NOut, F, NUV, TArray, WrapMode, Sample
                     field_pos::Vec{NIn, F},
                     (texture_size_f, pos_field_prep)::Tuple{Vec{NUV, F}, Any}
                   )::Vec{NOut, F} where {NIn, NOut, F, NUV, TArray, WrapMode, SampleMode}
+    HALF_UNIT::F = convert(F, 0.5)
+
     texture_pos::Vec{NUV, F} = get_field(tf.pos, field_pos, pos_field_prep)
     texture_pos = map(x -> wrap_component(tf, x), texture_pos)
 
-    pixelF = (texture_pos * texture_size_f) + @f32(1) # Remember Julia is 1-based
-    pixelI = map(x::F -> Int(floor(x)), pixelF)
+    pixelF = (texture_pos * texture_size_f)
+    # Remember Julia is 1-based; this will be handled for each individual case below.
 
     if SampleMode isa Val{SampleModes.nearest}
-        # Apply the WrapMode, then look up the nearest pixel.
-        pixelI = Vec{NUV, Int}((
-            wrap_index_positive(tf, x, x_max)
+        pixelI = map(x::F -> Int(floor(x)) + 1, pixelF)
+        wrapped_pixelI = Vec{NUV, Int}((
+            wrap_index(tf, x, x_max)
               for (x, x_max) in zip(pixelI, size(tf.pixels))
         )...)
         return @bp_fields_debug() ?
-                   tf.pixels[pixelI...] :
-                   @inbounds(tf.pixels[pixelI...])
+                   tf.pixels[wrapped_pixelI...] :
+                   @inbounds(tf.pixels[wrapped_pixelI...])
     elseif SampleMode isa Val{SampleModes.linear}
-        pixelT = pixelF - pixelI
-        return linear_sample_axis(tf, pixelT, pixelI)
+        # Subtract half a pixel to get the "min" side of the interpolation,
+        #    as a 0-based index.
+        pixel_min_i = map(x::F -> 1 + Int(floor(x - HALF_UNIT)), pixelF)
+        wrapped_pixel_min_i = Vec{NUV, Int}((
+            wrap_index(tf, x, x_max)
+              for (x, x_max) in zip(pixel_min_i, size(tf.pixels))
+        )...)
+        wrapped_pixel_max_i = Vec{NUV, Int}((
+            wrap_index(tf, x + 1, x_max)
+              for (x, x_max) in zip(pixel_min_i, size(tf.pixels))
+        )...)
+        pixelT = inv_lerp(pixel_min_i + HALF_UNIT,
+                          pixel_min_i + (one(F) + HALF_UNIT),
+                          pixelF + one(F))
+        return linear_sample_axis(tf, pixelT,
+                                  wrapped_pixel_min_i, wrapped_pixel_max_i,
+                                  Vec{Int}(),
+                                  Val(NUV))
     #TODO: Implement cubic sampling, using Cubic Lagrange: https://www.shadertoy.com/view/MllSzX
     else
         error("Unhandled sample mode: ", SampleMode.parameters[1])
@@ -254,4 +304,5 @@ function field_from_dsl_expr(::Val{:curly}, ast::Expr, context::DslContext, stat
                         sampling = sampling)
 end
 
-export SampleModes, E_SampleModes, TextureField
+export SampleModes, E_SampleModes, TextureField,
+       texture_field_wrapping, texture_field_sampling

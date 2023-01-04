@@ -74,15 +74,12 @@ struct Vec{N, T} <: AbstractVector{T}
 end
 export Vec
 
-"
-Constructs a vector by appending smaller vectors and components together.
-Only works for `Real`-typed vectors, to prevent type inference problems.
-
-This is not a proper `Vec` constructor because that would cause havoc on type-inference.
-"
+"Constructs a vector by appending smaller vectors and components together"
 @inline vappend(x) = Vec{1, typeof(x)}(x)
 @inline vappend(x::Vec) = x
 @inline vappend(first, rest...) = Vec(vappend(first)..., vappend(rest...)...)
+# NOTE: This was originally implemented as a Vec constructor,
+#    but that caused havoc on type-inference.
 export vappend
 
 StructTypes.construct(T::Type{<:Vec}, components::Vector) = T(components...)

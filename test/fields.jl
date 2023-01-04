@@ -90,14 +90,17 @@ end
 # Test TextureField.
 const TEXTURE_FIELD_TESTS = Tuple{TextureField, Vector{<:Tuple{<:Union{Vec, Real}, Union{Vec, Real}}}}[
     (
-        TextureField(v3f[
-                         v3f(0, 1, 2),
-                         v3f(3, 4, 5),
-                         v3f(6, 7, 8),
-                         v3f(9, 10, 11)
-                     ],
-                     wrapping = GL.WrapModes.clamp,
-                     sampling = SampleModes.nearest),
+        # 1D, clamp, nearest
+        TextureField(
+            v3f[
+                v3f(0, 1, 2),
+                v3f(3, 4, 5),
+                v3f(6, 7, 8),
+                v3f(9, 10, 11)
+            ],
+            wrapping = GL.WrapModes.clamp,
+            sampling = SampleModes.nearest
+        ),
         [
             (@f32(0), v3f(0, 1, 2)),
             (@f32(-20), v3f(0, 1, 2)),
@@ -119,7 +122,70 @@ const TEXTURE_FIELD_TESTS = Tuple{TextureField, Vector{<:Tuple{<:Union{Vec, Real
 
             (@f32(0.755), v3f(9, 10, 11))
         ]
+    ),
+    # 1D, clamp, linear
+    (
+        TextureField(
+            v3f[
+                v3f(0, 1, 2),
+                v3f(3, 4, 5),
+                v3f(6, 7, 8),
+                v3f(9, 10, 11)
+            ],
+            wrapping = GL.WrapModes.clamp,
+            sampling = SampleModes.linear
+        ),
+        [
+            # Past the min pixel:
+            (@f32(0), v3f(0, 1, 2)),
+            (@f32(-20), v3f(0, 1, 2)),
+            (@f32(-0.32), v3f(0, 1, 2)),
+
+            # Past the max pixel:
+            (@f32(1), v3f(9, 10, 11)),
+            (@f32(1), v3f(9, 10, 11)),
+            (@f32(1.2), v3f(9, 10, 11)),
+            (@f32(10.2), v3f(9, 10, 11)),
+            (@f32(100), v3f(9, 10, 11)),
+
+            # Near the min/max pixels:
+            (@f32(0.1), v3f(0, 1, 2)),
+            (@f32(0.89), v3f(9, 10, 11)),
+
+            # Actual interpolation:
+            (@f32(0.15),
+             lerp(v3f(0, 1, 2),
+                  v3f(3, 4, 5),
+                  inv_lerp(@f32(0.125), @f32(0.375),
+                           @f32(0.15)))),
+            (@f32(0.34),
+             lerp(v3f(0, 1, 2),
+                  v3f(3, 4, 5),
+                  inv_lerp(@f32(0.125), @f32(0.375),
+                           @f32(0.34)))),
+            (@f32(0.401),
+             lerp(v3f(3, 4, 5),
+                  v3f(6, 7, 8),
+                  inv_lerp(@f32(0.375), @f32(0.625),
+                           @f32(0.401)))),
+            (@f32(0.595),
+             lerp(v3f(3, 4, 5),
+                  v3f(6, 7, 8),
+                  inv_lerp(@f32(0.375), @f32(0.625),
+                           @f32(0.595)))),
+            (@f32(0.700),
+             lerp(v3f(6, 7, 8),
+                  v3f(9, 10, 11),
+                  inv_lerp(@f32(0.625), @f32(0.875),
+                           @f32(0.700)))),
+            (@f32(0.800),
+             lerp(v3f(6, 7, 8),
+                  v3f(9, 10, 11),
+                  inv_lerp(@f32(0.625), @f32(0.875),
+                           @f32(0.800))))
+        ]
     )
+    #TODO: Wrap and mirror sampling
     #TODO: Multi-dimensional textures
 ]
 for (field, tests) in TEXTURE_FIELD_TESTS
@@ -128,15 +194,28 @@ for (field, tests) in TEXTURE_FIELD_TESTS
             test_pos = Vec(test_pos)
         end
         actual_output = get_field(field, test_pos)
-        @bp_check(expected_output == actual_output,
-                  "Sampling ", length(size(field.pixels)), "D texture at ",
-                     test_pos,
+
+        # If using 'nearest' sampling, then do exact equality.
+        # Otherwise, use approximate equality.
+        matches::Bool = if texture_field_sampling(field) == SampleModes.nearest
+                            expected_output == actual_output
+                        elseif texture_field_sampling(field) in (SampleModes.linear, SampleModes.cubic)
+                            isapprox(expected_output, actual_output, 0.0001)
+                        else
+                            error("Unhandled case: ", texture_field_sampling(field))
+                        end
+        @bp_check(matches,
+                  "Sampling size ", join(size(field.pixels), "x"), " ",
+                     length(size(field.pixels)), "D texture at ",
+                     test_pos, " with ", texture_field_sampling(field), " ",
+                     texture_field_wrapping(field), " sampling.",
                      "\n\tExpected: ", expected_output, "\n\tActual: ", actual_output)
     end
 end
 
 
 #TODO: Test AppendField
+#TODO: Come up with a meaningful test for "noise" fields
 #TODO: Many 1D tests for more varieties of math
 #TODO: Test automatic promotion of 1D inputs to higher-D inputs
 #TODO: Test that Lerp(), Smoothstep(), and Smootherstep() avoid heap allocations when running get_field() and get_field_gradient()
@@ -210,6 +289,70 @@ for (dsl, expected_type, expected_value) in FIELD_DSL_TESTS
 
 end
 
-#TODO: Come up with a meaningful test for noise fields
+# Test @field, using FIELD_DSL_POS and the below DslState.
+const FIELD_MACRO_STATE = DslState(
+    Dict{Symbol, Stack{AbstractField}}(
+        :texture1 => let stck = Stack{AbstractField}()
+            push!(stck, TextureField(v3f[ v3f(0, 1, 2),
+                                          v3f(3, 4, 5),
+                                          v3f(6, 7, 8)
+                                        ],
+                                    wrapping = GL.WrapModes.clamp,
+                                    sampling = SampleModes.linear))
+            stck
+        end
+    ),
+    Dict{Symbol, Array}(
+        :array1 => v2f[
+            v2f(-1, -2),
+            v2f(-3, -4),
+            v2f(-5, -6)
+        ]
+    )
+)
+# Each test is a tuple of (DSL, expected_type, expected_value).
+#TODO: Use the FIELD_MACRO_STATE in some tests
+const FIELD_MACRO_TESTS = Tuple{Expr, Type{<:AbstractField{2}}, VecT{Float32}}[
+    (:( @field 2 Float32 4 ), ConstantField{2, 1, Float32}, Vec(@f32(4))),
+    (:( @field 2 Float32 { 2, 3, 4, 5, 6 }), AppendField{2, 5, Float32}, Vec{5, Float32}(2, 3, 4, 5, 6)),
+    (:( @field 2 Float32 3 * 5 ), MultiplyField{2, 1, Float32}, Vec{1, Float32}(@f32(3) * @f32(5))),
+    (:( @field 2 Float32 3 * { 1, 2, 3 } ), MultiplyField{2, 3, Float32}, v3f(3, 6, 9)),
+    (:( @field 2 Float32 pos ), PosField{2, Float32}, FIELD_DSL_POS),
+    (:( @field 2 Float32 pos + 1.5 ), AddField{2, 2, Float32}, FIELD_DSL_POS + @f32(1.5)),
+    (:( @field 2 Float32 pos + { 1.5, -3.5 }), AddField{2, 2, Float32}, FIELD_DSL_POS + v2f(1.5, -3.5)),
+    (:( @field 2 Float32 sin(pos) ), SinField{2, 2, Float32}, map(sin, FIELD_DSL_POS)),
+    #TODO: Try sampling from 'array1'.
+    (:( @field 2 Float32 let x = 4
+          x * { 4, 5, 6 }
+        end ),
+      MultiplyField{2, 3, Float32},
+      4 * v3f(4, 5, 6)
+    ),
+    (:( @field 2 Float32 let x = 4,
+                             y = 5
+          let x = 0
+            x * y
+          end + (x * y)
+        end
+      ),
+      AddField{2, 1, Float32},
+      Vec(@f32(4) * @f32(5))
+    )
+]
+for (macro_expr, expected_type, expected_value) in FIELD_MACRO_TESTS
+    local evaluated_field::AbstractField
+    try
+        evaluated_field = eval(macro_expr)
+    catch e
+        error("Failed to evaluate macro DSL:\n  ", sprint(showerror, e, catch_backtrace()))
+    end
 
-#TODO: Test @field
+    @bp_check(evaluated_field isa expected_type,
+              "Expected a field type ", expected_type, " from the field DSL \"",
+                 macro_expr, "\"\n  But got: ", typeof(evaluated_field))
+
+    actual_value = get_field(evaluated_field, FIELD_DSL_POS)
+    @bp_check(isapprox(actual_value, expected_value, 0.0001),
+              "Expected the value ", expected_value, " from \"", macro_expr,
+                "\"\n  But got: ", actual_value)
+end

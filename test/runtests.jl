@@ -6,7 +6,7 @@
 # Import dependencies.
 using Random, TupleTools, Setfield, InteractiveUtils,
       StaticArrays, MacroTools, StructTypes, JSON3,
-      Suppressor,
+      DataStructures, Suppressor,
       ModernGL, GLFW
 
 # Import the main codebase.
