@@ -98,6 +98,18 @@ contiguous_data_ref = contiguous_ref(contiguous_data, Int)
     2
 )
 
+# Test preallocated_vector():
+@bp_test_no_allocations_setup(
+    v = preallocated_vector(Int, 1000),
+    begin
+        for i in 1000:-1:1
+            push!(v, i*2)
+        end
+        v
+    end,
+    map(i -> i*2, 1000:-1:1)
+)
+
 # Test @do_while:
 @bp_test_no_allocations_setup(
     i::Int = 0,

@@ -57,7 +57,10 @@ const dmat2 = dmat2x2
 const dmat3 = dmat3x3
 const dmat4 = dmat4x4
 
-export Mat, @Mat, MatF, MatD,
+const Mat3{F} = Mat{3, 3, F, 9}
+const Mat4{F} = Mat{4, 4, F, 16}
+
+export Mat, @Mat, MatF, MatD, Mat3, Mat4,
        mat_params,
        fmat2, fmat3, fmat4, dmat2, dmat3, dmat4,
        fmat2x2, fmat2x3, fmat2x4, fmat3x2, fmat3x3, fmat3x4, fmat4x2, fmat4x3, fmat4x4,
