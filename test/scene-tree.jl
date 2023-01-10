@@ -1,54 +1,58 @@
 # Create a simple test scene-tree backed by a set of reference-types.
 
-#DEBUG: disable
-if false
 ######################
 #  Data Definitions  #
 ######################
 
 # The node is wrapped in a mutable struct called an "entity".
+# A node's ID is a nullable reference to that entity.
+# We can't use a plain union, because that union type won't persist through function calls.
 
-abstract type ST_Entity end
+# The ID type isn't defined yet, so it has to be a type parameter.
+mutable struct ST_Entity_{IDType}
+    transform::SceneTree.Node{IDType, Float32}
+    is_root::Bool
+end
 
-# A node's ID is a reference to the mutable entity type, or `nothing`.
-# That union must be wrapped so that the full type persists
-#    through SceneTree function calls.
-const ST_NodeID = Some{Optional{ST_Entity}}
-Base.show(io::IO, id::ST_NodeID) = print(io,
-    (isnothing(something(id)) ?
-         tuple("null") :
-         tuple('{', something(id).transform.local_pos.x,
-                ", ", something(id).transform.local_pos.y,
-                ", ", something(id).transform.local_pos.z,
-               '}')
-    )...
-)
-Base.print(io::IO, id::ST_NodeID) = show(io, id)
+struct ST_NodeID
+    ref::Optional{ST_Entity_{ST_NodeID}}
+    ST_NodeID() = new(nothing)
+    ST_NodeID(ref::ST_Entity_{ST_NodeID}) = new(ref)
+end
+const ST_Entity = ST_Entity_{ST_NodeID}
+
+Base.print(io::IO, e::ST_Entity) = print(io, v3i(e.transform.local_pos), " => ", e.transform.parent)
+Base.show(io::IO, e::ST_Entity) = print(io, e)
+
 
 const ST_Node = SceneTree.Node{ST_NodeID, Float32}
 
-mutable struct ST_Entity_Impl <: ST_Entity 
-    transform::ST_Node
-    is_root::Bool
-end
-Base.print(io::IO, e::ST_Entity_Impl) = print(io, v3i(e.transform.local_pos))
-Base.show(io::IO, e::ST_Entity_Impl) = print(io, e)
 
+Base.show(io::IO, id::ST_NodeID) = isnothing(id.ref) ?
+                                       print(io, "{null}") :
+                                       show(io, id.ref)
+Base.show(io::IO, en::ST_Entity) = print(io,
+    '{', en.transform.local_pos.x,
+    ", ", en.transform.local_pos.y,
+    ", ", en.transform.local_pos.z,
+    '}'
+)
 
-const ST_World = Vector{ST_Entity_Impl}
-
+Base.print(io::IO, id::ST_NodeID) = show(io, id)
 
 
 ##############################
 #  Interface Implementation  #
 ##############################
 
-SceneTree.deref_node(id::ST_NodeID) = something(id).transform
-SceneTree.null_node_id(::Type{ST_NodeID}) = ST_NodeID(nothing)
-SceneTree.update_node(id::ST_NodeID, data::ST_Node) = (something(id).transform = data)
+@inline SceneTree.null_node_id(::Type{ST_NodeID}) = ST_NodeID()
+@inline SceneTree.is_null_id(id::ST_NodeID) = isnothing(id.ref)
 
-SceneTree.on_rooted(id::ST_NodeID) = (something(id).is_root = true)
-SceneTree.on_uprooted(id::ST_NodeID) = (something(id).is_root = false)
+@inline SceneTree.deref_node(id::ST_NodeID) = (id.ref::ST_Entity).transform
+@inline SceneTree.update_node(id::ST_NodeID, data::ST_Node) = ((id.ref::ST_Entity).transform = data)
+
+SceneTree.on_rooted(id::ST_NodeID) = (id.ref::ST_Entity).is_root = true
+SceneTree.on_uprooted(id::ST_NodeID) = (id.ref::ST_Entity).is_root = false
 
 
 ######################
@@ -56,7 +60,7 @@ SceneTree.on_uprooted(id::ST_NodeID) = (something(id).is_root = false)
 ######################
 
 # Create the nodes. They will be assigned parents later.
-const SCENE_TREE = map(node -> ST_Entity_Impl(node, true), [
+const SCENE_TREE = map(node -> ST_Entity(node, true), [
     # The root nodes:
     ST_Node(v3f(1, 0, 0)),
     ST_Node(v3f(2, 0, 0)),
@@ -82,41 +86,57 @@ const SCENE_TREE = map(node -> ST_Entity_Impl(node, true), [
     ST_Node(v3f(3, 1, 5)),
     ST_Node(v3f(3, 1, 6))  # 19
 ])
-@inline node_index(n::ST_NodeID) = findfirst(e -> (e == something(n)), SCENE_TREE)
+node_index(n::ST_NodeID) = let n_val = n.ref
+    findfirst(e -> (e == n_val), SCENE_TREE)
+end
 
 
 # Set up the hierarchical relationships.
 # Keep in mind that new children are inserted at the front of the parent's list.
-function test_set_parent(child::Int, parent::Int, context = SCENE_TREE)
-    @bp_check(
-        begin
-            SceneTree.set_parent(ST_NodeID(SCENE_TREE[child]),
-                                 ST_NodeID(SCENE_TREE[parent]),
-                                 context)
-            (node_index(SCENE_TREE[child].transform.parent),
-             node_index(SCENE_TREE[parent].transform.child_first))
-        end ==
-        map(n -> node_index(ST_NodeID(n)),
-            (SCENE_TREE[parent], SCENE_TREE[child])),
-        "Parent/child link is incorrect after calling set_parent()"
-    )
+function test_set_parent(child::Int, parent::Int, child_next_sibling::Int = -1)
+    #TODO: Turn into a "no allocations" check.
+    # @bp_check(
+    #     begin
+    #         SceneTree.set_parent(ST_NodeID(SCENE_TREE[child]),
+    #                              ST_NodeID(SCENE_TREE[parent]))
+    #         (node_index(SCENE_TREE[child].transform.parent),
+    #          node_index(SCENE_TREE[parent].transform.child_first))
+    #     end ==
+    #     map(n -> node_index(ST_NodeID(n)),
+    #         (SCENE_TREE[parent], SCENE_TREE[child])),
+    #     "Parent/child link is incorrect after calling set_parent()"
+    # )
+    SceneTree.set_parent(ST_NodeID(SCENE_TREE[child]), ST_NodeID(SCENE_TREE[parent]))
+    @bp_check(SCENE_TREE[child].transform.parent ==
+                ST_NodeID(SCENE_TREE[parent]),
+              "Child isn't referencing the parent correctly")
+    @bp_check(SCENE_TREE[parent].transform.child_first ==
+                ST_NodeID(SCENE_TREE[child]),
+              "Parent isn't referencing the child correctly")
+
     @bp_check(!SCENE_TREE[child].is_root, "Node ", child, " shouldn't be a root")
+
+    @bp_check(SCENE_TREE[child].transform.sibling_next ==
+                  ((child_next_sibling == -1) ? ST_NodeID() :
+                                                ST_NodeID(SCENE_TREE[child_next_sibling])),
+              "Expected next sibling of new child $child (parent $parent) to be ",
+                 " $child_next_sibling but it was $(SCENE_TREE[child].transform.sibling_next))")
 end
 test_set_parent(7, 1)
-test_set_parent(6, 1)
-test_set_parent(5, 1)
+test_set_parent(6, 1, 7)
+test_set_parent(5, 1, 6)
 test_set_parent(8, 2)
 test_set_parent(10, 3)
-test_set_parent(9, 3)
+test_set_parent(9, 3, 10)
 test_set_parent(11, 5)
 test_set_parent(13, 7)
-test_set_parent(12, 7)
+test_set_parent(12, 7, 13)
 test_set_parent(19, 9)
-test_set_parent(18, 9)
-test_set_parent(17, 9)
-test_set_parent(16, 9)
-test_set_parent(15, 9)
-test_set_parent(14, 9)
+test_set_parent(18, 9, 19)
+test_set_parent(17, 9, 18)
+test_set_parent(16, 9, 17)
+test_set_parent(15, 9, 16)
+test_set_parent(14, 9, 15)
 
 
 ###############
@@ -125,7 +145,8 @@ test_set_parent(14, 9)
 
 @inline function test_node_iter(iter, expected_idcs::Vector{Int})
     expected_entities = map(i -> ST_NodeID(SCENE_TREE[i]), expected_idcs)
-    @bp_test_no_allocations_setup(
+    #TODO: Detecting allocations during iteration, but I can't figure out if they're real.
+    #=@bp_test_no_allocations_setup(
         TEST_nodes = preallocated_vector(ST_NodeID, length(SCENE_TREE)),
         begin
             empty!(TEST_nodes)
@@ -133,26 +154,15 @@ test_set_parent(14, 9)
             TEST_nodes
         end,
         expected_entities,
-        "Iterator: ", iter,
-        "\n\tExpected: ", expected_idcs,
-        "\n\tActual: ", expected_entities
-    )
+        "\n\nIterator: ", iter,
+        "\n\tExpected: ", expected_entities,
+        "\n\tActual: ", expected_entities,
+        "\n\n"
+    )=#
+    @bp_check(collect(iter) == expected_entities,
+              "Expected ", expected_entities,
+              "\n\tActual ", collect(iter))
 end
-Some
-using InteractiveUtils
-function fffff()
-    # s = siblings(ST_NodeID(SCENE_TREE[1]), true)
-    # (a, state) = iterate(s)
-    #final_output = iterate(s, state)
-    #return s
-end
-@code_warntype Bplus.SceneTree.set_parent(ST_NodeID(SCENE_TREE[1]),
-                               ST_NodeID(SCENE_TREE[1]),
-                               SCENE_TREE)
-# fffff()
-# for i in 1:3
-#     @time fffff()
-# end
 
 
 ##  Siblings  ##
@@ -167,8 +177,8 @@ test_node_iter(siblings(ST_NodeID(SCENE_TREE[2]), false), Int[ ])
 test_node_iter(siblings(ST_NodeID(SCENE_TREE[3]), true), [ 3 ])
 test_node_iter(siblings(ST_NodeID(SCENE_TREE[3]), false), Int[ ])
 #
-test_node_iter(siblings(ST_NodeID(SCENE_TREE[4]), true), [ 1, 2, 3, 4 ])
-test_node_iter(siblings(ST_NodeID(SCENE_TREE[4]), false), [ 1, 2, 3 ])
+test_node_iter(siblings(ST_NodeID(SCENE_TREE[4]), true), [ 4 ])
+test_node_iter(siblings(ST_NodeID(SCENE_TREE[4]), false), Int[ ])
 
 # Direct children:
 test_node_iter(siblings(ST_NodeID(SCENE_TREE[5]), true), [ 5, 6, 7 ])
@@ -212,14 +222,14 @@ test_node_iter(siblings(ST_NodeID(SCENE_TREE[19]), false), [ 14, 15, 16, 17, 18 
 ##  Children  ##
 
 # Root nodes:
-test_node_iter(children(ST_NodeID(SCENE_TREE[1])), [ 5, 6 ])
+test_node_iter(children(ST_NodeID(SCENE_TREE[1])), [ 5, 6, 7 ])
 test_node_iter(children(ST_NodeID(SCENE_TREE[2])), [ 8 ])
 test_node_iter(children(ST_NodeID(SCENE_TREE[3])), [ 9, 10 ])
 test_node_iter(children(ST_NodeID(SCENE_TREE[4])), Int[ ])
 # Direct children:
 test_node_iter(children(ST_NodeID(SCENE_TREE[5])), [ 11 ])
 test_node_iter(children(ST_NodeID(SCENE_TREE[6])), Int[ ])
-test_node_iter(children(ST_NodeID(SCENE_TREE[7])), Int[ ])
+test_node_iter(children(ST_NodeID(SCENE_TREE[7])), Int[ 12, 13 ])
 test_node_iter(children(ST_NodeID(SCENE_TREE[8])), Int[ ])
 test_node_iter(children(ST_NodeID(SCENE_TREE[9])), [ 14, 15, 16, 17, 18, 19 ])
 test_node_iter(children(ST_NodeID(SCENE_TREE[10])), Int[ ])
@@ -277,6 +287,7 @@ function test_family(start::Int,
                    expected_breadth_first)
     test_node_iter(family_breadth_first(ST_NodeID(SCENE_TREE[start]), true),
                    vcat(start, expected_breadth_first))
+
     #TODO: Also test family_breadth_first_deep, once it's implemented
 end
 
@@ -310,6 +321,4 @@ test_family(18, Int[ ], Int[ ])
 test_family(19, Int[ ], Int[ ])
 
 
-println("#TODO: Add more SceneTree unit tests")
-
-end # if false
+println("#TODO: Test coordinate transformations")

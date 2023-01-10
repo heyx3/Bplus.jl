@@ -1,18 +1,23 @@
 "
-A node in a scene tree. Offers the following interface:
+The data on a node in a scene tree.
+It's recommended to stick with the ID-based interface described below,
+    rather than holding onto `Node` instances.
+Otherwise you could miss a cache update!
+
+If you don't use a Context for your scene graph, then you can omit it from function calls.
 
 ## Transforms
 
-These functions can cause the node's cached data to update,
-    so they return a copy of the node as well.
+Note that getting transform data can cause a node's cache to be updated within the owning Context.
 
-* `local_transform(node)::Tuple{@Mat(4, 4, F), Node}`
-* `world_transform(node)::Tuple{@Mat(4, 4, F), Node}`
-* `world_inverse_transform(node)::Tuple{@Mat(4, 4, F), Node}`
+* `local_transform(node_id, context=nothing)::Mat4`
+* `world_transform(node_id, context=nothing)::Mat4`
+* `world_inverse_transform(node_id, context=nothing)::Mat4`
 
-## Tree ops
+## Operations
 
-* `set_parent(node_id, new_parent, context, preserve_space = Spaces.self)`
+* `set_parent(node_id, new_parent_id, context=nothing; preserve_space = Spaces.self)`
+    * You can pass a null ID for the new parent to make the child into a root node.
 
 ## Iteration
 * `siblings(node_id, context, include_self = true)`
@@ -102,51 +107,74 @@ Base.show(io::IO, node::Node) = print(io, '<',
               " children:", node.n_children),
 '>')
 
-println("#TODO: The inability to put mutable nodes in contiguous memory is hugely painful; pick one of the below ideas to alleviate it.")
-# 1. Add a macro where the node data is copied into a mutable version,
-#      the below interface is mostly done with the mutable version,
-#      then at the end the mutable version overwrites the immutable data.
-# 2. Shift to an interface that's entirely done through node ID's,
-#      making the interface much more sane at the cost of much more frequent node-dereferencing
-#      (but maybe that can be optimized out?)
-
 
 ######################
 #  Public Interface  #
 ######################
 
-#TODO: In a number of locations there are consecutive calls to @set! for some node data. Is this inefficient? It should be pretty obvious in the profiler.
-println("#TODO: Make the 'context' optional in the public API")
+#TODO: Try inlining functions.
+#TODO: Look for a performance cost from the many consecutive calls to `@set!`
 
 
 ##  Transform calculations  ##
 
 "
 Gets (or calculates) the local-space transform of this node.
-This may involve updating the node's cached data, so a new copy of the node is also returned.
+The node's Context is required for this operation.
+"
+function local_transform(node_id, context = nothing)::Mat4
+    node = deref_node(node_id, context)
+    (transform, was_updated, node) = local_transform(node)
 
-Note that the node's original storage in the context is not updated!
+    if was_updated
+        update_node(node_id, context, node)
+    end
+    return transform
+end
+"
+Gets (or calculates) the local-space transform of this node,
+   and updates the node's cache if necessary.
+Returns whether the node's cache was updated, and the new version of the node
+    (which you should write back into the Context if the flag is true).
 "
 function local_transform( node::Node{TNodeID, F}
-                        )::Tuple{@Mat(4, 4, F), Node{TNodeID, F}} where {TNodeID, F}
-    if !node.is_cached_self
+                        )::Tuple{@Mat(4, 4, F), Bool, Node{TNodeID, F}} where {TNodeID, F}
+    will_update_cache::Bool = !node.is_cached_self
+    if will_update_cache
         @set! node.is_cached_self = true
         @set! node.cached_matrix_self = m4_world(node.local_pos, node.local_rot, node.local_scale)
     end
 
-    return (node.cached_matrix_self, node)
+    return (node.cached_matrix_self, will_update_cache, node)
 end
+
 "
 Gets (or calculates) the world-space transform of this node.
-This may involve updating the node's cached data, so a new copy of the node is also returned.
+The node's Context is required for this operation.
+"
+function world_transform(node_id, context = nothing)::Mat4
+    node::Node = deref_node(node_id, context)
+    (result, was_updated, node) = world_transform(node, context)
 
-Note that the node's original storage in the context is not updated
-    (though its parents may be)!
+    if was_updated
+        update_node(node_id, context, node)
+    end
+    return result
+end
+"
+A messy implementation version; you can call it if you really want but consider the other overload.
+
+Gets (or calculates) the world-space transform of this node.
+This call may update cached data in its parent, grandparent, etc.
+
+If this node's own cache needs updating, then this function also returns 'true'
+    along with the updated version of this node (which you should write back into the Context).
 "
 function world_transform( node::Node{TNodeID, F},
                           context::TContext
-                        )::Tuple{@Mat(4, 4, F), Node{TNodeID, F}} where {TNodeID, F, TContext}
-    if !node.cached_matrix_world
+                        )::Tuple{@Mat(4, 4, F), Bool, Node{TNodeID, F}} where {TNodeID, F, TContext}
+    updates_cache::Bool = !node.cached_matrix_world
+    if updates_cache
         # Get our local matrix.
         (matrix_local::@Mat(4, 4, F), node) = local_transform(node)
 
@@ -155,8 +183,7 @@ function world_transform( node::Node{TNodeID, F},
         if is_null_id(node.parent)
             matrix_world = matrix_local
         else
-            parent_node::Node{TNodeID, F} = deref_node(node.parent)
-            (matrix_parent_world, parent_node) = world_transform(parent_node, context)
+            matrix_parent_world = world_transform(node.parent, context)
             update_node(node.parent, context, parent_node)
 
             matrix_world = m_combine(matrix_local, matrix_parent_world)
@@ -169,65 +196,69 @@ function world_transform( node::Node{TNodeID, F},
         @set! node.cached_matrix_world_inverse = m_invert(node.cached_matrix_world)
     end
 
-    return (node.cached_matrix_world, node)
+    return (node.cached_matrix_world, updates_cache, node)
 end
+
 "
 Gets (or calculates) the inverse-world-space transform of this node,
-
-This may involve updating the node's cached data, so a new copy of the node is also returned.
-Note that the node's original storage in the context is not updated
-    (though its parents may be)!
+    and updates the node's cache if necessary.
+The node's Context is required for this operation.
+"
+function world_inverse_transform(node_id, context = nothing)::Mat4
+    # Make sure the cache is updated, then return the cached value.
+    world_transform(node_id, context)
+    return deref_node(node_id, context).cached_matrix_world_inverse
+end
+"
+A version of this function used internally.
+Returns whether the node's cache was updated, and the updated data.
 "
 function world_inverse_transform( node::Node{TNodeID, F},
-                                  context::TContext
-                                )::Tuple{@Mat(4, 4, F), Node{TNodeID, F}} where {TNodeID, F, TContext}
-    # Make sure the cache is updated, then return the cached value.
-    (_, node) = world_transform(node, context)
-    return (node.cached_matrix_world_inverse, node)
+                                  context = nothing
+                                )::Tuple{Mat4{F}, Bool, Node{TNodeID, F}} where {TNodeID, F}
+    (_, was_updated::Bool, node) = world_transform(node, context)
+    return (node.cached_matrix_world_inverse, was_updated, node)
 end
 
-#TODO: Various transform setters
+#TODO: Transform setters
 
 
 ##  Tree structure  ##
 
 "
-Changes a node's parent. You may pass a null ID to merely remove the current parent.
+Changes a node's parent. If the new parent ID is null, the child is turned into a root node.
 
 Preserves either the world-space or local-space transform of this node.
-Preserving world-space can cause small imprecisions in local-space data,
-    so local-space is the default.
-
-Updates the data for all relevant nodes (self, old parent, new parent, etc.),
-    and also returns the node's new data for reference.
+Local-space is the default, because preserving world-space has more floating-point error.
 "
 function set_parent( node_id::TNodeID,
-                     new_parent::TNodeID,
-                     context::TContext,
+                     new_parent_id::TNodeID,
+                     context = nothing
+                     ;
                      preserve::E_Spaces = Spaces.self
-                   )::Node{TNodeID} where {TNodeID, TContext}
+                   )::Node{TNodeID} where {TNodeID}
     node::Node{TNodeID} = deref_node(node_id, context)
-    old_parent::TNodeID = node.parent
+    old_parent_id::TNodeID = node.parent
 
     # Check some edge-cases:
-    if new_parent == old_parent
+    if new_parent_id == old_parent_id
         return node
-    elseif is_deep_child_of(node_id, new_parent, context)
+    elseif !is_null_id(node_id) && !is_null_id(new_parent_id) && is_deep_child_of(node_id, new_parent_id, context)
         error("Trying to create an infinite loop of node parents")
     end
 
     # Remember which callback to raise at the end of this, if any.
-    is_becoming_rooted::Bool = is_null_id(new_parent)
-    is_uprooting::Bool = !is_becoming_rooted && is_null_id(old_parent)
+    is_becoming_rooted::Bool = is_null_id(new_parent_id) # Note that we already know "new parent" isn't "old parent".
+    is_uprooting::Bool = !is_becoming_rooted && is_null_id(old_parent_id)
 
     # Update old parents and siblings.
-    if !is_null_id(old_parent)
+    if !is_null_id(old_parent_id)
         disconnect_parent(node, node_id, context)
     end
 
     # Update new parents and siblings.
-    if !is_null_id(new_parent)
-        new_parent_data::Node{TNodeID} = deref_node(new_parent, context)
+    if !is_null_id(new_parent_id)
+        new_parent_data::Node{TNodeID} = deref_node(new_parent_id, context)
 
         # The easiest place to insert into the doubly-linked list of siblings
         #    is at the beginning of the list.
@@ -251,7 +282,7 @@ function set_parent( node_id::TNodeID,
         # Update the parent's data.
         @set! new_parent_data.child_first = node_id
         @set! new_parent_data.n_children += 1
-        update_node(new_parent, context, new_parent_data)
+        update_node(new_parent_id, context, new_parent_data)
     end
 
     # Process 3D transformation data for this node (and its children).
@@ -261,19 +292,28 @@ function set_parent( node_id::TNodeID,
     elseif preserve == Spaces.world
         # The local transform will change, but the world transform should stay the same,
         #    which means the cached world-space data doesn't need to be invalidated.
+        # In practice, if we find that floating-point error causes a noticeable gap between
+        #    the old and new world position, then we should invalidate the world-space data here.
 
         # Calculate the new local matrix by taking the world-space matrix,
         #    and combining it with the inverse of the new parent's world-space matrix.
         # This can intuitively be described as
         #    "undo the new parent's transformations, then apply the desired world-space transform".
 
-        (world_mat, node) = world_transform(node, context)
-        local_mat::@Mat(4, 4, F)
-        if is_null_id(new_parent)
+        (world_mat, _, node) = world_transform(node, context)
+        # Don't need to check whether the node's cache was updated in the previous call,
+        #    since we're definitely updating the node later anyway.
+
+        local local_mat::@Mat(4, 4, F)
+        if is_null_id(new_parent_id)
             local_mat = world_mat
         else
-            (new_parent_inverse_world_mat, new_parent_data) = world_inverse_transform(new_parent_data, context)
-            update_node(new_parent, context, new_parent_data)
+            (new_parent_inverse_world_mat::Mat4{F}, _, new_parent_data) = world_inverse_transform(new_parent_data, context)
+
+            # Write the new parent's updated data into the context --
+            #    not just because of the potential cache changes,
+            #    but also because we modified it earlier to see this new child.
+            update_node(new_parent_id, context, new_parent_data)
 
             local_mat = m_combine(new_parent_inverse_world_mat, world_mat)
         end
@@ -290,7 +330,7 @@ function set_parent( node_id::TNodeID,
     end
 
     # Finish updating our node's data.
-    @set! node.parent = new_parent
+    @set! node.parent = new_parent_id
     update_node(node_id, context, node)
 
     # Raise the correct callback for what just happened.
@@ -305,24 +345,24 @@ end
 
 #TODO: Ability to move this transform within its parent list, and/or swap places with a sibling.
 
+println("#TODO: Resume shifting to an interface that's entirely done through node ID's, and which leaves the 'context' as an optional parameter (defaulting to `nothing`).")
+
 
 ##  Iteration  ##
 
 "Iterates over the siblings of a node, from start to finish, optionally ignoring the given one."
-@inline siblings(node_id, context, include_self::Bool = true) = Siblings(node_id, context, include_self)
-@inline siblings(node_id,          include_self::Bool = true) = Siblings(node_id, nothing, include_self)
+@inline siblings(node_id,    context, include_self::Bool = true) = Siblings(node_id, context, include_self)
+@inline siblings(node_id,             include_self::Bool = true) = Siblings(node_id, nothing, include_self)
+@inline siblings(node::Node, context, include_self::Bool = true) = error("Don't invoke 'siblings()' with a Node; invoke it with a node ID!")
+@inline siblings(node::Node,          include_self::Bool = true) = error("Don't invoke 'siblings()' with a Node; invoke it with a node ID!")
 
 "Iterates over the children of a node."
-@inline children(node::Node, context) = Children(node, context)
-@inline children(node::Node) = Children(node, nothing)
-@inline children(node_id, context) = children(deref_node(node_id, context), context)
-@inline children(node_id) = children(deref_node(node_id))
+@inline children(node_id, context = nothing) = Children(deref_node(node_id, context), context)
+@inline children(node::Node, context = nothing) = Children(node, context)
 
 "Iterates over the parent, grand-parent, etc. of a node."
-@inline parents(node::Node, context) = Parents(node, context)
-@inline parents(node::Node) = Parents(node, nothing)
-@inline parents(node_id, context) = parents(deref_node(node_id, context), context)
-@inline parents(node_id) = parents(deref_node(node_id))
+@inline parents(node_id, context = nothing) = parents(deref_node(node_id, context), context)
+@inline parents(node::Node, context = nothing) = Parents(node, context)
 
 "
 Iterates over all nodes underneath this one, in Depth-First order.
@@ -331,6 +371,7 @@ Must take the root node by its ID, not the `Node` instance.
 For Breadth-First order (which is slower), see `family_breadth_first`.
 "
 @inline family(node_id, context, include_self::Bool = true) = FamilyDFS(node_id, context, include_self)
+@inline family(node_id,          include_self::Bool = true) = family(node_id, nothing, include_self)
 "
 Iterates over all nodes underneath this one, in Breadth-first order.
 Must take the root node by its ID, not the `Node` instance.
@@ -339,8 +380,8 @@ This search is slower, but sometimes Breadth-First is useful.
 By default, a technique is used that has no heap allocations, but scales poorly for large trees.
 For a heap-allocating technique that works better on large trees, see `family_breadth_first_deep`.
 "
-@inline family_breadth_first(node_id, context, include_self::Bool) =
-    FamilyBFS_NoHeap(FamilyDFS(node_id, context, include_self))
+@inline family_breadth_first(node_id, context, include_self::Bool) = FamilyBFS_NoHeap(FamilyDFS(node_id, context, include_self))
+@inline family_breadth_first(node_id,          include_self::Bool) = FamilyBFS_NoHeap(FamilyDFS(node_id, nothing, include_self))
 "
 Iterates over all nodes underneath this one, in Breadth-first order.
 Must take the root node by its ID, not the `Node` instance.
@@ -372,7 +413,7 @@ println("#TODO: Implement BFS via queue")
 end
 
 "Gets whether a node is somewhere inside the 'family' of another node."
-is_deep_child_of(parent_id::ID, child_id::ID, context) where {ID} = (parent_id in parents(child_id, context))
+@inline is_deep_child_of(parent_id::ID, child_id::ID, context) where {ID} = (parent_id in parents(child_id, context))
 
 
 export siblings, children, parents,
@@ -392,7 +433,7 @@ struct Siblings{TNodeID, TContext}
 end
 struct Siblings_State{TNodeID}
     prev_idx::Int
-    next_node::TNodeID
+    next_node_id::TNodeID
     idx_to_ignore::Int
 end
 
@@ -406,8 +447,10 @@ end
     end
 end
 @inline function Base.length(s::Siblings)
+    # We're assuming there's a parent, because otherwise IteratorSize is Unknown (see above).
     root_node = deref_node(s.root_id, s.context)
-    return deref_node(root_node.parent, s.context).n_children
+    return deref_node(root_node.parent, s.context).n_children +
+           (s.include_root ? 0 : -1)
 end
 
 Base.eltype(::Siblings{TNodeID}) where {TNodeID} = TNodeID
@@ -416,10 +459,10 @@ Base.eltype(::Siblings{TNodeID}) where {TNodeID} = TNodeID
 @inline function Base.iterate( s::Siblings{TNodeID, TContext},
                                state::Siblings_State{TNodeID}
                              ) where {TNodeID, TContext}
-    if is_null_id(state.next_node)
+    if is_null_id(state.next_node_id)
         return nothing
     else
-        next_node::Node{TNodeID} = deref_node(state.next_node, s.context)
+        next_node::Node{TNodeID} = deref_node(state.next_node_id, s.context)
         new_state = Siblings_State(
             state.prev_idx + 1,
             next_node.sibling_next,
@@ -431,33 +474,25 @@ Base.eltype(::Siblings{TNodeID}) where {TNodeID} = TNodeID
         if new_state.prev_idx == new_state.idx_to_ignore
             return iterate(s, new_state)
         else
-            return (state.next_node, new_state)
+            return (state.next_node_id, new_state)
         end
     end
 end
+
+"Finds the start of a siblings iteration, or `nothing` if there are no elements."
 function start_sibling_iter( s::TSiblings,
-                             offset::Int = 1  # Which index from here
+                             offset::Int = 0  # Which index from here
                                               #    is the actual root of the search?
                            )::Optional{Siblings_State} where {TNodeID, TSiblings<:Siblings{TNodeID}}
-    root_node = deref_node(s.root_id, s.context)
+    root_node::Node{TNodeID} = deref_node(s.root_id, s.context)
 
     # Is the root node the first sibling?
     if is_null_id(root_node.sibling_prev)
-        if s.include_root
-            return Siblings_State(0, s.root_id, -1)
-        else
-            # Start with the next sibling.
-            # If there's no "next" sibling, then there aren't any siblings at all.
-            if is_null_id(root_node.sibling_next)
-                return nothing
-            else
-                idx_to_ignore = (s.include_root ? -1 : offset)
-                return Siblings_State(0, root_node.sibling_next, idx_to_ignore)
-            end
-        end
+        return Siblings_State(0, s.root_id,
+                              s.include_root ? -1 : offset+1)
     # Otherwise, look backwards for the first sibling.
     else
-        next_iter = Siblings(deref_node(root_node.sibling_prev, s.context),
+        next_iter = Siblings(root_node.sibling_prev,
                              s.context, s.include_root)
         return start_sibling_iter(next_iter, offset + 1)
     end
@@ -516,7 +551,7 @@ end
 struct FamilyDFS_State{TNodeID}
     prev_id::TNodeID
 
-    # Tracks the change in depth between the current element and the previous one.
+    # Tracks the change in depth between the previous element and the current one.
     # Needed for FamilyBFS_NoHeap.
     previous_depth_delta::Int
 end
@@ -526,7 +561,7 @@ end
     if f.include_self
         return (f.root_id, FamilyDFS_State(f.root_id, 0))
     else
-        node = deref_node(f.root_id, context)
+        node = deref_node(f.root_id, f.context)
         if is_null_id(node.child_first)
             return nothing
         else
@@ -549,16 +584,20 @@ function Base.iterate( f::FamilyDFS{TNodeID},
     #    since that's outside the scope of the search.
     if is_null_id(next_id) && (prev_id != f.root_id)
         next_id = prev_node.sibling_next
+
         # If there's no next sibling, go up one level and try *that* parent's sibling.
         # Keep moving up until we can find an "uncle", or we hit the root node.
         while is_null_id(next_id) && (prev_node.parent != f.root_id)
             # Move up one level:
             prev_id = prev_node.parent
             prev_node = deref_node(prev_id, f.context)
+            depth_delta -= 1
 
             # Try to select the "uncle":
             next_id = prev_node.sibling_next
         end
+    else
+        depth_delta += 1
     end
 
     return is_null_id(next_id) ?
@@ -567,7 +606,7 @@ function Base.iterate( f::FamilyDFS{TNodeID},
 end
 
 
-# The no-heap BFS implementation is based on Iterative-Deepening,
+# The no-heap-allocations BFS implementation is based on Iterative-Deepening,
 #    using successive applications of DFS.
 # The downside is a lot of redundant visits to early nodes.
 struct FamilyBFS_NoHeap{TNodeID, TContext}
@@ -584,8 +623,7 @@ end
 @inline Base.IteratorSize(::FamilyBFS_NoHeap) = Base.SizeUnknown()
 @inline Base.eltype(::FamilyBFS_NoHeap{TNodeID}) where {TNodeID} = TNodeID
 @inline function Base.iterate(f::FamilyBFS_NoHeap{TNodeID})::Optional{Tuple} where {TNodeID}
-    first_iter::Optional{Tuple{TNodeID, FamilyDFS_State{TNodeID}}} =
-        iterate(f.dfs)
+    first_iter::Optional{Tuple{TNodeID, FamilyDFS_State{TNodeID}}} = iterate(f.dfs)
     if isnothing(first_iter)
         return nothing
     else
@@ -597,51 +635,45 @@ end
 @inline function Base.iterate( f::FamilyBFS_NoHeap{TNodeID},
                                state::FamilyBFS_NoHeap_State{TNodeID}
                              )::Optional{Tuple} where {TNodeID}
-    # Split out the fields of the iterator state,
-    #    since it's immutable and we'll be using it a lot.
-    (dfs_state, current_target_depth, next_depth_any_nodes) =
-        (state.dfs, state.current_target_depth, state.next_depth_any_nodes)
-
     # Remember whether the node we just looked at has children.
-    if !next_depth_any_nodes
-        next_depth_any_nodes = (deref_node(dfs_state.prev_id, f.context).n_children > 0)
+    if !state.next_depth_any_nodes
+        @set! state.next_depth_any_nodes = (deref_node(state.dfs.prev_id, f.dfs.context).n_children > 0)
     end
 
     # Move the DFS forward until reaching another node at our current depth.
-    dfs_depth::Int = current_target_depth
+    dfs_current_depth::Int = state.current_target_depth # Assume the current DFS state is after
+                                                        #    yielding a node at our target depth.
     local next_iter::Optional{Tuple{TNodeID, FamilyDFS_State{TNodeID}}}
     @do_while begin
-        next_iter = iterate(f.dfs, dfs_state)
+        next_iter = iterate(f.dfs, state.dfs)
         # If the iterator finished, restart it with a deeper target depth.
         if isnothing(next_iter)
-            # Are there any deeper nodes?
-            # If so, restart the DFS search at the next depth level.
-            if next_depth_any_nodes
-                # We know we can skip the root node at this point, so make sure to do that
+            if state.next_depth_any_nodes
+                # We know we can skip the root node at this point, so do that explicitly
                 #    to save a little time.
-                inner_search = FamilyDFS(f.root_id, f.context, false)
+                inner_search = FamilyDFS(f.dfs.root_id, f.dfs.context, false)
                 next_iter = iterate(inner_search)
-                @bp_scene_tree_assert(exists(new_first_iter),
+                @bp_scene_tree_assert(exists(next_iter),
                                       "'next_depth_any_nodes' was true, yet there's nothing to iterate?????")
 
                 # Update this iterator's state data.
-                dfs_depth = 1
-                next_depth_any_nodes = false
-                current_target_depth += 1
+                dfs_current_depth = 1
+                @set! state.next_depth_any_nodes = false
+                @set! state.current_target_depth += 1
             else
                 return nothing
             end
-        # The DFS didn't finish, so acknowledge it and continue.
+        # Otherwise, continue on until we find a node of our target depth.
         else
-            dfs_depth += dfs_state.previous_depth_delta
-            @bp_scene_tree_assert(dfs_depth >= 0,
-                                  "An iteration of DFS within BFS just went above the root")
+            dfs_current_depth += next_iter[2].previous_depth_delta
+            @bp_scene_tree_assert(dfs_current_depth >= 0,
+                                  "An iteration of DFS within BFS just went above the root: ")
         end
-    end (dfs_depth != current_target_depth)
 
-    return isnothing(next_iter) ?
-               nothing :
-               (next_iter[1], FamilyBFS_NoHeap_State(dfs_state, current_target_depth, next_depth_any_nodes))
+        @set! state.dfs = next_iter[2]
+    end (dfs_current_depth != state.current_target_depth)
+
+    return isnothing(next_iter) ? nothing : (next_iter[1], state)
 end
 
 
