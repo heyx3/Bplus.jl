@@ -101,6 +101,11 @@ export Box_minmax, Box_minsize, Box_maxsize, Box_bounding
 Base.convert(::Type{Box{T}}, b::Box{T2}) where {T, T2} = Box(convert(T, b.min), convert(T, b.size))
 Base.convert(::Type{Box{T}}, b::Box{T2}) where {T<:Vec{1, <:Number}, T2<:Number} = Box{T}(T(b.min), T(b.size))
 
+# Iterate through the coordinates of integer boxes.
+@inline Base.iterate(b::Box{<:Union{Integer, VecT{<:Integer}}}       ) = iterate(b.min:max_inclusive(b)       )
+@inline Base.iterate(b::Box{<:Union{Integer, VecT{<:Integer}}}, state) = iterate(b.min:max_inclusive(b), state)
+#TODO: Unit tests for Box iteration
+
 
 ###########################
 #        Functions        #
@@ -129,7 +134,7 @@ max_inclusive(b::Box) = box_typeprev(max_exclusive(b))
 export max_exclusive, max_inclusive
 
 "Gets the N-dimensional size of a Box"
-volume(b::Box) = reduce(*, b.size)
+volume(b::Box) = prod(b.size)
 export volume
 
 "Gets whether the point is somewhere in the box"
@@ -141,7 +146,7 @@ export is_touching
 
 "
 Gets whether the point is fully inside the box, not touching the edges.
-This is more useful for integer boxes than floating-point ones.
+This is primarily for integer boxes.
 "
 is_inside(box::Box{T}, point::T) where {T} = all(
     (point > box.min) &
@@ -190,8 +195,8 @@ By default, new dimensions are given the size 1 (both for integer and float boxe
                                new_dims_value::T = zero(T)
                              ) where {OldN, T}
     if (NewN > OldN)
-        return Box(Vec{NewN, T}(b.min, Vec{NewN - OldN, T}(i -> new_dims_value)),
-                   Vec{NewN, T}(b.size, Vec{NewN - OldN, T}(i -> new_dims_size)))
+        return Box(vappend(b.min, Vec{NewN - OldN, T}(i -> new_dims_value)),
+                   vappend(b.size, Vec{NewN - OldN, T}(i -> new_dims_size)))
     else
         return Box(b.min[1:NewN], b.size[1:NewN])
     end

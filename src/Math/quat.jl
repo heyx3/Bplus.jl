@@ -14,7 +14,7 @@ end
 function pick_rot_axis(from::Vec3{F1}, to::Vec3{F2}, cos_angle::F) where {F, F1, F2}
     norm::Vec3{F} = map(F, from × to)
     theta::F = one(F) + convert(F, cos_angle)
-    return vnorm(Vec(norm, theta))
+    return vnorm(Vec4{F}(norm..., theta))
 end
 
 ###################
@@ -28,36 +28,38 @@ It is assumed to always be normalized, to optimize the math
 struct Quaternion{F}
     data::Vec4{F}
 
-    # Constructors that take the components:
-    Quaternion(x, y, z, w) = Quaternion(promote(x, y, z, w))
-    Quaternion(x::F, y::F, z::F, w::F) where {F} = new{F}(Vec(x, y, z, w))
-    Quaternion{F}(x, y, z, w) where {F} = Quaternion(map(F, (x, y, z, w)))
-    Quaternion(components::NTuple{4, F}) where {F} = Quaternion(Vec(components))
-    Quaternion{F}(components::NTuple{4, F2}) where {F, F2} = Quaternion(Vec(map(F2, components)))
-    Quaternion(components::Vec4{F}) where {F} = new{F}(components)
-    Quaternion{F}(components::Vec4{F2}) where {F, F2} = new{F}(map(F2, components))
+    # Constructors that take the components and no type param:
+    @inline Quaternion(x, y, z, w) = Quaternion(promote(x, y, z, w))
+    @inline Quaternion(x::F, y::F, z::F, w::F) where {F} = new{F}(Vec{4, F}(x, y, z, w))
+    @inline Quaternion(components::NTuple{4, F}) where {F} = new{F}(Vec4{F}(components...))
+    @inline Quaternion(components::Vec4{F}) where {F} = new{F}(components)
+
+    # Constructors that take the components and a type param:
+    @inline Quaternion{F}(x, y, z, w) where {F} = new{F}(Vec4{F}(x, y, z, w))
+    @inline Quaternion{F}(components::NTuple{4, F2}) where {F, F2} = new{F}(Vec4{F}(components...))
+    @inline Quaternion{F}(components::Vec4{F2}) where {F, F2} = new{F}(convert(Vec4{F}, components))
 
     "Creates an identity quaternion (i.e. no rotation)."
-    Quaternion{F}() where {F} = new{F}(Vec(zero(F), zero(F), zero(F), one(F)))
+    @inline Quaternion{F}() where {F} = new{F}(Vec4{F}(0, 0, 0, 1))
 
     """
     Creates a rotation around the given axis, by the given angle in radians.
     The axis should be normalized.
     """
-    function Quaternion(axis::Vec3{F}, angle_radians::F2) where {F, F2}
+    @inline function Quaternion(axis::Vec3{F}, angle_radians::F2) where {F, F2}
         @bp_math_assert(is_normalized(axis), "Axis of Quaternion rotation isn't normalized: ", axis)
         (sine::F, cos::F) = sincos(convert(F, angle_radians * 0.5))
-        return new{F}(Vec((axis * sine)..., cos))
+        return new{F}(Vec4{F}((axis * sine)..., cos))
     end
-    Quaternion{F}(axis::Vec3{F2}, angle_radians::F3) where {F, F2, F3} =
+    @inline Quaternion{F}(axis::Vec3{F2}, angle_radians::F3) where {F, F2, F3} =
         Quaternion(convert(Vec3{F}, axis), convert(F, angle_radians))
-    
+
     """
     Creates a rotation that transforms the first vector into the second.
     The vectors should be normalized.
     """
-    Quaternion(from::Vec3{F}, to::Vec3{F}) where {F} = Quaternion{F}(from, to)
-    Quaternion(from::Vec3{F1}, to::Vec3{F2}) where {F1, F2} = Quaternion{promote_type(F, F2)}(from, to)
+    @inline Quaternion(from::Vec3{F}, to::Vec3{F}) where {F} = Quaternion{F}(from, to)
+    @inline Quaternion(from::Vec3{F1}, to::Vec3{F2}) where {F1, F2} = Quaternion{promote_type(F, F2)}(from, to)
     function Quaternion{F}(from::Vec3{F2}, to::Vec3{F3}) where {F, F2, F3}
         if !(F2<:Integer)
             @bp_math_assert(is_normalized(from, convert(F2, 0.001)), "'from' vector isn't normalized")
@@ -72,7 +74,7 @@ struct Quaternion{F}
         elseif isapprox(cos_angle, -one(F); atol=0.001)
             # There is no rotation.
             # Get an arbitrary perpendicular axis to rotate around.
-            return new{F}(map(F, pick_arbitrary_rot_axis(from)), convert(F, π))
+            return Quaternion{F}(map(F, pick_arbitrary_rot_axis(from)), convert(F, π))
         else
             # The axis is the cross product of the vectors.
             return new{F}(pick_rot_axis(from, to, cos_angle))
@@ -85,9 +87,9 @@ struct Quaternion{F}
 end
 export Quaternion
 
-Base.getproperty(q::Quaternion, n::Symbol) = getproperty(getfield(q, :data), n)
+@inline Base.getproperty(q::Quaternion, n::Symbol) = getproperty(getfield(q, :data), n)
 
-Base.convert(::Type{Quaternion{F2}}, q::Quaternion) where {F2} = Quaternion{F2}(q.data)
+@inline Base.convert(::Type{Quaternion{F2}}, q::Quaternion) where {F2} = Quaternion{F2}(q.data)
 
 
 ###############
@@ -160,7 +162,7 @@ end
 Runs the given code with QUAT_ANGLE_DIGITS and QUAT_AXIS_DIGITS
   temporarily changed to the given values.
 """
-function use_quat_digits(to_do::Function, n_axis_digits::Int, n_angle_digits::Int)
+function use_quat_digits(to_do::Base.Callable, n_axis_digits::Int, n_angle_digits::Int)
     global QUAT_ANGLE_DIGITS, QUAT_AXIS_DIGITS
     old::Tuple{Int, Int} = QUAT_ANGLE_DIGITS, QUAT_AXIS_DIGITS
     QUAT_ANGLE_DIGITS = n_angle_digits
@@ -189,7 +191,7 @@ export show_quat
 #   Arithmetic   #
 ##################
 
-@inline function Base.:(*)(q1::Quaternion{F1}, q2::Quaternion{F2}) where {F1, F2}
+function Base.:(*)(q1::Quaternion{F1}, q2::Quaternion{F2}) where {F1, F2}
     F3::DataType = promote_type(F1, F2)
     xyz::Vec3{F3} = (q1.xyz × q2.xyz) +
                     (q1.w * q2.xyz) +
@@ -198,18 +200,18 @@ export show_quat
             (q1.xyz ⋅ q2.xyz)
     return Quaternion(xyz..., w)
 end
-@inline function Base.:(*)( q::Quaternion{F},
-                            v::Vec3{T}
-                          )::Quaternion{promote_type(F, T)} where {F, T}
-    return (q * Quaternion(v..., zero(F)))
+function Base.:(*)( q::Quaternion{F},
+                    v::Vec3{T}
+                  ) where {F, T}
+    return (q * Quaternion(promote(v..., zero(F))))
 end
 
-@inline function Base.:(-)(q::Quaternion)
+function Base.:(-)(q::Quaternion{F}) where {F}
     @bp_math_assert(is_normalized(q), "Quaternion isn't normalized: ", q)
-    return Quaternion((-q.xyz)..., q.w)
+    return Quaternion{F}((-q.xyz)..., q.w)
 end
 
-Base.:(==)(q1::Quaternion, q2::Quaternion)::Bool = (q1.data == q2.data)
+@inline Base.:(==)(q1::Quaternion, q2::Quaternion)::Bool = (q1.data == q2.data)
 
 # See my notes about isapprox() for Vec
 Base.isapprox(a::Quaternion{F}, b::Quaternion{F2}) where {F, F2} =
@@ -268,7 +270,7 @@ It's simple (and fast) linear interpolation,
   which can lead to strange animations when tweening.
 Use q_slerp() instead for smoother rotations.
 """
-lerp(a::Quaternion, b::Quaternion, t) = vnorm(Quaternion(lerp(a.data, b.data, t)))
+@inline lerp(a::Quaternion, b::Quaternion, t) = vnorm(Quaternion(lerp(a.data, b.data, t)))
 # No export needed for lerp(), because it's an overload of an existing function.
 
 
@@ -313,7 +315,7 @@ end
 export q_mat3x3
 
 "Converts a quaternion to a 4x4 transformation matrix"
-q_mat4x4(q::Quaternion{F}) where {F} = to_mat4x4(q_mat3x3(q))
+@inline q_mat4x4(q::Quaternion) = to_mat4x4(q_mat3x3(q))
 export q_mat4x4
 
 

@@ -28,7 +28,7 @@ function TargetBuffer(size::Vec2{<:Integer}, format::TexFormat)
     handle = Ptr_TargetBuffer(get_from_ogl(gl_type(Ptr_TargetBuffer), glCreateRenderbuffers, 1))
     glNamedRenderbufferStorage(handle, gl_format, size...)
 
-    return TargetBuffer(handle, v2i(size), format)
+    return TargetBuffer(handle, size, format)
 end
 
 function Base.close(b::TargetBuffer)

@@ -12,7 +12,7 @@
 @bp_test_no_allocations(
     intersect(Box_minmax(v2f(5.6, -20.103),
                          v2f(10.6, -35.21)),
-              Ray(v2f(4.6, -27), vnorm(v2f(-1, 1)))),
+              Ray(v2f(4.6, -27.0), vnorm(v2f(-1, 1)))),
     ()
 )
 

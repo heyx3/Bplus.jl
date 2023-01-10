@@ -40,15 +40,6 @@ export @unionspec
 end
 export union_types
 
-"Gets a tuple of the types in a Union."
-@inline union_types(T) = (T, )
-@inline function union_types(u::Union)
-    # Supposedly, 'u.a' is the first type and 'u.b' is a Union of the other types.
-    # However, sometimes a is the Union, and b is the type.
-    # So I pass both sides through 'union_types()' to be sure.
-    (union_types(u.a)..., union_types(u.b)...)
-end
-
 
 "
 When deserializing a union of types, this determines the order that the types are tried in.

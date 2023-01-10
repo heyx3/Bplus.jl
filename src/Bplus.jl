@@ -18,6 +18,7 @@ end
 
 @submodule GL
 
+@submodule Fields
 @submodule Input
 @submodule Helpers
 @submodule SceneTree

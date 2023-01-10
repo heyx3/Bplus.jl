@@ -39,7 +39,7 @@ export @optional, @optionalkw
 
 "
 An immutable alternative to Vector, using tuples.
-The size is a type parameter, but you are meant to omit it so that it's 'resizable'.
+The size is a type parameter, but you can omit it so that it's 'resizable'.
 "
 const ConstVector{T, N} = NTuple{N, T}
 export ConstVector

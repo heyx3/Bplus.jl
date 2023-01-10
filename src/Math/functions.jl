@@ -77,3 +77,7 @@ function solve_quadratic( a::F, b::F, c::F
     )
 end
 export solve_quadratic
+
+"Multiplies a value by itself."
+@inline square(x) = (x*x)
+export square

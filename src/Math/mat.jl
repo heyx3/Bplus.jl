@@ -5,7 +5,7 @@ using Setfield, StaticArrays
 
 # However, the way GLSL names matrices is with their column count THEN row count,
 #    while SMatrix uses row count THEN column count.
-# Hopefully this doesn't result in much confusion.
+# We will follow the GLSL convention; hopefully this doesn't result in much confusion.
 
 # Unfortunately, due to the nature of Julia and SMatrix, all matrices need an extra type parameter,
 #    for the total length of the matrix.
@@ -68,27 +68,34 @@ export Mat, @Mat, MatF, MatD, Mat3, Mat4,
 #
 
 
+# Keep in mind that the matrix elements are grouped by column,
+#    which looks confusing because they're written out in rows.
+# E.x. the matrix Mat{2, 3, Float32}(1, 2, 3,
+#                                    4, 5, 6)
+#    has a column of "1, 2, 3" and a column of "4, 5, 6".
+
+
 @inline Base.:*(m::Mat, v::Vec) = Vec((m * SVector(v...))...)
 
 "Applies a transform matrix to the given coordinate."
 function m_apply_point(m::Mat{4, 4, F}, v::Vec{3, F})::Vec{3, F} where {F}
-    v4::Vec{4, F} = Vec(v, one(F))
+    v4::Vec{4, F} = vappend(v, one(F))
     v4 = m * v4
     return v4.xyz / v4.w
 end
 function a_apply_point(m::Mat{3, 3, F}, v::Vec{2, F})::Vec{2, F} where {F}
-    v3::Vec{3, F} = Vec(v, one(F))
+    v3::Vec{3, F} = vappend(v, one(F))
     v3 = m * v3
     return v3.xy / v3.z
 end
 "Applies a transform matrix to the given vector (i.e. ignoring translation)."
 function m_apply_vector(m::Mat{4, 4, F}, v::Vec{3, F}) where {F}
-    v4::Vec{4, F} = Vec(v, zero(F))
+    v4::Vec{4, F} = vappend(v, zero(F))
     v4 = m * v4
     return v4.xyz / v4.w
 end
 function m_apply_vector(m::Mat{3, 3, F}, v::Vec{2, F}) where {F}
-    v3::Vec{3, F} = Vec(v, zero(F))
+    v3::Vec{3, F} = vappend(v, zero(F))
     v3 = m * v3
     return v3.xy / v3.z
 end

@@ -12,11 +12,14 @@ A Context service which defines a bunch of common, simple, useful resources:
                 than `screen_triangle`, for technical reasons.
  * `blit` : A simple shader to render a 2D texture (e.x. copy a Target to the screen).
             Refer to `resource_blit()`.
+ * `empty_mesh` : A mesh with no vertex data, for dispatching entirely procedural geometry.
+                  Has the 'points' PrimitiveType.
 "
 mutable struct CResources
     screen_triangle::Mesh
     quad::Mesh
     blit::Program
+    empty_mesh::Mesh
     references::Set{Resource}
 end
 export CResources
@@ -68,12 +71,17 @@ void main() {
 }
 """
 
+    empty_mesh = GL.Mesh(GL.PrimitiveTypes.point,
+                         GL.VertexDataSource[ ],
+                         GL.VertexAttribute[ ])
+
     return CResources(
-        screen_tri, quad, blit,
+        screen_tri, quad, blit, empty_mesh,
         Set(Resource[
             screen_tri_poses, screen_tri,
             quad_poses, quad,
-            blit
+            blit,
+            empty_mesh
         ])
     )
 end

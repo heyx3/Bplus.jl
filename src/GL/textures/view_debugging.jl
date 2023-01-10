@@ -4,7 +4,7 @@
 # View handles are just a plain uint64, so you can sneak them into a shader
 #    in all sorts of ways.
 # In particular, reading the handle from mesh data
-#    isn't something this service can capture.
+#    isn't something this service can notice.
 
 const SERVICE_NAME_VIEW_DEBUGGING = :debug_view_checker
 

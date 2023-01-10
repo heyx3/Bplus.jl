@@ -8,11 +8,6 @@
     PosZ = GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
     NegZ = GL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
 )
-Base.instances(::Type{E_CubeFaces}) = (
-    CubeFaces.PosX, CubeFaces.NegX,
-    CubeFaces.PosY, CubeFaces.NegY,
-    CubeFaces.PosZ, CubeFaces.NegZ
-)
 export CubeFaces, E_CubeFaces
 
 

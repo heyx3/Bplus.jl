@@ -21,6 +21,7 @@ macro ogl_handle(name::Symbol, gl_type_name,
     type_name = esc(Symbol(:Ptr_, name))
     null_val = esc(null_val)
     gl_type_name = esc(gl_type_name)
+    hash_extra = hash(name)
     return quote
         Base.@__doc__(
             primitive type $type_name (8*sizeof($gl_type)) end
@@ -36,6 +37,8 @@ macro ogl_handle(name::Symbol, gl_type_name,
         Base.convert(::Type{$gl_type_name}, i::$type_name) = reinterpret($gl_type, i)
         Base.unsafe_convert(::Type{Ptr{$gl_type}}, r::Base.RefValue{$type_name}) =
             Base.unsafe_convert(Ptr{$gl_type}, Base.unsafe_convert(Ptr{Nothing}, r))
+        Base.hash(h::$type_name, u::UInt) = hash(tuple(gl_type(u), $hash_extra), u)
+        Base.:(==)(a::$type_name, b::$type_name) = (gl_type(a) == gl_type(b))
     end
 end
 
@@ -56,8 +59,11 @@ end
 @ogl_handle Mesh GLuint
 
 
-# Some pointer types benefit from supporting pointer arithmetic.
-for TP in (Ptr_Uniform, )
+# Some handle types benefit from supporting pointer arithmetic.
+const POINTER_ARITHMETIC_HANDLES = tuple(
+    Ptr_Uniform
+)
+for TP in POINTER_ARITHMETIC_HANDLES
     for op in (:+, :-, :*, :÷)
         @eval begin
             Base.$op(p::$TP, i::Integer) = $TP(

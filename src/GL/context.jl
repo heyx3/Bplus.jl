@@ -5,9 +5,9 @@ struct RenderState
 
     cull_mode::E_FaceCullModes
     #TODO: Use Box2i for viewport and scissor
-    viewport::@NamedTuple{min::v2i, max::v2i}
-    scissor::Optional{@NamedTuple{min::v2i, max::v2i}}
-    # TODO: Changing viewport Y axis and depth (how can GLM support this depth mode?): https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glClipControl.xhtml
+    viewport::@NamedTuple{min::v2i, max::v2i} # 1-based; Max is inclusive
+    scissor::Optional{@NamedTuple{min::v2i, max::v2i}} # 1-based; Max is inclusive
+    # TODO: Changing viewport Y axis and depth (how can my matrix math support this depth mode?): https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glClipControl.xhtml
 
     blend_mode::@NamedTuple{rgb::BlendStateRGB, alpha::BlendStateAlpha}
 
@@ -96,16 +96,14 @@ end
 #         Context          #
 ############################
 
-println("#TODO: Ensure the Context is created on a 'sticky' thread")
-
 "
 The OpenGL context, which owns all state and data, including the GLFW window it belongs to.
 This type is a per-thread singleton, because OpenGL only allows one active context per thread.
 Like the other GL resource objects, you can't set the fields of this struct;
    use the provided functions to change its state.
 
-You should close the context with `Base.close(context)`, but even easier
-    is to use a `bp_gl_context()` block to control its lifetime.
+It's highly recommended to wrap a context with `bp_gl_context()`, as otherwise
+    Julia may juggle the Task running that context across threads, which breaks OpenGL.
 "
 mutable struct Context
     window::GLFW.Window
@@ -133,6 +131,9 @@ mutable struct Context
                       glfw_cursor::@ano_enum(Normal, Hidden, Centered) = Val(:Normal)
                     )::Context
         # Create the window and OpenGL context.
+        if debug_mode
+            GLFW.WindowHint(GLFW.OPENGL_DEBUG_CONTEXT, true)
+        end
         for (hint_name, hint_val) in glfw_hints
             GLFW.WindowHint(hint_name, hint_val)
         end
@@ -175,6 +176,7 @@ mutable struct Context
 
         if debug_mode
             glEnable(GL_DEBUG_OUTPUT)
+            #TODO: Try the callback again now that I've added the GLFW "debug context" hint.
             # Below is the call for the original callback-based logging, in case we ever fix that:
             # glDebugMessageCallback(ON_OGL_MSG_ptr, C_NULL)
         end
@@ -216,25 +218,51 @@ function Base.close(c::Context)
     for service::Service in values(c.services)
         service.on_destroyed(service.data)
     end
+    empty!(c.services)
 
     GLFW.DestroyWindow(c.window)
+    setfield!(c, :window, GLFW.Window(C_NULL))
 
-    if CONTEXTS_PER_THREAD[Threads.threadid()] === c
+    if CONTEXTS_PER_THREAD[Threads.threadid()] === c #TODO: I think this should be asserted at the beginning of close() instead.
         CONTEXTS_PER_THREAD[Threads.threadid()] = nothing
     end
 end
 
-"Runs the given code on a new OpenGL context, ensuring the context will get cleaned up"
+"
+Runs the given code on a new OpenGL context, ensuring the context will get cleaned up.
+This call blocks as if the context runs on this thread/task,
+    but for Julia reasons it actually runs on a separate task.
+
+This is because tasks can get shifted to different threads
+    unless you explicitly mark it with `task.sticky = true`.
+"
 @inline function bp_gl_context(to_do::Function, args...; kw_args...)
-    c::Optional{Context} = nothing
+    task = Task() do
+        c::Optional{Context} = nothing
+        try
+            c = Context(args...; kw_args...)
+            return to_do(c)
+        finally
+            if exists(c)
+                # Make sure the mouse doesn't get stuck after a crash.
+                GLFW.SetInputMode(c.window, GLFW.CURSOR, GLFW.CURSOR_NORMAL)
+                close(c)
+            end
+        end
+    end
+
+    task.sticky = true
+    schedule(task)
+    # If the task throws, unwrap the TaskFailedException for convenience and rethrow.
     try
-        c = Context(args...; kw_args...)
-        to_do(c)
-    finally
-        if exists(c)
-            # Make sure the mouse doesn't get stuck after a crash.
-            GLFW.SetInputMode(c.window, GLFW.CURSOR, GLFW.CURSOR_NORMAL)
-            close(c)
+        return fetch(task)
+    catch e
+        if e isa TaskFailedException
+            # Unwrap the exception.
+            stack = current_exceptions(task)
+            throw(stack[end].exception) #TODO: Figure this out.
+        else
+            rethrow()
         end
     end
 end
@@ -268,7 +296,7 @@ function refresh(context::Context)
     # You can always soft-disable depth tests by setting them to "Pass".
     glEnable(GL_DEPTH_TEST)
     # Point meshes must always specify their pixel size in their shaders;
-    #    we don't bother with the global setting.n
+    #    we don't bother with the global setting.
     # See https://www.khronos.org/opengl/wiki/Primitive#Point_primitives
     glEnable(GL_PROGRAM_POINT_SIZE)
     # Don't force a "fixed index" for primitive restart;
@@ -277,6 +305,7 @@ function refresh(context::Context)
     # Force pixel upload/download to always use tightly-packed bytes, for simplicity.
     glPixelStorei(GL_PACK_ALIGNMENT, 1)
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0)
     # Keep point sprite coordinates at their default origin: upper-left.
     glPointParameteri(GL_POINT_SPRITE_COORD_ORIGIN, GL_UPPER_LEFT)
     # Originally we enabled GL_TEXTURE_CUBE_MAP_SEAMLESS,
@@ -288,12 +317,12 @@ function refresh(context::Context)
 
     # Read the render state.
     # Viewport:
-    viewport = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_VIEWPORT))
-    viewport = (min=v2i(viewport.xy), max=v2i(viewport.zw))
+    viewport = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_VIEWPORT)...)
+    viewport = (min=convert(v2i, viewport.xy + 1), max=convert(v2i, viewport.xy + 1 + viewport.zw - 1))
     # Scissor:
     if glIsEnabled(GL_SCISSOR_TEST)
-        scissor = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_SCISSOR_BOX))
-        scissor = (min=v2i(scissor.xy), max=v2i(scissor.zw))
+        scissor = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_SCISSOR_BOX)...)
+        scissor = (min=convert(v2i, scissor.xy + 1), max=convert(v2i, scissor.xy + 1 + scissor.zw - 1))
     else
         scissor = nothing
     end
@@ -621,7 +650,7 @@ function set_blending(context::Context, blend_rgb::BlendStateRGB, blend_a::Blend
         glBlendColor(blend_rgb.constant..., blend_a.constant)
         set_render_state_field!(context, :blend_mode, (
             rgb = context.state.blend_mode.rgb,
-            alpha = blend_alpha
+            alpha = blend_a
         ))
     end
 end
@@ -773,7 +802,7 @@ function set_viewport(context::Context, min::v2i, max_inclusive::v2i)
     new_view = (min=min, max=max_inclusive)
     if context.state.viewport != new_view
         size = max_inclusive - min + 1
-        glViewport(min.x - 1, min.y - 1, size.x, size.y)
+        glViewport((min - 1)..., size...)
         set_render_state_field!(context, :viewport, new_view)
     end
 end
@@ -781,7 +810,8 @@ set_render_state(::Val{:viewport}, val::NamedTuple, c::Context) = set_viewport(c
 export set_viewport
 
 "
-Changes the area of the screen where rendering can happen.
+Changes the area of the screen where rendering can happen,
+    in terms of pixels (using 1-based indices).
 Any rendering outside this view is discarded.
 Pass 'nothing' to disable the scissor.
 The 'max' corner is inclusive.
@@ -796,8 +826,7 @@ function set_scissor(context::Context, min_max::Optional{Tuple{v2i, v2i}})
                 glEnable(GL_SCISSOR_TEST)
             end
             size = new_scissor.max - new_scissor.min + 1
-            glScissor(new_scissor.min.x, new_scissor.min.y,
-                      size.x, size.y)
+            glScissor((new_scissor.min - 1)..., size...)
         else
             glDisable(GL_SCISSOR_TEST)
         end

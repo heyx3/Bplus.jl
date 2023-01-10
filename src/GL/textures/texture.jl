@@ -65,6 +65,7 @@ function Texture( format::TexFormat,
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
                 )
+    width = (width isa Integer) ? width : width.x
     return generate_texture(
         TexTypes.oneD, format, v3u(width, 1, 1),
         convert(Sampler{3}, sampler),
@@ -103,7 +104,7 @@ function Texture( format::TexFormat,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
                 )
     return generate_texture(
-        TexTypes.twoD, format, v3u(size, 1),
+        TexTypes.twoD, format, v3u(size..., 1),
         convert(Sampler{3}, sampler),
         n_mips,
         depth_stencil_sampling,
@@ -122,7 +123,7 @@ function Texture( format::TexFormat,
                 )
     return generate_texture(
         TexTypes.twoD, format,
-        v3u(Vec(size(initial_data)), 1),
+        v3u(size(initial_data)..., 1),
         convert(Sampler{3}, sampler),
         n_mips,
         depth_stencil_sampling,
@@ -317,8 +318,8 @@ function texture_data( tex::Texture,
 
     range::Box{v3u} = get_subset_range(full_subset, full_size)
     if (tex.type == TexTypes.cube_map)
-        range = Box{v3u}(v3u(range.min.xy, cube_face_range[1]),
-                         v3u(range.size.xy, cube_face_range[2] - cube_face_range[1] + 1))
+        range = Box{v3u}(v3u(range.min.xy..., cube_face_range[1]),
+                         v3u(range.size.xy..., cube_face_range[2] - cube_face_range[1] + 1))
     end
 
     # Perform the requested operation.
@@ -389,6 +390,10 @@ function get_view(t::Texture, view::SimpleViewParams)::View
     return get!(() -> View(t, view),
                 t.known_views, view)
 end
+
+# Overload some view functions to work with a texture's default view.
+view_activate(tex::Texture) = view_activate(get_view(tex))
+view_deactivate(tex::Texture) = view_deactivate(get_view(tex))
 
 
 "Changes how a texture's pixels are mixed when it's sampled on the GPU"

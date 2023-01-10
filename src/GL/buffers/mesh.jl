@@ -218,9 +218,6 @@ function Mesh( type::E_PrimitiveTypes,
     return m
 end
 
-#TODO: A singleton in the Context for an 'empty' mesh
-
-
 function Base.close(m::Mesh)
     @bp_check(m.handle != Ptr_Mesh(), "Already closed this Mesh")
     glDeleteVertexArrays(1, Ref{GLuint}(m.handle))

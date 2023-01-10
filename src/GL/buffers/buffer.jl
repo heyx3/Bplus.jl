@@ -1,5 +1,3 @@
-println("#TODO: Take any `Contiguous{T}`, and also take a raw pointer")
-
 """
 A contiguous block of memory on the GPU,
    for storing any kind of data.
@@ -23,24 +21,26 @@ mutable struct Buffer <: Resource
         b = new(Ptr_Buffer(), 0, false)
         set_up_buffer(
             byte_size, can_change_data,
-            Ref(C_NULL),
+            nothing,
             recommend_storage_on_cpu,
             b
         )
         return b
     end
     function Buffer( can_change_data::Bool,
-                     initial_elements::Vector{T},
-                     recommend_storage_on_cpu::Bool = false
+                     initial_elements::Contiguous{T},
+                     ::Type{T} = eltype(initial_elements)
+                     ;
+                     recommend_storage_on_cpu::Bool = false,
+                     contiguous_element_range::Interval{<:Integer} = Box_minsize(1, contiguous_length(initial_elements, T))
                    )::Buffer where {I<:Integer, T}
+        @bp_check(isbitstype(T), "Can't make a GPU buffer of ", T)
         b = new(Ptr_Buffer(), 0, false)
-        @bp_check(length(initial_elements) == length(initial_elements),
-                  "Buffer is $byte_size, but initial data array ",
-                    "is $(length(initial_byte_data))")
         set_up_buffer(
-            length(initial_elements) * sizeof(T),
+            contiguous_element_range.size * sizeof(T),
             can_change_data,
-            Ref(initial_elements, 1),
+            contiguous_ref(initial_elements, T,
+                           contiguous_element_range.min),
             recommend_storage_on_cpu,
             b
         )
@@ -48,8 +48,10 @@ mutable struct Buffer <: Resource
     end
 end
 
+#TODO: Support taking a raw pointer for the buffer data
+
 @inline function set_up_buffer( byte_size::I, can_change_data::Bool,
-                                initial_byte_data::Ref,
+                                initial_byte_data::Optional{Ref},
                                 recommend_storage_on_cpu::Bool,
                                 output::Buffer
                               ) where {I<:Integer}
@@ -68,7 +70,11 @@ end
     setfield!(output, :byte_size, UInt64(byte_size))
     setfield!(output, :is_mutable, can_change_data)
 
-    glNamedBufferStorage(handle, byte_size, initial_byte_data, flags)
+    glNamedBufferStorage(handle, byte_size,
+                         exists(initial_byte_data) ?
+                             initial_byte_data :
+                             C_NULL,
+                         flags)
 end
 
 Base.show(io::IO, b::Buffer) = print(io,
@@ -94,8 +100,7 @@ export Buffer
 
 "
 Uploads the given data into the buffer.
-Note that counts are per-element, not per-byte
-   (unless the elements you're uploading are 1 byte each).
+Note that counts are per-element, not per-byte.
 "
 function set_buffer_data( b::Buffer,
                           new_elements::Vector{T}
@@ -104,7 +109,7 @@ function set_buffer_data( b::Buffer,
                           src_element_range::IntervalU = IntervalU(1, length(new_elements)),
                           # Shifts the first element of the buffer's array to write to
                           dest_element_offset::UInt = zero(UInt),
-                          # A byte offset, to be combinend wth 'dest_element_start'
+                          # A byte offset, to be combined wth 'dest_element_start'
                           dest_byte_offset::UInt = zero(UInt)
                         ) where {T}
     @bp_check(b.is_mutable, "Buffer is immutable")

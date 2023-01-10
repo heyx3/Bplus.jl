@@ -4,7 +4,7 @@
 #    which looks confusing because they're written out in rows.
 # E.x. the matrix Mat{2, 3, Float32}(1, 2, 3,
 #                                    4, 5, 6)
-#    has a column of "1, 2, 3" and a column of "4, 5, 6".
+#    has a first column of "1, 2, 3" and a second column of "4, 5, 6".
 
 # Also keep in mind that matrices are generally expected to be premultiplied --
 #    "mat * vec" rather than "vec * mat".
@@ -27,6 +27,7 @@
 
 "Generates a scale matrix"
 @inline m_scale(amount::Vec{N, F}) where {N, F} = let output = zero(MMatrix{N, N, F})
+    #TODO: Might be better to *not* inline it, given the 'let' statement.
     for i in 1:N
         output[i, i] = amount[i]
     end
@@ -113,8 +114,12 @@ println("#TODO: m_decompose(), which gets the position/rotation/scale for a matr
                              up::Vec3{F}
                            )::Mat{4, 4, F} where {F}
     # Reference: https://www.geertarien.com/blog/2017/07/30/breakdown-of-the-lookAt-function-in-OpenGL/
-    
+
     forward::Vec3{F} = vnorm(target_pos - cam_pos)
+    if (forward == up) || (forward == -up)
+        up = Vec{3, F}(up.y, up.z, up.x)
+    end
+
     right::Vec3{F} = vnorm(vcross(forward, up))
     up = vcross(right, forward)
 
@@ -128,9 +133,7 @@ println("#TODO: m_decompose(), which gets the position/rotation/scale for a matr
     ))
 end
 
-"
-Generates the standard OpenGL perspective matrix, for pre-multiply not post-multiply.
-"
+"Generates the standard OpenGL perspective matrix"
 @inline function m4_projection( near_clip::F, far_clip::F,
                                 aspect_width_over_height::F,
                                 field_of_view_degrees::F
@@ -144,6 +147,30 @@ Generates the standard OpenGL perspective matrix, for pre-multiply not post-mult
         0, 0, convert(F, -2) * far_clip * near_clip * scale_along_clip_planes, 0
     )
 end
+
+"Generates an orthographic projection matrix"
+@inline function m4_ortho(min::Vec3{F}, max::Vec3{F})::@Mat(4, 4, F) where {F}
+    # A good reference for the derivation of this:
+    #    https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/orthographic-projection-matrix
+
+    ZERO = zero(F)
+    ONE = one(F)
+    TWO = convert(F, 2)
+
+    range = max - min
+    sum = min + max
+    denom = ONE / range
+    offset = (-sum * denom)
+    @set! offset.z = -offset.z
+
+    return Mat{4, 4, F}(
+        TWO * denom.x,   ZERO,            ZERO,            ZERO,
+        ZERO,            TWO * denom.y,   ZERO,            ZERO,
+        ZERO,            ZERO,            -TWO * denom.z,   ZERO,
+        offset...,                                         ONE
+    )
+end
+
 #TODO: Infinite projection matrix (no far-clip)
 #TODO: Projection matrix for 0-1 Z (a.k.a. DirectX)
 
@@ -153,7 +180,8 @@ export m3_translate, m4_translate, m_scale,
        m4_rotateX, m4_rotateY, m4_rotateZ,
        m4_rotate,
        m4_world,
-       m3_reorient, m4_look_at, m4_reorient, m4_projection
+       m3_reorient, m4_look_at, m4_reorient, m4_projection,
+       m4_ortho
 
 
 #TODO: @generated function that creates a rotation matrix with 3 angles, using type parameters to define the order and relativity.
