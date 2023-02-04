@@ -85,7 +85,76 @@ for pos in (zero(v2f), one(v2f), v2f(2, -4), v2f(-40, 2000))
                             rounded_value(map(x -> -sin(x), pos) * v2f(2, 3)))
 end
 
-#TODO: Test ConversionField
+# Test ConversionField.
+const field12 = ConversionField(PosField{2, Float32}(), Float64)
+for pos in (zero(v2f), one(v2f), v2f(2, -4), v2f(-40, 2000))
+    pos64 = convert(Vec2{Float64}, pos)
+    @bp_test_no_allocations(get_field(field12, pos64), pos64)
+end
+
+# Test AppendField.
+const field13 = AppendField(PosField{2, Float32}(), ConstantField{2}(Vec(@f32 2)))
+for pos in (zero(v2f), one(v2f), v2f(2, -4), v2f(-40, 2000))
+    @bp_test_no_allocations(get_field(field13, pos), vappend(pos, @f32 2))
+end
+
+# Test math ops.
+const field14 = AddField(
+    SubtractField(
+        ConstantField{2}(Vec(@f32 3)),
+        PosField{2, Float32}()
+    ),
+    DivideField(
+        MultiplyField(
+            PowField(
+                PosField{2, Float32}(),
+                ConstantField{2}(Vec(@f32 3))
+            ),
+            SqrtField(AbsField(PosField{2, Float32}()))
+        ),
+        ConstantField{2}(Vec(@f32 4.5))
+    ),
+    MinField(
+        TanField(PosField{2, Float32}()),
+        CosField(PosField{2, Float32}())
+    ),
+    MaxField(
+        SinField(PosField{2, Float32}()),
+        ModField(PosField{2, Float32}(),
+                 ClampField(MultiplyField(PosField{2, Float32}(),
+                                          PosField{2, Float32}()),
+                            ConstantField{2}(Vec(@f32 4.5)),
+                            ConstantField{2}(Vec(@f32 8.5))))
+    )
+    #TODO: Step, Lerp, Smoothstep, Smootherstep
+)
+field14_expected(pos) = +(
+    (@f32(3) - pos),
+    ((map(x -> sqrt(abs(x)), pos) *
+      map(x -> x^@f32(3), pos)) /
+      @f32(4.5)),
+    min(map(tan, pos),
+        map(cos, pos)),
+    max(map(sin, pos),
+        map(x -> x % clamp(x*x, @f32(4.5), @f32(8.5)),
+            pos))
+)
+# Generate many random test cases, plus a few important ones
+const FIELD14_TEST_POSES = vcat(
+    [ zero(v2f), one(v2f) ],
+    map(1:100) do i
+        prng = PRNG(i, 2497843)
+        lerp(@f32(-20),
+             @f32(20),
+             v2f(rand(prng, Float32),
+                 rand(prng, Float32)))
+    end
+)
+for pos in FIELD14_TEST_POSES
+    @bp_test_no_allocations(get_field(field14, pos),
+                            field14_expected(pos),
+                            join(map(x -> sprint(io -> show(io, Binary(x))), pos), ','))
+end
 
 # Test TextureField.
 const TEXTURE_FIELD_TESTS = Tuple{TextureField, Vector{<:Tuple{<:Union{Vec, Real}, Union{Vec, Real}}}}[
@@ -213,10 +282,7 @@ for (field, tests) in TEXTURE_FIELD_TESTS
     end
 end
 
-
-#TODO: Test AppendField
 #TODO: Come up with a meaningful test for "noise" fields
-#TODO: Many 1D tests for more varieties of math
 #TODO: Test automatic promotion of 1D inputs to higher-D inputs
 #TODO: Test that Lerp(), Smoothstep(), and Smootherstep() avoid heap allocations when running get_field() and get_field_gradient()
 

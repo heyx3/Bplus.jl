@@ -220,7 +220,7 @@ export ConstPRNG, PrngStrength, E_PrngStrength
 
 "
 A fast, strong PRNG, taken from http://burtleburtle.net/bob/rand/smallprng.html.
-Works natively in 32-bit math, other bit sizes require extra work.
+Normally outputs 32-bit numbers; other sizes require extra ops.
 "
 mutable struct PRNG <: Random.AbstractRNG
     rng::ConstPRNG

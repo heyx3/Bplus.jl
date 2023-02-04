@@ -376,6 +376,7 @@ Base.:(/)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i/j for (i,j) in 
 Base.:(÷)(a::Vec{N, I1}, b::Vec{N, I2}) where {N, I1, I2} = Vec((i÷j for (i,j) in zip(a, b))...)
 Base.:(^)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i^j for (i,j) in zip(a, b))...)
 Base.:(%)(a::Vec{N, I1}, b::Vec{N, I2}) where {N, I1, I2} = Vec((i%j for (i,j) in zip(a, b))...)
+Base.mod(a::Vec{N, I1}, b::Vec{N, I2}) where {N, I1, I2} = Vec((mod(i, j) for (i,j) in zip(a, b))...)
 
 Base.:(+)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f+b), a)
 Base.:(-)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f-b), a)
@@ -384,6 +385,7 @@ Base.:(/)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f/b), a)
 Base.:(÷)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f÷b), a)
 Base.:(^)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f^b), a)
 Base.:(%)(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f->(f%b), a)
+Base.mod(a::Vec{N, T}, b::T2) where {N, T, T2<:Number} = map(f -> mod(f, b), a)
 
 @inline Base.:(+)(a::Number, b::Vec) = b+a
 @inline Base.:(-)(a::Number, b::Vec) = (-b)+a

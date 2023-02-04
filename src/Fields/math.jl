@@ -384,14 +384,14 @@ end
 #TODO: The other trig functions. Derivative reference: https://tutorial.math.lamar.edu/Classes/CalcI/DiffTrigFcns.aspx
 
 # Numeric stuff
-"Floating-point modulo. The behavior with negative numbers matches Julia's modulo."
+"
+Floating-point modulo: `mod(a, b) == a % b`.
+The behavior with negative numbers matches Julia's `%` operator.
+"
 @make_math_field Mod "mod" begin
     INPUT_COUNT = 2
-    value = Vec((
-        mod(a, b)
-          for (a, b) in zip(input_values[1], input_values[2])
-    )...)
-    # Gradient seems a bit tricky to work out, and not particularly important.
+    value = input_values[1] % input_values[2]
+    # Gradient is very tricky to work out due to the denominator continuously changing.
 end
 "Rounds values down to the nearest integer."
 @make_math_field Floor "floor" begin
@@ -429,21 +429,67 @@ end
     INPUT_COUNT = { 1, 3 }
     value = if length(field.inputs) == 1
                 clamp(input_values[1],
-                      ConstantField(field.inputs[1], 0),
-                      ConstantField(field.inputs[1], 1))
+                      zero(typeof(input_values[1])),
+                      one(typeof(input_values[1])))
             elseif length(field.inputs) == 3
-                clamp(inputs_values...)
+                clamp(input_values...)
             else
                 error("Unhandled case: ", length(field.inputs))
             end
     # Gradient is unchanged within the clamp range, and 0 outside it.
     GRADIENT_CALC_ALL_INPUT_VALUES = true
     GRADIENT_CALC_ALL_INPUT_GRADIENTS = false
-    gradient = let is_in_range::VecB = (input_values[1] >= input_values[2]) &
+    gradient = let is_in_range::VecB = (input_values[1] >= input_values[2]) &&
                                        (input_values[1] <= input_values[3])
         vselect(zero(GradientType(field)),
                 get_field_gradient(field.inputs[1], pos),
                 is_in_range)
+    end
+end
+"`min(a, b)`"
+@make_math_field Min "min" begin
+    INPUT_COUNT = 2:∞
+    value = min(input_values...)
+    # Choose the gradient of the current minimum field.
+    # The gradient at the points where it switches is undefined,
+    #    so just ignore that case.
+    GRADIENT_CALC_ALL_INPUT_VALUES = true
+    GRADIENT_CALC_ALL_INPUT_GRADIENTS = true
+    gradient = begin
+        field_idcs_per_out_axis::NTuple{NOut, Int} = ntuple(Val(NOut)) do i_out
+            input_value_channels = map(v -> v[i_out], input_values)
+            return findmin(input_value_channels)[2]
+        end
+        gradients_per_in_axis::NTuple{NIn, NTuple{NOut, F}} = ntuple(Val(NIn)) do i_in
+            return ntuple(Val(NOut)) do i_out
+                field_idx = field_idcs_per_out_axis[i_out]
+                input_gradients[field_idx][i_in]
+            end
+        end
+        return GradientType(field)((Vec{NOut, F}(v...) for v in gradients_per_in_axis)...)
+    end
+end
+"`max(a, b)`"
+@make_math_field Max "max" begin
+    INPUT_COUNT = 2:∞
+    value = max(input_values...)
+    # Choose the gradient of the current maximum field.
+    # The gradient at the points where it switches is undefined,
+    #    so just ignore that case.
+    GRADIENT_CALC_ALL_INPUT_VALUES = true
+    GRADIENT_CALC_ALL_INPUT_GRADIENTS = true
+    gradient = begin
+        field_idcs_per_out_axis::NTuple{NOut, Int} = ntuple(Val(NOut)) do i_out
+            input_value_channels = map(v -> v[i_out], input_values)
+            return findmax(input_value_channels)[2]
+        end
+        gradients_per_in_axis::NTuple{NIn, NTuple{NOut, F}} = ntuple(Val(NIn)) do i_in
+            return ntuple(Val(NOut)) do i_out
+                field_idx = field_idcs_per_out_axis[i_out]
+                input_gradients[field_idx][i_in]
+            end
+        end
+        return GradientType(field)((Vec{NOut, F}(v...) for v in gradients_per_in_axis)...)
     end
 end
 

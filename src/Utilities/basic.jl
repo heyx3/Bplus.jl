@@ -1,3 +1,6 @@
+#TODO: Make a 'numbers.jl' and move number-related things there.
+
+
 const Optional{T} = Union{T, Nothing}
 @inline exists(x) = !isnothing(x)
 export Optional, exists

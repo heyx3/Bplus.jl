@@ -316,11 +316,16 @@ struct ConversionField{ NIn, NOut, FIn, FOut,
                       } <: AbstractField{NIn, NOut, FOut}
     input::TInput
 end
+export ConversionField
+
 ConversionField( input::AbstractField{NIn, NOut, FIn},
                  FOut::Type{<:Real}
                ) where {NIn, NOut, FIn} = ConversionField{NIn, NOut, FIn, FOut, typeof(input)}(input)
 
 prepare_field(c::ConversionField) = prepare_field(c.input)
+
+# Point of clarification: the position input is of type FOut, not FIn, because
+#    the ConversionField itself is FOut.
 get_field(c::ConversionField{NIn, NOut, FIn, FOut}, pos::Vec{NIn, FOut}, prep_data) where {NIn, NOut, FIn, FOut} =
     convert(Vec{NOut, FOut}, get_field(c.input, convert(Vec{NIn, FIn}, pos), prep_data))
 get_field_gradient(c::ConversionField{NIn, NOut, FIn, FOut}, pos::Vec{NIn, FOut}, prep_data) where {NIn, NOut, FIn, FOut} =
