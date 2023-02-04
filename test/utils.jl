@@ -122,6 +122,7 @@ contiguous_data_ref = contiguous_ref(contiguous_data, Int)
 @bp_check(tuple(@optional 4<0   3 4.0 true "hi" :world) == ())
 
 # Test union type wrangling:
+#TODO: Why was @assert used here? Switch to @bp_check
 @assert union_types(Float32) == (Float32, )
 @assert Set(union_types(Union{Int64, Float32})) ==
         Set([ Int64, Float32 ])
@@ -149,3 +150,43 @@ println("#TODO: Adding a type like `Dict{<:AbstractString, <:Integer} breaks thi
 @assert(su2_c == JSON3.read(JSON3.write(su2_c), SerializedUnion{Union{SU1, SU2}}))
 @assert(su2_c == JSON3.read(JSON3.write(su2_c), SerializedUnion{Union{SU2, SU1}}))
 @assert(su2_c == JSON3.read(JSON3.write(su2_c), @SerializedUnion(SU1, SU2)))
+
+# Test the Binary decorator.
+function test_binary_print(n, type, leading_zeros, expected)
+    n′ = reinterpret(type, n)
+    value = sprint(io -> show(io, Binary(n′, leading_zeros)))
+    @bp_check(value == expected,
+              "Expected binary print of ", type, "(", n′, "), ",
+              (leading_zeros ? "with leading zeros" : "without leading zeros"),
+              ", to be '", expected, "' but got ", value)
+end
+for type8 in union_types(Scalar8)
+    test_binary_print(0b11001100, type8, false, "0b11001100")
+    test_binary_print(0b00110011, type8, false,  "0b110011")
+    test_binary_print(0b00110011, type8, true, "0b00110011")
+    test_binary_print(0x0, type8, false, "0b0")
+    test_binary_print(0x0, type8, true, "0b00000000")
+end
+for type16 in union_types(Scalar16)
+    test_binary_print(0b100110011, type16, false,       "0b100110011")
+    test_binary_print(0b100110011, type16, true, "0b0000000100110011")
+    test_binary_print(0x0000, type16, false, "0b0")
+    test_binary_print(0x0000, type16, true, "0b0000000000000000")
+end
+for type32 in union_types(Scalar32)
+    test_binary_print(0b10101010101010101, type32, false,
+                      "0b10101010101010101")
+    test_binary_print(0b10101010101010101, type32, true,
+                      "0b00000000000000010101010101010101")
+    test_binary_print(0x00000000, type32, false, "0b0")
+    test_binary_print(0x00000000, type32, true, "0b00000000000000000000000000000000")
+end
+for type64 in union_types(Scalar64)
+    test_binary_print(0b111111111111111111110000000000111, type64, false,
+                      "0b111111111111111111110000000000111")
+    test_binary_print(0b111111111111111111110000000000111, type64, true,
+                      "0b0000000000000000000000000000000111111111111111111110000000000111")
+    test_binary_print(0x0000000000, type64, false, "0b0")
+    test_binary_print(0x0000000000, type64, true,
+                      "0b0000000000000000000000000000000000000000000000000000000000000000")
+end
