@@ -422,3 +422,6 @@ for (macro_expr, expected_type, expected_value) in FIELD_MACRO_TESTS
               "Expected the value ", expected_value, " from \"", macro_expr,
                 "\"\n  But got: ", actual_value)
 end
+
+
+#TODO: Test sample_field()

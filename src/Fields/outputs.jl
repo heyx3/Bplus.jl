@@ -15,11 +15,12 @@ function sample_field!( array::Array{Vec{NOut, F}, NIn},
     prep_data = prepare_field(field)
 
     # Calculate field positions.
-    texel = one(F) / vsize(grid)
+    HALF = one(F) / F(2)
+    texel = one(F) / vsize(array)
     @inline grid_pos_to_sample_pos(pos_component::Integer, axis::Int) = lerp(
         sample_space.min[axis],
         max_inclusive(sample_space)[axis],
-        pos_component * texel[axis]
+        (pos_component + HALF) * texel[axis]
     )
 
     # If threading is enabled, each Z slice will be run as its own Task.
@@ -46,7 +47,20 @@ function sample_field!( array::Array{Vec{NOut, F}, NIn},
 
     return nothing
 end
+"
+Creates and fills a grid using the given field.
+Optional arguments are the same as `sample_field!()`.
+"
+function sample_field( grid_size::Vec{NIn, <:Integer},
+                       field::AbstractField{NIn, NOut, F}
+                       ;
+                       kw...
+                     )::Array{Vec{NOut, F}, NIn} where {NIn, NOut, F}
+    output = Array{Vec{NOut, F}, NIn}(undef, grid_size.data)
+    sample_field!(output, field; kw...)
+    return output
+end
 
 #TODO: Function to fill a GL.Texture with a field shader
 
-export sample_field!
+export sample_field!, sample_field

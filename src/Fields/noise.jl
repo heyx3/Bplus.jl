@@ -27,9 +27,9 @@ prepare_field(p::PerlinField) = prepare_field(p.pos)
 
 function get_field( p::PerlinField{NIn, F},
                     pos::Vec{NIn, F},
-                    prep_data::Tuple
+                    prep_data
                   ) where {NIn, F}
-    noise_pos = get_field(p.pos, pos, prep_data[1])
+    noise_pos = get_field(p.pos, pos, prep_data)
     return Vec{1, F}(perlin(noise_pos, p.seeds))
 end
 #TODO: Analytical gradient
@@ -54,3 +54,7 @@ dsl_from_field(p::PerlinField) = :( perlin($(dsl_from_field(p.pos)), $(p.seeds..
 ################
 
 #TODO: Implement once we have Worley noise implemented from the Math module
+
+
+
+#TODO: Other noises from the Math module

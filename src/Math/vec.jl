@@ -428,7 +428,11 @@ Base.unsafe_convert(::Type{Ptr{NTuple{N, T}}}, r::Base.RefValue{Vec{N, T}}) wher
 
 #TODO: Make it sized multidimensionally, so ranges can be mapped into a matrix/3D array
 
-Base.:(:)(a::Vec, b::Vec) = VecRange(a, b, one(typeof(a)))
+@inline function Base.:(:)(a::Vec{N, T1}, b::Vec{N, T2}) where {N, T1, T2}
+    T = promote_type(T1, T2)
+    V = Vec{N, T}
+    return VecRange(convert(V, a), convert(V, b), one(V))
+end
 @inline function Base.:(:)(a::Vec, step::Vec, b::Vec)
     @bp_check(none(iszero, step), "Iterating with a step size of 0: ", step)
     VecRange(a, b, step)

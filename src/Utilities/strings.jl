@@ -20,9 +20,9 @@ type_str(::Type{Bool}) = "b"
 export type_str
 
 
-"
-A decorator for numbers that `show()`s their exact bit-pattern
-  in Julia's format: `0b001110...`.
+"""
+A decorator for numbers that outputs their bit pattern for both `print()` and `show()`.
+  E.x. "0b00111011".
 
 The number type `TNum` must support the following:
 
@@ -33,7 +33,7 @@ The number type `TNum` must support the following:
         `zero(TNum)` that makes a value with all bits set to `0`;
         `one(TNum)` that makes a value with all bits set to `0` *except* the lowest bit.
         * If your type doesn't do this, overload `is_bit_one(a::TNum, bit_idx::Int)::Bool`
-"
+"""
 struct Binary{TNum}
     value::TNum
     print_leading_zeroes::Bool
@@ -41,6 +41,7 @@ struct Binary{TNum}
         return new{TNum}(n, print_leading_zeroes)
     end
 end
+Base.print(io::IO, b::Binary{TNum}) where {TNum} = show(io, b)
 function Base.show(io::IO, b::Binary{TNum}) where {TNum}
     print(io, "0b")
 
