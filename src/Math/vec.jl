@@ -406,13 +406,15 @@ Base.:(<=)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i<=j for (i,j) i
 Base.:(<=)(a::Vec{N, T}, b::T2) where {N, T, T2} = map(x -> x<=b, a)
 Base.:(<=)(a::T2, b::Vec{N, T}) where {N, T, T2} = map(x -> a<=x, b)
 
-Base.:(&)(a::Vec{N}, b::Vec{N}) where {N} = Vec((i&j for (i,j) in zip(a, b))...)
-Base.:(&)(a::Vec{N}, b::Bool) where {N} = map(x -> x&b, a)
-@inline Base.:(&)(a::Bool, b::Vec) = b & a
-
-Base.:(|)(a::Vec{N}, b::Vec{N}) where {N} = Vec((i|j for (i,j) in zip(a, b))...)
-Base.:(|)(a::Vec{N}, b::Bool) where {N} = map(x -> x|b, a)
-@inline Base.:(|)(a::Bool, b::Vec) = b | a
+#TODO: Rewrite more of this file using @eval.
+for bitwise_expr in [ :&, :|, :⊻, :⊼, :!, :<<, :>> ]
+    @eval begin
+        Base.$bitwise_expr(a::Vec{N}, b::Vec{N}) where {N} =
+            Vec(($bitwise_expr(i, j) for (i, j) in zip(a, b))...)
+        Base.$bitwise_expr(a::Vec, b) = map(x -> $bitwise_expr(x, b), a)
+        Base.$bitwise_expr(a, b::Vec) = map(x -> $bitwise_expr(a, x), b)
+    end
+end
 
 # Help convert a Ref(Vec{T}) to a Ptr{T}, for C calls.
 #TODO: Remove, add an overload of `Ref(::Vec)` that returns a ContiguousRef

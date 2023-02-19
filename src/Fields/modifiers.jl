@@ -353,4 +353,5 @@ dsl_from_field(c::ConversionField) = :( $(dsl_from_field(c)) => $(field_componen
 
 
 
+#TODO: Embed lower-dimensional fields in higher-dimensional ones
 #TODO: Transformations

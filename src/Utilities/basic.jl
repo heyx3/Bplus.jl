@@ -49,6 +49,12 @@ export ConstVector
 #TODO: Change ConstVector to be an actual struct inheriting from AbstractArray
 
 
+"Gets the type parameter of a `Val`."
+@inline val_type(::Val{T}) where {T} = T
+@inline val_type(::Type{Val{T}}) where {T} = T
+export val_type
+
+
 """
 Game math is mostly done with 32-bit floats,
    especially when interacting with computer graphics.
