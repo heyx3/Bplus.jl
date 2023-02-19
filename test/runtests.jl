@@ -106,11 +106,9 @@ const ALL_REALS = TupleTools.vcat(ALL_INTEGERS, ALL_FLOATS, (Bool, ))
 
 # If a desired file is given, just run that one.
 if @isdefined(TEST_NAME)
-    println("Running single test: ", TEST_NAME, "...")
     include(TEST_NAME * ".jl")
 # Otherwise, execute all Julia files in this folder, (other than this one).
 else
-    println("Running all tests...")
     test_files = readdir(@__DIR__, join=true)
     filter!(test_files) do name
         return !endswith(name, "runtests.jl") &&
