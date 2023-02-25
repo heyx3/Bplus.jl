@@ -290,7 +290,7 @@ end
 const FIELD_DSL_POS = v2f(3, -5)
 #TODO: Add a FIELD_DSL_STATE, and test TextureField
 # Each test is a tuple of (DSL, expected_type, expected_value).
-const FIELD_DSL_TESTS = Tuple{Any, Type{<:AbstractField{2}}, VecT{Float32}}[
+const FIELD_DSL_TESTS = Tuple{Any, Type, VecT{Float32}}[
     (:( 4 ), ConstantField{2, 1, Float32}, Vec(@f32(4))),
     (:( { 2, 3, 4, 5, 6 }), AppendField{2, 5, Float32}, Vec{5, Float32}(2, 3, 4, 5, 6)),
     (:( 3 * 5 ), MultiplyField{2, 1, Float32}, Vec{1, Float32}(@f32(3) * @f32(5))),
@@ -378,7 +378,7 @@ const FIELD_MACRO_STATE = DslState(
 )
 # Each test is a tuple of (DSL, expected_type, expected_value).
 #TODO: Use the FIELD_MACRO_STATE in some tests
-const FIELD_MACRO_TESTS = Tuple{Expr, Type{<:AbstractField{2}}, VecT{Float32}}[
+const FIELD_MACRO_TESTS = Tuple{Expr, Type, VecT{Float32}}[
     (:( @field 2 Float32 4 ), ConstantField{2, 1, Float32}, Vec(@f32(4))),
     (:( @field 2 Float32 { 2, 3, 4, 5, 6 }), AppendField{2, 5, Float32}, Vec{5, Float32}(2, 3, 4, 5, 6)),
     (:( @field 2 Float32 3 * 5 ), MultiplyField{2, 1, Float32}, Vec{1, Float32}(@f32(3) * @f32(5))),
