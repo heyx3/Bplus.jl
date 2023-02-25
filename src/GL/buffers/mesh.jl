@@ -124,6 +124,12 @@ export get_index_type, get_index_ogl_enum
 #       Mesh      #
 ###################
 
+"A reference to an index buffer for a mesh."
+struct MeshIndexData
+    buffer::Buffer
+    type::Type{<:MeshIndexTypes}
+end
+
 "
 A collection of vertices (and optionally indices),
    representing geometry that the GPU can render.
@@ -140,13 +146,13 @@ mutable struct Mesh <: Resource
     vertex_data::ConstVector{VertexAttribute}
 
     # The source of the index data, if this mesh uses indices.
-    index_data::Optional{Tuple{Buffer, Type{<:MeshIndexTypes}}}
+    index_data::Optional{MeshIndexData}
 end
 
 function Mesh( type::E_PrimitiveTypes,
                vertex_sources::AbstractVector{VertexDataSource},
                vertex_fields::AbstractVector{VertexAttribute},
-               index_data::Optional{Tuple{Buffer, DataType}} = nothing
+               index_data::Optional{MeshIndexData} = nothing
              )
     @bp_check(exists(get_context()), "Trying to create a Mesh outside a GL Context")
     m::Mesh = Mesh(Ptr_Mesh(get_from_ogl(gl_type(Ptr_Mesh), glCreateVertexArrays, 1)),
@@ -156,9 +162,7 @@ function Mesh( type::E_PrimitiveTypes,
 
     # Configure the index buffer.
     if exists(index_data)
-        @bp_check(index_data[2] <: MeshIndexTypes,
-                  "Index type ", index_data[2], " is not <: ", MeshIndexTypes)
-        glVertexArrayElementBuffer(m.handle, index_data[1].handle)
+        glVertexArrayElementBuffer(m.handle, index_data.buffer.handle)
     end
 
     # Configure the vertex buffers.
@@ -224,7 +228,7 @@ function Base.close(m::Mesh)
     setfield!(m, :handle, Ptr_Mesh())
 end
 
-export Mesh
+export MeshIndexData, Mesh
 
 
 ##############################
@@ -258,7 +262,7 @@ Gets the maximum number of vertices (or indices, if indexed)
 "
 function count_mesh_elements(m::Mesh)::Int
     if exists(m.index_data)
-        return m.index_data[1].byte_size ÷ sizeof(m.index_data[2])
+        return m.index_data.buffer.byte_size ÷ sizeof(m.index_data.type)
     else
         return count_mesh_vertices(m)
     end
@@ -269,7 +273,7 @@ println("#TODO: Operations to change vertex data")
 
 "Adds/changes the index data for this mesh"
 function set_index_data(m::Mesh, source::Buffer, type::Type{<:MeshIndexTypes})
-    setfield!(m, :index_data, (source, type))
+    setfield!(m, :index_data, MeshIndexData(source, type))
     glVertexArrayElementBuffer(m.handle, source.buf.handle)
 end
 

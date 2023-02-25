@@ -106,7 +106,7 @@ ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
     mesh_skybox = Mesh(PrimitiveTypes.triangle,
                        [ VertexDataSource(buf_skybox_poses, sizeof(Vec3{Int8})) ],
                        [ VertexAttribute(1, 0x0, VertexData_FVector(3, Int8, false)) ],
-                       (buf_skybox_indices, UInt8))
+                       MeshIndexData(buf_skybox_indices, UInt8))
     # Set up a shader to render the skybox.
     draw_skybox::Program = bp_glsl"""
         uniform vec3 u_camPos = vec3(0.0, 0.0, 0.0);

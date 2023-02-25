@@ -179,8 +179,8 @@ function render_mesh( context::Context,
             glDisable(GL_PRIMITIVE_RESTART)  #TODO: is this call expensive? We could cache it and only call when it really changes
         end
         # Pre-compute data.
-        index_type = get_index_ogl_enum(mesh.index_data[2])
-        index_byte_size = sizeof(mesh.index_data[2])
+        index_type = get_index_ogl_enum(mesh.index_data.type)
+        index_byte_size = sizeof(mesh.index_data.type)
         # Make the draw calls.
         if elements isa AbstractArray{IntervalU}
             offsets = ntuple(i -> index_byte_size * (elements[i].min - 1), length(elements))

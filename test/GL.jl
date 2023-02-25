@@ -226,6 +226,8 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
                   count_mesh_elements(mesh_triangles), ")")
     push!(to_clean_up, mesh_triangles, buf_tris_poses, buf_tris_color_and_IDs)
 
+    #TODO: Add another indexed mesh to test indexed rendering.
+
     # Set up a shader to render the triangles.
     # Use a variety of uniforms and vertex attributes to mix up the colors.
     draw_triangles::Program = bp_glsl"""
