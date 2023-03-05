@@ -1,22 +1,19 @@
-# This test involves a user-controlled camera.
-# By default, it is disabled so that unit tests are still automated.
-# Only run the test if it's been specifically requested,
-#    through the ENABLE_CAM3D global or by specifically asking for this file.
+# Defines a tiny 3D scene and a movable camera.
+# Use WASD to move, and press Enter to enable rotation with the arrow keys.
 
-if !@isdefined ENABLE_CAM3D
-    # If this test was specifically requested, enable it.
-    ENABLE_CAM3D = @isdefined(TEST_NAME) && (lowercase(TEST_NAME) == "cam3d")
-end
+cd(joinpath(@__DIR__, ".."))
+insert!(LOAD_PATH, 1, ".")
+insert!(LOAD_PATH, 1, "test")
 
-using Dates
+using Dates, Setfield
 using ModernGL, GLFW
-using Bplus.GL, Bplus.Helpers
+using Bplus.GL, Bplus.Helpers, Bplus.Math, Bplus.Utilities
 
 
-ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
-                               vsync=VsyncModes.On,
-                               debug_mode=true
-                             ) do context::Context
+bp_gl_context( v2i(800, 500), "Cam3D demo";
+               vsync=VsyncModes.On,
+               debug_mode=true
+             ) do context::Context
     # Set up a mesh with some 3D triangles.
     buf_tris_poses = Buffer(false, [ v4f(-0.75, -0.75, -0.75, 1.0),
                                      v4f(-0.75, 0.75, 0.25, 1.0),
@@ -262,17 +259,8 @@ ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
         GL.render_clear(context, GL.Ptr_Target(), clear_col)
         GL.render_clear(context, GL.Ptr_Target(), @f32 1.0)
 
-        # Draw the skybox.
-        #TODO: Move to be after the triangles to test depth-testing.
-        set_uniform(draw_skybox, "u_camPos", cam.pos)
-        set_uniform(draw_skybox, "u_mat_view", mat_view)
-        set_uniform(draw_skybox, "u_mat_projection", mat_projection)
-        view_activate(tex_skybox_view)
-        GL.render_mesh(context, mesh_skybox, draw_skybox)
-        view_deactivate(tex_skybox_view)
-
         # Draw the triangles.
-        set_uniform(draw_triangles, "u_pixelSize", v2f(window_size))
+        set_uniform(draw_triangles, "u_pixelSize", convert(v2f, window_size))
         set_uniform(draw_triangles, "u_clipPlanes",
                     v2f(cam.clip_range.min, max_exclusive(cam.clip_range)))
         set_uniform(draw_triangles, "u_mat_worldview", mat_view)
@@ -281,6 +269,15 @@ ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
         GL.render_mesh(context, mesh_triangles, draw_triangles,
                        elements = IntervalU(1, 4))
         view_deactivate(get_view(tex))
+
+        # Draw the skybox.
+        #TODO: Move to be after the triangles to test depth-testing.
+        set_uniform(draw_skybox, "u_camPos", cam.pos)
+        set_uniform(draw_skybox, "u_mat_view", mat_view)
+        set_uniform(draw_skybox, "u_mat_projection", mat_projection)
+        view_activate(tex_skybox_view)
+        GL.render_mesh(context, mesh_skybox, draw_skybox)
+        view_deactivate(tex_skybox_view)
 
         GLFW.SwapBuffers(context.window)
         GLFW.PollEvents()
@@ -301,7 +298,3 @@ ENABLE_CAM3D && bp_gl_context( v2i(800, 500), "Cam3D test";
     close(buf_skybox_poses)
     close(buf_skybox_indices)
 end
-
-# Make sure the Context got cleaned up.
-@bp_check(isnothing(GL.get_context()),
-          "Just closed the context, but it still exists")
