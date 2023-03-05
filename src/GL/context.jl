@@ -260,7 +260,8 @@ This is because tasks can get shifted to different threads
         if e isa TaskFailedException
             # Unwrap the exception.
             stack = current_exceptions(task)
-            throw(stack[end].exception) #TODO: Figure this out.
+            throw(stack[end].exception) #NOTE: If you see this line show up in the stacktrace, it's a red herring. Look further down in the printout to a second or third trace.
+                                        #TODO: Figure this out.
         else
             rethrow()
         end

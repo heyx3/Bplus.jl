@@ -5,23 +5,24 @@
 
 # Import dependencies.
 using Random, TupleTools, Setfield, InteractiveUtils,
-      StaticArrays, MacroTools, StructTypes, JSON3,
+      StaticArrays, StructTypes, JSON3,
       DataStructures, Suppressor,
-      ModernGL, GLFW
+      ModernGL, GLFW, CImGui
 
 # Import the main codebase.
 using Bplus
 using Bplus.Utilities, Bplus.Math, Bplus.GL,
-      Bplus.Helpers, Bplus.Fields, Bplus.SceneTree, Bplus.Input
+      Bplus.Helpers, Bplus.Fields, Bplus.SceneTree, Bplus.Input, Bplus.GUI
 
 # Enable all asserts for the codebase.
 @inline Bplus.Utilities.bp_utils_asserts_enabled() = true
 @inline Bplus.Math.bp_math_asserts_enabled() = true
 @inline Bplus.GL.bp_gl_asserts_enabled() = true
-@inline Bplus.Helpers.bp_helpers_asserts_enabled() = true
 @inline Bplus.Fields.bp_fields_asserts_enabled() = true
-@inline Bplus.SceneTree.bp_scene_tree_asserts_enabled() = true
 @inline Bplus.Input.bp_input_asserts_enabled() = true
+@inline Bplus.Helpers.bp_helpers_asserts_enabled() = true
+@inline Bplus.SceneTree.bp_scene_tree_asserts_enabled() = true
+@inline Bplus.GUI.bp_gui_asserts_enabled() = true
 
 
 #############################
