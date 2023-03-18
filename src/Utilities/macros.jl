@@ -35,4 +35,26 @@ is_field_def(expr) = (
     end
 )
 
-export is_function_call, is_function_def, is_field_def
+"Converts a modifying assignment operator (like `*=`) to its underlying operator (like `*`)"
+const ASSIGNMENT_INNER_OP = Dict(
+    :+= => :+,
+    :-= => :-,
+    :*= => :*,
+    :/= => :/,
+    :^= => :^,
+    :÷= => :÷,
+    :%= => :%,
+
+    :|= => :|,
+    :&= => :&,
+    :!= => :!,
+
+    :⊻= => :⊻,
+    :<<= => :<<,
+    :>>= => :>>,
+)
+"Converts an operator (like `*`) to its assignment operation (like `*=`)"
+const ASSIGNMENT_WITH_OP = Dict(v => k for (k,v) in ASSIGNMENT_INNER_OP)
+
+export is_function_call, is_function_def, is_field_def,
+       ASSIGNMENT_INNER_OP, ASSIGNMENT_WITH_OP
