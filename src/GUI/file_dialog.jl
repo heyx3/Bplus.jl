@@ -63,7 +63,7 @@ Base.@kwdef struct FileDialogParams
 end
 
 "The current state of a specific file dialog instance."
-mutable struct FileDialogState
+Base.@kwdef mutable struct FileDialogState
     current_tab::Optional{E_FileDialogTabs} = nothing
     entries::Vector{Entry} = [ ]
 end
