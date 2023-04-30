@@ -47,7 +47,6 @@ const ASSIGNMENT_INNER_OP = Dict(
 
     :|= => :|,
     :&= => :&,
-    :!= => :!,
 
     :⊻= => :⊻,
     :<<= => :<<,
@@ -56,8 +55,12 @@ const ASSIGNMENT_INNER_OP = Dict(
 "Converts an operator (like `*`) to its assignment operation (like `*=`)"
 const ASSIGNMENT_WITH_OP = Dict(v => k for (k,v) in ASSIGNMENT_INNER_OP)
 
-"Computes one of the modifying assignments (`*=`, `&=`, etc) given it and its inputs."
+"
+Computes one of the modifying assignments (`*=`, `&=`, etc) given it and its inputs.
+Also implements `=` for completeness.
+"
 @inline dynamic_modify(s::Symbol, a, b) = dynamic_modify(Val(s), a, b)
+@inline dynamic_modify(::Val{:(=)}, a, b) = b
 for (name, op) in ASSIGNMENT_INNER_OP
     @eval @inline dynamic_modify(::Val{Symbol($(string(name)))}, a, b) = $op(a, b)
 end

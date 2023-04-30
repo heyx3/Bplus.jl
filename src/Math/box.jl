@@ -71,8 +71,22 @@ Box_minsize(min, size) = Box(min, size)
 "Constructs a box from an inclusive max and size"
 Box_maxsize(max_inclusive, size) = Box(box_typenext(max_inclusive) - size, size)
 
+"Constructs a box from a center and size"
+Box_centersize(center, size) = Box(center - (size / 2), size)
+
 "Constructs a box bounded by a set of points/boxes"
 Box_bounding(point::Union{Number, Vec}) = Box_minsize(point, box_typenext(zero(typeof(point))))
+function Box_bounding(points::AbstractVector)
+    @bp_check(!isempty(points), "Bounding points list is empty; return type can't be inferred!")
+    #TODO: Try to get static type inference working for this function (I assume it's not right now).
+    p_min = points[1]
+    p_max = points[1]
+    for point in Iterators.drop(points, 1)
+        p_min = min(p_min, point)
+        p_max = max(p_max, point)
+    end
+    return Box_minmax(p_min, p_max)
+end
 Box_bounding(b::Box) = b
 @inline function Box_bounding(a::P1, b::P2, rest...) where {P1<:Union{Number, Vec}, P2<:Union{Number, Vec}}
     p_min = min(a, b)
@@ -95,7 +109,7 @@ end
     return Box_bounding(Box_minmax(p_min, p_max), rest...)
 end
 
-export Box_minmax, Box_minsize, Box_maxsize, Box_bounding
+export Box_minmax, Box_minsize, Box_maxsize, Box_centersize, Box_bounding
 
 # Convert between boxes of different type.
 Base.convert(::Type{Box{T}}, b::Box{T2}) where {T, T2} = Box(convert(T, b.min), convert(T, b.size))
@@ -127,11 +141,15 @@ get_number_type(::Type{Box{T}}) where {T<:Number} = T
 get_number_type(::Type{Box{Vec{N, T}}}) where {N, T} = T
 export get_number_type
 
+#TODO: Switch to getting properties rather than these functions.
 "Gets the point just past the corner of the Box"
 max_exclusive(b::Box) = b.min + b.size
 "Gets the corner point of the Box"
 max_inclusive(b::Box) = box_typeprev(max_exclusive(b))
 export max_exclusive, max_inclusive
+
+center(b::Box) = b.min + (b.size / 2)
+export center
 
 "Gets the N-dimensional size of a Box"
 volume(b::Box) = prod(b.size)

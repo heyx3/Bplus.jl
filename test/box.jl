@@ -10,6 +10,8 @@
                         Box2D{Int}(Vec(3, 4), Vec(4, 10)))
 @bp_test_no_allocations(Box_maxsize(Vec(3, 4), Vec(2, 3)),
                         Box(Vec(2, 2), Vec(2, 3)))
+@bp_test_no_allocations(Box_centersize(Vec(2, 2), Vec(4, 4)),
+                        Box(Vec(0, 0), Vec(4, 4)))
 @bp_test_no_allocations(Box_bounding(Vec(2, 3)),
                         Box(Vec(2, 3), Vec(1, 1)))
 @bp_test_no_allocations(Box_bounding(Vec(5, 9), Vec(0, 0), Vec(120, -5)),
@@ -26,6 +28,8 @@
                         Box_minmax(Vec(-1, -10), Vec(21, 30)))
 @bp_test_no_allocations(Box_bounding(Vec(-1, 30), Vec(21, -10), Box(1:20)),
                         Box_minmax(Vec(-1, -10), Vec(21, 30)))
+@bp_test_no_allocations(Box_bounding(Union{Int, v3f}[ v3f(1, -5, 10), 0, v3f(1.5, 50, -3) ]),
+                        Box_minmax(v3f(0, -5, -3), v3f(1.5, 50, 10)))
 
 # Test conversions.
 @bp_test_no_allocations(convert(Box{v2u}, Box(v2f(1, 2), v2f(4, 3))) isa Box{v2u},
