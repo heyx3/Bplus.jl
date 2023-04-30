@@ -35,7 +35,7 @@ is_field_def(expr) = (
     end
 )
 
-"Converts a modifying assignment operator (like `*=`) to its underlying operator (like `*`)"
+"Maps a modifying assignment operator (like `*=`) to its underlying operator (like `*`)"
 const ASSIGNMENT_INNER_OP = Dict(
     :+= => :+,
     :-= => :-,
@@ -56,5 +56,11 @@ const ASSIGNMENT_INNER_OP = Dict(
 "Converts an operator (like `*`) to its assignment operation (like `*=`)"
 const ASSIGNMENT_WITH_OP = Dict(v => k for (k,v) in ASSIGNMENT_INNER_OP)
 
+"Computes one of the modifying assignments (`*=`, `&=`, etc) given it and its inputs."
+@inline dynamic_modify(s::Symbol, a, b) = dynamic_modify(Val(s), a, b)
+for (name, op) in ASSIGNMENT_INNER_OP
+    @eval @inline dynamic_modify(::Val{Symbol($(string(name)))}, a, b) = $op(a, b)
+end
+
 export is_function_call, is_function_def, is_field_def,
-       ASSIGNMENT_INNER_OP, ASSIGNMENT_WITH_OP
+       ASSIGNMENT_INNER_OP, ASSIGNMENT_WITH_OP, dynamic_modify
