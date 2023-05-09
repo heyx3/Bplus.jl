@@ -18,6 +18,9 @@ Base.@kwdef mutable struct GuiService
     buffer_indices::Buffer
     buffer::Mesh
 
+    # Buffers for C calls.
+    clipboard_buffer::Vector{String} = [ ]
+
     # User textures, indexed by a unique handle.
     # Needed to use bindless textures with CImGui.
     user_textures_by_handle::Dict{CImGui.ImTextureID,
@@ -172,32 +175,62 @@ gui_generate_mesh(verts::Buffer, indices::Buffer) = Mesh(
     MeshIndexData(indices, CImGui.ImDrawIdx)
 )
 
-const CLIPBOARD_BUFFER = Vector{UInt8}(undef, 1024)
-function gui_clipboard_get(::Ptr{Cvoid})::String
-    clipboard_raw = clipboard()
-    clipboard_str::String = (clipboard_raw isa String) ?
-                                clipboard_raw :
-                                String(clipboard_raw)
-
-    str_len = sizeof(clipboard_str)
-    resize!(CLIPBOARD_BUFFER, str_len)
-
-    output_buf = IOBuffer(CLIPBOARD_BUFFER, write=true)
+const ERROR_STR = ""
+function gui_clipboard_get(::Ptr{Cvoid})::Ptr{UInt8}
+    # Throwing within a C callback is UB.
     try
-        write(output_buf, clipboard_str)
-    finally
-        close(output_buf)
+        gui_service::GuiService = service_gui_get()
+
+        clip = clipboard()
+        if !isa(clip, String)
+            clip = String(clip)
+        end
+        
+        #NOTE: if getting nondeterministic crashes, then maybe the GC is moving these Strings around.
+        push!(gui_service.clipboard_buffer, clip)
+        #NOTE: another potential source of crashes is that this array doesn't have a long-enough memory.
+        if length(gui_service.clipboard_buffer) > 5
+            deleteat!(gui_service.clipboard_buffer, 1)
+        end
+
+        return Base.unsafe_convert(Cstring, gui_service.clipboard_buffer[end])
+    catch e
+        try
+            print(stderr, "Failed to read clipboard: ")
+            showerror(stderr, e, catch_backtrace())
+            return Base.unsafe_convert(Cstring, ERROR_STR)
+        catch
+            exit(666)
+        end
     end
-
-    return String(CLIPBOARD_BUFFER)
 end
-function gui_clipboard_set(::Ptr{Cvoid}, chars::String)::Cvoid
-    clipboard(chars)
-    return nothing
+function gui_clipboard_set(::Ptr{Cvoid}, chars::Cstring)::Cvoid
+    # Throwing within a C callback is UB.
+    try
+        str = unsafe_string(chars)
+        clipboard(str)
+        return nothing
+    catch e
+        try
+            print(stderr, "Failed to set clipboard: ")
+            showerror(stderr, e, catch_backtrace())
+            return ""
+        catch
+            exit(667)
+        end
+    end
 end
-const GUI_CLIPBOARD_GET = @cfunction(gui_clipboard_get, String, (Ptr{Cvoid}, ))
-const GUI_CLIPBOARD_SET = @cfunction(gui_clipboard_set, Cvoid, (Ptr{Cvoid}, String))
 
+# Make C function pointers for ImGUI.
+# Being raw pointers, they must be created at runtime.
+const GUI_CLIPBOARD_GET = Ref{Ptr{Cvoid}}()
+const GUI_CLIPBOARD_SET = Ref{Ptr{Cvoid}}()
+push!(RUN_ON_INIT, () -> begin
+    #NOTE: Apparently @cfunction doesn't work on 32-bit Windows with the 'stdcall' convention.
+    #      Shouldn't ever affect us, because no 32-bit Windows platform could run OpenGL 4.6+
+    GUI_CLIPBOARD_SET[] = @cfunction(gui_clipboard_set, Cvoid, (Ptr{Cvoid}, Cstring))
+    GUI_CLIPBOARD_GET[] = @cfunction(gui_clipboard_get, Ptr{UInt8}, (Ptr{Cvoid}, ))
+end)
 
 const IM_GUI_CONTEXT_REF = Ref{Ptr{CImGui.ImGuiContext}}(C_NULL)
 const IM_GUI_CONTEXT_COUNTER = Ref(0)
@@ -239,8 +272,8 @@ function service_gui_init( context::GL.Context
     end
 
     # Set up the clipboard.
-    gui_io.GetClipboardTextFn = GUI_CLIPBOARD_GET
-    gui_io.SetClipboardTextFn = GUI_CLIPBOARD_SET
+    gui_io.GetClipboardTextFn = GUI_CLIPBOARD_GET[]
+    gui_io.SetClipboardTextFn = GUI_CLIPBOARD_SET[]
 
     # Tell ImGui how to manipulate/query data.
     GLFW.SetCharCallback(context.window, (window::GLFW.Window, c::Char) -> begin
