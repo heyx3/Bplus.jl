@@ -92,6 +92,12 @@ export unzip2
 end
 export reduce_some
 
+"A facade for using unordered collections in functions that don't normally accept them (like `map`)"
+@inline iter(x) = Iterators.map(identity, x)
+"Runs `map()` on unordered collections"
+@inline map_unordered(f, iters...) = map(f, iter.(iters)...)
+export iter, map_unordered
+
 "Creates a vector pre-allocated for some expected size."
 function preallocated_vector(::Type{T}, capacity::Int) where {T}
     v = Vector{T}(undef, capacity)
