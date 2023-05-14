@@ -260,7 +260,7 @@ end
 function Program(vert_shader::String, frag_shader::String
                  ;
                  geom_shader::Optional{String} = nothing,
-                 flexible_mode::Bool = false)
+                 flexible_mode::Bool = true)
     compiler = ProgramCompiler(vert_shader, frag_shader; src_geometry = geom_shader)
     result = compile_program(compiler)
     if result isa Ptr_Program
