@@ -5,13 +5,7 @@ using Setfield, TupleTools, StructTypes
 using ModernGL, GLFW
 using ..Utilities, ..Math
 
-# A set of callbacks that can run on this module's __init__().
-const RUN_ON_INIT = [ ]
-function __init__()
-    for f::Function in RUN_ON_INIT
-        f()
-    end
-end
+@decentralized_module_init
 
 # OpenGL info:
 const OGL_MAJOR_VERSION = 4

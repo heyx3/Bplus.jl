@@ -1,23 +1,14 @@
 module Input
 
-using GLFW, StructTypes, MacroTools
-using ..Utilities, ..Math
+using GLFW, StructTypes, MacroTools, Setfield
+using ..Utilities, ..Math, ..GL
 
 @make_toggleable_asserts bp_input_
 
-include("buttons.jl")
-include("axes.jl")
+@decentralized_module_init
 
+include("mappings.jl")
+include("inputs.jl")
+include("service.jl")
 
-"Manages all inputs for a GLFW window."
-mutable struct InputSystem
-end
-export InputSystem
-
-"
-The per-context input systems currently in existence,
-    indexed by their GLFW window.
-"
-const SYSTEMS = Dict{GLFW.Window, InputSystem}()
-
-end
+end # module

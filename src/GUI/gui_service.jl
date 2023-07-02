@@ -36,12 +36,6 @@ Base.@kwdef mutable struct GuiService
 
     # Mouse cursor images.
     mouse_cursors::Vector{GLFW.Cursor} = fill(GLFW.Cursor(C_NULL), Int(CImGui.ImGuiMouseCursor_COUNT))
-
-    # Custom user callbacks for GLFW, running after the GuiService logic.
-    glfw_callbacks_mouse_button::Vector{Any} = [ ]
-    glfw_callbacks_scroll::Vector{Any} = [ ]
-    glfw_callbacks_key::Vector{Any} = [ ]
-    glfw_callbacks_char::Vector{Any} = [ ]
 end
 
 
@@ -175,7 +169,7 @@ gui_generate_mesh(verts::Buffer, indices::Buffer) = Mesh(
     MeshIndexData(indices, CImGui.ImDrawIdx)
 )
 
-const ERROR_STR = ""
+const FAIL_CLIPBOARD_DATA = ""
 function gui_clipboard_get(::Ptr{Cvoid})::Ptr{UInt8}
     # Throwing within a C callback is UB.
     try
@@ -185,7 +179,7 @@ function gui_clipboard_get(::Ptr{Cvoid})::Ptr{UInt8}
         if !isa(clip, String)
             clip = String(clip)
         end
-        
+
         #NOTE: if getting nondeterministic crashes, then maybe the GC is moving these Strings around.
         push!(gui_service.clipboard_buffer, clip)
         #NOTE: another potential source of crashes is that this array doesn't have a long-enough memory.
@@ -198,7 +192,7 @@ function gui_clipboard_get(::Ptr{Cvoid})::Ptr{UInt8}
         try
             print(stderr, "Failed to read clipboard: ")
             showerror(stderr, e, catch_backtrace())
-            return Base.unsafe_convert(Cstring, ERROR_STR)
+            return Base.unsafe_convert(Cstring, FAIL_CLIPBOARD_DATA)
         catch
             exit(666)
         end
@@ -276,20 +270,16 @@ function service_gui_init( context::GL.Context
     gui_io.SetClipboardTextFn = GUI_CLIPBOARD_SET[]
 
     # Tell ImGui how to manipulate/query data.
-    GLFW.SetCharCallback(context.window, (window::GLFW.Window, c::Char) -> begin
+    push!(context.glfw_callbacks_char, (c::Char) -> begin
         # Why this range? The example code doesn't explain.
         # It limits the char to a 2-byte range, and ignores the null terminator.
         if UInt(c) in 0x1:0xffff
             CImGui.AddInputCharacter(gui_io, c)
         end
-        for user_callback in serv.glfw_callbacks_char
-            user_callback(window, c)
-        end
         return nothing
     end)
-    GLFW.SetKeyCallback(context.window, (window::GLFW.Window,
-                                         key::GLFW.Key, scancode::Cint,
-                                         action::GLFW.Action, mods::Cint) -> begin
+    push!(context.glfw_callbacks_key, (key::GLFW.Key, scancode::Int,
+                                       action::GLFW.Action, mods::Int) -> begin
         if action == GLFW.PRESS
             CImGui.Set_KeysDown(gui_io, key, true)
         elseif action == GLFW.RELEASE
@@ -303,15 +293,11 @@ function service_gui_init( context::GL.Context
         gui_io.KeyAlt = any(CImGui.Get_KeysDown.(Ref(gui_io), (GLFW.KEY_LEFT_ALT, GLFW.KEY_RIGHT_ALT)))
         gui_io.KeySuper = any(CImGui.Get_KeysDown.(Ref(gui_io), (GLFW.KEY_LEFT_SUPER, GLFW.KEY_RIGHT_SUPER)))
 
-        for user_callback in serv.glfw_callbacks_key
-            user_callback(window, key, scancode, action, mods)
-        end
         return nothing
     end)
-    GLFW.SetMouseButtonCallback(context.window, (window::GLFW.Window,
-                                                 button::GLFW.MouseButton,
-                                                 action::GLFW.Action,
-                                                 mods::Cint) -> begin
+    push!(context.glfw_callbacks_mouse_button, (button::GLFW.MouseButton,
+                                                action::GLFW.Action,
+                                                mods::Int) -> begin
         button_i = Int(button) + 1
         if button_i in 1:length(serv.mouse_buttons_just_pressed)
             if action == GLFW.PRESS
@@ -321,18 +307,11 @@ function service_gui_init( context::GL.Context
             @warn "Mouse button idx too large" button
         end
 
-        for user_callback in serv.glfw_callbacks_mouse_button
-            user_callback(window, button, action, mods)
-        end
         return nothing
     end)
-    GLFW.SetScrollCallback(context.window, (window, x, y) -> begin
+    push!(context.glfw_callbacks_scroll, (x::Float32, y::Float32) -> begin
         gui_io.MouseWheelH += Cfloat(x)
         gui_io.MouseWheel += Cfloat(y)
-
-        for user_callback in serv.glfw_callbacks_scroll
-            user_callback(window, x, y)
-        end
         return nothing
     end)
 

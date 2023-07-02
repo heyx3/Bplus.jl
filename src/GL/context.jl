@@ -118,6 +118,17 @@ mutable struct Context
 
     #TODO: current binding points for UBO's and SSBO's: https://computergraphics.stackexchange.com/questions/6045/how-to-use-the-data-manipulated-in-opengl-compute-shader
 
+    # You can register any number of callbacks to GLFW events here.
+    # Each is invoked with similar arguments to the raw callbacks minus the window handle.
+    glfw_callbacks_mouse_button::Vector{Base.Callable} # (GLFW.MouseButton, GLFW.Action, Int)
+    glfw_callbacks_scroll::Vector{Base.Callable} # (Float32, Float32)
+    glfw_callbacks_key::Vector{Base.Callable} # (GLFW.Key, Int, GLFW.Action, Int)
+    glfw_callbacks_char::Vector{Base.Callable} # (Char)
+    glfw_callbacks_joystick_connection::Vector{Base.Callable} # (GLFW.Joystick, Bool [if false, disconnection])
+    glfw_callbacks_window_focused::Vector{Base.Callable} # (Bool [if false, lost focus rather than gained])
+    #TODO: Joystick connection callback is not tied to a window; it needs to be a true singleton
+    #TODO: Wrap all the other callbacks.
+
     services::Dict{Symbol, Service}
 
     function Context( size::v2i, title::String
@@ -127,7 +138,6 @@ mutable struct Context
                       glfw_hints::Dict{Int32, Int32} = Dict{Int32, Int32}(),
                       # Below are GLFW input settings that can be changed at will,
                       #    but will be set to these specific values on initialization.
-                      glfw_sticky_inputs::Bool = true,
                       glfw_cursor::@ano_enum(Normal, Hidden, Centered) = Val(:Normal)
                     )::Context
         # Create the window and OpenGL context.
@@ -141,8 +151,6 @@ mutable struct Context
         GLFW.MakeContextCurrent(window)
 
         # Configure the window's inputs.
-        GLFW.SetInputMode(window, GLFW.STICKY_KEYS, glfw_sticky_inputs)
-        GLFW.SetInputMode(window, GLFW.STICKY_MOUSE_BUTTONS, glfw_sticky_inputs)
         GLFW.SetInputMode(window, GLFW.CURSOR,
                           if glfw_cursor isa Val{:Normal}
                               GLFW.CURSOR_NORMAL
@@ -171,8 +179,49 @@ mutable struct Context
         @bp_check(isnothing(get_context()), "A Context already exists on this thread")
         con::Context = new(window, vsync, device, RenderState(),
                            Ptr_Program(), Ptr_Mesh(),
+                           Vector{Base.Callable}(), Vector{Base.Callable}(),
+                           Vector{Base.Callable}(), Vector{Base.Callable}(),
+                           Vector{Base.Callable}(), Vector{Base.Callable}(),
                            Dict{Symbol, Service}())
         CONTEXTS_PER_THREAD[Threads.threadid()] = con
+
+        # Configure GLFW callbacks.
+        GLFW.SetCharCallback(con.window, (window::GLFW.Window, c::Char) -> begin
+            for callback in con.glfw_callbacks_char
+                callback(c)
+            end
+        end)
+        GLFW.SetKeyCallback(con.window, (wnd::GLFW.Window,
+                                         key::GLFW.Key, scancode::Cint,
+                                         action::GLFW.Action, mods::Cint) -> begin
+            for callback in con.glfw_callbacks_key
+                callback(key, Int(scancode), action, Int(mods))
+            end
+        end)
+        GLFW.SetMouseButtonCallback(con.window, (window::GLFW.Window,
+                                                 button::GLFW.MouseButton,
+                                                 action::GLFW.Action,
+                                                 mods::Cint) -> begin
+            for callback in con.glfw_callbacks_mouse_button
+                callback(button, action, Int(mods))
+            end
+        end)
+        GLFW.SetScrollCallback(con.window, (window::GLFW.Window,
+                                            delta_x::Float64, delta_y::Float64) -> begin
+            for callback in con.glfw_callbacks_scroll
+                callback(@f32(delta_x), @f32(delta_y))
+            end
+        end)
+        GLFW.SetJoystickCallback((id::GLFW.Joystick, event::GLFW.DeviceConfigEvent) -> begin
+            for callback in con.glfw_callbacks_joystick_connection
+                callback(id, event == GLFW.CONNECTED)
+            end
+        end)
+        GLFW.SetWindowFocusCallback(con.window, (window::GLFW.Window, focused::Cint) -> begin
+            for callback in con.glfw_callbacks_window_focused
+                callback(focused != 0)
+            end
+        end)
 
         if debug_mode
             glEnable(GL_DEBUG_OUTPUT)
@@ -409,6 +458,14 @@ function refresh(context::Context)
     end
 end
 export refresh
+
+
+
+######################
+#   GLFW callbacks   #
+######################
+
+
 
 
 ################

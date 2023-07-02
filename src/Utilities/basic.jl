@@ -143,3 +143,21 @@ macro do_while(to_do, condition)
     )
 end
 export @do_while
+
+"
+Implements a module's __init__ function by delegating it to a list of callbacks.
+This allows multiple independent places in your module to register some initialization behavior.
+The callback list will be named `RUN_ON_INIT`.
+"
+macro decentralized_module_init()
+    list_name = esc(:RUN_ON_INIT)
+    return quote
+        const $list_name = Vector{Base.Callable}()
+        function $(esc(:__init__))()
+            for f in $list_name
+                f()
+            end
+        end
+    end
+end
+export @decentralized_module_init
