@@ -1,8 +1,6 @@
 module Bplus
 
-include("check_dependencies.jl")
-
-"Loads and exports the given submodule, at the path 'name/name.jl'"
+"Loads and exports the given submodule, using the path 'name/name.jl'"
 macro submodule(name::Symbol)
     path = joinpath(string(name),
                     string(name, ".jl"))

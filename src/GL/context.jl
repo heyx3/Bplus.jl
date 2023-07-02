@@ -236,7 +236,7 @@ mutable struct Context
                       "Required OpenGL extension not supported: ", ext,
                         ". If you're on a laptop with a discrete GPU, make sure you're not accidentally",
                         " using the Integrated Graphics. This program was using the GPU '",
-                        unsafe_string(ModernGL.glGetString(GL_RENDERER)), "'.")
+                        unsafe_string(ModernGLbp.glGetString(GL_RENDERER)), "'.")
         end
 
         # Set up the OpenGL/window state.

@@ -4,7 +4,7 @@
 
 "Short-hand for making enums based on OpenGL constants"
 macro bp_gl_enum(name, args...)
-    expr = Utilities.generate_enum(name, :(begin using ModernGL end), args)
+    expr = Utilities.generate_enum(name, :(begin using ModernGLbp end), args)
     return expr
 end
 
