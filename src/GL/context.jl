@@ -185,7 +185,7 @@ mutable struct Context
                            Dict{Symbol, Service}())
         CONTEXTS_PER_THREAD[Threads.threadid()] = con
 
-        # Configure GLFW callbacks.
+        # Hook GLFW callbacks so that multiple independent sources can subscribe to these events.
         GLFW.SetCharCallback(con.window, (window::GLFW.Window, c::Char) -> begin
             for callback in con.glfw_callbacks_char
                 callback(c)
@@ -217,7 +217,7 @@ mutable struct Context
                 callback(id, event == GLFW.CONNECTED)
             end
         end)
-        GLFW.SetWindowFocusCallback(con.window, (window::GLFW.Window, focused::Cint) -> begin
+        GLFW.SetWindowFocusCallback(con.window, (window::GLFW.Window, focused::Bool) -> begin
             for callback in con.glfw_callbacks_window_focused
                 callback(focused != 0)
             end
