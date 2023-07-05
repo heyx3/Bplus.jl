@@ -5,8 +5,8 @@ Base.@kwdef struct Cam3D{F<:AbstractFloat}
     forward::Vec3{F} = get_horz_vector(1, F)
     up::Vec3{F} = get_up_vector(F)
 
-    clip_range::Interval{F} = Box_minmax(convert(F, 0.01),
-                                         convert(F, 1000))
+    clip_range::Interval{F} = Interval((min=convert(F, 0.01),
+                                        max=convert(F, 1000)))
     fov_degrees::F = convert(F, 90)
     aspect_width_over_height::F = one(F)
 end
@@ -24,7 +24,7 @@ end
 "Computes the projection matrix for the given camera."
 function cam_projection_mat(cam::Cam3D{F})::Mat{4, 4, F} where {F}
     return m4_projection(
-        cam.clip_range.min, max_exclusive(cam.clip_range),
+        min_inclusive(cam.clip_range), max_exclusive(cam.clip_range),
         cam.aspect_width_over_height,
         cam.fov_degrees)
 end

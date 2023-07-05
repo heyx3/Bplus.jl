@@ -52,16 +52,35 @@ end
 #    because a 1-tuple has a different hash than its element.
 Base.hash(::UpTo, args...) = error("Can't hash type 'UpTo', due to how it defines equality")
 
-
-# Call collect() on an UpTo to get a tuple of exactly the right size.
-Base.collect(a::UpTo) = ntuple(i -> a.buffer[i], a.count)
-
 Base.size(a::UpTo) = (a.count, )
 Base.getindex(a::UpTo, i::Int) = a.buffer[i]
 Base.IndexStyle(::Type{<:UpTo}) = IndexLinear()
+
+# Append two instances together:
+function append( a::UpTo{N1, T1},
+                 b::UpTo{N2, T2},
+                 undef_init = zero(promote_type(T1, T2))
+               )::UpTo{N1 + N2, promote_type(T1, T2)} where {N1, T1,  N2, T2}
+    T3 = promote_type(T1, T2)
+    new_elements = ntuple(Val(N1 + N2)) do i::Int
+        convert(T3,
+            if i <= a.count
+                a[i]
+            elseif i - a.count <= b.count
+                b[i - a.count]
+            else
+                undef_init
+            end
+        )
+    end
+    return UpTo{N1 + N2, T3}(new_elements, a.count + b.count)
+end
+export append
 
 # UpTo is meant for reading small return data,
 #    so any attempt to convert it to heap-allocated data throws an error,
 #    to prevent accidental garbage.
 Base.setindex!(::UpTo, _, ::Int) = error("Cannot modify an UpTo instance, it's read-only")
 Base.similar(::UpTo, args...) = error("You shouldn't be creating a mutable copy of UpTo")
+# collect() is allowed, as it's explicit.
+Base.collect(a::UpTo) = collect(a.buffer[1:a.count])

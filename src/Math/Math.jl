@@ -1,6 +1,6 @@
 module Math
 
-using Setfield, StaticArrays, StructTypes
+using Setfield, StaticArrays, StructTypes, NamedTupleTools
 using ..Utilities
 
 # Define @bp_math_assert.
@@ -14,11 +14,8 @@ include("mat.jl")
 include("quat.jl")
 include("transformations.jl")
 
-include("box.jl")
-include("sphere.jl")
-
-#TODO: Port Shapes.hpp
 include("ray.jl")
+include("shapes/Shapes.jl")
 
 include("noise.jl")
 

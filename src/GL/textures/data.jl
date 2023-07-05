@@ -211,38 +211,37 @@ Note that mips and pixel ranges follow the 1-based Julia convention,
    not the 0-based convention of OpenGL.
 "
 struct TexSubset{N}
-    # Rectangular subset of the texture (or 'nothing' to use all the pixels).
-    # Note that a 1D interval uses Vec{1, UInt} and not scalars, for consistency.
-    pixels::Optional{Box{VecU{N}}}
-    # The mip level of the texture to focus on.
+    # Rectangular subset of the texture, or `nothing` for all pixels.
+    area::Optional{BoxU{N}}
+
     # 1 means the original (full-size) texture.
     # Higher values are smaller mips.
     mip::UInt
 
-    TexSubset{N}(pixels = nothing, mip = 1) where {N} = new{N}(convert(Optional{Box{VecU{N}}}, pixels), convert(UInt, mip))
-    TexSubset(pixels::Box{Vec{N, T}}, mip = 1) where {N, T} = new{N}(convert(Box{VecU{N}}, pixels), mip)
-
-    # Convenience constructors using an Interval for the pixel range
-    TexSubset{1}(pixels::Box{<:Integer}, mip = 1) = new{1}(Box{Vec{1, UInt32}}(Vec(pixels.min), Vec(pixels.size)), mip)
-    TexSubset(pixels::Box{<:Integer}, mip = 1) = TexSubset{1}(pixels, mip)
+    TexSubset{N}(area = nothing, mip = 1) where {N} = new{N}(area, mip)
+    TexSubset(area::Box{N}, mip = 1) where {N} = new{N}(convert(BoxU{N}, area), mip)
 end
 
 "
 Calculates the subset of a texture to use.
 The 'full_size' should match the dimensionality of the texture.
 "
-@inline get_subset_range(subset::TexSubset, full_size::Union{Integer, Vec}) =
-    isnothing(subset.pixels) ?
-        convert(Box{typeof(full_size)}, Box_minmax(1, full_size)) :
-        subset.pixels
+get_subset_range(subset::TexSubset{N}, full_size::Vec{N, <:Integer}) where {N} =
+    isnothing(subset.area) ?
+        convert(Box{N, eltype(full_size)},
+                Box((min=1, max=full_size))) :
+        subset.area
+@inline get_subset_range(subset::TexSubset{1}, full_size::Integer) =
+    get_subset_range(subset, Vec(full_size))
 
 "
 Converts a subset to a lower- or higher-dimensional one.
 "
-@inline change_dimensions(subset::TexSubset{N}, N2::Int) where {N} = TexSubset{N2}(
-    isnothing(subset.pixels) ?
+change_dimensions(subset::TexSubset{N}, N2::Int) where {N} = TexSubset{N2}(
+    isnothing(subset.area) ?
         nothing :
-        reshape(subset.pixels, 3; new_dims_value=one(UInt32)),
+        reshape(subset.area, N2;
+                new_dims_min=1),
     subset.mip
 )
 

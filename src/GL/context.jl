@@ -126,8 +126,8 @@ mutable struct Context
     glfw_callbacks_char::Vector{Base.Callable} # (Char)
     glfw_callbacks_joystick_connection::Vector{Base.Callable} # (GLFW.Joystick, Bool [if false, disconnection])
     glfw_callbacks_window_focused::Vector{Base.Callable} # (Bool [if false, lost focus rather than gained])
+    glfw_callbacks_window_resized::Vector{Base.Callable} # (v2f)
     #TODO: Joystick connection callback is not tied to a window; it needs to be a true singleton
-    #TODO: Wrap all the other callbacks.
 
     services::Dict{Symbol, Service}
 
@@ -182,6 +182,7 @@ mutable struct Context
                            Vector{Base.Callable}(), Vector{Base.Callable}(),
                            Vector{Base.Callable}(), Vector{Base.Callable}(),
                            Vector{Base.Callable}(), Vector{Base.Callable}(),
+                           Vector{Base.Callable}(),
                            Dict{Symbol, Service}())
         CONTEXTS_PER_THREAD[Threads.threadid()] = con
 
@@ -220,6 +221,12 @@ mutable struct Context
         GLFW.SetWindowFocusCallback(con.window, (window::GLFW.Window, focused::Bool) -> begin
             for callback in con.glfw_callbacks_window_focused
                 callback(focused != 0)
+            end
+        end)
+        GLFW.SetWindowSizeCallback(window, (wnd::GLFW.Window, new_x::Cint, new_y::Cint) -> begin
+            size = v2i(new_x, new_y)
+            for callback in con.glfw_callbacks_window_resized
+                callback(size)
             end
         end)
 

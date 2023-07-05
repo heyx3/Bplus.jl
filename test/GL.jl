@@ -40,10 +40,10 @@ function test_buffers()
 
     # Try setting and getting with offsets.
     set_buffer_data(buf, [ 0x5, 0x7, 0x9, 0x19])
-    buf_actual = get_buffer_data(buf, UInt8; src_elements = IntervalU(2, 2))
+    buf_actual = get_buffer_data(buf, UInt8; src_elements = IntervalU((min=2, size=2)))
     @bp_check(buf_actual == [ 0x7, 0x9 ], map(bitstring, buf_actual))
     buf_actual = get_buffer_data(buf, UInt8;
-                                 src_elements = IntervalU(2, 2),
+                                 src_elements = IntervalU((min=2, size=2)),
                                  src_byte_offset = 1)
     @bp_check(buf_actual == [ 0x9, 0x19 ], map(bitstring, buf_actual))
     buf_actual = UInt8[ 0x2, 0x0, 0x0, 0x0, 0x0, 0x4 ]
@@ -57,7 +57,7 @@ function test_buffers()
                 src_byte_offset = 2,
                 dest_byte_offset = 11,
                 byte_size = 2)
-    buf_actual = get_buffer_data(buf2; src_byte_offset = 11, src_elements = IntervalU(1, 2))
+    buf_actual = get_buffer_data(buf2; src_byte_offset = 11, src_elements = IntervalU((min=1, size=2)))
     @bp_check(buf_actual == [ 0x9, 0x19 ],
               "Copying buffers with offsets: expected [ 0x9, 0x19 ], got ", buf_actual)
 
@@ -121,16 +121,16 @@ function test_textures()
                     # Clear a subset, then check the pixels again.
                     if all(sizeD >= 3)
                         val2 = Vec(ntuple(i -> rand(I), Int(components)))
-                        clear_range = Box{VecI{D}}(2, max(sizeD - 3, 1))
+                        clear_range = Box((min=2, size=max(sizeD - 3, 1)))
                         clear_tex_color(tex, val2; subset=TexSubset(clear_range))
-                        uncleared_range = union(collect(1:(clear_range.min - 1)),
+                        uncleared_range = union(collect(1:(min_inclusive(clear_range) - 1)),
                                                 collect(max_exclusive(clear_range):sizeD))
                         get_tex_color(tex, out_buf)
                         @bp_check(all(i -> out_buf[i]==val, uncleared_range),
                                   "Pixels that weren't affected by clear_tex_color()",
                                     " are still different: ", uncleared_range, " of\n\t", out_buf)
                         @bp_check(all(i -> out_buf[i]==val2,
-                                      clear_range.min : max_inclusive(clear_range)),
+                                      min_inclusive(clear_range) : max_inclusive(clear_range)),
                                   "Pixels that were in the cleared subset aren't",
                                     " the expected values: ", cleared_range, " of\n\t", out_buf)
                     end
@@ -139,13 +139,13 @@ function test_textures()
                     for pixel::VecI in 1:sizeD
                         val = Vec(ntuple(i -> rand(I), Int(components)))
                         set_tex_color(tex, [ val ];
-                                      subset=TexSubset(Box(pixel, 1)))
+                                      subset=TexSubset(Box((min=pixel, size=1))))
                         out_buf = Array{Vec{Int(components), I}, D}(undef, ntuple(i->1, D))
                         get_tex_color(tex, out_buf;
-                                      subset=TexSubset(Box(pixel, 1)))
+                                      subset=TexSubset(Box((min=pixel, size=1))))
                         @bp_check(out_buf[1] == val,
                                   "Set pixel of texture ", type, "_", format, "_", sizeD, "_", n_mips,
-                                      " at ", pixel, " with ", val, ".")
+                                      " at ", pixel, " to ", val, ". Got ", out_buf[1])
                     end
                     #TODO: Set as UInt[N], get as float, and test
 
@@ -431,7 +431,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
             # Draw the triangles.
             view_activate(get_view(triangle_tex))
             render_mesh(context, mesh_triangles, draw_triangles,
-                        elements = IntervalU(1, 3))
+                        elements = IntervalU((min=1, size=3)))
             view_deactivate(get_view(triangle_tex))
             check_gl_logs(string("drawing the triangles ", msg_context...))
 

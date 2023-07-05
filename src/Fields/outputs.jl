@@ -3,14 +3,14 @@ function sample_field!( array::Array{Vec{NOut, F}, NIn},
                         field::TField
                         ;
                         use_threading::Bool = true,
-                        array_bounds::Box{Vec{NIn, UInt}} = Box_minsize(
-                            one(Vec{NIn, UInt}),
-                            convert(Vec{NIn, UInt}, vsize(array))
-                        ),
-                        sample_space::Box{Vec{NIn, F}} = Box_minmax(
-                            zero(Vec{NIn, F}),
-                            one(Vec{NIn, F})
-                        )
+                        array_bounds::Box{NIn, UInt} = Box((
+                            min = one(Vec{NIn, UInt}),
+                            size = convert(Vec{NIn, UInt}, vsize(array))
+                        )),
+                        sample_space::Box{NIn, F} = Box((
+                            min = zero(Vec{NIn, F}),
+                            max = one(Vec{NIn, F})
+                        ))
                       ) where {NIn, NOut, F, TField<:AbstractField{NIn, NOut, F}}
     prep_data = prepare_field(field)
 

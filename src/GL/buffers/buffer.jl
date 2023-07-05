@@ -32,15 +32,18 @@ mutable struct Buffer <: Resource
                      ::Type{T} = eltype(initial_elements)
                      ;
                      recommend_storage_on_cpu::Bool = false,
-                     contiguous_element_range::Interval{<:Integer} = Box_minsize(1, contiguous_length(initial_elements, T))
+                     contiguous_element_range::Interval{<:Integer} = Interval((
+                        min=1,
+                        size=contiguous_length(initial_elements, T)
+                    ))
                    )::Buffer where {I<:Integer, T}
         @bp_check(isbitstype(T), "Can't make a GPU buffer of ", T)
         b = new(Ptr_Buffer(), 0, false)
         set_up_buffer(
-            contiguous_element_range.size * sizeof(T),
+            size(contiguous_element_range) * sizeof(T),
             can_change_data,
             contiguous_ref(initial_elements, T,
-                           contiguous_element_range.min),
+                           min_inclusive(contiguous_element_range)),
             recommend_storage_on_cpu,
             b
         )
@@ -106,7 +109,7 @@ function set_buffer_data( b::Buffer,
                           new_elements::Vector{T}
                           ;
                           # Which part of the input array to read from
-                          src_element_range::IntervalU = IntervalU(1, length(new_elements)),
+                          src_element_range::IntervalU = IntervalU((min=1, size=length(new_elements))),
                           # Shifts the first element of the buffer's array to write to
                           dest_element_offset::UInt = zero(UInt),
                           # A byte offset, to be combined wth 'dest_element_start'
@@ -117,7 +120,7 @@ function set_buffer_data( b::Buffer,
               "Trying to upload a range of data beyond the input buffer")
 
     first_byte::UInt = dest_byte_offset + ((dest_element_offset) * sizeof(T))
-    byte_size::UInt = sizeof(T) * src_element_range.size
+    byte_size::UInt = sizeof(T) * size(src_element_range)
     last_byte::UInt = first_byte + byte_size - 1
     @bp_check(last_byte <= b.byte_size,
               "Trying to write past the end of the buffer: ",
@@ -125,7 +128,7 @@ function set_buffer_data( b::Buffer,
                  ", when there's only ", b.byte_size, " bytes")
 
     if byte_size >= 1
-        ptr = Ref(new_elements, Int(src_element_range.min))
+        ptr = Ref(new_elements, Int(min_inclusive(src_element_range)))
         glNamedBufferSubData(b.handle, first_byte, byte_size, ptr)
     end
 end
@@ -147,21 +150,22 @@ function get_buffer_data( b::Buffer,
                           # The start of the buffer's array data
                           src_byte_offset::Integer = zero(UInt),
                           # The elements to read from the buffer (defaults to as much as possible)
-                          src_elements::IntervalU = IntervalU(1,
-                              min((b.byte_size - src_byte_offset) ÷ sizeof(T),
-                                  (output isa Vector{T}) ?
-                                      (length(output) - dest_offset) :
-                                      typemax(UInt))
-                          )
+                          src_elements::IntervalU = IntervalU((
+                              min=1,
+                              size=min((b.byte_size - src_byte_offset) ÷ sizeof(T),
+                                       (output isa Vector{T}) ?
+                                           (length(output) - dest_offset) :
+                                           typemax(UInt))
+                          ))
                         )::Optional{Vector{T}} where {T}
-    src_first_byte::UInt = convert(UInt, src_byte_offset + ((src_elements.min - 1) * sizeof(T)))
-    n_bytes::UInt = convert(UInt, src_elements.size * sizeof(T))
+    src_first_byte::UInt = convert(UInt, src_byte_offset + ((min_inclusive(src_elements) - 1) * sizeof(T)))
+    n_bytes::UInt = convert(UInt, size(src_elements) * sizeof(T))
 
     if output isa Vector{T}
-        @bp_check(dest_offset + src_elements.size <= length(output),
+        @bp_check(dest_offset + size(src_elements) <= length(output),
                   "Trying to read Buffer into an array, but the array isn't big enough.",
                     " Trying to write to elements ", (dest_offset + 1),
-                    " - ", (dest_offset + src_elements.size), ", but there are only ",
+                    " - ", (dest_offset + size(src_elements)), ", but there are only ",
                     length(output))
     else
         @bp_check(dest_offset == 0x0,
@@ -170,7 +174,7 @@ function get_buffer_data( b::Buffer,
     end
     output_array::Vector{T} = (output isa Vector{T}) ?
                                   output :
-                                  Vector{T}(undef, src_elements.size)
+                                  Vector{T}(undef, size(src_elements))
 
     output_ptr = Ref(output_array, Int(dest_offset + 1))
 

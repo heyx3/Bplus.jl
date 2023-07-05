@@ -203,7 +203,7 @@ bp_gl_context( v2i(800, 500), "Cam3D demo";
         forward = vnorm(v3f(1, 1, -1)),
         up = v3f(0, 0, 1),
 
-        clip_range = Box_minmax(0.01, 10.0)
+        clip_range = Box((min=0.01, max-10.0))
     )
     cam_settings = Cam3D_Settings{Float32}(
         move_speed = 5
@@ -262,7 +262,8 @@ bp_gl_context( v2i(800, 500), "Cam3D demo";
         # Draw the triangles.
         set_uniform(draw_triangles, "u_pixelSize", convert(v2f, window_size))
         set_uniform(draw_triangles, "u_clipPlanes",
-                    v2f(cam.clip_range.min, max_exclusive(cam.clip_range)))
+                    v2f(min_inclusive(cam.clip_range),
+                        max_exclusive(cam.clip_range)))
         set_uniform(draw_triangles, "u_mat_worldview", mat_view)
         set_uniform(draw_triangles, "u_mat_projection", mat_projection)
         view_activate(get_view(tex))

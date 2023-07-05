@@ -666,10 +666,10 @@ function service_gui_end_frame(serv::GuiService, context::GL.Context = get_conte
                     indexed_params = DrawIndexed(
                         value_offset = UInt64(cmd_ptr.VtxOffset)
                     ),
-                    elements = Box_minsize(
-                        UInt32(cmd_ptr.IdxOffset + 1),
-                        UInt32(n_elements)
-                    )
+                    elements = Box((
+                        min=UInt32(cmd_ptr.IdxOffset + 1),
+                        size=UInt32(n_elements)
+                    ))
                 )
                 (tex_id != font_tex_id) && view_deactivate(tex)
             end

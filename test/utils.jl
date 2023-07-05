@@ -16,8 +16,8 @@
 )
 
 # Test UpTo{N, T}:
-@bp_test_no_allocations(collect(UpTo{4, Int}()), ())
-@bp_test_no_allocations(collect(UpTo{4, Int}((3, 2))), (3, 2))
+@bp_check(collect(UpTo{4, Int}()) == Int[ ])
+@bp_check(collect(UpTo{4, Int}((3, 2))) == [ 3, 2 ])
 # Conversion:
 @inline function f_upto(i::T)::UpTo{3, Int} where {T}
     return i
@@ -29,6 +29,11 @@ end
 @bp_test_no_allocations(UpTo{3, Int}((2, 3, 4)), (2, 3, 4))
 @bp_test_no_allocations(UpTo{3, Int}((2, )), (2, ))
 @bp_test_no_allocations(UpTo{3, Int}((2, )), 2)
+# Append:
+do_append() = append(UpTo{2, Int}((1, )),
+                     UpTo{5, Float32}(Float32.((2, 3, 4))))
+@bp_test_no_allocations(typeof(do_append()), UpTo{7, Float32})
+@bp_test_no_allocations(do_append(), Float32.((1.0, 2.0, 3.0, 4.0)))
 
 # Test reduce_some()
 @bp_test_no_allocations(reduce_some(+, b->(b%2==0), 1:10),

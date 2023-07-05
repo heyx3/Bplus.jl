@@ -316,30 +316,30 @@ function texture_data( tex::Texture,
     full_size::v3u = get_mip_size(tex.size, subset.mip)
     full_subset::TexSubset{3} = change_dimensions(subset, 3)
 
-    range::Box{v3u} = get_subset_range(full_subset, full_size)
+    range::Box3D = get_subset_range(full_subset, full_size)
     if (tex.type == TexTypes.cube_map)
-        range = Box{v3u}(v3u(range.min.xy..., cube_face_range[1]),
-                         v3u(range.size.xy..., cube_face_range[2] - cube_face_range[1] + 1))
+        range = typeof(range)((min=v3u(min_inclusive(range).xy..., cube_face_range[1]),
+                               size=v3u(size(range).xy..., cube_face_range[2] - cube_face_range[1] + 1)))
     end
 
     # Perform the requested operation.
     if mode isa Val{:Set}
         if tex.type == TexTypes.oneD
             glTextureSubImage1D(tex.handle, subset.mip - 1,
-                                range.min.x - 1,
-                                range.size.x,
+                                min_inclusive(range).x - 1,
+                                size(range).x,
                                 components, component_type,
                                 value)
         elseif tex.type == TexTypes.twoD
             glTextureSubImage2D(tex.handle, subset.mip - 1,
-                                (range.min.xy - 1)...,
-                                range.size.xy...,
+                                (min_inclusive(range).xy - 1)...,
+                                size(range).xy...,
                                 components, component_type,
                                 value)
         elseif (tex.type == TexTypes.threeD) || (tex.type == TexTypes.cube_map)
             glTextureSubImage3D(tex.handle, subset.mip - 1,
-                                (range.min - 1)...,
-                                range.size...,
+                                (min_inclusive(range) - 1)...,
+                                size(range)...,
                                 components, component_type,
                                 value)
         else
@@ -351,13 +351,13 @@ function texture_data( tex::Texture,
         @bp_gl_assert(!recompute_mips,
                       "Asked to recompute mips after getting a texture's pixels, which is pointless")
         glGetTextureSubImage(tex.handle, subset.mip - 1,
-                             (range.min - 1)..., range.size...,
+                             (min_inclusive(range) - 1)..., size(range)...,
                              components, component_type,
-                             prod(range.size) * get_buf_pixel_byte_size,
+                             prod(size(range)) * get_buf_pixel_byte_size,
                              value)
     elseif mode isa Val{:Clear}
         glClearTexSubImage(tex.handle, subset.mip - 1,
-                           (range.min - 1)..., range.size...,
+                           (min_inclusive(range) - 1)..., size(range)...,
                            components, component_type,
                            value)
     end
@@ -585,7 +585,7 @@ function set_tex_color( t::Texture,
                       ) where {TBuf <: PixelBuffer}
     T = get_component_type(TBuf)
     N = get_component_count(TBuf)
-    
+
     @bp_check(!(t.format isa E_CompressedFormats),
               "Can't set compressed texture data as if it's normal color data! ",
                 "(technically you can, but driver implementations for the compression are usually quite bad)")
