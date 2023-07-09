@@ -10,6 +10,6 @@ using ..Utilities, ..Math, ..GL
 
 
 include("cam3D.jl")
-include("resources.jl")
+include("basic_graphics_service.jl")
 
 end # module

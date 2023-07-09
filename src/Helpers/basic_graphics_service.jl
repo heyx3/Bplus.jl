@@ -1,5 +1,5 @@
 "
-A Context service which defines a bunch of common, simple, useful resources:
+A Context service which defines a bunch of useful GL resources:
 
  * `screen_triangle` : A 1-triangle mesh with 2D positions in NDC-space.
                        When drawn, it will perfectly cover the entire viewport,
@@ -15,16 +15,16 @@ A Context service which defines a bunch of common, simple, useful resources:
  * `empty_mesh` : A mesh with no vertex data, for dispatching entirely procedural geometry.
                   Has the 'points' PrimitiveType.
 "
-mutable struct CResources #TODO: Rename to something like `BasicGraphicsService`
+mutable struct BasicGraphicsService
     screen_triangle::Mesh
     quad::Mesh
     blit::Program
     empty_mesh::Mesh
     references::Set{Resource}
 end
-export CResources
+export BasicGraphicsService
 
-function CResources()
+function BasicGraphicsService()
     screen_tri_poses = Buffer(false, map(Vec{2, Int8}, [
         (-1, -1),
         (3, -1),
@@ -75,7 +75,7 @@ void main() {
                          GL.VertexDataSource[ ],
                          GL.VertexAttribute[ ])
 
-    return CResources(
+    return BasicGraphicsService(
         screen_tri, quad, blit, empty_mesh,
         Set(Resource[
             screen_tri_poses, screen_tri,
@@ -90,26 +90,26 @@ end
 const CONTEXT_SERVICE_KEY_RESOURCES = :HELPERS_Resources
 
 
-function get_resources()::CResources
+function get_basic_graphics()::BasicGraphicsService
     c = get_context()
-    GL.@bp_gl_assert(exists(c), "Trying to get the 'CResources' service outside of a Context")
-    return get_resources(c)
+    GL.@bp_gl_assert(exists(c), "Trying to get the 'BasicGraphicsService' service outside of a Context")
+    return get_basic_graphics(c)
 end
-function get_resources(c::Context)::CResources
+function get_basic_graphics(c::Context)::BasicGraphicsService
     return GL.try_register_service(c, CONTEXT_SERVICE_KEY_RESOURCES) do
         return GL.Service(
-            CResources(),
-            on_destroyed = (c_resources -> close.(c_resources.references))
+            BasicGraphicsService(),
+            on_destroyed = (c_basic_graphics -> close.(c_basic_graphics.references))
         )
     end
 end
-export get_resources
+export get_basic_graphics
 
 "
 Renders the given texure, using the given screen-quad transform
     and the given color transform on the texture's pixels.
 "
-function resource_blit(resources::CResources,
+function resource_blit(basic_graphics::BasicGraphicsService,
                        tex::Union{Texture, View},
                        context = get_context()
                        ;
@@ -119,7 +119,7 @@ function resource_blit(resources::CResources,
                        manage_tex_view::Bool = true
                       )
                       view_activate
-    resources = get_resources(context)
+    basic_graphics = get_basic_graphics(context)
 
     tex_view = get_view(tex)
     if manage_tex_view
@@ -127,9 +127,9 @@ function resource_blit(resources::CResources,
         view_activate(tex_view)
     end
 
-    set_uniform(resources.blit, "u_tex", tex_view)
-    set_uniform(resources.blit, "u_mesh_transform", quad_transform)
-    set_uniform(resources.blit, "u_color_map", color_transform)
+    set_uniform(basic_graphics.blit, "u_tex", tex_view)
+    set_uniform(basic_graphics.blit, "u_mesh_transform", quad_transform)
+    set_uniform(basic_graphics.blit, "u_color_map", color_transform)
 
     old_depth_test = context.state.depth_test
     if disable_depth_test
@@ -140,9 +140,9 @@ function resource_blit(resources::CResources,
     # If transforming it, use the more precise, intuitive quad.
     render_mesh(context,
                 (quad_transform == m_identityf(3, 3)) ?
-                    resources.screen_triangle :
-                    resources.quad,
-                resources.blit)
+                    basic_graphics.screen_triangle :
+                    basic_graphics.quad,
+                basic_graphics.blit)
 
     if manage_tex_view && !was_active
         view_deactivate(tex_view)
@@ -155,6 +155,6 @@ end
                                ;
                                kw_args...
                               )
-    resource_blit(get_resources(context), tex, context; kw_args...)
+    resource_blit(get_basic_graphics(context), tex, context; kw_args...)
 end
 export resource_blit

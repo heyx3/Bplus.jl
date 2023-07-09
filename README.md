@@ -312,7 +312,7 @@ Because the GL context is a sort of singleton, it allows you to register global 
 * `ViewDebuggerService` : double-checks that you're not using a texture view in a shader without activating it. Automatically included if Bplus.GL is configured for debugging (i.e. you've redefined `Bplus.GL.gl_aserts_enabled() = true`).
 * `InputService` : provides access to `Bplus.Input` (see **Input** below)
 * `GuiService` : provides access to `Bplus.GUI` (see **GUI** below)
-* `CResources` : provides access to various simple graphics resources (see **Helpers** below)
+* `BasicGraphicsService` : provides access to various common rendering resources (see **Helpers** below)
 
 ### Input
 
@@ -351,7 +351,7 @@ A dumping ground for useful stuff. Like *Utilities*, but more focused on B+ than
   * Settings are stored in `Cam3D_Settings{F}`
   * Frame inputs are stored in `Cam3D_Input{F}`
   * Call `cam_update(state, settings, input, delta_seconds)` to tick and compute updated state/settings
-* *Resources*: a context service (see **GL**>*Services* above) which provides lots of basic GL stuff. Such as:
+* *BasicGraphicsService*: a context service (see **GL**>*Services* above) which provides important, basic stuff. Such as:
   * Triangle and quad meshes which cover the whole screen
   * A blit shader (used with `resources_blit()`)
   * An empty mesh, for dispatching draw calls with entirely procedural geometry.
