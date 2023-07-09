@@ -2,13 +2,13 @@
 
 A game and 3D graphics framework for Julia, using OpenGL 4.6 + bindless textures.
 
-Offers game math, a GL/windowing wrapper, a GLFW input wrapper, and numerous helper modules.
+Offers game math, a GL/windowing wrapper, a GLFW input wrapper, scene graph algorithms, and numerous other modules.
 
 ## Setup/Dependencies
 
 After downloading the repo, run *scripts/setup.jl*. The directory or Julia project you run from doesn't matter.
 
-The weirdest dependency is "ModernGLbp", my on fork of [ModernGL](https://github.com/JuliaGL/ModernGL.jl). It adds the necessary components for `ARB_bindless_texture`. It's added to this repo as a git submodule (and this is all handled within *setup.jl*).
+The weirdest dependency is "[ModernGLbp](https://github.com/heyx3/ModernGL.jl)", my own fork of [ModernGL](https://github.com/JuliaGL/ModernGL.jl). It adds the necessary components for `ARB_bindless_texture`. It's added to this repo as a git submodule (and this is all handled within *setup.jl*).
 
 ## Tests
 
