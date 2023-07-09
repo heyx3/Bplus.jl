@@ -138,7 +138,9 @@ function test_textures()
                     # Try getting and setting individual pixels.
                     for pixel::VecI in 1:sizeD
                         val = Vec(ntuple(i -> rand(I), Int(components)))
-                        set_tex_color(tex, [ val ];
+                        in_buf = Array{typeof(val)}(undef, ntuple(i->1, D))
+                        in_buf[1] = val
+                        set_tex_color(tex, in_buf;
                                       subset=TexSubset(Box((min=pixel, size=1))))
                         out_buf = Array{Vec{Int(components), I}, D}(undef, ntuple(i->1, D))
                         get_tex_color(tex, out_buf;

@@ -309,7 +309,8 @@ function texture_data( tex::Texture,
                        mode::@ano_enum(Set, Get, Clear)
                        ;
                        cube_face_range::Tuple{Int, Int},
-                       get_buf_pixel_byte_size::Int = -1  # Only for Get ops
+                       get_buf_pixel_byte_size::Int = -1,  # Only for Get ops
+                       check_input_size::VecT{<:Integer} = Vec(-1) # Only for Get/Set ops
                      )
     #TODO: Check that the subset is the right number of dimensions
 
@@ -318,25 +319,36 @@ function texture_data( tex::Texture,
 
     range::Box3D = get_subset_range(full_subset, full_size)
     if (tex.type == TexTypes.cube_map)
-        range = typeof(range)((min=v3u(min_inclusive(range).xy..., cube_face_range[1]),
-                               size=v3u(size(range).xy..., cube_face_range[2] - cube_face_range[1] + 1)))
+        range = typeof(range)((min=v3u(min_inclusive(range).xy...,
+                                       cube_face_range[1]),
+                               size=v3u(size(range).xy...,
+                                        cube_face_range[2] - cube_face_range[1] + 1)))
     end
 
     # Perform the requested operation.
     if mode isa Val{:Set}
         if tex.type == TexTypes.oneD
+            @bp_check(size(range).x == check_input_size.x,
+                      "Trying to set ", size(range).x, " pixels",
+                      " using an array with ", check_input_size.x, " elements")
             glTextureSubImage1D(tex.handle, subset.mip - 1,
                                 min_inclusive(range).x - 1,
                                 size(range).x,
                                 components, component_type,
                                 value)
         elseif tex.type == TexTypes.twoD
+            @bp_check(all(size(range).xy == check_input_size.xy),
+                      "Trying to set ", size(range).xy, " pixels",
+                      " using an array with ", check_input_size.xy, " elements")
             glTextureSubImage2D(tex.handle, subset.mip - 1,
                                 (min_inclusive(range).xy - 1)...,
                                 size(range).xy...,
                                 components, component_type,
                                 value)
         elseif (tex.type == TexTypes.threeD) || (tex.type == TexTypes.cube_map)
+            @bp_check(all(size(range).xyz == check_input_size.xyz),
+                      "Trying to set ", size(range).xyz, " pixels",
+                      " using an array with ", check_input_size.xyz, " elements")
             glTextureSubImage3D(tex.handle, subset.mip - 1,
                                 (min_inclusive(range) - 1)...,
                                 size(range)...,
@@ -350,6 +362,21 @@ function texture_data( tex::Texture,
                       "Internal field 'get_buf_pixel_byte_size' not passed for getting texture data")
         @bp_gl_assert(!recompute_mips,
                       "Asked to recompute mips after getting a texture's pixels, which is pointless")
+        if get_component_count(typeof(check_input_size)) == 1
+            @bp_check(size(range).x <= check_input_size.x,
+                    "Trying to read ", size(range).x, " pixels",
+                        " into an array with ", check_input_size.x, " elements")
+        elseif get_component_count(typeof(check_input_size)) == 2
+            @bp_check(all(size(range).xy <= check_input_size.xy),
+                    "Trying to read ", size(range).xy, " pixels",
+                        " into an array with ", check_input_size.xy, " elements")
+        elseif get_component_count(typeof(check_input_size)) == 3
+            @bp_check(all(size(range) <= check_input_size),
+                    "Trying to read ", size(range), " pixels",
+                        " into an array with ", check_input_size, " elements")
+        else
+            error("Unknown case: ", typeof(check_input_size))
+        end
         glGetTextureSubImage(tex.handle, subset.mip - 1,
                              (min_inclusive(range) - 1)..., size(range)...,
                              components, component_type,
@@ -602,7 +629,8 @@ function set_tex_color( t::Texture,
                  subset, Ref(pixels, 1), recompute_mips,
                  Val(:Set)
                  ;
-                 cube_face_range = cube_face_range)
+                 cube_face_range = cube_face_range,
+                 check_input_size = vsize(pixels))
 end
 "Sets the data for a depth texture"
 function set_tex_depth( t::Texture,
@@ -618,7 +646,8 @@ function set_tex_depth( t::Texture,
                  subset, Ref(pixels, 1), recompute_mips,
                  Val(:Set)
                  ;
-                 cube_face_range = cube_face_range)
+                 cube_face_range = cube_face_range,
+                 check_input_size = vsize(pixels))
 end
 "Sets the data for a stencil texture"
 function set_tex_stencil( t::Texture,
@@ -636,7 +665,8 @@ function set_tex_stencil( t::Texture,
                  subset, Ref(pixels, 1), recompute_mips,
                  Val(:Set)
                  ;
-                 cube_face_range = cube_face_range)
+                 cube_face_range = cube_face_range,
+                 check_input_size = vsize(pixels))
 end
 "Sets the data for a depth/stencil hybrid texture"
 function set_tex_depthstencil( t::Texture,
@@ -658,12 +688,13 @@ function set_tex_depthstencil( t::Texture,
     else
         error("Unhandled case: ", T)
     end
-    
+
     texture_data(t, component_type, GL_STENCIL_INDEX,
                  subset, Ref(pixels, 1), recompute_mips,
                  Val(:Set)
                  ;
-                 cube_face_range = cube_face_range)
+                 cube_face_range = cube_face_range,
+                 check_input_size = vsize(pixels))
 end
 #TODO: set_tex_compressed() for compressed-format textures. Make sure generate_texture() uses it when applicable
 
@@ -695,7 +726,8 @@ function get_tex_color( t::Texture,
                  Val(:Get)
                  ;
                  cube_face_range = cube_face_range,
-                 get_buf_pixel_byte_size = N * sizeof(T))
+                 get_buf_pixel_byte_size = N * sizeof(T),
+                 check_input_size = vsize(out_pixels))
 end
 "Gets the pixel data for a depth texture"
 function get_tex_depth( t::Texture,
@@ -710,7 +742,8 @@ function get_tex_depth( t::Texture,
                  Val(:Get)
                  ;
                  cube_face_range = cube_face_range,
-                 get_buf_pixel_byte_size = sizeof(T))
+                 get_buf_pixel_byte_size = sizeof(T),
+                 check_input_size = vsize(out_pixels))
 end
 "Gets the pixel data for a stencil texture"
 function get_tex_stencil( t::Texture,
@@ -725,7 +758,8 @@ function get_tex_stencil( t::Texture,
                  Val(:Get)
                  ;
                  cube_face_range = cube_face_range,
-                 get_buf_pixel_byte_size = sizeof(UInt8))
+                 get_buf_pixel_byte_size = sizeof(UInt8),
+                 check_input_size = vsize(out_pixels))
 end
 "Get the data for a depth/stencil hybrid texture"
 function get_tex_depthstencil( t::Texture,
@@ -752,7 +786,8 @@ function get_tex_depthstencil( t::Texture,
                  Val(:Get)
                  ;
                  cube_face_range = cube_face_range,
-                 get_buf_pixel_byte_size = sizeof(T))
+                 get_buf_pixel_byte_size = sizeof(T),
+                 check_input_size = vsize(out_pixels))
 end
 #TODO: get_tex_compressed() for compressed-format textures
 

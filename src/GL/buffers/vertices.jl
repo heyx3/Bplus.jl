@@ -7,10 +7,12 @@ The types of Buffer data that can be read as input into the vertex shader are:
 Most of these inputs are simple, except for the most common type: 32-bit float vectors.
 Float vectors can be created from all sorts of Buffer data:
     * It can come from 16-bit, 32-bit, or 64-bit float components
-    * It can come from int/uint components, normalized (or alternatively, just casted fromt int to float)
+    * It can come from int/uint components, normalized (or alternatively, casted from int to float)
     * It can come from 32-bit fixed decimal components
     * It can come from special pre-packed data formats
 =#
+
+#TODO: This whole type system is overcomplicated and underengineered. I understood Julia a lot less back then.
 
 
 ###################################

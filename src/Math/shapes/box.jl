@@ -10,6 +10,8 @@ struct Box{N, F} <: AbstractShape{N, F}
 end
 export Box
 
+println("#TODO: Try `@inline Box(; kw...) = Box(kw)` so you don't need double-parens for keyword construction")
+
 println("#TODO: Test Box serialization flexibility, then port any fixes into Interval")
 StructTypes.StructType(::Type{<:Box}) = StructTypes.CustomStruct()
 StructTypes.lower(b::Box) = Dict("min"=>min_inclusive(b), "size"=>size(b))
@@ -69,6 +71,7 @@ export BoxT, Box2D, Box3D,
        Box2Di, Box2Du, Box2Df, Box2Dd,
        Box3Di, Box3Du, Box3Df, Box3Dd,
        BoxI, BoxU, BoxF, BoxD
+#
 
 
 ###########################################
@@ -83,6 +86,67 @@ is_touching(box::Box{N, F1}, point::Vec{N, F2}) where {N, F1, F2} = all(
     (point < max_exclusive(box))
 )
 closest_point(b::Box{N, F1}, p::Vec{N, F2}) where {N, F1, F2} = convert(Vec{N, F1}, clamp(p, b.min, max_inclusive(b)))
+
+function intersections( b::Box{N, F},
+                        r::Ray{N, F},
+                        ::Val{ShouldCalcNormal} = Val(false)
+                        ;
+                        inv_ray_dir::Vec{N, F} = one(F) / r.dir, # Pass pre-calculated value if you have it
+                        min_t::F = zero(F),
+                        max_t::F = typemax_finite(F),
+                        atol::F = zero(F)  # Epsilon value, used to check if
+                                           #    two intersections are approximately duplicates
+                      )::Union{UpTo{2, F}, Tuple{UpTo{2, F}, Vec3{F}}} where {N, F, ShouldCalcNormal}
+    @bp_check((N == 3) || !ShouldCalcNormal,
+              "Can only use 'ShouldCalcNormal' if the shape is 3D")
+
+    # Source: https://github.com/heyx3/heyx3RT/blob/master/RT/RT/Impl/BoundingBox.cpp
+
+    # Get the points of intersection along each of the 6 cube faces.
+    min_face_ts::Vec{N, F} = (min_inclusive(b) - r.start) * inv_ray_dir
+    max_face_ts::Vec{N, F} = (max_exclusive(b) - r.start) * inv_ray_dir
+
+    # The ray initially extends from 'min_t' to 'max_t'.
+    # Trim the ends of this ray to fit within the bounds of each pair of min/max cube faces.
+    min_face_ts, max_face_ts = minmax(min_face_ts, max_face_ts)
+    ts::NTuple{2, F} = (max(min_face_ts), min(max_face_ts))
+
+    if ts[1] > ts[2]
+        if ShouldCalcNormal
+            return (UpTo{2, F}(()), zero(Vec3{F}))
+        else
+            return UpTo{2, F}(())
+        end
+    else
+        hits = sanitize_hits(ts..., min_t, max_t, atol)
+        if !ShouldCalcNormal
+            return hits
+        end
+
+        # Find the face of this hit, in terms of axis and direction.
+        # Ideally it would be tracked along with the initial intersection calculations,
+        #    but that would complicate those calculations.
+        closest_hit::Vec3{F} = ray_at(r, hits[1])
+        local closest_face::@NamedTuple{axis::Int, dir::F, dist::F}
+        closest_face = (axis=0, dir=zero(F), dist=typemax(F))
+        for (dir, corner) in ( (F(-1), min_inclusive(b)),
+                               (F(1), max_inclusive(b)) )
+            for axis in (1, 2, 3)
+                face_dist = abs(closest_hit[axis] - corner[axis])
+                if face_dist < closest_face[3]
+                    closest_face = (axis=axis, dir=dir, dist=face_dist)
+                end
+            end
+        end
+
+        # Generate the closest face's normal.
+        n::NTuple{3, F} = F.((0, 0, 0))
+        @set! n[closest_face.axis] = closest_face.dir
+        hit_normal = Vec3{F}(n...)
+
+        return (hits, hit_normal)
+    end
+end
 
 
 ############################

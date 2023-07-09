@@ -541,7 +541,7 @@ end
 #  "Whole family" iterators  #
 ##############################
 
-println("#TODO: Depth-first iterator tracks its own depth and supports a min + max depth, to dramatically simplify and speed-up the BFS")
+#TODO: Depth-first iterator tracks its own depth and supports a min + max depth, to dramatically simplify and speed-up the BFS
 
 struct FamilyDFS{TNodeID, TContext}
     root_id::TNodeID

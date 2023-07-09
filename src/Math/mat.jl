@@ -83,7 +83,7 @@ function m_apply_point(m::Mat{4, 4, F}, v::Vec{3, F})::Vec{3, F} where {F}
     v4 = m * v4
     return v4.xyz / v4.w
 end
-function a_apply_point(m::Mat{3, 3, F}, v::Vec{2, F})::Vec{2, F} where {F}
+function m_apply_point(m::Mat{3, 3, F}, v::Vec{2, F})::Vec{2, F} where {F}
     v3::Vec{3, F} = vappend(v, one(F))
     v3 = m * v3
     return v3.xy / v3.z
@@ -127,10 +127,10 @@ export m_identity, m_identityf, m_identityd
 Embeds a 3x3 matrix into a 4x4 matrix.
 A 4x4 matrix is needed to represent 3D translations.
 """
-@inline to_mat4x4(m::Mat{3, 3, F, 9}) where {F} = Mat{4, 4}(
+@inline m_to_mat4x4(m::Mat{3, 3, F, 9}) where {F} = Mat{4, 4}(
     m[:, 1]..., zero(F),
     m[:, 2]..., zero(F),
     m[:, 3]..., zero(F),
     zero(F), zero(F), zero(F), one(F)
 )
-export to_mat4x4
+export m_to_mat4x4

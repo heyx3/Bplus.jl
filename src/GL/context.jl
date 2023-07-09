@@ -121,12 +121,12 @@ mutable struct Context
     # You can register any number of callbacks to GLFW events here.
     # Each is invoked with similar arguments to the raw callbacks minus the window handle.
     glfw_callbacks_mouse_button::Vector{Base.Callable} # (GLFW.MouseButton, GLFW.Action, Int)
-    glfw_callbacks_scroll::Vector{Base.Callable} # (Float32, Float32)
+    glfw_callbacks_scroll::Vector{Base.Callable} # (v2f)
     glfw_callbacks_key::Vector{Base.Callable} # (GLFW.Key, Int, GLFW.Action, Int)
     glfw_callbacks_char::Vector{Base.Callable} # (Char)
     glfw_callbacks_joystick_connection::Vector{Base.Callable} # (GLFW.Joystick, Bool [if false, disconnection])
     glfw_callbacks_window_focused::Vector{Base.Callable} # (Bool [if false, lost focus rather than gained])
-    glfw_callbacks_window_resized::Vector{Base.Callable} # (v2f)
+    glfw_callbacks_window_resized::Vector{Base.Callable} # (v2i)
     #TODO: Joystick connection callback is not tied to a window; it needs to be a true singleton
 
     services::Dict{Symbol, Service}
@@ -210,7 +210,7 @@ mutable struct Context
         GLFW.SetScrollCallback(con.window, (window::GLFW.Window,
                                             delta_x::Float64, delta_y::Float64) -> begin
             for callback in con.glfw_callbacks_scroll
-                callback(@f32(delta_x), @f32(delta_y))
+                callback(v2f(@f32(delta_x), @f32(delta_y)))
             end
         end)
         GLFW.SetJoystickCallback((id::GLFW.Joystick, event::GLFW.DeviceConfigEvent) -> begin

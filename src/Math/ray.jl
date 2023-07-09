@@ -22,7 +22,7 @@ export Ray2D, Ray3D, Ray4D,
 
 
 "Gets the point along the ray at distance `t`"
-ray_at(ray::Ray, t::AbstractFloat) = ray.start + (ray.dir * t)
+ray_at(ray::Ray, t) = ray.start + (ray.dir * t)
 
 "Finds the closest point on a ray to another point"
 function closest_point( ray::Ray{N, F}, pos::Vec{N, F}

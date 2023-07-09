@@ -4,7 +4,7 @@ Resources should be created within a Context, and can be cleaned up with `Base.c
 The resource's OpenGL handle must be set to a null value after the resource is closed,
     so that it's easy to see if a resource has been destroyed.
 "
-abstract type Resource end
+abstract type Resource end #TODO: Rename 'AbstractResource'
 
 "
 Gets the OpenGL handle for a resource.

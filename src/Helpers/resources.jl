@@ -15,7 +15,7 @@ A Context service which defines a bunch of common, simple, useful resources:
  * `empty_mesh` : A mesh with no vertex data, for dispatching entirely procedural geometry.
                   Has the 'points' PrimitiveType.
 "
-mutable struct CResources
+mutable struct CResources #TODO: Rename to something like `BasicGraphicsService`
     screen_triangle::Mesh
     quad::Mesh
     blit::Program

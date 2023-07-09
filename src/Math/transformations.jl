@@ -43,7 +43,7 @@ end
     ]
 end
 "Generates a 4x4 rotation matrix around the X axis"
-@inline m4_rotateX(rad::F) where {F<:AbstractFloat} = to_mat4x4(m3_rotateX(rad))
+@inline m4_rotateX(rad::F) where {F<:AbstractFloat} = m_to_mat4x4(m3_rotateX(rad))
 
 "Generates a 3x3 rotation matrix around the Y axis, in radians"
 @inline m3_rotateY(rad::F) where {F<:AbstractFloat} = let sico = sincos(rad)
@@ -54,7 +54,7 @@ end
     ]
 end
 "Generates a 4x4 rotation matrix around the Y axis"
-@inline m4_rotateY(rad::F) where {F<:AbstractFloat} = to_mat4x4(m3_rotateY(rad))
+@inline m4_rotateY(rad::F) where {F<:AbstractFloat} = m_to_mat4x4(m3_rotateY(rad))
 
 "Generates a 3x3 rotation matrix around the Z axis, in radians"
 @inline m3_rotateZ(rad::F) where {F<:AbstractFloat} = let sico = sincos(rad)
@@ -65,7 +65,7 @@ end
     ]
 end
 "Generates a 4x4 rotation matrix around the Z axis"
-@inline m4_rotateZ(rad::F) where {F<:AbstractFloat} = to_mat4x4(m3_rotateZ(rad))
+@inline m4_rotateZ(rad::F) where {F<:AbstractFloat} = m_to_mat4x4(m3_rotateZ(rad))
 
 "Generates a 3x3 rotation matrix from a quaternion"
 @inline m3_rotate(q::Quaternion{F}) where {F} = q_mat3x3(q)

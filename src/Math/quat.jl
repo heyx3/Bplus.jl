@@ -1,25 +1,3 @@
-#################
-##   Snippets  ##
-#################
-
-# Breaking out some code into small functions to help with type inference.
-
-function pick_arbitrary_rot_axis(v::Vec3{F}) where {F}
-    axis::Vec3{F} = (abs(v.x) < one(F)) ?
-                       Vec3{F}(1, 0, 0) :
-                       Vec3{F}(0, 1, 0)
-    axis = vnorm(axis × from)
-end
-
-function pick_rot_axis(from::Vec3{F1}, to::Vec3{F2}, cos_angle::F) where {F, F1, F2}
-    norm::Vec3{F} = map(F, from × to)
-    theta::F = one(F) + convert(F, cos_angle)
-    return vnorm(Vec4{F}(norm..., theta))
-end
-
-###################
-
-
 """
 Quaternions are great for representing 3D rotations.
 It is assumed to always be normalized, to optimize the math
@@ -315,8 +293,29 @@ end
 export q_mat3x3
 
 "Converts a quaternion to a 4x4 transformation matrix"
-@inline q_mat4x4(q::Quaternion) = to_mat4x4(q_mat3x3(q))
+@inline q_mat4x4(q::Quaternion) = m_to_mat4x4(q_mat3x3(q))
 export q_mat4x4
 
 
 #TODO: Double-check slerp, and implement squad, using this article: https://www.3dgep.com/understanding-quaternions/#SLERP
+
+#################
+##   Snippets  ##
+#################
+
+# Breaking out some code into small functions to help with type inference.
+
+function pick_arbitrary_rot_axis(v::Vec3{F}) where {F}
+    axis::Vec3{F} = (abs(v.x) < one(F)) ?
+                       Vec3{F}(1, 0, 0) :
+                       Vec3{F}(0, 1, 0)
+    axis = vnorm(get_right_handed() ? (axis × from) : (from × axis))
+end
+
+function pick_rot_axis(from::Vec3{F1}, to::Vec3{F2}, cos_angle::F) where {F, F1, F2}
+    norm::Vec3{F} = map(F, get_right_handed() ? (from × to) : (to × from))
+    theta::F = one(F) + convert(F, cos_angle)
+    return vnorm(Vec4{F}(norm..., theta))
+end
+
+###################

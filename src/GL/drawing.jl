@@ -4,6 +4,7 @@
 #########################
 
 #TODO: Probably should make attachment indices 1-based, not 0-based
+#TODO: Versions without explicit context
 
 
 "

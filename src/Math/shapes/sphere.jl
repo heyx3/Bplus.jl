@@ -51,15 +51,17 @@ end
 end
 
 function intersections( s::Sphere{N, F},
-                        r::Ray{N, F}
+                        r::Ray{N, F},
+                        ::Val{ShouldCalcNormal} = Val(false)
                         ;
                         min_t::F = zero(F),
                         max_t::F = typemax_finite(F),
                         atol::F = zero(F)
-                      )::UpTo{2, F} where {N, F}
-    # Source: https://fiftylinesofcode.com/ray-sphere-intersection/
-
+                      )::Union{UpTo{2, F}, Tuple{UpTo{2, F}, Vec3{F}}} where {N, F, ShouldCalcNormal}
+    @bp_check(!ShouldCalcNormal || (N == 3), "Can't calculate normal for a non-3D shape")
     @bp_math_assert(is_normalized(r.dir), "Ray must be normalized to do ray-sphere intersection: ", r)
+
+    # Source: https://fiftylinesofcode.com/ray-sphere-intersection/
 
     sphere_to_ray::Vec{N, F} = r.start - s.center
 
@@ -68,13 +70,21 @@ function intersections( s::Sphere{N, F},
 
     discriminant::F = (p * p) - q
     if discriminant < 0
-        return ()
+        return ShouldCalcNormal ? (UpTo{2, F}(()), zero(v3f)) : UpTo{2, F}(())
     end
 
     offset::F = sqrt(discriminant)
     ts::NTuple{2, F} = (-(p + offset), -(p - offset))
 
-    return sanitize_hits(ts..., min_t, max_t, atol)
+    hits = sanitize_hits(ts..., min_t, max_t, atol)
+    if !ShouldCalcNormal
+        return hits
+    end
+
+    # The normal is easy to calculate.
+    closest_hit::Vec3{F} = ray_at(r, hits[1])
+    normal = vnorm(closest_hit - s.center)
+    return (hits, normal)
 end
 
 #TODO: Approximate intersection/unions. https://mathworld.wolfram.com/Sphere-SphereIntersection.html

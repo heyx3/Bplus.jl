@@ -4,6 +4,8 @@ struct JoystickButtonID
     i::Int
 end
 
+#TODO: AxisAsButton
+
 "Some kind of binary input that GLFW tracks"
 #NOTE: Make sure this has no overlap with `AxisID`!
 const ButtonID = Union{GLFW.Key, GLFW.MouseButton, Tuple{GLFW.Joystick, JoystickButtonID}}

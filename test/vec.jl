@@ -236,6 +236,8 @@ swizzle_test()
 # Test array-like behavior.
 @bp_test_no_allocations(map(f->f*f, Vec(1, 2, 3, 4)) === Vec(1, 4, 9, 16),
                         true)
+@bp_test_no_allocations(map(==, Vec(1, 2, 3), Vec(1, 2, 3)), Vec(true, true, true))
+@bp_test_no_allocations(map(==, Vec(1, 2, 3), Vec(3, 2, 1)), Vec(false, true, false))
 @bp_test_no_allocations(Vec(3, 4, 5)[3], 5)
 @bp_test_no_allocations(Vec(3, 4, 5, 7, 3, 1)[end], 1)
 @bp_test_no_allocations(sum(Vec(3, 4, 5)), 3+4+5)

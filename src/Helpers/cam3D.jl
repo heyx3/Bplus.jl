@@ -11,11 +11,13 @@ Base.@kwdef struct Cam3D{F<:AbstractFloat}
     aspect_width_over_height::F = one(F)
 end
 
-println("#TODO: Standardize the handed-ness, like the up-vector")
-cam_rightward(forward::Vec3{F}, up::Vec3{F}) where {F} = vcross(forward, up)
-
 "Gets the vector for this camera's right-ward direction."
-cam_rightward(cam::Cam3D{F}) where {F} = cam_rightward(cam.forward, cam.up)
+cam_rightward(cam::Cam3D{F}) where {F} = v_rightward(cam.forward, cam.up)
+
+function cam_basis(cam::Cam3D{F}
+                  )::@NamedTuple{forward::Vec3{F}, right::Vec3{F}, up::Vec3{F}} where {F}
+    return vbasis(cam.forward, cam.up)
+end
 
 "Computes the view matrix for the given camera."
 function cam_view_mat(cam::Cam3D{F})::Mat{4, 4, F} where {F}
@@ -29,7 +31,7 @@ function cam_projection_mat(cam::Cam3D{F})::Mat{4, 4, F} where {F}
         cam.fov_degrees)
 end
 
-export Cam3D, cam_rightward, cam_view_mat, cam_projection_mat
+export Cam3D, cam_rightward, cam_basis, cam_view_mat, cam_projection_mat
 
 
 #######################
@@ -88,6 +90,7 @@ Base.@kwdef struct Cam3D_Input{F<:AbstractFloat}
     speed_change::F = zero(F)
 end
 
+#TODO: Fix Helpers.cam_update() (use RT project as a test bed)
 "
 Updates the given camera with the given user input,
     returning its new state.
@@ -138,9 +141,9 @@ function cam_update( cam::Cam3D{F},
             @set! cam.up = vnorm(q_apply(rot_pitch, cam.up))
         elseif settings.up_axis_mode == Cam3D_UpModes.keep_upright
             # Leave the up-axis alone, and prevent forward-axis from passing through it.
-            old_right = vnorm(cam_rightward(old_forward, cam.up))
-            old_true_forward = vnorm(cam_rightward(cam.up, old_right))
-            new_true_forward = vnorm(cam_rightward(cam.up, cam_rightward(cam)))
+            old_right = vnorm(v_rightward(old_forward, cam.up))
+            old_true_forward = vnorm(v_rightward(cam.up, old_right)) #TODO: I think this is backwards
+            new_true_forward = vnorm(v_rightward(cam.up, cam_rightward(cam)))
             if (vdot(cam.forward, new_true_forward) < 0) ||
                isapprox(vdot(cam.forward, cam.up), zero(F))
             #begin

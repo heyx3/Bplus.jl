@@ -26,8 +26,8 @@ function service_input_init(context::GL.Context = GL.get_context())::InputServic
     GLFW.SetInputMode(context.window, GLFW.STICKY_MOUSE_BUTTONS, true)
 
     # Register some GLFW callbacks.
-    push!(context.glfw_callbacks_scroll, (x::Float32, y::Float32) ->
-        serv.current_scroll_pos += v2f(x, y)
+    push!(context.glfw_callbacks_scroll, (s::v2f) ->
+        serv.current_scroll_pos += s
     )
 
     # Register the service with the context.
@@ -58,6 +58,8 @@ export service_input_init, service_input_get, service_input_update
 
 
 ##  User interface  ##
+
+#TODO: Help with (de-)serialization of bindings
 
 "
 Creates a new button (throwing an error if it already exists), with the given inputs.
@@ -96,6 +98,14 @@ function create_axis(name::AbstractString,
     if haskey(service.axes, name)
         error("Axis already exists: '", name, "'")
     else
+        # If this input uses the mouse position, prepare it with the current state of the mouse.
+        # Otherwise there will be a big jump on the first frame's input.
+        if axis.id == MouseAxes.x
+            @set! axis.prev_raw = GLFW.GetCursorPos(service.context_window).x
+        elseif axis.id == MouseAxes.y
+            @set! axis.prev_raw = GLFW.GetCursorPos(service.context_window).y
+        end
+
         service.axes[name] = axis
         return nothing
     end

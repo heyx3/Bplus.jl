@@ -38,7 +38,7 @@ function view_activate(view::View)
     end
 end
 
-"Tells the GPU to deactivate this handle, potentially freeing up resources for other render passes."
+"Tells the GPU to deactivate this handle, potentially freeing up resources for other data to be loaded."
 function view_deactivate(view::View)
     # Ideally we should check that the owning texture hasn't been destroyed, as with `view_activate()`,
     #    but in practice it's not as important and I feel that

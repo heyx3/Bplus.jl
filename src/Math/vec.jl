@@ -289,16 +289,46 @@ Base.IndexStyle(::Vec{N, T}) where {N, T} = IndexLinear()
 @inline Base.iterate(v::Vec, state...) = iterate(v.data, state...)
 
 # The simpler syntax does not appear to work for type inference :(
-@generated function Base.map(f, v::Vec{N, T})::Vec{N} where {N, T}
+@generated function Base.map(f, v::Vec{N}...)::Vec{N} where {N}
     components = [ ]
     exprs = quote end
     for i in 1:N
         push!(components, Symbol("a$i"))
-        push!(exprs.args, :( $(components[i]) = f(v[$i]) ))
+        push!(exprs.args, :(
+            $(components[i]) = f(getindex.(v, Ref($i))...)
+        ))
     end
     push!(exprs.args, :( return Vec($(components...)) ))
     return exprs
 end
+# "
+# Like map, but automatically converts all non-Vec inputs into Vec's.
+# Ref values will be left alone, similar to how broadcasting works.
+# "
+# @inline function vmap(f, values...)::Vec
+#     param_sizes = tuple((
+#         if v isa Ref
+#             -1
+#         elseif v isa Vec
+#             length(v)
+#         else
+#             -1
+#         end for v in values
+#     )...)
+#     N = max(param_sizes)
+#     inputs = tuple((
+#         if v isa Ref
+#             v[]
+#         elseif v isa Vec
+#             v
+#         else
+#             Vec(i -> v, Val(length(v)))
+#         end for v in values
+#     )...)
+#     return Vec(i -> f())
+# end
+#TODO: Revisit vmap() sometime
+
 
 function Base.foldl(func::F, v::Vec{N, T}) where {F, N, T}
     f::T = v[1]
@@ -522,6 +552,8 @@ end
 #   Setfield   #
 ################
 
+#TODO: Does making these @inline improve performance?
+
 Setfield.set(v::Vec,  ::Setfield.PropertyLens{field}, val) where {field} = Setfield.set(v, Val(field), val)
 Setfield.set(v::Vec, i::Setfield.IndexLens, val) = typeof(v)(Setfield.set(v.data, i, val)...)
 Setfield.set(v::Vec, f::Setfield.DynamicIndexLens, val) = typeof(v)(Setfield.set(v.data, f, val)...)
@@ -615,25 +647,36 @@ export vnorm
 "
 Constructs an orthogonal 3D vector basis as similar as possible to the input vectors.
 If the vectors are equal, then the up axis will usually be calculated with the global up axis.
-Returns the new forward and right vectors.
+Returns the new forward and up vectors.
 "
-function vbasis( forward::V3,
-                 right::V3
-               )::NTuple{2, V3} where {V3<:Vec3}
-    # Find the up vector.
-    local up::V3
-    if !isapprox(forward, right)
-        up = vnorm(forward × right) #TODO: Add unit tests, then check if this normalization is really necessary.
-    else
-        up = get_up_vector(V3.parameters[2])
-        if isapprox(right, up)
-            up = get_horz_vector(1, V3.parameters[2])
-        end
-    end
+function vbasis( forward::Vec3{F1},
+                 up::Vec3{F2},
+                 atol::Real = 0.001
+               )::@NamedTuple{forward::Vec3, right::Vec3, up::Vec3} where {F1, F2}
+    F3 = promote_type(F1, F2)
+    @inline are_parallel(a::Vec3, b::Vec3) = (1 - abs(vdot(a, b))) <= atol
 
-    # Recalculate the right vector.
-    right = vnorm(up × forward)
-    return (forward, right)
+    # Find the right vector.
+    local right::Vec3{F3}
+    if !are_parallel(forward, up)
+        right = vnorm(get_right_handed() ? (forward × up) : (up × forward))
+        up = vnorm(get_right_handed() ? (right × forward) : (forward × right))
+        return (forward=forward, right=right, up=up)
+    else
+        right = Vec3{F3}(1, 0, 0)
+        if are_parallel(right, forward) || are_parallel(right, up)
+            right = Vec3{F3}(0, 1, 0)
+            if are_parallel(right, forward) || are_parallel(right, up)
+                right = Vec3{F3}(0, 0, 1)
+                @bp_math_assert(!are_parallel(right, forward) && !are_parallel(right, up))
+            end
+        end
+
+        up = vnorm(get_right_handed() ? (right × forward) : (forward × right))
+        right = get_right_handed() ? (forward × up) : (up × forward) # Normalization not needed;
+                                                                     #  they're perpendicular
+        return (forward=forward, right=right, up=up)
+    end
 end
 export vbasis
 
@@ -680,11 +723,18 @@ Base.:∘(v::Vec, v2::Vec) = vdot(v, v2)
 #    and they can be configured dynamically to recompile for a different up axis
 #    for your particular project.
 
+# A similar method is applied to handed-ness.
+
+
+##  Core functions  ##
+
 """
 Gets the vertical axis -- 1=X, 2=Y, 3=Z.
-Redefine this to set the vertical axis for your project.
-Julia's JIT should ensure it's a compile-time constant, even after redefinition.
 By default, uses Z as the up-axis.
+
+Redefine this (e.x. `get_up_axis() = 2`) to change the vertical axis for your project.
+Julia's JIT will allow it to act as a compile-time constant
+    after the initial overhead of recompilation.
 """
 get_up_axis()::Int = 3
 
@@ -692,11 +742,28 @@ get_up_axis()::Int = 3
 Gets the sign of the "Upward" direction of the vertical axis.
 For example, if `get_up_axis()==3 && get_up_sign()==-1`,
   then the "Up" direction is pointing in the -Z direction.
-Like `get_up_axis()`, you can redefine this to set the value for your project.
-By default, points in the positive direction.
+
+By default, points in the positive direction (i.e. returns -1).
+
+Like `get_up_axis()`, you can redefine this to configure coordinate math for your project.
 """
 get_up_sign()::Int = 1
 
+"""
+Gets whether coordinate math is right-handed.
+By default, is true.
+
+Redefine this (`get_right_handed() = false`) to make your project left-handed.
+Julia's JIT will allow it to act as a compile-time constant
+    after the initial overhead of recompilation.
+"""
+get_right_handed()::Bool = true
+
+
+##  Helpers  ##
+
+"Does a cross product in the correct way to get a rightward vector from forward and upward ones"
+v_rightward(forward::Vec3{F}, up::Vec3{F}) where {F} = get_right_handed() ? (forward × up) : (up × forward)
 
 "Gets a normalized vector pointing in the positive direction along the Up axis"
 @inline get_up_vector(F = Float32) = Vec3{F}(
@@ -744,7 +811,7 @@ end
     return v
 end
 
-export get_up_sign, get_up_axis, get_up_vector,
+export get_right_handed, get_up_sign, get_up_axis, get_up_vector,
        get_horz_axes, get_horz_vector,
-       get_horz, get_vert, to_3d
+       get_horz, get_vert, to_3d, v_rightward
 #
