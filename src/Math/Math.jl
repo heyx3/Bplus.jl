@@ -1,5 +1,6 @@
 module Math
 
+using Random
 using Setfield, StaticArrays, StructTypes, NamedTupleTools
 using ..Utilities
 
@@ -17,6 +18,7 @@ include("transformations.jl")
 include("ray.jl")
 include("shapes/Shapes.jl")
 
+include("random_distributions.jl")
 include("noise.jl")
 
 end # module

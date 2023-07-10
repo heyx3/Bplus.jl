@@ -11,7 +11,7 @@ A Context service which defines a bunch of useful GL resources:
             This _can_ be used for post-processing effects, but it's less efficient
                 than `screen_triangle`, for technical reasons.
  * `blit` : A simple shader to render a 2D texture (e.x. copy a Target to the screen).
-            Refer to `resource_blit()`.
+            Refer to `simple_blit()`.
  * `empty_mesh` : A mesh with no vertex data, for dispatching entirely procedural geometry.
                   Has the 'points' PrimitiveType.
 "
@@ -111,16 +111,15 @@ export get_basic_graphics
 Renders the given texure, using the given screen-quad transform
     and the given color transform on the texture's pixels.
 "
-function resource_blit(basic_graphics::BasicGraphicsService,
-                       tex::Union{Texture, View},
-                       context = get_context()
-                       ;
-                       quad_transform::fmat3x3 = m_identityf(3, 3),
-                       color_transform::fmat4x4 = m_identityf(4, 4),
-                       disable_depth_test::Bool = true,
-                       manage_tex_view::Bool = true
-                      )
-                      view_activate
+function simple_blit(basic_graphics::BasicGraphicsService,
+                     tex::Union{Texture, View},
+                     context = get_context()
+                     ;
+                     quad_transform::fmat3x3 = m_identityf(3, 3),
+                     color_transform::fmat4x4 = m_identityf(4, 4),
+                     disable_depth_test::Bool = true,
+                     manage_tex_view::Bool = true
+                    )
     basic_graphics = get_basic_graphics(context)
 
     tex_view = get_view(tex)
@@ -152,11 +151,11 @@ function resource_blit(basic_graphics::BasicGraphicsService,
 
     set_depth_test(context, old_depth_test)
 end
-@inline function resource_blit(tex::Union{Texture, View},
+@inline function simple_blit(tex::Union{Texture, View},
                                context = get_context()
                                ;
                                kw_args...
                               )
-    resource_blit(get_basic_graphics(context), tex, context; kw_args...)
+    simple_blit(get_basic_graphics(context), tex, context; kw_args...)
 end
-export resource_blit
+export simple_blit

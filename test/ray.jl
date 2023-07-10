@@ -33,4 +33,17 @@
     ()
 )
 
+# Ray-Plane
+const PL = Plane{3, Float32}(v3f(), v3f(0, 0, 1))
+@bp_test_no_allocations(
+    intersections(PL, Ray(v3f(0, 0, 1), vnorm(v3f(1, 1, 1)))),
+    ()
+)
+const RY = Ray(v3f(0, 0, 1), vnorm(v3f(1, 1, -1)))
+const INTERS = intersections(PL, RY)
+@bp_check(length(INTERS) == 1, "No intersection between ", PL, " and ", RY)
+@bp_check(isapprox(INTERS[1], sqrt(3), atol=0.001),
+          "Intersection point is ", INTERS[1], ", not ", sqrt(3))
+
+
 println("#TODO: Do raycasts within Unity, then translate those cases into unit tests")

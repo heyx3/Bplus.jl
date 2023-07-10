@@ -71,7 +71,7 @@ function intersections( t::Triangle{N, F},
     end
 
     # Also return the normal if requested.
-    hit_result = UpTo{1, F}(out_intersection)
+    hit_result = UpTo{1, F}((out_intersection, ))
     return ShouldCalcNormal ? (hit_result, out_normal) : hit_result
 end
 

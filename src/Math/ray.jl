@@ -2,6 +2,15 @@
 struct Ray{N, F<:AbstractFloat}
     start::Vec{N, F}
     dir::Vec{N, F}
+
+    Ray{N, F}(start::Vec{N, F}, dir::Vec{N, F}) where {N, F} = new{N, F}(start, dir)
+    Ray{N, F}(start::Vec{N, F2}, dir::Vec{N, F3}) where {N, F, F2, F3} = new{N, F}(convert(Vec{N, F}, start),
+                                                                                   convert(Vec{N, F}, dir))
+    @inline function Ray(start::Vec{N, F1}, dir::Vec{N, F2}) where {N, F1, F2}
+        F = promote_type(F1, F2)
+        return new{N, F}(convert(Vec{N, F}, start),
+                         convert(Vec{N, F}, dir))
+    end
 end
 export Ray
 

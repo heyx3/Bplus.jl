@@ -22,15 +22,18 @@ function intersections( p::Plane{N, F},
                       )::Union{UpTo{1, F}, Tuple{UpTo{1, F}, Vec3{F}}} where {N, F, ShouldCalcNormal}
     # Reference: https://en.wikipedia.org/wiki/Line-plane_intersection
 
+    NULL_RESULT = ShouldCalcNormal ? (UpTo{1, F}(()), zero(Vec3{F})) : UpTo{1, F}(())
+
+    # If the ray is parallel to the plane, there is no intersection.
     determinant::F = vdot(r.dir, p.normal)
     if abs(determinant) <= atol
-        return ShouldCalcNormal ? (UpTo{2, F}(()), zero(Vec3{F})) : UpTo{2, F}(())
+        return NULL_RESULT
     end
 
-    t::F = vdot(p.normal, p.origin - r.start) / determinant
-    if !is_touching(Box((min=min_t, max=max_t)), t)
-        return ShouldCalcNormal ? (UpTo{2, F}(()), zero(Vec3{F})) : UpTo{2, F}(())
+    t::F = -vdot(p.normal, r.start - p.origin) / determinant
+    if !is_touching(Interval{F}((min=min_t, max=max_t)), t)
+        return NULL_RESULT
     end
 
-    return ShouldCalcNormal ? (UpTo{1, F}(t), p.normal) : UpTo{1, F}(t)
+    return ShouldCalcNormal ? (UpTo{1, F}((t, )), p.normal) : UpTo{1, F}((t, ))
 end

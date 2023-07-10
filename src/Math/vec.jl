@@ -243,6 +243,8 @@ end
 Base.minmax(p1::Vec{N, T1}, p2::T2) where {N, T1, T2} = minmax(p1, Vec{N, T2}(i->p2))
 Base.minmax(p1::Number, p2::Vec) = minmax(p2, p1)
 
+@inline Base.abs(v::Vec) = Vec((abs(f) for f in v)...)
+
 "Finds the minimum component which passes a given predicate"
 function Base.findmin(pred::F, v::Vec{N, T})::Optional{T} where {F, N, T}
     min_i::Int = 0
@@ -643,6 +645,33 @@ export vlength_sqr, vlength
 "Normalizes a vector"
 @inline vnorm(v::Vec) = v / vlength(v)
 export vnorm
+
+"Reflects a vector along a 'normal' vector"
+vreflect(v::Vec{N}, normal::Vec{N}) where {N} = let F = promote_type(eltype(v), eltype(normal))
+    return v - (convert(F, 2) * vdot(v, normal) * normal)
+end
+export vreflect
+
+function vrefract( v::Vec{N, F1},
+                   normal::Vec{N, F2},
+                   refractive_index_src_over_dest::F3
+                 )::Vec{N} where {N, F1, F2, F3}
+    # Promote all number types involved to a common type.
+    F = promote_type(F1, promote_type(F2, F3))
+    v_ = convert(Vec{N, F}, v)
+    normal_ = convert(Vec{N, F}, normal)
+    ior_ = convert(F, refractive_index_src_over_dest)
+
+    V = Vec{N, F}
+    ONE::F = one(F)
+
+    cos_theta::F = min(-v_ ⋅ normal_, ONE)
+    perpendicular_part::V = ior_ * (v_ + (cos_theta * normal_))
+    parallel_part::V = -sqrt(abs(ONE - vlength_sqr(perpendicular_part))) * normal_
+
+    return perpendicular_part * parallel_part
+end
+export vrefract
 
 "
 Constructs an orthogonal 3D vector basis as similar as possible to the input vectors.

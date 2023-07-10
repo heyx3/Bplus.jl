@@ -80,7 +80,7 @@ function sanitize_hits( h1::F, h2::F,
                       )::UpTo{2, F} where {F}
     # If the intersections are the same, just return one of them.
     if isapprox(h1, h2; atol=atol)
-        if is_touching(Interval{F}(min=min_t, max=max_t), h1)
+        if is_touching(Interval{F}((min=min_t, max=max_t)), h1)
             return (h1, )
         else
             return ()

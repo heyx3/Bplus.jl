@@ -461,7 +461,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
         set_depth_test(context, ValueTests.pass)
         check_gl_logs("clearing the screen")
         target_tex = target.attachment_colors[1].tex
-        resource_blit(resources, target_tex)
+        simple_blit(resources, target_tex)
 
         GLFW.SwapBuffers(context.window)
 

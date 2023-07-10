@@ -226,10 +226,10 @@ function intersections( c::Capsule{N, F},
             if is_touching(capsule_local_z_range, capsule_local_t)
                 hit::F = t * fD_inv_length
                 if ShouldCalcNormal
-                    return (UpTo{2, F}(hit),
+                    return (UpTo{2, F}((hit, )),
                             calc_normal(hit, CapsuleHitTypes.body))
                 else
-                    return UpTo{2, F}(hit)
+                    return UpTo{2, F}((hit, ))
                 end
             end
         end
@@ -293,7 +293,7 @@ function intersections( c::Capsule{N, F},
         # We didn't see a full two intersections.
         # Probably the ray is inside the capsule?
         if n_capsule_hits == 1
-            hit_output = UpTo{2, F}(hits[1])
+            hit_output = UpTo{2, F}(hits[1:1])
             return ShouldCalcNormal ?
                      (hit_output, calc_normal(hits[1], hit_types[1])) :
                      hit_output

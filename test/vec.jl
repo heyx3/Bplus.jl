@@ -196,6 +196,8 @@ end
                         (Vec(1, 3), Vec(3, 10)))
 @bp_test_no_allocations(minmax(Vec(1, 10), 3),
                         (Vec(1, 3), Vec(3, 10)))
+@bp_test_no_allocations(abs(Vec(-1.5, 2, -20, 5.44)),
+                        Vec(1.5, 2, 20, 5.44))
 @bp_test_no_allocations(clamp(Vec(3, 7), 3, 5),
                         Vec(3, 5))
 @bp_test_no_allocations(clamp(Vec(3, 7), Vec(1, 10), Vec(2, 15)),
