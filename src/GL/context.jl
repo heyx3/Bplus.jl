@@ -2,11 +2,11 @@
 struct RenderState
     color_write_mask::vRGBA{Bool}
     depth_write::Bool
-
     cull_mode::E_FaceCullModes
-    #TODO: Use Box2i for viewport and scissor
-    viewport::@NamedTuple{min::v2i, max::v2i} # 1-based; Max is inclusive
-    scissor::Optional{@NamedTuple{min::v2i, max::v2i}} # 1-based; Max is inclusive
+
+    # Viewport and scissor rectangles are 1-based, not 0-based.
+    viewport::Box2Di
+    scissor::Optional{Box2Di}
     # TODO: Changing viewport Y axis and depth (how can my matrix math support this depth mode?): https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glClipControl.xhtml
 
     blend_mode::@NamedTuple{rgb::BlendStateRGB, alpha::BlendStateAlpha}
@@ -21,10 +21,10 @@ struct RenderState
     RenderState(fields...) = new(fields...)
     RenderState() = new(
         Vec(true, true, true, true), true,
-        FaceCullModes.Off,
-        (min=v2i(0, 0), max=v2i(1, 1)), nothing,
+        FaceCullModes.off,
+        Box2Di((min=v2i(0, 0), max=v2i(1, 1))), nothing,
         (rgb=make_blend_opaque(BlendStateRGB), alpha=make_blend_opaque(BlendStateAlpha)),
-        ValueTests.Pass,
+        ValueTests.pass,
         StencilTest(), StencilResult(), ~GLuint(0)
     )
 end
@@ -58,7 +58,6 @@ end
 
 "Reads the device constants from OpenGL using the current context"
 function Device(window::GLFW.Window)
-    #TODO: A flag to instead use the minimum constants guaranteed by the standard.
     return Device((GLFW.GetWindowAttrib(window, GLFW.CONTEXT_VERSION_MAJOR),
                    GLFW.GetWindowAttrib(window, GLFW.CONTEXT_VERSION_MINOR)),
                   unsafe_string(glGetString(GL_RENDERER)),
@@ -114,7 +113,6 @@ mutable struct Context
 
     active_program::Ptr_Program
     active_mesh::Ptr_Mesh
-    #TODO: The active RenderTarget
 
     #TODO: current binding points for UBO's and SSBO's: https://computergraphics.stackexchange.com/questions/6045/how-to-use-the-data-manipulated-in-opengl-compute-shader
 
@@ -127,7 +125,6 @@ mutable struct Context
     glfw_callbacks_joystick_connection::Vector{Base.Callable} # (GLFW.Joystick, Bool [if false, disconnection])
     glfw_callbacks_window_focused::Vector{Base.Callable} # (Bool [if false, lost focus rather than gained])
     glfw_callbacks_window_resized::Vector{Base.Callable} # (v2i)
-    #TODO: Joystick connection callback is not tied to a window; it needs to be a true singleton
 
     services::Dict{Symbol, Service}
 
@@ -232,7 +229,6 @@ mutable struct Context
 
         if debug_mode
             glEnable(GL_DEBUG_OUTPUT)
-            #TODO: Try the callback again now that I've added the GLFW "debug context" hint.
             # Below is the call for the original callback-based logging, in case we ever fix that:
             # glDebugMessageCallback(ON_OGL_MSG_ptr, C_NULL)
         end
@@ -270,6 +266,10 @@ export Context
 end
 
 function Base.close(c::Context)
+    my_thread = Threads.threadid()
+    @bp_check(CONTEXTS_PER_THREAD[my_thread] === c,
+              "Trying to close a context on the wrong thread!")
+
     # Clean up all services.
     for service::Service in values(c.services)
         service.on_destroyed(service.data)
@@ -279,9 +279,7 @@ function Base.close(c::Context)
     GLFW.DestroyWindow(c.window)
     setfield!(c, :window, GLFW.Window(C_NULL))
 
-    if CONTEXTS_PER_THREAD[Threads.threadid()] === c #TODO: I think this should be asserted at the beginning of close() instead.
-        CONTEXTS_PER_THREAD[Threads.threadid()] = nothing
-    end
+    CONTEXTS_PER_THREAD[my_thread] = nothing
 end
 
 "
@@ -316,8 +314,8 @@ This is because tasks can get shifted to different threads
         if e isa TaskFailedException
             # Unwrap the exception.
             stack = current_exceptions(task)
-            throw(stack[end].exception) #NOTE: If you see this line show up in the stacktrace, it's a red herring. Look further down in the printout to a second or third trace.
-                                        #TODO: Figure this out.
+            throw(stack[end].exception) #NOTE: If you see this line show up in the stacktrace, it's a red herring.
+                                        #      Look further down in the printout to the third trace.
         else
             rethrow()
         end
@@ -375,11 +373,13 @@ function refresh(context::Context)
     # Read the render state.
     # Viewport:
     viewport = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_VIEWPORT)...)
-    viewport = (min=convert(v2i, viewport.xy + 1), max=convert(v2i, viewport.xy + 1 + viewport.zw - 1))
+    viewport = Box2Di((min=convert(v2i, viewport.xy + 1),
+                      max=convert(v2i, viewport.xy + 1 + viewport.zw - 1)))
     # Scissor:
     if glIsEnabled(GL_SCISSOR_TEST)
         scissor = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_SCISSOR_BOX)...)
-        scissor = (min=convert(v2i, scissor.xy + 1), max=convert(v2i, scissor.xy + 1 + scissor.zw - 1))
+        scissor = Box2Di((min=convert(v2i, scissor.xy + 1),
+                         max=convert(v2i, scissor.xy + 1 + scissor.zw - 1)))
     else
         scissor = nothing
     end
@@ -389,7 +389,7 @@ function refresh(context::Context)
     depth_write = (get_from_ogl(GLboolean, glGetBooleanv, GL_DEPTH_WRITEMASK) != 0)
     cull_mode = glIsEnabled(GL_CULL_FACE) ?
                     FaceCullModes.from(get_from_ogl(GLint, glGetIntegerv, GL_CULL_FACE_MODE)) :
-                    FaceCullModes.Off
+                    FaceCullModes.off
     depth_test = ValueTests.from(get_from_ogl(GLint, glGetIntegerv, GL_DEPTH_FUNC))
     # Blending:
     blend_constant = get_from_ogl(GLfloat, 4, glGetFloatv, GL_BLEND_COLOR)
@@ -592,12 +592,8 @@ function set_render_state(context::Context, state::RenderState)
     else
         set_stencil_write_mask(context, state.stencil_write_mask.front, state.stencil_write_mask.back)
     end
-    set_viewport(context, state.viewport.min, state.viewport.max)
-    if exists(state.scissor)
-        set_scissor(context, (state.scissor.min, state.scissor.max))
-    else
-        set_scissor(context, nothing)
-    end
+    set_viewport(context, state.viewport)
+    set_scissor(context, state.scissor)
 end
 export set_render_state
 
@@ -611,11 +607,11 @@ export set_vsync
 function set_culling(context::Context, cull::E_FaceCullModes)
     if context.state.cull_mode != cull
         # Disable culling?
-        if cull == FaceCullModes.Off
+        if cull == FaceCullModes.off
             glDisable(GL_CULL_FACE)
         else
             # Re-enable culling?
-            if context.state.cull_mode == FaceCullModes.Off
+            if context.state.cull_mode == FaceCullModes.off
                 glEnable(GL_CULL_FACE_MODE)
             end
             glCullFace(GLenum(cull))
@@ -863,15 +859,13 @@ By default, the min/max corners of the render are the min/max corners of the scr
    but you can set this to render to a subset of the whole screen.
 The max corner is inclusive.
 "
-function set_viewport(context::Context, min::v2i, max_inclusive::v2i)
-    new_view = (min=min, max=max_inclusive)
-    if context.state.viewport != new_view
-        size = max_inclusive - min + 1
-        glViewport((min - 1)..., size...)
-        set_render_state_field!(context, :viewport, new_view)
+function set_viewport(context::Context, area::Box2Di)
+    if context.state.viewport != area
+        glViewport((min_inclusive(area) - 1)..., size(area)...)
+        set_render_state_field!(context, :viewport, area)
     end
 end
-set_render_state(::Val{:viewport}, val::NamedTuple, c::Context) = set_viewport(c, val.min, val.max)
+set_render_state(::Val{:viewport}, val::Box2Di, c::Context) = set_viewport(c, val)
 export set_viewport
 
 "
@@ -881,25 +875,22 @@ Any rendering outside this view is discarded.
 Pass 'nothing' to disable the scissor.
 The 'max' corner is inclusive.
 "
-function set_scissor(context::Context, min_max::Optional{Tuple{v2i, v2i}})
-    new_scissor = exists(min_max) ?
-                      (min=min_max[1], max=min_max[2]) :
-                      nothing
-    if context.state.scissor != new_scissor
-        if exists(new_scissor)
+function set_scissor(context::Context, area::Optional{Box2Di})
+    if context.state.scissor != area
+        if exists(area)
             if isnothing(context.state.scissor)
                 glEnable(GL_SCISSOR_TEST)
             end
-            size = new_scissor.max - new_scissor.min + 1
-            glScissor((new_scissor.min - 1)..., size...)
+            glScissor((min_inclusive(area) - 1)...,
+                      size(area)...)
         else
             glDisable(GL_SCISSOR_TEST)
         end
 
-        set_render_state_field!(context, :scissor, new_scissor)
+        set_render_state_field!(context, :scissor, area)
     end
 end
-set_render_state(::Val{:scissor}, val::NamedTuple, c::Context) = set_scissor(c, val)
+set_render_state(::Val{:scissor}, val::Optional{Box2Di}, c::Context) = set_scissor(c, val)
 export set_scissor
 
 
@@ -925,8 +916,8 @@ set_stencil_write_mask(write_mask::GLuint) = set_stencil_write_mask(get_context(
 set_stencil_write_mask_front(write_mask::GLuint) = set_stencil_write_mask_front(get_context(), write_mask)
 set_stencil_write_mask_back(write_mask::GLuint) = set_stencil_write_mask_back(get_context(), write_mask)
 set_stencil_write_mask(front::GLuint, back::GLuint) = set_stencil_write_mask(get_context(), front, back)
-set_viewport(min::v2i, max_inclusive::v2i) = set_viewport(get_context(), min, max_inclusive)
-set_scissor(min_max::Optional{Tuple{v2i, v2i}}) = set_scissor(get_context(), min_max)
+set_viewport(area::Box2Di) = set_viewport(get_context(), area)
+set_scissor(area::Optional{Box2Di}) = set_scissor(get_context(), area)
 
 
 ###############

@@ -26,12 +26,12 @@ using Bplus.GL
 @bp_test_no_allocations(Sampler{2}(
                             wrapping = Vec(WrapModes.clamp, WrapModes.repeat),
                             pixel_filter = PixelFilters.smooth,
-                            depth_comparison_mode = ValueTests.LessThanOrEqual
+                            depth_comparison_mode = ValueTests.less_than_or_equal
                         ),
                         Sampler{2}(
                             wrapping = Vec(WrapModes.clamp, WrapModes.repeat),
                             pixel_filter = PixelFilters.smooth,
-                            depth_comparison_mode = ValueTests.LessThanOrEqual
+                            depth_comparison_mode = ValueTests.less_than_or_equal
                         ))
 @bp_check(JSON3.read(JSON3.write(Sampler{2}(wrapping = WrapModes.mirrored_repeat)), Sampler{2}) ==
              Sampler{2}(wrapping = WrapModes.mirrored_repeat))

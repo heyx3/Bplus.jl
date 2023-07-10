@@ -46,7 +46,7 @@ end
 
 
 bp_gl_context( v2i(800, 500), "GUI demo";
-               vsync=VsyncModes.On,
+               vsync=VsyncModes.on,
                debug_mode=true
              ) do context::Context
     gui_service::Bplus.GUI.GuiService = Bplus.GUI.service_gui_init(context)

@@ -7,7 +7,7 @@ Instances can be "mapped" to the CPU, allowing you to write/read them directly
 This is often more efficient than setting the buffer data the usual way,
    e.x. you could read the mesh data from disk directly into this mapped memory.
 """
-mutable struct Buffer <: Resource
+mutable struct Buffer <: AbstractResource
     handle::Ptr_Buffer
     byte_size::UInt64
     is_mutable::Bool
@@ -50,8 +50,6 @@ mutable struct Buffer <: Resource
         return b
     end
 end
-
-#TODO: Support taking a raw pointer for the buffer data
 
 @inline function set_up_buffer( byte_size::I, can_change_data::Bool,
                                 initial_byte_data::Optional{Ref},
@@ -213,6 +211,3 @@ function copy_buffer( src::Buffer, dest::Buffer
 end
 
 export set_buffer_data, get_buffer_data, copy_buffer
-
-
-#TODO: Rest of the operations (mapping)

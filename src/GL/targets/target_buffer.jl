@@ -7,10 +7,10 @@ The main use for this is as a depth or stencil buffer,
     any time you don't care about sampling depth/stencil data
     (it can still be used for depth/stencil tests, just not sampled in shaders).
 
-This is a Resource, but it's managed internally by Target instances.
+This is an AbstractResource, but it's managed internally by Target instances.
 You probably won't interact with it much yourself.
 """
-mutable struct TargetBuffer <: Resource
+mutable struct TargetBuffer <: AbstractResource
     handle::Ptr_TargetBuffer
     size::v2i
     format::TexFormat

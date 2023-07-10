@@ -13,7 +13,7 @@ const OGL_MINOR_VERSION = 6
 const OGL_REQUIRED_EXTENSIONS = (
     "GL_ARB_bindless_texture",
     "GL_ARB_seamless_cubemap_per_texture", # Needed to get seamless cubemaps with bindless textures.
-    "GL_ARB_gpu_shader_int64" #TODO: Build in conditional support for extensions like this one
+    "GL_ARB_gpu_shader_int64"
 )
 
 "A snippet that should be placed at the top of all shaders to ensure B+ compatibility"
@@ -54,7 +54,5 @@ include("targets/target.jl")
 
 include("program.jl")
 include("drawing.jl")
-
-#TODO: Give various object names with glObjectLabel
 
 end # module

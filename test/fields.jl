@@ -144,8 +144,7 @@ const FIELD14_TEST_POSES = vcat(
     [ zero(v2f), one(v2f) ],
     map(1:100) do i
         prng = PRNG(i, 2497843)
-        lerp(@f32(-20),
-             @f32(20),
+        lerp(@f32(-20), @f32(20),
              v2f(rand(prng, Float32),
                  rand(prng, Float32)))
     end
@@ -155,6 +154,12 @@ for pos in FIELD14_TEST_POSES
                             field14_expected(pos),
                             join(map(x -> sprint(io -> show(io, Binary(x))), pos), ','))
 end
+
+# Test negation.
+const field14_2 = SubtractField(PosField{2, Float32}())
+@bp_test_no_allocations(get_field(field14_2, v2f(3.5, -4.5)),
+                        -v2f(3.5, -4.5))
+
 
 # Test TextureField.
 const TEXTURE_FIELD_TESTS = Tuple{TextureField, Vector{<:Tuple{<:Union{Vec, Real}, Union{Vec, Real}}}}[
@@ -268,7 +273,7 @@ for (field, tests) in TEXTURE_FIELD_TESTS
         # Otherwise, use approximate equality.
         matches::Bool = if texture_field_sampling(field) == SampleModes.nearest
                             expected_output == actual_output
-                        elseif texture_field_sampling(field) in (SampleModes.linear, SampleModes.cubic)
+                        elseif texture_field_sampling(field) in (SampleModes.linear, )
                             isapprox(expected_output, actual_output, 0.0001)
                         else
                             error("Unhandled case: ", texture_field_sampling(field))

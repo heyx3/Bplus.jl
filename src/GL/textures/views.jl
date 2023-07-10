@@ -13,11 +13,11 @@ IMPORTANT: you must `view_activate()` an instance before it's used in a shader,
 Using an inactive handle leads to Undefined Behavior (a.k.a. wacky crashes).
 
 The lifetime of this resource is managed by its owning Texture,
-which is why this type does not inherit from `Resource`.
+which is why this type does not inherit from `AbstractResource`.
 "
 mutable struct View
     handle::Ptr_View
-    owner::Resource # Can't type it as `Texture`, because that type doesn't exist yet
+    owner::AbstractResource # Can't type it as `Texture`, because that type doesn't exist yet
     is_sampling::Bool # True if this is a 'Texture' view,
                       #   false if this is an 'Image' view.
     is_active::Bool
@@ -92,7 +92,7 @@ If no sampler is given, the texture's default sampler settings are used.
 IMPORTANT: users shouldn't ever be creating these by hand;
     they should come from the Texture interfae.
 "
-function View(owner::Resource, sampler::Optional{Sampler})
+function View(owner::AbstractResource, sampler::Optional{Sampler})
     local handle::gl_type(Ptr_View)
     if exists(sampler)
         handle = glGetTextureSamplerHandleARB(get_ogl_handle(owner), get_sampler(sampler))
@@ -117,7 +117,7 @@ The 'layer' parameter allows you to view a single layer of a 3D or cubemap textu
 IMPORTANT: users shouldn't ever be creating these by hand;
     they should come from the Texture interface.
 "
-function View(owner::Resource, params::SimpleViewParams)
+function View(owner::AbstractResource, params::SimpleViewParams)
     handle::gl_type(Ptr_View) = glGetImageHandleARB(
         get_ogl_handle(owner),
         params.mip_level - 1,

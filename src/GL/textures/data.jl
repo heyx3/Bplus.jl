@@ -1,5 +1,4 @@
-# Defines other aspects of texture interaction
-#    which don't fit into "sampling" and "format".
+# Defines other aspects of texture interaction that aren't "sampling" or "format".
 
 
 #######################################
@@ -158,7 +157,6 @@ Does not include special packed types like Depth24uStencil8.
     UInt8, UInt16, UInt32,
     Int8, Int16, Int32,
     Float32
-    #TODO: I think Float16 is supported as well! GL_HALF_FLOAT
 )
 
 
@@ -202,8 +200,6 @@ export PixelIOTypes, E_PixelIOTypes,
 #########################################
 #       Upload/download data types      #
 #########################################
-
-#TODO: Provide a helper alias for "number or vector based on type parameter N".
 
 "
 Parameters for specifying a subset of data in an N-dimensional texture.

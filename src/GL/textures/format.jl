@@ -9,7 +9,6 @@
     threeD = GL_TEXTURE_3D,
     cube_map = GL_TEXTURE_CUBE_MAP
 
-    #TODO: Multisample
     # Array textures are not supported, because they aren't necessary
     #    now that we have bindless textures.
 )

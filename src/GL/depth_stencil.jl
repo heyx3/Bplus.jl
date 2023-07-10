@@ -17,24 +17,24 @@ In stencil testing, the "test" value is a constant you can set, called the "refe
 =#
 @bp_gl_enum(ValueTests::GLenum,
     # Always passes ('true').
-    Pass = GL_ALWAYS,
+    pass = GL_ALWAYS,
     # Always fails ('false').
-    Fail = GL_NEVER,
+    fail = GL_NEVER,
 
     # Passes if the "test" value is less than the existing value.
-    LessThan = GL_LESS,
+    less_than = GL_LESS,
     # Passes if the "test" value is less than or equal to the existing value.
-    LessThanOrEqual = GL_LEQUAL,
+    less_than_or_equal = GL_LEQUAL,
 
     # Passes if the "test" value is greater than the existing value.
-    GreaterThan = GL_GREATER,
+    greater_than = GL_GREATER,
     # Passes if the "test" value is greater than or equal to the existing value.
-    GreaterThanOrEqual = GL_GEQUAL,
+    greater_than_or_equal = GL_GEQUAL,
 
     # Passes if the "test" value is equal to the existing value.
-    Equal = GL_EQUAL,
+    equal = GL_EQUAL,
     # Passes if the "test" value is not equal to the existing value.
-    NotEqual = GL_NOTEQUAL
+    not_equal = GL_NOTEQUAL
 )
 export ValueTests, E_ValueTests
 
@@ -44,24 +44,24 @@ The various actions that can be performed on a stencil buffer pixel,
 =#
 @bp_gl_enum(StencilOps::GLenum,
     # Don't do anything.
-    Nothing = GL_KEEP,
+    nothing = GL_KEEP,
 
     # Set the value to 0.
-    Zero = GL_ZERO,
+    zero = GL_ZERO,
     # Replace the stencil buffer's value with the "reference" value used for the test.
-    Replace = GL_REPLACE,
+    replace = GL_REPLACE,
     # Flip all bits in the buffer (a.k.a. bitwise NOT).
-    Invert = GL_INVERT,
+    invert = GL_INVERT,
 
     # Increment the stencil buffer's value, clamping it to stay inside its range.
-    IncrementClamp = GL_INCR,
+    increment_clamp = GL_INCR,
     # Increment the stencil buffer's value, wrapping around to 0 if it passes the max value.
-    IncrementWrap = GL_INCR_WRAP,
+    increment_wrap = GL_INCR_WRAP,
 
     # Decrement the stencil buffer's value, clamping it to stay inside its range.
-    DecrementClamp = GL_DECR,
+    decrement_clamp = GL_DECR,
     # Decrement the stencil buffer's value, wrapping around to the max value if it passes below 0.
-    DecrementWrap = GL_DECR_WRAP,
+    decrement_wrap = GL_DECR_WRAP,
 )
 export StencilOps, E_StencilOps
 
@@ -78,7 +78,7 @@ struct StencilTest
     bitmask::GLuint
 
     StencilTest(test::E_ValueTests, reference::GLint, mask::GLuint = ~GLuint(0)) = new(test, reference, mask)
-    StencilTest() = new(ValueTests.Pass, GLint(0), ~GLuint(0))
+    StencilTest() = new(ValueTests.pass, GLint(0), ~GLuint(0))
 end
 export StencilTest
 
@@ -91,9 +91,6 @@ struct StencilResult
     StencilResult(on_failed_stencil, on_passed_stencil_failed_depth, on_passed_all) = new(
         on_failed_stencil, on_passed_stencil_failed_depth, on_passed_all
     )
-    StencilResult() = new(StencilOps.Nothing, StencilOps.Nothing, StencilOps.Nothing)
+    StencilResult() = new(StencilOps.nothing, StencilOps.nothing, StencilOps.nothing)
 end
 export StencilResult
-
-
-#TODO: Bring in those C++ structs for packed depth/stencil data

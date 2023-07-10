@@ -569,8 +569,8 @@ function service_gui_end_frame(serv::GuiService, context::GL.Context = get_conte
 
     # Set up render state.
     set_blending(context, make_blend_alpha(BlendStateRGBA))
-    set_culling(context, FaceCullModes.Off)
-    set_depth_test(context, ValueTests.Pass)
+    set_culling(context, FaceCullModes.off)
+    set_depth_test(context, ValueTests.pass)
     set_depth_writes(context, false)
     #TODO: Set clip mode to lower-left corner, and depth range to (-1,+1), once GL supports glClipControl
 
@@ -649,7 +649,7 @@ function service_gui_end_frame(serv::GuiService, context::GL.Context = get_conte
                     # ImGUI is using 0-based, but B+ uses 1-based.
                     scissor_min_pixel += one(Int32)
                     # Max pixel doesn't need to add 1, but I'm not quite sure why.
-                    set_scissor(context, (scissor_min_pixel, scissor_max_pixel))
+                    set_scissor(context, Box2Di((min=scissor_min_pixel, max=scissor_max_pixel)))
                 end
 
                 # Draw the texture.

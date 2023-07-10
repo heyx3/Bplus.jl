@@ -267,7 +267,7 @@ The core object tying everything together is `Context`, representing a single Op
 
 By the rules of OpenGL, contexts are a thread-local singleton. So for as long as the context is alive, and from anywhere *within the thread that's running the context*, you can get the current context object with `Bplus.GL.get_context()::Context`. Most `GL` functions don't require you to explicitly provide the context, since they can retrieve it themselves.
 
-The context manages all sorts of rendering state, such as viewports/scissoring, blend mode, depth and stencil modes, and the current render target. Most OpenGL global parameters are controlled by the context, via setter functions and/or special properties defined in the `RenderState` struct. For example, you could call `set_viewport(min::v2i, max::v2i)`, or you could do `get_context().viewport = (min=my_min, max=my_max)`.
+The context manages all sorts of rendering state, such as viewports/scissoring, blend mode, depth and stencil modes, and the current render target. Most OpenGL global parameters are controlled by the context, via setter functions and/or special properties defined in the `RenderState` struct. For example, you could call `set_viewport(Box2Di((min::v2i, max::v2i)))`, or you could do `get_context().viewport = Box((min=my_min, max=my_max))`.
 
 The context also provides hooks into common GLFW callbacks. For example, to be notified when the window size changes, do:
 
@@ -283,7 +283,7 @@ Hardware/OpenGL queried constants are available through `get_context().device::D
 
 #### Resources
 
-A `Resource` is some kind of OpenGL object: texture, buffer, VAO, FBO, etc. You can get its OpenGL handle with `get_ogl_handle(r)`. You can clean it up with `close(r)`, and check if it's been cleaned up already with `is_destroyed(r)`.
+An `AbstractResource` is some kind of OpenGL object: texture, buffer, VAO, FBO, etc. You can get its OpenGL handle with `get_ogl_handle(r)`. You can clean it up with `close(r)`, and check if it's been cleaned up already with `is_destroyed(r)`.
 
 A full overview of resource types will be documented elsewhere, but here is a quick reference of the major ones:
 * `Texture`, defined in *GL/textures/texture.jl*

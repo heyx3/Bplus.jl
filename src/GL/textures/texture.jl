@@ -8,7 +8,7 @@ This includes regular images, as well as 1D and 3D textures and 'cubemaps'.
 Note that mip levels are counted from 1, not from 0,
    to match Julia's convention.
 "
-mutable struct Texture <: Resource
+mutable struct Texture <: AbstractResource
     handle::Ptr_Texture
     type::E_TexTypes
 

@@ -179,9 +179,8 @@ export @field
 
 
 "
-A sequence of fields, sampled into arrays and exposed to subsequent fields as `TextureField`.
-Note that the link between fields is implicit; each field presumably uses `TextureField`s
-    which reference the previous outputs.
+A sequence of fields.
+Each one will be sampled into an array and exposed to subsequent fields in the form of a `TextureField`.
 "
 struct MultiField
     sequence::Vector{Pair{Symbol, Tuple{AbstractField, Array{<:Vec}}}}
@@ -194,14 +193,13 @@ function sample_field!(array::Array, mf::MultiField,
                        state::DslState = DslState()
                        ;
                        use_threading::Bool = true
-                       #TODO: "sample_space" for all fields, and "array_bounds" for the final array
                       )
     for (name::Symbol, (field::AbstractField, output::Array{<:Vec})) in mf.sequence
         sample_field!(output, field;
                       use_threading = use_threading)
         @bp_check(!haskey(state.arrays, name),
                   "Array name '", name, "' would overwite existing array")
-        state.arrays
+        state.arrays[name] = output 
     end
     sample_field!(array, mf.finale;
                   use_threading = use_threading)

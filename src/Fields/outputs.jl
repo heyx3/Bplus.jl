@@ -61,6 +61,4 @@ function sample_field( grid_size::Vec{NIn, <:Integer},
     return output
 end
 
-#TODO: Function to fill a GL.Texture with a field shader
-
 export sample_field!, sample_field

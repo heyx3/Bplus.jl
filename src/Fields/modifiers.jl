@@ -193,7 +193,6 @@ prepare_field(g::GradientField{NIn, NOut, F, TField, TDir}) where {NIn, NOut, F,
         error("Unexpected type for GradientField's direction input: ", TDir)
     end
 end
-#TODO: Gradient shouldn't be too too hard to work out analytically, as the value is made up of a few simple operations
 
 
 # Gradients are specified as a function call, with special internal syntax:
@@ -335,13 +334,9 @@ get_field_gradient(c::ConversionField{NIn, NOut, FIn, FOut}, pos::Vec{NIn, FOut}
 function field_from_dsl_func(::Val{:(=>)}, context::DslContext, state::DslState, args::Tuple)
     @bp_fields_assert(length(args) == 2, "Huh? $args")
     input = field_from_dsl(args[1], context, state)
+    output_component_type = getproperty(Base, args[2])
 
-    #TODO: Would really like a safer way to convert a name to a Julia type.
-    @bp_check(args[2] isa Symbol, "Expected a name for the conversion, like 'Float32': ", args[2])
-    output_component_type = eval(args[2])
-
-    # Watch out for redundant conversions.
-    #TODO: Report warnings to the 'state::DslState' rather than logging them directly.
+    # Warn the user about redundant conversions.
     if field_component_type(input) == output_component_type
         @warn("Conversion from $output_component_type to itself: \"$(args[1]) => $(args[2])\"")
         return input
@@ -350,8 +345,3 @@ function field_from_dsl_func(::Val{:(=>)}, context::DslContext, state::DslState,
     return ConversionField(input, output_component_type)
 end
 dsl_from_field(c::ConversionField) = :( $(dsl_from_field(c)) => $(field_component_type(c)) )
-
-
-
-#TODO: Embed lower-dimensional fields in higher-dimensional ones
-#TODO: Transformations

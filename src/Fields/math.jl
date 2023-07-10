@@ -18,9 +18,9 @@ Sample syntax:
 end
 ````
 
-In this sample, the new field is `AddField`, and the corresponding DSL function/operator is `+`.
+In the above example, the new struct is named `AddField`, and the corresponding DSL function/operator is `+`.
 
-You construct an instance by providing it with the input fields (and without any type parameters).
+You construct an instance of `AddField` by providing it with the input fields (and without any type parameters).
 Input fields with 1D outputs will be automatically promoted to the dimensionality of the other fields' outputs.
 
 The full set of definitions you can provide is as follows:
@@ -35,7 +35,7 @@ The full set of definitions you can provide is as follows:
         including the tuple of its inputs (all of which have the same `NIn`, `NOut`, and `F` types).
     * `pos::Vec{NIn, F}`: the position within the field being sampled.
     * `input_values::NTuple{_, Vec{NOut, F}}` : the value of each input field at this position.
-        * If you don't need this, you can disable it with `VALUE_CALC_ALL_INPUT_VALUES` (see below).
+        * If you don't need this, you can improve performance by disabling it with `VALUE_CALC_ALL_INPUT_VALUES` (see below).
     * `prep_data::Tuple` : the output of `prepare_field` for each input field.
 * `gradient = [expr]` computes the gradient of the field, given the following parameters:
     * `field`: your field instance
@@ -43,7 +43,7 @@ The full set of definitions you can provide is as follows:
         including the tuple of its inputs (all of which have the same `NIn`, `NOut`, and `F` types).
     * `pos::Vec{NIn, F}`: the position input into the field.
     * `input_gradients::NTuple{_, Vec{NIn, Vec{NOut, F}}}` : the gradient of each input field at this position.
-        * If you don't need this, you can disable it with `GRADIENT_CALC_ALL_INPUT_GRADIENTS` (see below).
+        * If you don't need this, you can improve performance by disabling it with `GRADIENT_CALC_ALL_INPUT_GRADIENTS` (see below).
     * `input_values::NTuple{_, Vec{NOut, F}}` : the value of each input field at this position.
         * **Not provided** by default; you must enable it with `GRADIENT_CALC_ALL_INPUT_VALUES` (see below).
     * `prep_data::Tuple` : the output of `prepare_field` for each input field.
@@ -298,11 +298,18 @@ end
     value = reduce(+, input_values)
     gradient = reduce(+, input_gradients)
 end
-println("#TODO: Negation, interpreted as subtraction with 1 argument")
-@make_math_field Subtract "-" begin
-    INPUT_COUNTS = 2:∞
-    value = foldl(-, input_values)
-    gradient = foldl(-, input_gradients)
+@make_math_field Subtract "-" begin # Also defines negation
+    INPUT_COUNTS = 1:∞
+    value = if length(input_values) > 1
+                foldl(-, input_values)
+            else
+                -input_values[1]
+            end
+    gradient = if length(input_gradients) > 1
+                   foldl(-, input_gradients)
+               else
+                   -input_gradients[1]
+               end
 end
 @make_math_field Multiply "*" begin
     INPUT_COUNTS = 2:∞
@@ -356,7 +363,6 @@ end
     GRADIENT_CALC_ALL_INPUT_VALUES = true
     gradient = (convert(F, 0.5) / sqrt(input_values[1])) * input_gradients[1]
 end
-#TODO: Log
 
 # Trig functions
 @make_math_field Sin "sin" begin
@@ -381,7 +387,6 @@ end
     GRADIENT_CALC_ALL_INPUT_VALUES = true
     gradient = input_gradients[1] * square(map(sec, input_values[1]))
 end
-#TODO: The other trig functions. Derivative reference: https://tutorial.math.lamar.edu/Classes/CalcI/DiffTrigFcns.aspx
 
 # Numeric stuff
 "
@@ -543,5 +548,3 @@ end
         return vselect(raw_gradient, zero(GradientType(field)), is_outside_range)
     end
 end
-
-#TODO: MOOOORE

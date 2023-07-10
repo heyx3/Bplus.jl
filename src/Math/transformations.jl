@@ -178,7 +178,7 @@ end
 export m3_translate, m4_translate, m_scale,
        m3_rotateX, m3_rotateY, m3_rotateZ,
        m4_rotateX, m4_rotateY, m4_rotateZ,
-       m4_rotate,
+       m3_rotate, m4_rotate,
        m4_world,
        m3_reorient, m4_look_at, m4_reorient, m4_projection,
        m4_ortho

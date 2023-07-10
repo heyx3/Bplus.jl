@@ -11,7 +11,7 @@ using Bplus.GL, Bplus.Helpers, Bplus.Math, Bplus.Utilities
 
 
 bp_gl_context( v2i(800, 500), "Cam3D demo";
-               vsync=VsyncModes.On,
+               vsync=VsyncModes.on,
                debug_mode=true
              ) do context::Context
     # Set up a mesh with some 3D triangles.
@@ -167,7 +167,7 @@ bp_gl_context( v2i(800, 500), "Cam3D demo";
 
     # Configure the render state.
     println("#TODO: Test culling mode")
-    GL.set_culling(context, GL.FaceCullModes.Off)
+    GL.set_culling(context, GL.FaceCullModes.off)
 
     # Set up the texture used to draw the triangles.
     # It's a one-channel texture containing perlin noise.

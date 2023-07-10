@@ -3,13 +3,9 @@
 #        Clearing       #
 #########################
 
-#TODO: Probably should make attachment indices 1-based, not 0-based
-#TODO: Versions without explicit context
-
-
 "
 Clears the given render target (or the screen, if you pass a default/null handle).
-Optionally clears only a single attachment of the target.
+Optionally clears only a single attachment of the target (using a 1-based index).
 "
 function render_clear( context::Context,
                        target::Ptr_Target,
@@ -29,7 +25,7 @@ function render_clear( context::Context,
 end
 "
 Clears the given depth render target (or the screen's depth buffer, if you pass a default/null handle).
-Optionally clears only a single attachment of the target.
+Optionally clears only a single attachment of the target (using a 1-based index).
 "
 function render_clear( context::Context,
                        target::Ptr_Target,
@@ -41,15 +37,16 @@ function render_clear( context::Context,
 end
 "
 Clears the given stencil render target (or the screen's stencil buffer, if you pass a default/null handle).
-Optionally clears only a single attachment of the target.
+Optionally clears only a single attachment of the target (using a 1-based index).
 "
 function render_clear( context::Context,
                        target::Ptr_Target,
-                       stencil::GLint,  #TODO: Should this take a GLuint instead, since that's more intuitive? Same question for the below overload.
+                       stencil::GLuint,
                        attachment_idx::Optional{Int} = nothing
                      )
     draw_buffer::GLint = exists(attachment_idx) ? attachment_idx : GL_NONE
-    glClearNamedFramebufferiv(target, GL_STENCIL, draw_buffer, Ref(stencil))
+    glClearNamedFramebufferiv(target, GL_STENCIL, draw_buffer,
+                              Ref(reinterpret(GLint, stencil)))
 end
 "
 Clears the given depth/stencil render target (or the screen's depth/stencil buffer, if you pass a default/null handle).
@@ -58,11 +55,12 @@ Optionally clears only a single attachment of the target.
 function render_clear( context::Context,
                        target::Ptr_Target,
                        depth::GLfloat,
-                       stencil::GLint,
+                       stencil::GLuint,
                        attachment_idx::Optional{Int} = nothing
                      )
     draw_buffer::GLint = exists(attachment_idx) ? attachment_idx : GL_NONE
-    glClearNamedFramebufferfi(target, GL_DEPTH_STENCIL, draw_buffer, depth, stencil)
+    glClearNamedFramebufferfi(target, GL_DEPTH_STENCIL, draw_buffer,
+                              depth, reinterpret(GLint, stencil))
 end
 export render_clear
 
@@ -135,15 +133,10 @@ function render_mesh( context::Context,
     service_view_debugger_check(get_ogl_handle(program))
 
     # Activate the mesh and program.
-#TODO: OpenGL can re-use handles from destroyed objects! We should not go by handle, but by Program/Mesh references
-    #if context.active_program != program.handle
-        glUseProgram(program.handle)
-        setfield!(context, :active_program, program.handle)
-    #end
-    #if context.active_mesh != mesh.handle
-        glBindVertexArray(mesh.handle)
-        setfield!(context, :active_mesh, mesh.handle)
-    #end
+    glUseProgram(program.handle)
+    setfield!(context, :active_program, program.handle)
+    glBindVertexArray(mesh.handle)
+    setfield!(context, :active_mesh, mesh.handle)
 
     #=
      The notes I took when preparing the old C++ draw calls interface:
@@ -176,7 +169,7 @@ function render_mesh( context::Context,
             glEnable(GL_PRIMITIVE_RESTART)
             glPrimitiveRestartIndex(indexed_params.reset_value)
         else
-            glDisable(GL_PRIMITIVE_RESTART)  #TODO: is this call expensive? We could cache it and only call when it really changes
+            glDisable(GL_PRIMITIVE_RESTART)
         end
         # Pre-compute data.
         index_type = get_index_ogl_enum(mesh.index_data.type)
@@ -257,7 +250,6 @@ function render_mesh( context::Context,
         end
     else
         if elements isa AbstractArray{IntervalU}
-            #TODO: This generates garbage. Keep a buffer in the context.
             offsets = ntuple(i -> min_inclusive(elements[i]) - 1, length(elements))
             counts = ntuple(i -> size(elements[i]), length(elements))
             glMultiDrawArrays(shape, Ref(offsets), Ref(counts), length(elements))
@@ -279,7 +271,5 @@ end
 
 "If the Context isn't given already, it is pulled from the global state."
 render_mesh(mesh::Mesh, program::Program; kw_args...) = render_mesh(get_context(), mesh, program; kw_args...)
-
-#TODO: Indirect drawing: glDrawArraysIndirect(), glMultiDrawArraysIndirect(), glDrawElementsIndirect(), and glMultiDrawElementsIndirect().
 
 export DrawIndexed, render_mesh

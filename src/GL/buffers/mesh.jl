@@ -12,7 +12,8 @@ struct VertexDataSource
     element_byte_size::UInt
     buf_byte_offset::UInt
 
-    #TODO: ConstVector of internal buffers of data, which can be set up in the constructor
+    # A todo that I no longer understand, but am keeping here in case it turns out to be valuable:
+    #    "ConstVector of internal buffers of data, which can be set up in the constructor"
 end
 
 VertexDataSource(buf, element_byte_size::Integer, buf_byte_offset::Integer = 0) =
@@ -138,7 +139,7 @@ This is what OpenGL calls a 'VAO' or 'VertexArrayObject'.
 Most data will be per-'vertex', but some data can be
    per-instance, for instanced rendering.
 "
-mutable struct Mesh <: Resource
+mutable struct Mesh <: AbstractResource
     handle::Ptr_Mesh
     type::E_PrimitiveTypes
 
@@ -174,7 +175,8 @@ function Mesh( type::E_PrimitiveTypes,
     end
 
     # Configure the vertex data.
-    #TODO: Check that we can do this with one loop instead of three
+    # I suspect that this can be done with one loop instead of three, but I'm not certain of that
+    #    and it shouldn't make any noticeable difference in performance anyway.
     for i::Int in 1:length(vertex_fields)
         glEnableVertexArrayAttrib(m.handle, GLuint(i - 1))
     end
@@ -267,9 +269,6 @@ function count_mesh_elements(m::Mesh)::Int
         return count_mesh_vertices(m)
     end
 end
-
-
-println("#TODO: Operations to change vertex data")
 
 "Adds/changes the index data for this mesh"
 function set_index_data(m::Mesh, source::Buffer, type::Type{<:MeshIndexTypes})

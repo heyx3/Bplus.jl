@@ -63,7 +63,7 @@ dsl_from_field(::PosField) = POS_FIELD_NAME
 #  TextureField  #
 ##################
 
-@bp_enum(SampleModes, nearest, linear, cubic)
+@bp_enum(SampleModes, nearest=0, linear=1)
 
 "
 Samples from a 'texture', in UV space (0-1).
@@ -258,12 +258,10 @@ function get_field( tf::TextureField{NIn, NOut, F, NUV, TArray, WrapMode, Sample
                                   wrapped_pixel_min_i, wrapped_pixel_max_i,
                                   Vec{Int}(),
                                   Val(NUV))
-    #TODO: Implement cubic sampling, using Cubic Lagrange: https://www.shadertoy.com/view/MllSzX
     else
         error("Unhandled sample mode: ", SampleMode.parameters[1])
     end
 end
-#TODO: Implement an efficient derivative calculation
 
 # TextureFields have special treatment.
 # The DslState has a lookup providing a name for each allocated array.

@@ -1,6 +1,3 @@
-#TODO: Port in the "ShaderIncludeFromFiles" stuff from old C++ code?
-
-
 ######################
 #      Uniforms      #
 ######################
@@ -22,8 +19,8 @@ const Uniform = Union{UniformScalar,
                             for size in Iterators.product(2:4, 2:4)
                       )...,
                       # "Opaque" types:
-                      Ptr_Buffer,  #TODO: Use Buffer instead of the raw pointer, and decorate them with SSBO-vs-UBO and binding-index.
-                      Texture, Ptr_View, View #TODO: Also support the old-school texture, decorated with the texture-unit index to put it in.
+                      Ptr_Buffer,
+                      Texture, Ptr_View, View
                      }
 
 
@@ -70,7 +67,6 @@ If the uniform is a struct or array of structs, you must name the individual fie
 This naming is 0-based, not 1-based, unfortunately.
 """
 function set_uniforms end
-println("#TODO: Support taking raw pointers for uniform marray data")
 
 
 export Uniform, UniformData, set_uniform, set_uniforms
@@ -136,7 +132,6 @@ mutable struct ProgramCompiler
     src_vertex::String
     src_fragment::String
     src_geometry::Optional{String}
-    #TODO: also support compute shaders
 
     # A pre-compiled version of this shader which this compiler can attempt to use first.
     # The shader source code is still needed as a fallback,
@@ -251,7 +246,7 @@ export ProgramCompiler, compile_program
 ######################
 
 "A compiled group of OpenGL shaders (vertex, fragment, etc.)"
-mutable struct Program <: Resource
+mutable struct Program <: AbstractResource
     handle::Ptr_Program
     uniforms::Dict{String, UniformData}
     flexible_mode::Bool # Whether to silently ignore invalid uniforms
@@ -364,8 +359,6 @@ const UNIFORM_TYPE_FROM_GL_ENUM = Dict{GLenum, Type{<:Uniform}}(
     GL_DOUBLE_MAT3x4 => dmat3x4,
     GL_DOUBLE_MAT4x2 => dmat4x2,
     GL_DOUBLE_MAT4x3 => dmat4x3,
-
-    #TODO: support 'atomic counter' uniforms.  #GL_UNSIGNED_INT_ATOMIC_COUNTER => atomic_uint,
 
     GL_SAMPLER_1D => Ptr_View,
     GL_SAMPLER_2D => Ptr_View,
@@ -519,7 +512,6 @@ function set_uniforms( program::Program, name::String,
                   "Passing a collection of textures/views to set a uniform array,",
                   " but the collection isn't array-like! It's a ", TCollection)
 
-        #TODO: Use some kind of pooling for the temp array.
         handles::Vector{Ptr_View} = map(data) do element::Union{Texture, View}
             if element isa Texture
                 return get_view(element).handle

@@ -7,6 +7,8 @@ end
 @inline Triangle(a::Vec{N, T1}, b::Vec{N, T2}, c::Vec{N, T3}) where {N, T1, T2, T3} =
     Triangle{N, promote_type(T1, promote_type(T2, T3))}(a, b, c)
 
+export Triangle
+
 @inline Base.getproperty(t::Triangle, n::Symbol) = getproperty(t, Val(n))
 @inline Base.getproperty(t::Triangle, ::Val{F}) where {F} = getfield(t, F)
 @inline Base.getproperty(t::Triangle, ::Val{:points}) = (t.a, t.b, t.c)

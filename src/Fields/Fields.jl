@@ -31,17 +31,11 @@ field_component_type(::Type{<:AbstractField{NIn, NOut, F}}) where {NIn, NOut, F}
 
 include("interface.jl")
 include("dsl.jl")
-#TODO: Shader generation
 
 include("basics.jl")
 include("modifiers.jl")
 include("math.jl")
-#TODO: Vector ops
-#TODO: Logical ops
 include("noise.jl")
-#TODO: Signed distance fields
-#TODO: Useful CG curves (e.x. https://iquilezles.org/articles/functions/)
-#TODO: Think of more
 
 include("outputs.jl")
 

@@ -179,7 +179,7 @@ end
 
 # Create a GL Context and window, and put the GL library through its paces.
 bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once rendering starts";
-               vsync=VsyncModes.On,
+               vsync=VsyncModes.on,
                debug_mode=true
              ) do context::Context
     @bp_check(context === GL.get_context(),
@@ -196,7 +196,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
     end
 
     # Keep track of the resources to clean up, in the order they should be cleaned up.
-    to_clean_up = Resource[ ]
+    to_clean_up = AbstractResource[ ]
 
     # Set up a mesh with some triangles.
     # Each triangle has position, color, and "IDs".
@@ -304,7 +304,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
     set_uniform(draw_triangles, "u_tex", tex)
     check_gl_logs("giving the texture to the simple triangles' shader")
 
-    resources::BasicGraphicsService = get_resources(context)
+    resources::BasicGraphicsService = get_basic_graphics(context)
     @assert(GL.count_mesh_vertices(resources.screen_triangle) == 3)
     @assert(GL.count_mesh_vertices(resources.quad) == 4)
 
@@ -386,9 +386,9 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
     check_gl_logs("creating the Target")
 
     # Configure the render state.
-    set_culling(context, FaceCullModes.Off)
+    set_culling(context, FaceCullModes.off)
     set_depth_writes(context, true)
-    set_depth_test(context, ValueTests.LessThan)
+    set_depth_test(context, ValueTests.less_than)
     set_blending(context, make_blend_opaque(BlendStateRGBA))
 
     camera_yaw_radians::Float32 = 0
@@ -426,7 +426,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
         #    then we'll re-render them while sampling from that target
         #    to create a trippy effect.
         function draw_scene(triangle_tex, msg_context...)
-            set_depth_test(context, ValueTests.LessThan)
+            set_depth_test(context, ValueTests.less_than)
 
             # Update the triangle uniforms.
             set_uniform(draw_triangles, "u_tex", triangle_tex)
@@ -458,7 +458,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
         target_activate(nothing)
         render_clear(context, GL.Ptr_Target(), vRGBAf(0, 1, 0, 0))
         render_clear(context, GL.Ptr_Target(), @f32 1.0)
-        set_depth_test(context, ValueTests.Pass)
+        set_depth_test(context, ValueTests.pass)
         check_gl_logs("clearing the screen")
         target_tex = target.attachment_colors[1].tex
         resource_blit(resources, target_tex)
@@ -473,7 +473,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
     end
 
     # Clean up the resources.
-    for rs::Resource in to_clean_up
+    for rs::AbstractResource in to_clean_up
         close(rs)
 
         # Make sure the resource's handle is nulled out, to prevent potential errors.

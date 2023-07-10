@@ -52,7 +52,7 @@ OpenGL calls these "framebuffers".
 The full list of attached textures is fixed after creation,
     but the specific subset used in rendering can be configured with `target_use_color_slots()`.
 """
-mutable struct Target <: Resource
+mutable struct Target <: AbstractResource
     handle::Ptr_Target
     size::v2u
 
@@ -303,11 +303,11 @@ function target_activate(target::Optional{Target};
 
     if exists(target)
         glBindFramebuffer(GL_FRAMEBUFFER, get_ogl_handle(target))
-        reset_viewport && set_viewport(context, one(v2i), convert(v2i, target.size))
+        reset_viewport && set_viewport(context, Box2Di((min=one(v2i), size=convert(v2i, target.size))))
         reset_scissor && set_scissor(context, nothing)
     else
         glBindFramebuffer(GL_FRAMEBUFFER, Ptr_Target())
-        reset_viewport && set_viewport(context, one(v2i), get_window_size(context))
+        reset_viewport && set_viewport(context, Box2Di((min=one(v2i), size=get_window_size(context))))
         reset_scissor && set_scissor(context, nothing)
     end
 end
@@ -464,6 +464,3 @@ function target_clear(target::Target, depth_stencil::Depth32fStencil8u,
 
     glClearNamedFramebufferfi(get_ogl_handle(target), GL_DEPTH_STENCIL, 0, depth, stencil)
 end
-
-
-#TODO: A special singleton Target representing the screen?

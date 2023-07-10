@@ -2,7 +2,7 @@
 A Context service which defines a bunch of useful GL resources:
 
  * `screen_triangle` : A 1-triangle mesh with 2D positions in NDC-space.
-                       When drawn, it will perfectly cover the entire viewport,
+                       When drawn, it will perfectly cover the entire screen,
                           making it easy to spin up post-processing effects.
                        The UV coordinates can be calculated from the XY positions
                           (or from gl_FragCoord).
@@ -20,7 +20,9 @@ mutable struct BasicGraphicsService
     quad::Mesh
     blit::Program
     empty_mesh::Mesh
-    references::Set{Resource}
+
+    # The master list of things this service owns and needs to clean up.
+    references::Set{AbstractResource}
 end
 export BasicGraphicsService
 
@@ -77,7 +79,7 @@ void main() {
 
     return BasicGraphicsService(
         screen_tri, quad, blit, empty_mesh,
-        Set(Resource[
+        Set(AbstractResource[
             screen_tri_poses, screen_tri,
             quad_poses, quad,
             blit,
@@ -133,7 +135,7 @@ function resource_blit(basic_graphics::BasicGraphicsService,
 
     old_depth_test = context.state.depth_test
     if disable_depth_test
-        set_depth_test(context, ValueTests.Pass)
+        set_depth_test(context, ValueTests.pass)
     end
 
     # If drawing full-screen, use the more efficient triangle.

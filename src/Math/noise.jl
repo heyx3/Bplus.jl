@@ -1,5 +1,3 @@
-#TODO: Fancy Julia implementations of N-dimensional simplex and worley noise
-
 @inline perlin(f::Real, args...) = perlin(@f32(f), args...)
 @inline perlin(f::AbstractFloat, args...) = perlin(Vec(f), args...)
 @generated function perlin( v::Vec{N, T},

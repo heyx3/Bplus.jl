@@ -22,27 +22,27 @@ Shaders provide unlimited flexibility to combine two textures into a new one,
 
 # The multipliers that can be used on 'src' and 'dest' colors.
 @bp_gl_enum(BlendFactors::GLenum,
-    Zero = GL_ZERO,
-    One = GL_ONE,
+    zero = GL_ZERO,
+    one = GL_ONE,
 
-    SrcColor = GL_SRC_COLOR,
-    SrcAlpha = GL_SRC_ALPHA,
+    src_color = GL_SRC_COLOR,
+    src_alpha = GL_SRC_ALPHA,
 
-    InverseSrcColor = GL_ONE_MINUS_SRC_COLOR,
-    InverseSrcAlpha = GL_ONE_MINUS_SRC_ALPHA,
+    inverse_src_color = GL_ONE_MINUS_SRC_COLOR,
+    inverse_src_alpha = GL_ONE_MINUS_SRC_ALPHA,
 
-    DestColor = GL_DST_COLOR,
-    DestAlpha = GL_DST_ALPHA,
+    dest_color = GL_DST_COLOR,
+    dest_alpha = GL_DST_ALPHA,
 
-    InverseDestColor = GL_ONE_MINUS_DST_COLOR,
-    InverseDestAlpha = GL_ONE_MINUS_DST_ALPHA,
+    inverse_dest_color = GL_ONE_MINUS_DST_COLOR,
+    inverse_dest_alpha = GL_ONE_MINUS_DST_ALPHA,
 
     # The below factors are NOT multipliers on the src/dest value.
     # Instead, they replace the src/dest with a constant.
-    ConstantColor = GL_CONSTANT_COLOR,
-    ConstantAlpha = GL_CONSTANT_ALPHA,
-    InverseConstantColor = GL_ONE_MINUS_CONSTANT_COLOR,
-    InverseConstantAlpha = GL_ONE_MINUS_CONSTANT_ALPHA
+    constant_color = GL_CONSTANT_COLOR,
+    constant_alpha = GL_CONSTANT_ALPHA,
+    inverse_constant_color = GL_ONE_MINUS_CONSTANT_COLOR,
+    inverse_constant_alpha = GL_ONE_MINUS_CONSTANT_ALPHA
 )
 export BlendFactors, E_BlendFactors
 
@@ -51,10 +51,10 @@ Gets whether the given type of blend factor uses a 'Constant' value
   instead of the actual src/dest value.
 "
 blend_factor_uses_constant(f::E_BlendFactors)::Bool = (
-    (f == BlendFactors.ConstantColor) |
-    (f == BlendFactors.ConstantAlpha) |
-    (f == BlendFactors.InverseConstantColor) |
-    (f == BlendFactors.InverseConstantAlpha)
+    (f == BlendFactors.constant_color) |
+    (f == BlendFactors.constant_alpha) |
+    (f == BlendFactors.inverse_constant_color) |
+    (f == BlendFactors.inverse_constant_alpha)
 )
 export blend_factor_uses_constant
 
@@ -62,13 +62,13 @@ export blend_factor_uses_constant
 # The operators that can combine source and destination colors
 #   (after each is multiplied by their blend factor).
 @bp_gl_enum(BlendOps::GLenum,
-    Add = GL_FUNC_ADD,
+    add = GL_FUNC_ADD,
 
-    Subtract = GL_FUNC_SUBTRACT,
-    ReverseSubtract = GL_FUNC_REVERSE_SUBTRACT,
+    subtract = GL_FUNC_SUBTRACT,
+    reverse_subtract = GL_FUNC_REVERSE_SUBTRACT,
 
-    Min = GL_MIN,
-    Max = GL_MAX
+    min = GL_MIN,
+    max = GL_MAX
 )
 export BlendOps, E_BlendOps
 
@@ -106,17 +106,17 @@ export blend_uses_constant
 
 "Makes an opaque blend mode of the given type"
 make_blend_opaque(::Type{BlendState_{T}}) where {T} = BlendState_{T}(
-    BlendFactors.One, BlendFactors.Zero,
-    BlendOps.Add
+    BlendFactors.one, BlendFactors.zero,
+    BlendOps.add
 )
 "Makes an alpha-blend mode of the given type"
 make_blend_alpha(::Type{BlendState_{T}}) where {T} = BlendState_{T}(
-    BlendFactors.SrcAlpha, BlendFactors.InverseSrcAlpha,
-    BlendOps.Add
+    BlendFactors.src_alpha, BlendFactors.inverse_src_alpha,
+    BlendOps.add
 )
 "Makes an additive blend mode"
 make_blend_additive(::Type{BlendState_{T}}) where {T} = BlendState_{T}(
-    BlendFactors.One, BlendFactors.One,
-    BlendOps.Add
+    BlendFactors.one, BlendFactors.one,
+    BlendOps.add
 )
 export make_blend_opaque, make_blend_alpha, make_blend_additive

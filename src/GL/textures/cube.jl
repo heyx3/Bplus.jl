@@ -1,12 +1,12 @@
 # The six faces of a cube, defined to match the OpenGL cubemap texture faces.
 # They are ordered in the same way that OpenGL orders them in memory.
 @bp_gl_enum(CubeFaces::GLenum,
-    PosX = GL_TEXTURE_CUBE_MAP_POSITIVE_X,
-    NegX = GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
-    PosY = GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
-    NegY = GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
-    PosZ = GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
-    NegZ = GL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
+    pos_x = GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+    neg_x = GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+    pos_y = GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
+    neg_y = GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+    pos_z = GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+    neg_z = GL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
 )
 export CubeFaces, E_CubeFaces
 
@@ -49,12 +49,12 @@ export get_cube_dir
 "The memory layout for each cubemap face, in order on the GPU"
 const CUBEMAP_MEMORY_LAYOUT = let v3i8 = Vec{3, Int8}
     (
-        CubeFaceOrientation(CubeFaces.PosX, v3i8(1, 1, 1),   v3i8(1, -1, -1), 3, 2),
-        CubeFaceOrientation(CubeFaces.NegX, v3i8(-1, 1, -1), v3i8(-1, -1, 1), 3, 2),
-        CubeFaceOrientation(CubeFaces.PosY, v3i8(-1, 1, -1), v3i8(1, 1, 1), 1, 3),
-        CubeFaceOrientation(CubeFaces.NegY, v3i8(-1, -1, 1), v3i8(1, -1, -1), 1, 3),
-        CubeFaceOrientation(CubeFaces.PosZ, v3i8(-1, 1, 1),  v3i8(1, -1, 1), 1, 2),
-        CubeFaceOrientation(CubeFaces.NegZ, v3i8(1, 1, -1),  v3i8(-1, -1, -1), 1, 2),
+        CubeFaceOrientation(CubeFaces.pos_x, v3i8(1, 1, 1),   v3i8(1, -1, -1), 3, 2),
+        CubeFaceOrientation(CubeFaces.neg_x, v3i8(-1, 1, -1), v3i8(-1, -1, 1), 3, 2),
+        CubeFaceOrientation(CubeFaces.pos_y, v3i8(-1, 1, -1), v3i8(1, 1, 1), 1, 3),
+        CubeFaceOrientation(CubeFaces.neg_y, v3i8(-1, -1, 1), v3i8(1, -1, -1), 1, 3),
+        CubeFaceOrientation(CubeFaces.pos_z, v3i8(-1, 1, 1),  v3i8(1, -1, 1), 1, 2),
+        CubeFaceOrientation(CubeFaces.neg_z, v3i8(1, 1, -1),  v3i8(-1, -1, -1), 1, 2),
     )
 end
 export CUBEMAP_MEMORY_LAYOUT
