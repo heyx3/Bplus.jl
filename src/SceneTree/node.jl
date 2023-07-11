@@ -34,7 +34,6 @@ Note that getting transform data can cause a node's cache to be updated within t
 
 "
 struct Node{TNodeID, F<:AbstractFloat}
-    #TODO: Generalize to any number of dimensions.
     parent::TNodeID
 
     sibling_prev::TNodeID
@@ -111,10 +110,6 @@ Base.show(io::IO, node::Node) = print(io, '<',
 ######################
 #  Public Interface  #
 ######################
-
-#TODO: Try inlining functions.
-#TODO: Look for a performance cost from the many consecutive calls to `@set!`
-
 
 ##  Transform calculations  ##
 
@@ -220,8 +215,6 @@ function world_inverse_transform( node::Node{TNodeID, F},
     return (node.cached_matrix_world_inverse, was_updated, node)
 end
 
-#TODO: Transform setters
-
 
 ##  Tree structure  ##
 
@@ -321,7 +314,7 @@ function set_parent( node_id::TNodeID,
         # Calculate a new local transform that preserves the world-space transform.
         @set! node.cached_matrix_self = local_mat
         @set! node.is_cached_self = true
-        local_data = m_decompose(node.cached_matrix_self) #TODO: This function doesn't actually exist yet.
+        local_data = m_decompose(node.cached_matrix_self)
         @set! node.local_pos = local_data.pos
         @set! node.local_rot = local_data.rot
         @set! node.local_scale = local_data.scale
@@ -342,10 +335,6 @@ function set_parent( node_id::TNodeID,
 
     return node
 end
-
-#TODO: Ability to move this transform within its parent list, and/or swap places with a sibling.
-
-println("#TODO: Resume shifting to an interface that's entirely done through node ID's, and which leaves the 'context' as an optional parameter (defaulting to `nothing`).")
 
 
 ##  Iteration  ##
@@ -398,7 +387,6 @@ For smaller trees, consider using `family_breadth_first`, which will not allocat
                                           ) where {TNodeID}
     error("Not implemented!")
 end
-println("#TODO: Implement BFS via queue")
 
 
 ##  Utilities  ##
@@ -540,8 +528,6 @@ end
 ##############################
 #  "Whole family" iterators  #
 ##############################
-
-#TODO: Depth-first iterator tracks its own depth and supports a min + max depth, to dramatically simplify and speed-up the BFS
 
 struct FamilyDFS{TNodeID, TContext}
     root_id::TNodeID

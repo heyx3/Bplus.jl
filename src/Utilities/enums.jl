@@ -92,7 +92,6 @@ function generate_enum(name, definitions, args)
         return Meta.isexpr(arg, :escape) ? arg.args[1] : arg
     end
 
-    #TODO: Is it possible to add the @__doc__ back in safely?
     output = Expr(:toplevel, :(
         module $enum_name
             $definitions

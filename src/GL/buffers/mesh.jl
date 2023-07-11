@@ -12,7 +12,7 @@ struct VertexDataSource
     element_byte_size::UInt
     buf_byte_offset::UInt
 
-    # A todo that I no longer understand, but am keeping here in case it turns out to be valuable:
+    # A TODO that I no longer understand, but am keeping here in case it turns out to be valuable:
     #    "ConstVector of internal buffers of data, which can be set up in the constructor"
 end
 

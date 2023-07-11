@@ -59,7 +59,6 @@ union_ordering(::Type{<:Dates.TimeType}) = 3.0
 union_ordering(::Type{Symbol}) = 4.0
 union_ordering(::Type{<:AbstractString}) = 5.0
 union_ordering(::Val{:abstract}) = 6.0
-#TODO: Make the dictionary and vector priorities dynamic based on the priority of their input types
 union_ordering(::Type{<:AbstractDict}) = 7.0
 union_ordering(::Type{<:AbstractVector}) = 8.0
 const MAX_BUILTIN_UNION_PRIORITY = union_ordering(Vector)

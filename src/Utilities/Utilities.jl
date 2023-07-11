@@ -6,6 +6,7 @@ include("asserts.jl")
 @make_toggleable_asserts bp_utils_
 
 include("basic.jl")
+include("numbers.jl")
 include("unions.jl")
 include("macros.jl")
 

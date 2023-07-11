@@ -10,7 +10,6 @@ struct Box{N, F} <: AbstractShape{N, F}
 end
 export Box
 
-println("#TODO: Test Box serialization flexibility, then port any fixes into Interval")
 StructTypes.StructType(::Type{<:Box}) = StructTypes.CustomStruct()
 StructTypes.lower(b::Box) = Dict("min"=>min_inclusive(b), "size"=>size(b))
 StructTypes.lowertype(::Type{<:Box}) = Dict{AbstractString, Vec}
@@ -241,7 +240,6 @@ Base.convert(::Type{Box{N, F1}}, b::Box{N, F2}) where {N, F1, F2} =
 # Iterate through the coordinates of integer boxes.
 @inline Base.iterate(b::BoxT{<:Integer}       ) = iterate(min_inclusive(b) : max_inclusive(b)       )
 @inline Base.iterate(b::BoxT{<:Integer}, state)= iterate(min_inclusive(b) : max_inclusive(b), state)
-#TODO: Unit tests for Box iteration
 
 
 ###########################
