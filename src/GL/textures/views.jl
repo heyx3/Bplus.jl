@@ -18,9 +18,11 @@ which is why this type does not inherit from `AbstractResource`.
 mutable struct View
     handle::Ptr_View
     owner::AbstractResource # Can't type it as `Texture`, because that type doesn't exist yet
+
+    is_active::Bool
+
     is_sampling::Bool # True if this is a 'Texture' view,
                       #   false if this is an 'Image' view.
-    is_active::Bool
 end
 
 "Tells the GPU to activate this handle so it can be used in a shader."
@@ -32,8 +34,7 @@ function view_activate(view::View)
         if view.is_sampling
             glMakeTextureHandleResidentARB(view.handle)
         else
-            #TODO: This is broken. What is the missing argument about?
-            glMakeImageHandleResidentARB(view.handle)
+            glMakeImageHandleResidentARB(view.handle, ImageAccessModes.read_write)
         end
     end
 end
@@ -76,7 +77,7 @@ Base.@kwdef struct SimpleViewParams
 end
 
 "The parameters that uniquely define a texture's view."
-const ViewParams = Union{Optional{Sampler}, SimpleViewParams}
+const ViewParams = Union{Optional{TexSampler}, SimpleViewParams}
 
 export SimpleViewParams, ViewParams
 
@@ -92,7 +93,7 @@ If no sampler is given, the texture's default sampler settings are used.
 IMPORTANT: users shouldn't ever be creating these by hand;
     they should come from the Texture interfae.
 "
-function View(owner::AbstractResource, sampler::Optional{Sampler})
+function View(owner::AbstractResource, sampler::Optional{TexSampler})
     local handle::gl_type(Ptr_View)
     if exists(sampler)
         handle = glGetTextureSamplerHandleARB(get_ogl_handle(owner), get_sampler(sampler))
@@ -101,8 +102,9 @@ function View(owner::AbstractResource, sampler::Optional{Sampler})
     end
 
     # Create the instance, and register it with the View-Debugger.
-    instance = View(Ptr_View(handle), owner, true,
-                    glIsTextureHandleResidentARB(handle))
+    instance = View(Ptr_View(handle), owner,
+                    glIsTextureHandleResidentARB(handle),
+                    true)
     service_view_debugger_add_view(get_context(), instance.handle, instance)
 
     return instance
@@ -123,12 +125,13 @@ function View(owner::AbstractResource, params::SimpleViewParams)
         params.mip_level - 1,
         exists(params.layer),
         isnothing(params.layer) ? 0 : params.layer,
-        Int(params.access)
+        GL_RGBA32F #NOTE: a hack left in place until we fix image views
     )
 
     # Create the instance, and register it with the View-Debugger.
-    instance = View(Ptr_View(handle), owner, false,
-                    glIsImageHandleResidentARB(handle))
+    instance = View(Ptr_View(handle), owner,
+                    glIsImageHandleResidentARB(handle),
+                    false)
     service_view_debugger_add_view(get_context(), instance.handle, instance)
 
     return instance

@@ -297,8 +297,6 @@ export q_mat3x3
 export q_mat4x4
 
 
-#TODO: Double-check slerp, and implement squad, using this article: https://www.3dgep.com/understanding-quaternions/#SLERP
-
 #################
 ##   Snippets  ##
 #################

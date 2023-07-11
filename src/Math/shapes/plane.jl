@@ -31,7 +31,7 @@ function intersections( p::Plane{N, F},
     end
 
     t::F = -vdot(p.normal, r.start - p.origin) / determinant
-    if !is_touching(Interval{F}((min=min_t, max=max_t)), t)
+    if !is_touching(Interval{F}(min=min_t, max=max_t), t)
         return NULL_RESULT
     end
 

@@ -5,8 +5,8 @@ Base.@kwdef struct Cam3D{F<:AbstractFloat}
     forward::Vec3{F} = get_horz_vector(1, F)
     up::Vec3{F} = get_up_vector(F)
 
-    clip_range::Interval{F} = Interval((min=convert(F, 0.01),
-                                        max=convert(F, 1000)))
+    clip_range::Interval{F} = Interval(min=convert(F, 0.01),
+                                       max=convert(F, 1000))
     fov_degrees::F = convert(F, 90)
     aspect_width_over_height::F = one(F)
 end
@@ -90,7 +90,6 @@ Base.@kwdef struct Cam3D_Input{F<:AbstractFloat}
     speed_change::F = zero(F)
 end
 
-#TODO: Fix Helpers.cam_update() (use RT project as a test bed)
 "
 Updates the given camera with the given user input,
     returning its new state.
@@ -142,7 +141,7 @@ function cam_update( cam::Cam3D{F},
         elseif settings.up_axis_mode == Cam3D_UpModes.keep_upright
             # Leave the up-axis alone, and prevent forward-axis from passing through it.
             old_right = vnorm(v_rightward(old_forward, cam.up))
-            old_true_forward = vnorm(v_rightward(cam.up, old_right)) #TODO: I think this is backwards
+            old_true_forward = vnorm(v_rightward(old_right, cam.up))
             new_true_forward = vnorm(v_rightward(cam.up, cam_rightward(cam)))
             if (vdot(cam.forward, new_true_forward) < 0) ||
                isapprox(vdot(cam.forward, cam.up), zero(F))

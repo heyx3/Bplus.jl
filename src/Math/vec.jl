@@ -255,7 +255,6 @@ function Base.findmin(pred::F, v::Vec{N, T})::Optional{T} where {F, N, T}
     end
     return (min_i > 0) ? min_i : nothing
 end
-#TODO: findmax, and also unit-test these
 
 function Base.reinterpret(::Type{Vec{N, T2}}, v::Vec{N, T}) where {N, T, T2}
     @bp_check(sizeof(T) == sizeof(T2),
@@ -382,8 +381,6 @@ Base.isapprox(a::Vec{N, T1}, b::Vec{N, T2}, atol) where {N, T1, T2} =
     all(t -> isapprox(t[1], t[2]; atol=atol), zip(a, b))
 
 
-#TODO: Implement broadcasting. I tried already, but turns out it's really complicated...
-
 @inline Base.getproperty(v::Vec, n::Symbol) = getproperty(v, Val(n))
 # getproperty() for individual components:
 @inline Base.getproperty(v::Vec, ::Val{:x}) = getfield(v, :data)[1]
@@ -438,7 +435,6 @@ Base.:(<=)(a::Vec{N, T}, b::Vec{N, T2}) where {N, T, T2} = Vec((i<=j for (i,j) i
 Base.:(<=)(a::Vec{N, T}, b::T2) where {N, T, T2} = map(x -> x<=b, a)
 Base.:(<=)(a::T2, b::Vec{N, T}) where {N, T, T2} = map(x -> a<=x, b)
 
-#TODO: Rewrite more of this file using @eval.
 for bitwise_expr in [ :&, :|, :⊻, :⊼, :!, :<<, :>> ]
     @eval begin
         Base.$bitwise_expr(a::Vec{N}, b::Vec{N}) where {N} =
@@ -449,18 +445,15 @@ for bitwise_expr in [ :&, :|, :⊻, :⊼, :!, :<<, :>> ]
 end
 
 # Help convert a Ref(Vec{T}) to a Ptr{T}, for C calls.
-#TODO: Remove, add an overload of `Ref(::Vec)` that returns a ContiguousRef
 Base.unsafe_convert(::Type{Ptr{T}}, r::Base.RefValue{<:VecT{T}}) where {T} =
     Base.unsafe_convert(Ptr{T}, Base.unsafe_convert(Ptr{Nothing}, r))
 Base.unsafe_convert(::Type{Ptr{NTuple{N, T}}}, r::Base.RefValue{Vec{N, T}}) where {N, T} =
     Base.unsafe_convert(Ptr{NTuple{N, T}}, Base.unsafe_convert(Ptr{Nothing}, r))
-
+#
 
 #######################
 #    Colon Operator   #
 #######################
-
-#TODO: Make it sized multidimensionally, so ranges can be mapped into a matrix/3D array
 
 @inline function Base.:(:)(a::Vec{N, T1}, b::Vec{N, T2}) where {N, T1, T2}
     T = promote_type(T1, T2)
@@ -547,14 +540,10 @@ end
     return vec_iterate(r, last_pos, Val(Axis+1))
 end
 
-#TODO: Implement Base.in and Base.intersect for VecRange
-
 
 ################
 #   Setfield   #
 ################
-
-#TODO: Does making these @inline improve performance?
 
 Setfield.set(v::Vec,  ::Setfield.PropertyLens{field}, val) where {field} = Setfield.set(v, Val(field), val)
 Setfield.set(v::Vec, i::Setfield.IndexLens, val) = typeof(v)(Setfield.set(v.data, i, val)...)

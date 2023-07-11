@@ -225,7 +225,7 @@ The 'full_size' should match the dimensionality of the texture.
 get_subset_range(subset::TexSubset{N}, full_size::Vec{N, <:Integer}) where {N} =
     isnothing(subset.area) ?
         convert(Box{N, eltype(full_size)},
-                Box((min=1, max=full_size))) :
+                Box(min=Vec(i -> 1, Val(N)), max=full_size)) :
         subset.area
 @inline get_subset_range(subset::TexSubset{1}, full_size::Integer) =
     get_subset_range(subset, Vec(full_size))

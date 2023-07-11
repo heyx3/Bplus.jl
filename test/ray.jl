@@ -1,17 +1,17 @@
 # Ray-Box
 @bp_test_no_allocations(
-    intersections(Box((min=-one(v3f), max=one(v3f))),
+    intersections(Box(min=-one(v3f), max=one(v3f)),
                   Ray(v3f(), v3f(1, 0, 0))),
     (1.0, )
 )
 @bp_test_no_allocations(
-    intersections(Box((min=-one(v3f), max=one(v3f))),
+    intersections(Box(min=-one(v3f), max=one(v3f)),
                   Ray(v3f(-2, 0, 0), v3f(1, 0, 0))),
     (1.0, 3.0)
 )
 @bp_test_no_allocations(
-    intersections(Box((min=v2f(5.6, -20.103),
-                       max=v2f(10.6, -35.21))),
+    intersections(Box(min=v2f(5.6, -20.103),
+                      max=v2f(10.6, -35.21)),
                   Ray(v2f(4.6, -27.0), vnorm(v2f(-1, 1)))),
     ()
 )

@@ -13,7 +13,6 @@ end
 export @bp_check
 
 
-#TODO: Keep one local copy of ToggleableAsserts for all of Bplus
 """
 The ToggleableAsserts package allows you to call asserts
    which can be toggled on or off by the JIT compiler.

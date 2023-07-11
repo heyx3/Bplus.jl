@@ -44,7 +44,7 @@
     end)
 
     # Map each corner of the cube to its noise value,
-    #    calculated based on the direction towards that corner and a random gradient.
+    #    calculated with the direction towards that corner and a random gradient.
     expr_rng_seeds = [ ]
     for i in 1:N
         push!(expr_rng_seeds, :( pos_filtered[$i] ))
@@ -64,8 +64,6 @@
         ))
     end
     push!(expr_make_gradient.args, :(
-        #TODO: This isn't a uniform distribution, it biases towards the corners. However, in practice it looks quite good in 2D...
-        #TODO: See if we can get away with not normalizing the gradients. This would increase the range of possible output values.
         vnorm(lerp(-1, 1, TVec($(gradient_component_names...))))
     ))
     # Generate code that combines the gradient with the input position to get a noise value.

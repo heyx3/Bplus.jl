@@ -59,8 +59,6 @@ export service_input_init, service_input_get, service_input_update
 
 ##  User interface  ##
 
-#TODO: Help with (de-)serialization of bindings
-
 "
 Creates a new button (throwing an error if it already exists), with the given inputs.
 Returns the source list of button inputs, so you can further configure them at will.

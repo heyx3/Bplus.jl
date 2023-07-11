@@ -9,8 +9,6 @@
 # Also keep in mind that matrices are generally expected to be premultiplied --
 #    "mat * vec" rather than "vec * mat".
 
-#TODO: 2D matrix math
-
 "Generates a 2D translation matrix"
 @inline m3_translate(amount::Vec{2, F}) where {F<:AbstractFloat} = Mat{3, 3, F}(
     1, 0, 0,
@@ -26,8 +24,7 @@
 )
 
 "Generates a scale matrix"
-@inline m_scale(amount::Vec{N, F}) where {N, F} = let output = zero(MMatrix{N, N, F})
-    #TODO: Might be better to *not* inline it, given the 'let' statement.
+m_scale(amount::Vec{N, F}) where {N, F} = let output = zero(MMatrix{N, N, F})
     for i in 1:N
         output[i, i] = amount[i]
     end
@@ -106,8 +103,6 @@ end
     )
 end
 
-println("#TODO: m_decompose(), which gets the position/rotation/scale for a matrix. https://math.stackexchange.com/questions/237369/given-this-transformation-matrix-how-do-i-decompose-it-into-translation-rotati")
-
 "Builds the view matrix for a camera looking at the given position."
 @inline function m4_look_at( cam_pos::Vec3{F},
                              target_pos::Vec3{F},
@@ -171,9 +166,6 @@ end
     )
 end
 
-#TODO: Infinite projection matrix (no far-clip)
-#TODO: Projection matrix for 0-1 Z (a.k.a. DirectX)
-
 
 export m3_translate, m4_translate, m_scale,
        m3_rotateX, m3_rotateY, m3_rotateZ,
@@ -182,6 +174,3 @@ export m3_translate, m4_translate, m_scale,
        m4_world,
        m3_reorient, m4_look_at, m4_reorient, m4_projection,
        m4_ortho
-
-
-#TODO: @generated function that creates a rotation matrix with 3 angles, using type parameters to define the order and relativity.

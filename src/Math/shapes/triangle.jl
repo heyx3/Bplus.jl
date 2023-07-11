@@ -44,7 +44,7 @@ function intersections( t::Triangle{N, F},
         f::F = one(F) / a
         s::Vec{N, F} = r.start - t.a
         u::F = f * vdot(s, h)
-        if !is_touching(Interval{F}((min=0, max=1)), u)
+        if !is_touching(Interval{F}(min=0, max=1), u)
             return null_intersection
         end
 
@@ -66,7 +66,7 @@ function intersections( t::Triangle{N, F},
     end
 
     # Check that the hit is within requested bounds.
-    if !is_touching(Interval{F}((min=min_t, max=max_t)), out_intersection)
+    if !is_touching(Interval{F}(min=min_t, max=max_t), out_intersection)
         return null_intersection
     end
 

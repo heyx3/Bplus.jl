@@ -166,7 +166,7 @@ The most important shape is `Box{N, F}`. Other shapes are:
 
 An axis-aligned rectangular region. Along with participating in the above `AbstractShape` interface, it provides lots of functionality for use as a bounding box.
 
-You can construct it by providing some combination of two fields among `min`, `max`, `size`, and `center`, as a named tuple. For example, `Box((min=Vec(1, 1), size=Vec(10, 10)))`. The `min` and `max` values are inclusive.
+You can construct it by providing some combination of two fields among `min`, `max`, `size`, and `center`. For example, `Box(min=Vec(1, 1), size=Vec(10, 10))`. The `min` and `max` values are inclusive.
 
 You can get the information about a box with the functions `min_inclusive()`, `min_exclusive()`, `max_inclusive()`, `max_exclusive()`, `size()`, and `center()`.
 
@@ -181,7 +181,7 @@ Other important functions:
 
 A `Box{1}` can also be thought of as an interval on the number line. However, working with `Vec{1}` instances is cumbersome. You can instead use the helper type `Interval{F}`, which is like a `Box{1, F}` without the need to wrap the numbers in a `Vec{1, F}`.
 
-For example, you can construct an interval with `Interval((min=1, size=10))`. Whereas with a box you would need to do `Box((min=Vec(1), size=Vec(10)))`.
+For example, you can construct an interval with `Interval(min=1, size=10)`. Whereas with a box you would need to do `Box(min=Vec(1), size=Vec(10))`.
 
 ### SceneTree
 
@@ -267,7 +267,7 @@ The core object tying everything together is `Context`, representing a single Op
 
 By the rules of OpenGL, contexts are a thread-local singleton. So for as long as the context is alive, and from anywhere *within the thread that's running the context*, you can get the current context object with `Bplus.GL.get_context()::Context`. Most `GL` functions don't require you to explicitly provide the context, since they can retrieve it themselves.
 
-The context manages all sorts of rendering state, such as viewports/scissoring, blend mode, depth and stencil modes, and the current render target. Most OpenGL global parameters are controlled by the context, via setter functions and/or special properties defined in the `RenderState` struct. For example, you could call `set_viewport(Box2Di((min::v2i, max::v2i)))`, or you could do `get_context().viewport = Box((min=my_min, max=my_max))`.
+The context manages all sorts of rendering state, such as viewports/scissoring, blend mode, depth and stencil modes, and the current render target. Most OpenGL global parameters are controlled by the context, via setter functions and/or special properties defined in the `RenderState` struct. For example, you could call `set_viewport(Box2Di(min::v2i, max::v2i))`, or you could do `get_context().viewport = Box(min=my_min, max=my_max)`.
 
 The context also provides hooks into common GLFW callbacks. For example, to be notified when the window size changes, do:
 

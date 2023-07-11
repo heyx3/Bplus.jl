@@ -17,6 +17,8 @@ type_str(::Type{Float64}) = "f64"
 
 type_str(::Type{Bool}) = "b"
 
+type_str(T) = "?$T?"
+
 export type_str
 
 

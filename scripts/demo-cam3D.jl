@@ -158,7 +158,7 @@ bp_gl_context( v2i(800, 500), "Cam3D demo";
                                   SwizzleSources.red,
                                   SwizzleSources.one
                               ))
-    tex_skybox_view = get_view(tex_skybox, GL.Sampler{3}(
+    tex_skybox_view = get_view(tex_skybox, GL.TexSampler{3}(
         pixel_filter = PixelFilters.smooth,
         wrapping = Vec(WrapModes.clamp, WrapModes.clamp, WrapModes.clamp)
     ))
@@ -186,7 +186,7 @@ bp_gl_context( v2i(800, 500), "Cam3D demo";
                                SimpleFormatComponents.R,
                                SimpleFormatBitDepths.B8),
                   tex_data;
-                  sampler = Sampler{2}(wrapping = Vec(WrapModes.repeat,WrapModes.repeat)),
+                  sampler = TexSampler{2}(wrapping = Vec(WrapModes.repeat,WrapModes.repeat)),
                   swizzling = Vec4{E_SwizzleSources}(
                       SwizzleSources.red,
                       SwizzleSources.red,
@@ -203,7 +203,7 @@ bp_gl_context( v2i(800, 500), "Cam3D demo";
         forward = vnorm(v3f(1, 1, -1)),
         up = v3f(0, 0, 1),
 
-        clip_range = Box((min=0.01, max-10.0))
+        clip_range = Box(min=0.01, max-10.0)
     )
     cam_settings = Cam3D_Settings{Float32}(
         move_speed = 5

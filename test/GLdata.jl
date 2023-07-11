@@ -23,21 +23,21 @@ using Bplus.GL
 @bp_test_no_allocations(get_component_count(Int8), 1)
 @bp_test_no_allocations(get_component_count(PixelBufferD{3, Vec{2, Float32}}), 2)
 
-@bp_test_no_allocations(Sampler{2}(
+@bp_test_no_allocations(TexSampler{2}(
                             wrapping = Vec(WrapModes.clamp, WrapModes.repeat),
                             pixel_filter = PixelFilters.smooth,
                             depth_comparison_mode = ValueTests.less_than_or_equal
                         ),
-                        Sampler{2}(
+                        TexSampler{2}(
                             wrapping = Vec(WrapModes.clamp, WrapModes.repeat),
                             pixel_filter = PixelFilters.smooth,
                             depth_comparison_mode = ValueTests.less_than_or_equal
                         ))
-@bp_check(JSON3.read(JSON3.write(Sampler{2}(wrapping = WrapModes.mirrored_repeat)), Sampler{2}) ==
-             Sampler{2}(wrapping = WrapModes.mirrored_repeat))
-@bp_check(JSON3.read(JSON3.write(Sampler{2}(wrapping = Vec(WrapModes.repeat, WrapModes.mirrored_repeat))), Sampler{2}) !=
-             Sampler{2}(wrapping = WrapModes.repeat))
-@bp_check(JSON3.read("{ \"pixel_filter\":\"rough\" }", Sampler{2}) ==
-             Sampler{2}(pixel_filter = PixelFilters.rough))
+@bp_check(JSON3.read(JSON3.write(TexSampler{2}(wrapping = WrapModes.mirrored_repeat)), TexSampler{2}) ==
+             TexSampler{2}(wrapping = WrapModes.mirrored_repeat))
+@bp_check(JSON3.read(JSON3.write(TexSampler{2}(wrapping = Vec(WrapModes.repeat, WrapModes.mirrored_repeat))), TexSampler{2}) !=
+             TexSampler{2}(wrapping = WrapModes.repeat))
+@bp_check(JSON3.read("{ \"pixel_filter\":\"rough\" }", TexSampler{2}) ==
+             TexSampler{2}(pixel_filter = PixelFilters.rough))
 
 println("#TODO: Test packed depth/stencil primitive types.")

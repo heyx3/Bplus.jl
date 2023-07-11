@@ -1,7 +1,3 @@
-#TODO: Texture2DMSAA.
-#TODO: Copying from one texture to another (and from framebuffer into texture? it's redundant though).
-#TODO: Memory Barriers. https://www.khronos.org/opengl/wiki/Memory_Model#Texture_barrier
-
 "
 Some kind of organized color data which can be 'sampled'.
 This includes regular images, as well as 1D and 3D textures and 'cubemaps'.
@@ -22,7 +18,7 @@ mutable struct Texture <: AbstractResource
 
     # 3D textures have a full 3D sampler.
     # Other textures ignore the higher dimensions which don't apply to them.
-    sampler::Sampler{3}
+    sampler::TexSampler{3}
 
     # If this is a hybrid depth/stencil texture,
     #    only one of those two components can be sampled at a time.
@@ -53,14 +49,12 @@ end
 #       Constructors       #
 ############################
 
-#TODO: Support taking texture data already in the form of a Ref or Ptr, in constructors and in the get/set functions
-
 "Creates a 1D texture"
 function Texture( format::TexFormat,
                   width::Union{Integer, Vec{1, <:Integer}}
                   ;
 
-                  sampler::Sampler{1} = Sampler{1}(),
+                  sampler::TexSampler{1} = TexSampler{1}(),
                   n_mips::Integer = get_n_mips(width isa Integer ? width : width.x),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
@@ -68,7 +62,7 @@ function Texture( format::TexFormat,
     width = (width isa Integer) ? width : width.x
     return generate_texture(
         TexTypes.oneD, format, v3u(width, 1, 1),
-        convert(Sampler{3}, sampler),
+        convert(TexSampler{3}, sampler),
         n_mips,
         depth_stencil_sampling,
         swizzling,
@@ -79,14 +73,14 @@ function Texture( format::TexFormat,
                   initial_data::PixelBufferD{1},
                   data_bgr_ordering::Bool = false
                   ;
-                  sampler::Sampler{1} = Sampler{1}(),
+                  sampler::TexSampler{1} = TexSampler{1}(),
                   n_mips::Integer = get_n_mips(length(initial_data)),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
                 )
     return generate_texture(
         TexTypes.oneD, format, v3u(length(initial_data), 1, 1),
-        convert(Sampler{3}, sampler),
+        convert(TexSampler{3}, sampler),
         n_mips,
         depth_stencil_sampling,
         swizzling,
@@ -98,14 +92,14 @@ end
 function Texture( format::TexFormat,
                   size::Vec2{<:Integer}
                   ;
-                  sampler::Sampler{2} = Sampler{2}(),
+                  sampler::TexSampler{2} = TexSampler{2}(),
                   n_mips::Integer = get_n_mips(size),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
                 )
     return generate_texture(
         TexTypes.twoD, format, v3u(size..., 1),
-        convert(Sampler{3}, sampler),
+        convert(TexSampler{3}, sampler),
         n_mips,
         depth_stencil_sampling,
         swizzling,
@@ -116,7 +110,7 @@ function Texture( format::TexFormat,
                   initial_data::PixelBufferD{2},
                   data_bgr_ordering::Bool = false
                   ;
-                  sampler::Sampler{2} = Sampler{2}(),
+                  sampler::TexSampler{2} = TexSampler{2}(),
                   n_mips::Integer = get_n_mips(Vec(size(initial_data))),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
@@ -124,7 +118,7 @@ function Texture( format::TexFormat,
     return generate_texture(
         TexTypes.twoD, format,
         v3u(size(initial_data)..., 1),
-        convert(Sampler{3}, sampler),
+        convert(TexSampler{3}, sampler),
         n_mips,
         depth_stencil_sampling,
         swizzling,
@@ -136,7 +130,7 @@ end
 function Texture( format::TexFormat,
                   size::Vec3{<:Integer}
                   ;
-                  sampler::Sampler{3} = Sampler{3}(),
+                  sampler::TexSampler{3} = TexSampler{3}(),
                   n_mips::Integer = get_n_mips(size),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
@@ -154,7 +148,7 @@ function Texture( format::TexFormat,
                   initial_data::PixelBufferD{3},
                   data_bgr_ordering::Bool = false
                   ;
-                  sampler::Sampler{3} = Sampler{3}(),
+                  sampler::TexSampler{3} = TexSampler{3}(),
                   n_mips::Integer = get_n_mips(Vec(size(initial_data))),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
@@ -174,7 +168,7 @@ end
 function Texture_cube( format::TexFormat,
                        square_length::Integer
                        ;
-                       sampler::Sampler{1} = Sampler{1}(),
+                       sampler::TexSampler{1} = TexSampler{1}(),
                        n_mips::Integer = get_n_mips(square_length),
                        depth_stecil_sampling::Optional{E_DepthStencilSources} = nothing,
                        swizzling::SwizzleRGBA = SwizzleRGBA()
@@ -182,7 +176,7 @@ function Texture_cube( format::TexFormat,
     return generate_texture(
         TexTypes.cube_map, format,
         v3u(square_length, square_length, 1),
-        convert(Sampler{3}, sampler),
+        convert(TexSampler{3}, sampler),
         n_mips, depth_stecil_sampling, swizzling,
         nothing
     )
@@ -191,7 +185,7 @@ function Texture_cube( format::TexFormat,
                        initial_faces_data::PixelBufferD{3},
                        data_bgr_ordering::Bool = false
                        ;
-                       sampler::Sampler{1} = Sampler{1}(),
+                       sampler::TexSampler{1} = TexSampler{1}(),
                        n_mips::Integer = get_n_mips(Vec(size(initial_faces_data[1:2]))),
                        depth_stecil_sampling::Optional{E_DepthStencilSources} = nothing,
                        swizzling::SwizzleRGBA = SwizzleRGBA()
@@ -199,7 +193,7 @@ function Texture_cube( format::TexFormat,
     return generate_texture(
         TexTypes.cube_map, format,
         v3u(size(initial_faces_data)[1:2]..., 1),
-        convert(Sampler{3}, sampler),
+        convert(TexSampler{3}, sampler),
         n_mips, depth_stecil_sampling, swizzling,
         (initial_faces_data, data_bgr_ordering)
     )
@@ -225,7 +219,7 @@ Texture(template::Texture, format::TexFormat) = generate_texture(
 function generate_texture( type::E_TexTypes,
                            format::TexFormat,
                            size::v3u,
-                           sampler::Sampler{3},
+                           sampler::TexSampler{3},
                            n_mips::Integer,
                            depth_stencil_sampling::Optional{E_DepthStencilSources},
                            swizzling::SwizzleRGBA,
@@ -312,7 +306,19 @@ function texture_data( tex::Texture,
                        get_buf_pixel_byte_size::Int = -1,  # Only for Get ops
                        check_input_size::VecT{<:Integer} = Vec(-1) # Only for Get/Set ops
                      )
-    #TODO: Check that the subset is the right number of dimensions
+    # Check that the subset is the right number of dimensions.
+    if tex.type == TexTypes.oneD
+        @bp_check(subset isa TexSubset{1},
+                  "Expected a 1D subset for 1D textures; got ", typeof(subset))
+    elseif tex.type in (TexTypes.twoD, TexTypes.cube_map)
+        @bp_check(subset isa TexSubset{2},
+                  "Expected a 2D subset for 2D textures and cubemaps; got ", typeof(subset))
+    elseif tex.type == TexTypes.threeD
+        @bp_check(subset isa TexSubset{3},
+                  "Expected a 3D subset for 3D textures; got ", typeof(subset))
+    else
+        error("Unimplemented: ", typeof(subset))
+    end
 
     full_size::v3u = get_mip_size(tex.size, subset.mip)
     full_subset::TexSubset{3} = change_dimensions(subset, 3)
@@ -405,7 +411,7 @@ get_ogl_handle(t::Texture) = t.handle
 Gets a view of this texture, using the given sampler
     (or the texture's built-in sampler settings).
 "
-function get_view(t::Texture, sampler::Optional{Sampler} = nothing)::View
+function get_view(t::Texture, sampler::Optional{TexSampler} = nothing)::View
     return get!(() -> View(t, sampler),
                 t.known_views, sampler)
 end
@@ -454,7 +460,6 @@ function get_gpu_byte_size(t::Texture)
 end
 
 
-#TODO: 'clear_tex_pixels()' infers the format type automatically. Do the same for getting.
 "Clears a color texture to a given value"
 function clear_tex_color( t::Texture,
                           color::PixelIOValue
@@ -696,7 +701,6 @@ function set_tex_depthstencil( t::Texture,
                  cube_face_range = cube_face_range,
                  check_input_size = vsize(pixels))
 end
-#TODO: set_tex_compressed() for compressed-format textures. Make sure generate_texture() uses it when applicable
 
 "Gets the pixel data for a color texture"
 function get_tex_color( t::Texture,
@@ -789,7 +793,6 @@ function get_tex_depthstencil( t::Texture,
                  get_buf_pixel_byte_size = sizeof(T),
                  check_input_size = vsize(out_pixels))
 end
-#TODO: get_tex_compressed() for compressed-format textures
 
 export get_view,
        set_tex_swizzling, set_tex_depthstencil_source,

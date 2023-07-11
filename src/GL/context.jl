@@ -22,7 +22,7 @@ struct RenderState
     RenderState() = new(
         Vec(true, true, true, true), true,
         FaceCullModes.off,
-        Box2Di((min=v2i(0, 0), max=v2i(1, 1))), nothing,
+        Box2Di(min=v2i(0, 0), max=v2i(1, 1)), nothing,
         (rgb=make_blend_opaque(BlendStateRGB), alpha=make_blend_opaque(BlendStateAlpha)),
         ValueTests.pass,
         StencilTest(), StencilResult(), ~GLuint(0)
@@ -373,13 +373,13 @@ function refresh(context::Context)
     # Read the render state.
     # Viewport:
     viewport = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_VIEWPORT)...)
-    viewport = Box2Di((min=convert(v2i, viewport.xy + 1),
-                      max=convert(v2i, viewport.xy + 1 + viewport.zw - 1)))
+    viewport = Box2Di(min=convert(v2i, viewport.xy + 1),
+                      max=convert(v2i, viewport.xy + 1 + viewport.zw - 1))
     # Scissor:
     if glIsEnabled(GL_SCISSOR_TEST)
         scissor = Vec(get_from_ogl(GLint, 4, glGetIntegerv, GL_SCISSOR_BOX)...)
-        scissor = Box2Di((min=convert(v2i, scissor.xy + 1),
-                         max=convert(v2i, scissor.xy + 1 + scissor.zw - 1)))
+        scissor = Box2Di(min=convert(v2i, scissor.xy + 1),
+                         max=convert(v2i, scissor.xy + 1 + scissor.zw - 1))
     else
         scissor = nothing
     end

@@ -32,10 +32,10 @@ mutable struct Buffer <: AbstractResource
                      ::Type{T} = eltype(initial_elements)
                      ;
                      recommend_storage_on_cpu::Bool = false,
-                     contiguous_element_range::Interval{<:Integer} = Interval((
+                     contiguous_element_range::Interval{<:Integer} = Interval(
                         min=1,
                         size=contiguous_length(initial_elements, T)
-                    ))
+                     )
                    )::Buffer where {I<:Integer, T}
         @bp_check(isbitstype(T), "Can't make a GPU buffer of ", T)
         b = new(Ptr_Buffer(), 0, false)

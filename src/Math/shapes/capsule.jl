@@ -143,7 +143,7 @@ function intersections( c::Capsule{N, F},
         hits = (typemax(F), typemax(F))
         hit_types::NTuple{2, E_CapsuleHitTypes} = (CapsuleHitTypes.null,
                                                    CapsuleHitTypes.null)
-        capsule_local_z_range = Interval{F}((min=0, max=fW_length))
+        capsule_local_z_range = Interval{F}(min=0, max=fW_length)
         function calc_normal(t::F, type::E_CapsuleHitTypes)::Vec3{F}
             @bp_math_assert(type != CapsuleHitTypes.null,
                             "Asked to calculate the normal of a 'null' intersection")

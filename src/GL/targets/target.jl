@@ -303,11 +303,11 @@ function target_activate(target::Optional{Target};
 
     if exists(target)
         glBindFramebuffer(GL_FRAMEBUFFER, get_ogl_handle(target))
-        reset_viewport && set_viewport(context, Box2Di((min=one(v2i), size=convert(v2i, target.size))))
+        reset_viewport && set_viewport(context, Box2Di(min=one(v2i), size=convert(v2i, target.size)))
         reset_scissor && set_scissor(context, nothing)
     else
         glBindFramebuffer(GL_FRAMEBUFFER, Ptr_Target())
-        reset_viewport && set_viewport(context, Box2Di((min=one(v2i), size=get_window_size(context))))
+        reset_viewport && set_viewport(context, Box2Di(min=one(v2i), size=get_window_size(context)))
         reset_scissor && set_scissor(context, nothing)
     end
 end

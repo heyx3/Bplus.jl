@@ -13,7 +13,7 @@ end
 
 function collides(b::Box{N, F}, s::Sphere{N, F})::Bool where {N, F}
     # Skip lots of math by checking the sphere's bounding box.
-    if !collides(b, Box((center=s.center, size=Vec(i -> s.radius, Val(N)))))
+    if !collides(b, Box(center=s.center, size=Vec(i -> s.radius, Val(N))))
         return false
     end
 

@@ -129,7 +129,6 @@ function service_view_debugger_check(program::Ptr_Program)
             if !service.view_lookup[v_ptr].is_active
         )
         if !isempty(views)
-            #TODO: If the uniform's handle is the same as its "index", then we can get the uniform names with glGetActiveUniform()
             throw(InactiveViewsException(program, collect(views)))
         end
     end

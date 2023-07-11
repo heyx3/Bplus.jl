@@ -46,7 +46,7 @@ function BasicGraphicsService()
                 [ VertexDataSource(quad_poses, sizeof(Vec{2, Int8})) ],
                 [ VertexAttribute(1, 0x0, VertexData_FVector(2, Int8, false)) ])
 
-    #TODO: Bool uniforms to avoid the matrix math if they're identity matrices.
+    #TODO: Bool uniforms to avoid the matrix math if they're identity matrices?
     blit = bp_glsl"""
 uniform mat3 u_mesh_transform = mat3(1, 0, 0,
                                      0, 1, 0,

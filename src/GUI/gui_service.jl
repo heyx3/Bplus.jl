@@ -360,7 +360,7 @@ function service_gui_init( context::GL.Context
                      SimpleFormatComponents.RGBA,
                      SimpleFormatBitDepths.B8),
         font_pixels_managed,
-        sampler = Sampler{2}(
+        sampler = TexSampler{2}(
             wrapping = WrapModes.clamp
         )
     )
@@ -515,8 +515,6 @@ function service_gui_start_frame(serv::GuiService)
         end
     end
 
-    #TODO: Update/handle gamepads. Refer to CImGui/backend/GLFW/impl.jl
-
     # Check for previously-used textures getting destroyed.
     # Just check a few different textures every frame.
     for _ in 1:3
@@ -572,7 +570,6 @@ function service_gui_end_frame(serv::GuiService, context::GL.Context = get_conte
     set_culling(context, FaceCullModes.off)
     set_depth_test(context, ValueTests.pass)
     set_depth_writes(context, false)
-    #TODO: Set clip mode to lower-left corner, and depth range to (-1,+1), once GL supports glClipControl
 
     # Pre-activate the font texture, which will presumably be rendered a lot.
     font_tex_id = io.Fonts.TexID
@@ -649,7 +646,7 @@ function service_gui_end_frame(serv::GuiService, context::GL.Context = get_conte
                     # ImGUI is using 0-based, but B+ uses 1-based.
                     scissor_min_pixel += one(Int32)
                     # Max pixel doesn't need to add 1, but I'm not quite sure why.
-                    set_scissor(context, Box2Di((min=scissor_min_pixel, max=scissor_max_pixel)))
+                    set_scissor(context, Box2Di(min=scissor_min_pixel, max=scissor_max_pixel))
                 end
 
                 # Draw the texture.

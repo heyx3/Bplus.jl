@@ -10,8 +10,6 @@ struct Box{N, F} <: AbstractShape{N, F}
 end
 export Box
 
-println("#TODO: Try `@inline Box(; kw...) = Box(kw)` so you don't need double-parens for keyword construction")
-
 println("#TODO: Test Box serialization flexibility, then port any fixes into Interval")
 StructTypes.StructType(::Type{<:Box}) = StructTypes.CustomStruct()
 StructTypes.lower(b::Box) = Dict("min"=>min_inclusive(b), "size"=>size(b))
@@ -42,6 +40,7 @@ Base.:(==)(b1::Box, b2::Box) = (b1.min == b2.min) & (b1.size == b2.size)
 Base.size(b::Box) = b.size
 export min_inclusive, min_exclusive,
        max_inclusive, max_exclusive
+#
 
 
 ###########################
@@ -153,21 +152,11 @@ end
 #       Constructors       #
 ############################
 
-"Constructs an empty box (size 0)"
-Box{N, F}() where {N, F} = Box{N, F}(zero(Vec{N, F}), zero(Vec{N, F}))
-
-"Constructs a box, inferring types and automatically broadcasting scalars into vectors"
-function Box(min::TMin, size::TSize) where {TMin, TSize}
-    if !isa(min, Vec)
-        n = isa(size, Vec) ? length(size) : 1
-        return Box(Vec(i -> min, n), size)
-    elseif !isa(size, Vec)
-        return Box(min, Vec(i -> size, length(min)))
-    elseif length(min) != length(size)
-        error("Mismatch in dimensions: ", TMin, " vs ", TSize)
-    else
-        return Box{length(min), promote_type(eltype(min), eltype(size))}(min, size)
-    end
+"Constructs a box, inferring types"
+function Box(min::Vec{N, F1}, size::Vec{N, F2}) where {N, F1, F2}
+    F = promote_type(F1, F2)
+    return Box(convert(Vec{N, F}, min),
+               convert(Vec{N, F}, size))
 end
 
 "Creates a box given a min and size"
@@ -190,38 +179,44 @@ end
 end
 @inline Box{N, F}(data::NamedTuple) where {N, F} = convert(Box{N, F}, Box(data))
 
+# Forward keyword arguments to the above constructors.
+@inline Box(; kw...) = Box(namedtuple(keys(kw), values(kw)))
+"If no parameters are given, the box is empty (size 0)"
+@inline Box{N, F}(; kw...) where {N, F} = isempty(kw) ?
+                                              Box{N, F}(zero(Vec{N, F}), zero(Vec{N, F})) :
+                                              Box{N, F}(namedtuple(kw))
+
 "Constructs a Box covering the given range. Ignores the step size."
-@inline Box(range::VecRange) = Box((min=range.a, max=range.b))
-@inline Box(range::UnitRange) = Box((min=first(range), max=last(range)))
+@inline Box(range::VecRange) = Box(min=range.a, max=range.b)
 
 ##  Boundary  ##
 
 "Constructs a box bounded by a set of points/shapes"
-boundary(point::Union{Number, Vec}) = Box((min=point, size=box_typenext(zero(typeof(point)))))
+boundary(point::Union{Number, Vec}) = Box(min=point, size=box_typenext(zero(typeof(point))))
 boundary(s::AbstractShape) = bounds(s)
 boundary(b::Box) = b
 
 @inline function boundary(a::P1, b::P2, rest...) where {P1<:Union{Number, Vec}, P2<:Union{Number, Vec}}
-    return boundary(Box((min=min(a, b), max=max(a, b))), rest...)
+    return boundary(Box(min=min(a, b), max=max(a, b)), rest...)
 end
 
 @inline function boundary(a::B1, b::B2, rest...) where {B1<:Box, B2<:Box}
-    return boundary(Box((min=min(min_inclusive(a), min_inclusive(b)),
-                         max=max(max_inclusive(a), max_inclusive(b)))),
+    return boundary(Box(min=min(min_inclusive(a), min_inclusive(b)),
+                        max=max(max_inclusive(a), max_inclusive(b))),
                     rest...)
 end
 @inline boundary(a::AbstractShape, b::AbstractShape, rest...) = boundary(bounds(a), bounds(b), rest...)
 
 @inline function boundary(b::B, p::P, rest...) where {B<:Box, P<:Union{Number, Vec}}
-    return boundary(Box((min=min(min_inclusive(b), p),
-                         max=max(max_inclusive(b), p))),
+    return boundary(Box(min=min(min_inclusive(b), p),
+                        max=max(max_inclusive(b), p)),
                     rest...)
 end
 @inline boundary(a::AbstractShape, p::Union{Number, Vec}, rest...) = boundary(bounds(a), p, rest...)
 
 @inline function boundary(p::P, b::B, rest...) where {P<:Union{Number, Vec}, B<:Box}
-    return boundary(Box((min=min(min_inclusive(b), p),
-                         max=max(max_inclusive(b), p))),
+    return boundary(Box(min=min(min_inclusive(b), p),
+                        max=max(max_inclusive(b), p)),
                     rest...)
 end
 @inline boundary(p::Union{Number, Vec}, s::AbstractShape, rest...) = boundary(p, bounds(s), p, rest...)
@@ -234,7 +229,7 @@ end
         p_min = min(p_min, point)
         p_max = max(p_max, point)
     end
-    return Box((min=p_min, max=p_max))
+    return Box(min=p_min, max=p_max)
 end
 export boundary
 
@@ -282,7 +277,7 @@ function Base.intersect(b1::Box{N, F1}, b2::Box{N, F2}) where {N, F1, F2}
         b_max = max(b_max, b_min)
     end
 
-    return Box((min=b_min, max=b_max))
+    return Box(min=b_min, max=b_max)
 end
 Base.intersect(b1::Box, b2::Box...) = foldl(intersect, b2, init=b1)
 
@@ -292,10 +287,10 @@ Note that, unlike the union of regular sets, a union of boxes
    will contain other elements that weren't in either set.
 "
 Base.union(b::Box) = b
-Base.union(b1::Box{N, F1}, b2::Box{N, F2}) where {N, F1, F2} = Box((
+Base.union(b1::Box{N, F1}, b2::Box{N, F2}) where {N, F1, F2} = Box(
     min=min(min_inclusive(b1), min_inclusive(b2)),
     max=max(max_inclusive(b1), max_inclusive(b2))
-))
+)
 Base.union(b1::Box, b2::Box...) where {T} = foldl(union, b2, init=b1)
 
 "
@@ -308,10 +303,10 @@ By default, new dimensions are given the size 1 (both for integer and float boxe
                                new_dims_min = zero(T)
                              ) where {OldN, T}
     if (NewN > OldN)
-        return Box((min=vappend(min_inclusive(b), Vec{Int(NewN - OldN), T}(i -> convert(T, new_dims_min))),
-                    size=vappend(size(b), Vec{Int(NewN - OldN), T}(i -> convert(T, new_dims_size)))))
+        return Box(min=vappend(min_inclusive(b), Vec{Int(NewN - OldN), T}(i -> convert(T, new_dims_min))),
+                   size=vappend(size(b), Vec{Int(NewN - OldN), T}(i -> convert(T, new_dims_size))))
     else
-        return Box((min=min_inclusive(b)[1:NewN], size=size(b)[1:NewN]))
+        return Box(min=min_inclusive(b)[1:NewN], size=size(b)[1:NewN])
     end
 end
 
@@ -343,13 +338,20 @@ export Interval, IntervalI, IntervalU, IntervalF, IntervalD
 
 # Re-implement box stuff for interval.
 # Where a Box function would return a Vec1, return a scalar instead.
-Interval(inputs::NamedTuple) = Interval(Box(inputs))
-Interval{F}(inputs::NamedTuple) where {F} = Interval{F}(Box{1, F}(inputs))
-Interval(r::VecRange) = Interval(Box(r))
-Interval(r::UnitRange) = Interval(Box(r))
-Base.convert(::Type{Box{1, F1}}, i::Interval{F2}) where {F1, F2} = Box((min=Vec{1, F1}(min_inclusive(i)),
-                                                                        max=Vec{1, F1}(max_inclusive(i))))
+@inline Interval(; kw...) = let ks=keys(kw),
+                                vs=values(kw)
+    boxed_vs = tuple((Vec(v) for v in vs)...)
+    boxed_params = namedtuple(ks, boxed_vs)
+    return Interval(Box(boxed_params))
+end
+@inline Interval{F}(; kw...) where {F} = convert(Interval{F}, Interval(; kw...))
+@inline Interval(inputs::NamedTuple) = Interval(; inputs...)
+@inline Interval{F}(inputs::NamedTuple) where {F} = Interval{F}(; inputs...)
+@inline Interval(r::UnitRange) = Interval(Box(min=Vec(first(r)), max=Vec(last(r))))
+Base.convert(::Type{Box{1, F1}}, i::Interval{F2}) where {F1, F2} = Box(min=Vec{1, F1}(min_inclusive(i)),
+                                                                       max=Vec{1, F1}(max_inclusive(i)))
 Base.convert(::Type{Interval{F1}}, b::Box{1, F2}) where {F1, F2} = Interval{F1}(convert(Box{1, F1}, b))
+Base.convert(::Type{Interval{F1}}, i::Interval{F2}) where {F1, F2} = Interval{F1}(convert(Box{1, F1}, i.box))
 # Functions that should pass through the return value unchanged:
 for name in [ :volume, :bounds, :boundary, :is_empty, :is_inside ]
     @eval @inline $name(i::Interval, rest...) = $name(i.box, rest...)

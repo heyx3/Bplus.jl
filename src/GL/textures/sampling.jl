@@ -13,7 +13,7 @@
     #    when going past its border.
     clamp = GL_CLAMP_TO_EDGE,
     # Outputs a custom color when outside the texture.
-    custom_border = GL_CLAMP_TO_BORDER  #TODO: Support CustomBorder sampling. Add a field to Sampler for the border color, and NOTE that bindless textures have a very limited set of allowed border colors.
+    custom_border = GL_CLAMP_TO_BORDER
 )
 export WrapModes, E_WrapModes
 
@@ -62,14 +62,12 @@ end
 # Note: get_ogl_enum() is already defined and exported by other GL code
 
 
-######################
-#       Sampler      #
-######################
-
-#TODO: Rename to TexSampler to avoid conflicts with the Random std module
+#########################
+#     Sampler struct    #
+#########################
 
 "Information about a sampler for an N-dimensional texture."
-Base.@kwdef struct Sampler{N}
+Base.@kwdef struct TexSampler{N}
     # The wrapping mode along each individual axis
     wrapping::Union{E_WrapModes, Vec{N, E_WrapModes}} = WrapModes.repeat
 
@@ -86,7 +84,7 @@ Base.@kwdef struct Sampler{N}
     # Sets the boundaries of the mip levels used in sampling.
     # As usual, 1 is the first mip (i.e. original texture), and
     #    higher values represent smaller mips.
-    mip_range::IntervalU = Interval((min=UInt32(1), max=UInt32(1001)))
+    mip_range::IntervalU = Interval(min=UInt32(1), max=UInt32(1001))
 
     # If this is a depth (or depth-stencil) texture,
     #    this setting makes it a "shadow" sampler.
@@ -100,8 +98,8 @@ end
 
 # StructTypes doesn't have any way to deserialize an immutable @kwdef struct.
 #    
-StructTypes.StructType(::Type{<:Sampler}) = StructTypes.UnorderedStruct()
-function StructTypes.construct(values::Vector{Any}, T::Type{<:Sampler})
+StructTypes.StructType(::Type{<:TexSampler}) = StructTypes.UnorderedStruct()
+function StructTypes.construct(values::Vector{Any}, T::Type{<:TexSampler})
     kw_args = NamedTuple()
     if isassigned(values, 1)
         kw_args = (kw_args..., wrapping=values[1])
@@ -132,7 +130,7 @@ function StructTypes.construct(values::Vector{Any}, T::Type{<:Sampler})
 end
 
 # The "wrapping" being a union slightly complicates equality/hashing.
-Base.:(==)(a::Sampler{N}, b::Sampler{N}) where {N} = (
+Base.:(==)(a::TexSampler{N}, b::TexSampler{N}) where {N} = (
     (a.pixel_filter == b.pixel_filter) &&
     (a.mip_filter == b.mip_filter) &&
     (a.anisotropy == b.anisotropy) &&
@@ -154,7 +152,7 @@ Base.:(==)(a::Sampler{N}, b::Sampler{N}) where {N} = (
         end
     end
 )
-Base.hash(s::Sampler{N}, u::UInt) where {N} = hash(
+Base.hash(s::TexSampler{N}, u::UInt) where {N} = hash(
     tuple(
         s.pixel_filter, s.mip_filter, s.anisotropy,
         s.mip_offset, s.mip_range,
@@ -171,7 +169,7 @@ Base.hash(s::Sampler{N}, u::UInt) where {N} = hash(
 # Convert a sampler to a different-dimensional one.
 # Fill in the extra dimensions with a constant pre-chosen value,
 #    to make it easier to use 3D samplers as dictionary keys.
-Base.convert(::Type{Sampler{N2}}, s::Sampler{N1}) where {N1, N2} = Sampler{N2}(
+Base.convert(::Type{TexSampler{N2}}, s::TexSampler{N1}) where {N1, N2} = TexSampler{N2}(
     if s.wrapping isa E_WrapModes
         s.wrapping
     else
@@ -185,23 +183,23 @@ Base.convert(::Type{Sampler{N2}}, s::Sampler{N1}) where {N1, N2} = Sampler{N2}(
 )
 
 "Gets a sampler's wrapping mode across all axes, assuming they're all the same"
-@inline function get_wrapping(s::Sampler)
+@inline function get_wrapping(s::TexSampler)
     if s.wrapping isa E_WrapModes
         return s.wrapping
     else
         @bp_gl_assert(all(w-> w==s.wrapping[1], s.wrapping),
-                      "Sampler's wrapping setting has different values along each axis: ", s.wrapping)
+                      "TexSampler's wrapping setting has different values along each axis: ", s.wrapping)
         return s.wrapping[1]
     end
 end
 
 "Applies a sampler's settings to a texture"
-apply(s::Sampler, tex::Ptr_Texture) = apply_impl(s, convert(GLuint, tex), glTextureParameteri, glTextureParameterf)
+apply(s::TexSampler, tex::Ptr_Texture) = apply_impl(s, convert(GLuint, tex), glTextureParameteri, glTextureParameterf)
 "Applies a sampler's settings to an OpenGL sampler object"
-apply(s::Sampler, tex::Ptr_Sampler) = apply_impl(s, convert(GLuint, tex), glSamplerParameteri, glSamplerParameterf)
+apply(s::TexSampler, tex::Ptr_Sampler) = apply_impl(s, convert(GLuint, tex), glSamplerParameteri, glSamplerParameterf)
 
 "Implementation for apply() with samplers"
-function apply_impl( s::Sampler{N},
+function apply_impl( s::TexSampler{N},
                      ptr::GLuint,
                      gl_set_func_i::Function,
                      gl_set_func_f::Function
@@ -215,20 +213,20 @@ function apply_impl( s::Sampler{N},
 
     # Set anisotropy.
     @bp_check(s.anisotropy >= 1,
-              "Sampler anisotropy of ", s.anisotropy, " is too low!",
+              "TexSampler anisotropy of ", s.anisotropy, " is too low!",
                 " It should be between 1 and ", context.device.max_anisotropy, ", inclusive")
     @bp_check(s.anisotropy <= context.device.max_anisotropy,
-              "Sampler anisotropy of ", s.anisotropy,
+              "TexSampler anisotropy of ", s.anisotropy,
                  " is above the GPU driver's max value of ",
                  context.device.max_anisotropy)
     gl_set_func_f(ptr, GL_TEXTURE_MAX_ANISOTROPY, s.anisotropy)
 
     # Set mip bias.
     @bp_check(min_inclusive(s.mip_range) >= 1,
-              "Sampler's mip range must start at 1 or above. The requested range is: ", s.mip_range)
+              "TexSampler's mip range must start at 1 or above. The requested range is: ", s.mip_range)
     gl_set_func_f(ptr, GL_TEXTURE_BASE_LEVEL, min_inclusive(s.mip_range) - 1)
     gl_set_func_f(ptr, GL_TEXTURE_MAX_LEVEL, max_inclusive(s.mip_range) - 1)
-    gl_set_func_f(ptr, GL_TEXTURE_LOD_BIAS, s.mip_offset) #TODO: Does GL_TEXTURE_LOD_BIAS directly represent a "mip offset"?
+    gl_set_func_f(ptr, GL_TEXTURE_LOD_BIAS, s.mip_offset)
 
     # Depth comparison.
     if exists(s.depth_comparison_mode)
@@ -257,7 +255,7 @@ function apply_impl( s::Sampler{N},
 end
 
 
-export Sampler, get_wrapping, apply,
+export TexSampler, get_wrapping, apply,
        SwizzleRGBA
 
 
@@ -277,17 +275,17 @@ export DepthStencilSources, E_DepthStencilSources
 
 
 #################################
-#   Sampler Service Interface   #
+#   TexSampler Service Interface   #
 #################################
 
 # Samplers can be re-used between textures, so you only need to define a few sampler objects
 #    across an entire rendering context.
 
 "Gets an OpenGL sampler object matching the given settings."
-@inline get_sampler(settings::Sampler)::Ptr_Sampler = get_sampler(get_context(), settings)
-function get_sampler(context::Context, settings::Sampler{N})::Ptr_Sampler where {N}
+@inline get_sampler(settings::TexSampler)::Ptr_Sampler = get_sampler(get_context(), settings)
+function get_sampler(context::Context, settings::TexSampler{N})::Ptr_Sampler where {N}
     if N < 3
-        get_sampler(context, convert(Sampler{3}, settings))
+        get_sampler(context, convert(TexSampler{3}, settings))
     else
         service::SamplerService = get_sampler_service(context)
         if !haskey(service, settings)
@@ -317,11 +315,11 @@ end
 
 
 ######################################
-#   Sampler Service Implementation   #
+#   TexSampler Service Implementation   #
 ######################################
 
 const SERVICE_NAME_SAMPLERS = :sampler_global_lookup
-const SamplerService = Dict{Sampler{3}, Ptr_Sampler}
+const SamplerService = Dict{TexSampler{3}, Ptr_Sampler}
 
 function close_sampler_service(s::SamplerService)
     for handle in values(s)
