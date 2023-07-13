@@ -347,6 +347,7 @@ In between the "start frame" and "end frame" calls, you can use Dear ImGUI as no
 A dumping ground for useful stuff. Like *Utilities*, but more focused on B+ than on Julia in general.
 
 * `@game_loop`: A macro that makes it easy to run a B+ game.
+* `@using_bplus`: A macro that automatically loads all B+ modules with `using` statements.
 * *Cam3D*: A basic customizable 3D camera.
   * State is stored in `Cam3D{F}`
   * Settings are stored in `Cam3D_Settings{F}`

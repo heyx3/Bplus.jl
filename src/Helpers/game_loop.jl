@@ -1,3 +1,15 @@
+"Loads all B+ modules with `using` statements"
+macro using_bplus()
+    return quote
+        using Bplus,
+              Bplus.Utilities,
+              Bplus.Math, Bplus.GL, Bplus.SceneTree,
+              Bplus.Input, Bplus.GUI, Bplus.Helpers
+    end
+end
+export @using_bplus
+
+
 "The game loop's state and parameters"
 Base.@kwdef mutable struct GameLoop
     context::Context
@@ -22,7 +34,6 @@ Base.@kwdef mutable struct GameLoop
     # The timestamp of the beginning of this loop.
     last_frame_time_ns::UInt64 = 0
 end
-
 
 """
 Runs a basic game loop, with all the typical B+ services.
@@ -162,4 +173,4 @@ end
 
 export @game_loop
 
-#TODO: Fixed update increments for physics-like stuff
+#TODO: Fixed-update increments for physics-like stuff
