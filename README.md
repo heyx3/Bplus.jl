@@ -263,7 +263,7 @@ Wraps OpenGL constructs, and provides a centralized place for a graphics context
 
 #### Context
 
-The core object tying everything together is `Context`, representing a single OpenGL context and GLFW window. Your entire program logic will likely live within a call to `bplus_gl_context()`, whose first argument is a lambda to execute between creating and destroying the context.
+The core object tying everything together is `Context`, representing a single OpenGL context and GLFW window. Your entire program logic will likely live within a call to `bp_gl_context()`, whose first argument is a lambda to execute between creating and destroying the context.
 
 By the rules of OpenGL, contexts are a thread-local singleton. So for as long as the context is alive, and from anywhere *within the thread that's running the context*, you can get the current context object with `Bplus.GL.get_context()::Context`. Most `GL` functions don't require you to explicitly provide the context, since they can retrieve it themselves.
 
@@ -346,6 +346,7 @@ In between the "start frame" and "end frame" calls, you can use Dear ImGUI as no
 
 A dumping ground for useful stuff. Like *Utilities*, but more focused on B+ than on Julia in general.
 
+* `@game_loop`: A macro that makes it easy to run a B+ game.
 * *Cam3D*: A basic customizable 3D camera.
   * State is stored in `Cam3D{F}`
   * Settings are stored in `Cam3D_Settings{F}`

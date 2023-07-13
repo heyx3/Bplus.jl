@@ -132,7 +132,7 @@ mutable struct Context
                       ;
                       vsync::Optional{E_VsyncModes} = nothing,
                       debug_mode::Bool = false, # See GL/debugging.jl
-                      glfw_hints::Dict{Int32, Int32} = Dict{Int32, Int32}(),
+                      glfw_hints::Dict = Dict{Int32, Int32}(),
                       # Below are GLFW input settings that can be changed at will,
                       #    but will be set to these specific values on initialization.
                       glfw_cursor::@ano_enum(Normal, Hidden, Centered) = Val(:Normal)
@@ -142,7 +142,7 @@ mutable struct Context
             GLFW.WindowHint(GLFW.OPENGL_DEBUG_CONTEXT, true)
         end
         for (hint_name, hint_val) in glfw_hints
-            GLFW.WindowHint(hint_name, hint_val)
+            GLFW.WindowHint(Int32(hint_name), Int32(hint_val))
         end
         window = GLFW.CreateWindow(size..., title)
         GLFW.MakeContextCurrent(window)

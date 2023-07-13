@@ -2,7 +2,9 @@ module Helpers
 
 using Setfield
 
-using ..Utilities, ..Math, ..GL
+using GLFW
+
+using ..Utilities, ..Math, ..GL, ..Input, ..GUI
 
 
 # Define @bp_helpers_assert.
@@ -11,5 +13,6 @@ using ..Utilities, ..Math, ..GL
 
 include("cam3D.jl")
 include("basic_graphics_service.jl")
+include("game_loop.jl")
 
 end # module

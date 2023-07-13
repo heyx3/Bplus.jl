@@ -18,8 +18,8 @@ end
 
 @submodule Fields
 @submodule Input
-@submodule Helpers
 @submodule GUI
 @submodule SceneTree
+@submodule Helpers
 
 end # module
