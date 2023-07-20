@@ -1,15 +1,3 @@
-"Loads all B+ modules with `using` statements"
-macro using_bplus()
-    return quote
-        using Bplus,
-              Bplus.Utilities,
-              Bplus.Math, Bplus.GL, Bplus.SceneTree,
-              Bplus.Input, Bplus.GUI, Bplus.Helpers
-    end
-end
-export @using_bplus
-
-
 "The game loop's state and parameters"
 Base.@kwdef mutable struct GameLoop
     context::Context
@@ -55,7 +43,8 @@ The syntax looks like this:
     LOOP = begin
         # Julia code block that runs inside the loop.
         # Runs in a `for` loop in the same scope as `SETUP`.
-        # You can kill the loop with `break`.
+        # You should eventually kill the loop with `break`.
+        # If you use `return` or `throw`, then the `TEARDOWN` section won't run.
     end
     TEARDOWN = begin
         # Julia code block that runs after the loop, when the game is ending.
@@ -126,7 +115,7 @@ macro game_loop(block)
 
         # Run the loop.
         $(esc(setup_code))
-        while !GLFW.WindowShouldClose($loop_var.context.window)
+        while true
             GLFW.PollEvents()
 
             # Update/render.

@@ -12,14 +12,34 @@ macro submodule(name::Symbol)
 end
 
 @submodule Utilities
-@submodule Math
 
+@submodule Math
 @submodule GL
 
-@submodule Fields
 @submodule Input
 @submodule GUI
+
 @submodule SceneTree
+@submodule Fields
 @submodule Helpers
+
+
+"
+Loads all B+ modules with `using` statements.
+You can import all of B+ with two lines:
+````
+using Bplus
+@using_bplus
+````
+"
+macro using_bplus()
+    return :(
+        using Bplus.Utilities,
+              Bplus.Math, Bplus.GL, Bplus.SceneTree,
+              Bplus.Input, Bplus.GUI, Bplus.Helpers,
+              Bplus.Fields
+    )
+end
+export @using_bplus
 
 end # module
