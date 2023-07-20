@@ -15,33 +15,36 @@ function sample_field!( array::Array{Vec{NOut, F}, NIn},
     prep_data = prepare_field(field)
 
     # Calculate field positions.
-    HALF = one(F) / F(2)
-    texel = one(F) / vsize(array)
+    HALF = F(1) / F(2)
+    texel = F(1) / vsize(array)
     @inline grid_pos_to_sample_pos(pos_component::Integer, axis::Int) = lerp(
-        sample_space.min[axis],
+        min_inclusive(sample_space)[axis],
         max_inclusive(sample_space)[axis],
-        (pos_component + HALF) * texel[axis]
+        inv_lerp(min_inclusive(array_bounds)[axis],
+                 max_inclusive(array_bounds)[axis],
+                 pos_component + HALF)
     )
 
-    # If threading is enabled, each Z slice will be run as its own Task.
-    function process_slice(z::UInt, zF::F)
-        for y in array_bounds.min.y:max_inclusive(array_bounds).y
-            yF::F = grid_pos_to_sample_pos(y, 2)
-            for x in array_bounds.min.x:max_inclusive(array_bounds).x
-                xF::F = grid_pos_to_sample_pos(x, 1)
-                array[Vec(x, y, z)] = get_field(field, Vec(xF, yF, zF), prep_data)
-            end
+    # If threading is enabled, each slice along the last axis will be run as its own Task.
+    b_min = min_inclusive(array_bounds)
+    b_max = max_inclusive(array_bounds)
+    b_min_slice = Vec(i -> b_min[i], Val(NIn - 1))
+    b_max_slice = Vec(i -> b_max[i], Val(NIn - 1))
+    function process_slice(i::UInt)
+        for slice_pos in b_min_slice:b_max_slice
+            posI = vappend(map(UInt, slice_pos), i)
+            posF = Vec(c -> grid_pos_to_sample_pos(posI[c], c), Val(NIn))
+            array[posI] = get_field(field, posF, prep_data)
         end
+        return nothing
     end
     if use_threading
-        Threads.@threads for z::UInt in array_bounds.min.z:max_inclusive(array_bounds).z
-            zF::F = grid_pos_to_sample_pos(z, 3)
-            process_slice(z, zF)
+        Threads.@threads for i::UInt in b_min[NIn] : b_max[NIn]
+            process_slice(i)
         end
     else
-        for z::UInt in array_bounds.min.z:max_inclusive(array_bounds).z
-            zF::F = grid_pos_to_sample_pos(z, 3)
-            process_slice(z, zF)
+        for i::UInt in b_min[NIn] : b_max[NIn]
+            process_slice(i)
         end
     end
 

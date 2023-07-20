@@ -9,7 +9,7 @@
 "Meta-information that's needed to parse the field DSL."
 struct DslContext
     n_in::Int
-    # "n_out" isn't needed, as it's inferred from parsing.
+    # "n_out" is inferred during parsing, not specified here
     float_type::DataType
 end
 
@@ -244,7 +244,8 @@ function multi_field_macro_impl(fields_block)
 
     # The last field expression is the "finale" field.
     @bp_check(Meta.isexpr(field_exprs[end], :macrocall) &&
-                  (field_exprs[end].args[1] == Symbol("@field")))
+                  (field_exprs[end].args[1] == Symbol("@field")),
+              "Expected a @field() call for the last expression. Got: ", field_exprs[end])
     finale_expr = field_exprs[end]
     # Replace the @field with a call straight into the @field macro's implementation --
     #    nested macro calls cause trouble.
