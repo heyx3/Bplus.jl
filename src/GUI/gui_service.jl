@@ -309,9 +309,9 @@ function service_gui_init( context::GL.Context
 
         return nothing
     end)
-    push!(context.glfw_callbacks_scroll, (x::Float32, y::Float32) -> begin
-        gui_io.MouseWheelH += Cfloat(x)
-        gui_io.MouseWheel += Cfloat(y)
+    push!(context.glfw_callbacks_scroll, pos::v2f -> begin
+        gui_io.MouseWheelH += Cfloat(pos.x)
+        gui_io.MouseWheel += Cfloat(pos.y)
         return nothing
     end)
 

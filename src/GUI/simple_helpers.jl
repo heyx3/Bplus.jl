@@ -41,6 +41,16 @@ function gui_with_unescaped_tabbing(to_do)
     end
 end
 
+"
+Executes some GUI code with the given ID data (ptr, String, Integer, or begin + end Strings)
+  pushed onto the stack.
+"
+function gui_with_nested_id(to_do, values...)
+    CImGui.PushID(values...)
+    to_do()
+    CImGui.PopID()
+end
+
 "Executes some GUI within a fold (what Dear ImGUI calls a 'tree node')."
 function gui_within_fold(to_do, label)
     is_visible::Bool = CImGui.TreeNode(label)
@@ -53,6 +63,15 @@ function gui_within_fold(to_do, label)
     end
 
     return nothing
+end
+
+"Executes some GUI with a different 'style color'."
+function gui_with_style_color(to_do,
+                              index::CImGui.LibCImGui.ImGuiCol_,
+                              color::Union{Integer, CImGui.ImVec4})
+    CImGui.PushStyleColor(index, color)
+    to_do()
+    CImGui.PopStyleColor()
 end
 
 "
@@ -69,6 +88,7 @@ function gui_within_group(to_do)
 end
 
 export gui_window, gui_with_item_width, gui_with_unescaped_tabbing,
+       gui_with_style_color, gui_with_nested_id,
        gui_within_fold, gui_within_group
 
 
