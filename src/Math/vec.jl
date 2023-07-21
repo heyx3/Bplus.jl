@@ -80,6 +80,7 @@ export Vec
 @inline vappend(first, rest...) = Vec(vappend(first)..., vappend(rest...)...)
 # NOTE: This was originally implemented as a Vec constructor,
 #    but that caused havoc on type-inference.
+# I don't recomment trying that again.
 export vappend
 
 StructTypes.construct(T::Type{<:Vec}, components::Vector) = T(components...)
@@ -727,10 +728,6 @@ const ⋅ = vdot
 "The \\times character represents the cross product."
 const × = vcross
 export ⋅, ×
-
-"The \\circ character also represents the dot product, as it's easier to read than the dot."
-Base.:∘(v::Vec, v2::Vec) = vdot(v, v2)
-
 
 ###########################
 #   Vertical Coordinates  #

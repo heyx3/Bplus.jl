@@ -152,13 +152,53 @@ const FIELD14_TEST_POSES = vcat(
 for pos in FIELD14_TEST_POSES
     @bp_test_no_allocations(get_field(field14, pos),
                             field14_expected(pos),
+                            # Print the binary patttern of the float values,
+                            #    in case there is a strange source of floating-point error
                             join(map(x -> sprint(io -> show(io, Binary(x))), pos), ','))
 end
 
 # Test negation.
-const field14_2 = SubtractField(PosField{2, Float32}())
-@bp_test_no_allocations(get_field(field14_2, v2f(3.5, -4.5)),
+const field15 = SubtractField(PosField{2, Float32}())
+@bp_test_no_allocations(get_field(field15, v2f(3.5, -4.5)),
                         -v2f(3.5, -4.5))
+
+# Test vector ops.
+const field16 = AppendField(
+    CrossProductField(
+        NormalizeField(PosField{3, Float32}()),
+        AddField(PosField{3, Float32}(),
+                 ConstantField{3}(v3f(5, 0, 0))),
+    ),
+    DotProductField(PosField{3, Float32}(),
+                    ConstantField{3}(v3f(1.5, 2.5, -3.5))),
+    LengthField(PosField{3, Float32}()),
+    DistanceField(PosField{3, Float32}(),
+                  ConstantField{3}(v3f(-10.101, 11.12, 0.5)))
+)
+field16_expected(pos) = vappend(
+    vnorm(pos) × (pos + v3f(5, 0, 0)),
+    pos ⋅ v3f(1.5, 2.5, -3.5),
+    vlength(pos),
+    vdist(pos, v3f(-10.101, 11.12, 0.5))
+)
+# Generate many random test cases, plus a few important ones
+const FIELD16_TEST_POSES = vcat(
+    [ one(v3f), v3f(1, 0, 0), v3f(0, 1, 0), v3f(0, 0, 1) ],
+    map(1:100) do i
+        prng = PRNG(i, 2497843)
+        lerp(@f32(-20), @f32(20),
+             v3f(rand(prng, Float32),
+                 rand(prng, Float32),
+                 rand(prng, Float32)))
+    end
+)
+for pos in FIELD16_TEST_POSES
+    @bp_test_no_allocations(get_field(field16, pos),
+                            field16_expected(pos),
+                            # Print the binary patttern of the float values,
+                            #    in case there is a strange source of floating-point error
+                            join(map(x -> sprint(io -> show(io, Binary(x))), pos), ','))
+end
 
 
 # Test TextureField.

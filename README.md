@@ -93,7 +93,7 @@ You can also use special swizzling characters; `1` to output 1 for that channel,
 
 `Vec` implements `AbstractVector`, meaning you can index it and otherwise treat it like a 1D array. Most of the built-in Julia array operations are overloaded to return a `Vec` intead of an array. For example, you can do component-wise equality with `map(==, v1, v2)`.
 
-Standard vector operations are prefixed with a v: `vlength`, `vcross`, `vdot`, `vdist`, etc. Additionally, the operator \\times (`×`) is defined to mean `vcross`, and both \\cdot (`⋅`) and \\circ (`∘`) are defined to mean `vdot`.
+Standard vector operations are prefixed with a v: `vlength`, `vcross`, `vdot`, `vdist`, etc. Additionally, the operator \\times (`×`) is defined to mean `vcross`, and \\cdot (`⋅`) is defined to mean `vdot`.
 
 You can represent ranges of integer coordinates with Julia's standard colon syntax. For example, `collect(v2i(1, 2) : v2i(3, 3))` yields `[ v2i(1, 2), v2i(2, 2), v2i(3, 2), v2i(1, 3), v2i(2, 3), v2i(3, 3)]`.
 

@@ -63,7 +63,7 @@ end
 @generated function get_field_gradient( f::SwizzleField{NIn, NOut, F, Swizzle, TField},
                                         pos::Vec{NIn, F},
                                         prepared_data
-                                      )::Vec{NOut, F} where {NIn, NOut, F, Swizzle, TField}
+                                      )::Vec{NIn, Vec{NOut, F}} where {NIn, NOut, F, Swizzle, TField}
     indices = swizzle_index_tuple(Swizzle)
     return quote
         input = get_field_gradient(f.field, pos, prepared_data)

@@ -207,7 +207,6 @@ end
 const ⋅ = Bplus.Math.:⋅  # It's also defined by the Images package
 @bp_test_no_allocations(vdot(Vec(1, 2), Vec(4, 5)),  14)
 @bp_test_no_allocations(Vec(1, 2) ⋅ Vec(4, 5), vdot(Vec(1, 2), Vec(4, 5)))
-@bp_test_no_allocations(Vec(1, 2) ∘ Vec(4, 5), vdot(Vec(1, 2), Vec(4, 5)))
 
 # Test swizzling.
 #TODO: I'm pretty certain these don't allocate, but for some reason they appear to in the test.
