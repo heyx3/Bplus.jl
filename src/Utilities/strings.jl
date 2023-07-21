@@ -77,3 +77,49 @@ is_bit_one(n::Float64, idx::Int)::Bool = is_bit_one(reinterpret(UInt64, n), idx)
 @inline binary_size(::Union{Type{BigInt}, Type{BigFloat}}) = error("Binary decorator not implemented for BigInt and BigFloat because I'm lazy")
 
 export Binary
+
+
+"
+Combines a Julia UTF-8 string with a null-terminated C-string buffer.
+
+Use `update!()` to set the Julia string or recompute it from the C buffer.
+"
+mutable struct InteropString
+    julia::String
+    c_buffer::Vector{UInt8}
+
+    function InteropString(s::String, capacity_multiple::Int = 3)
+        s_bytes = codeunits(s)
+        is = new(s, Vector{UInt8}(undef, length(s_bytes) * capacity_multiple))
+
+        copyto!(is.c_buffer, s_bytes)
+        is.c_buffer[length(s_bytes) + 1] = 0 # Add a null terminator
+
+        return is
+    end
+end
+setproperty!(::InteropString, ::Symbol, ::Any) = error("Don't set an InteropString's fields. Use update!() instead")
+
+"Sets the string value with a Julia string, updating the C buffer accordingly"
+function update!(is::InteropString, julia::String)
+    setfield!(is, :julia, julia)
+
+    s_bytes = codeunits(julia)
+    # Resize if needed; make sure there's room for the null terminator too.
+    if length(is.c_buffer) < (length(s_bytes) + 1)
+        resize!(is.c_buffer, max(2, length(s_bytes) * 2))
+    end
+
+    copyto!(is.c_buffer, s_bytes)
+    is.c_buffer[length(s_bytes) + 1] = 0 # Null terminator
+end
+"Updates the Julia string to reflect the contents of the C buffer"
+function update!(is::InteropString)
+    null_terminator_idx::Optional{Int} = findfirst(iszero, is.c_buffer)
+    if isnothing(null_terminator_idx)
+        error("No null terminator found in C string buffer")
+    end
+    setfield!(is, :julia, String(@view is.c_buffer[1 : null_terminator_idx-1]))
+end
+
+export InteropString, update!

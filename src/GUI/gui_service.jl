@@ -645,6 +645,7 @@ function service_gui_end_frame(serv::GuiService, context::GL.Context = get_conte
                     scissor_max_pixel = map(x -> trunc(Cint, x), scissor_max)
                     # ImGUI is using 0-based, but B+ uses 1-based.
                     scissor_min_pixel += one(Int32)
+                    scissor_max_pixel += one(Int32)
                     # Max pixel doesn't need to add 1, but I'm not quite sure why.
                     set_scissor(context, Box2Di(min=scissor_min_pixel, max=scissor_max_pixel))
                 end

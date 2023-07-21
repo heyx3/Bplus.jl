@@ -14,6 +14,9 @@ using Bplus
 using Bplus.Utilities, Bplus.Math, Bplus.GL,
       Bplus.Helpers, Bplus.Fields, Bplus.SceneTree, Bplus.Input, Bplus.GUI
 
+# Unambiguate the ⋅ operator, between Images and Bplus.Math.
+const ⋅ = vdot
+
 # Enable all asserts for the codebase.
 @inline Bplus.Utilities.bp_utils_asserts_enabled() = true
 @inline Bplus.Math.bp_math_asserts_enabled() = true

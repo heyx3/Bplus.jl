@@ -138,6 +138,18 @@ contiguous_data_ref = contiguous_ref(contiguous_data, Int)
            (3, 4.0, true, "hi", :world))
 @bp_check(tuple(@optional 4<0   3 4.0 true "hi" :world) == ())
 
+# Test InteropString
+const IS = InteropString("abcdef")
+@bp_test_no_allocations(IS.julia, "abcdef")
+@bp_test_no_allocations(IS.c_buffer[7], 0)
+@bp_test_no_allocations(begin
+                            Bplus.Utilities.update!(IS, "1234") #TODO: Why do I need to qualify 'update!' explicitly?
+                            IS.julia
+                        end,
+                        "1234")
+@bp_test_no_allocations(@view(IS.c_buffer[1:5]),
+                        vcat(codeunits("1234"), 0))
+
 # Test union type wrangling:
 #TODO: Why was @assert used here? Switch to @bp_check
 @assert union_types(Float32) == (Float32, )
