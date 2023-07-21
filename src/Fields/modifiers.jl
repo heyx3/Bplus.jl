@@ -4,8 +4,7 @@
 
 "Swaps the components of a field's output"
 struct SwizzleField{ NIn, NOut, F,
-                     Swizzle<:Tuple, # Each type paramter of the tuple is an integer,
-                                     #     representing a swizzle index.
+                     Swizzle, # Either: Symbol of the swizzle property, OR tuple of indices
                      TField<:AbstractField{NIn}
                    } <: AbstractField{NIn, NOut, F}
     field::TField
@@ -15,26 +14,8 @@ export SwizzleField
 function SwizzleField( field::AbstractField{NIn, NOutSrc, F},
                        swizzle::Symbol
                      ) where {NIn, NOutSrc, F}
-    swizzle_str = string(swizzle)
-    NOutDest = length(swizzle_str)
-
-    # Turn the swizzle into a compile-time parameter.
-    function to_idx(swizzle_char::Char)
-        if swizzle_char in ('x', 'r', 'u', 's')
-            return 1
-        elseif swizzle_char in ('y', 'g', 'v', 't')
-            return 2
-        elseif swizzle_char in ('z', 'b', 'p')
-            return 3
-        elseif swizzle_char in ('w', 'a', 'q')
-            return 4
-        else
-            error("Unexpected swizzle char: '", swizzle_char, "'")
-        end
-    end
-    swizzle_tuple_type = Tuple{map(to_idx, collect(swizzle_str))...}
-
-    return SwizzleField{NIn, NOutDest, F, swizzle_tuple_type, typeof(field)}(field)
+    NOutDest = length(string(swizzle))
+    return SwizzleField{NIn, NOutDest, F, swizzle, typeof(field)}(field)
 end
 function SwizzleField( field::AbstractField{NIn, NOutSrc, F},
                        indices::Int...
@@ -44,7 +25,7 @@ function SwizzleField( field::AbstractField{NIn, NOutSrc, F},
 end
 
 # Converts a swizzle field's type parameter into a tuple of integers representing the indices to use.
-@inline swizzle_index_tuple(::SwizzleField{NIn, NOut, F, Swizzle, TField}) where {NIn, NOut, F, Swizzle, TField} = swizzle_index_tuple(Swizzle)
+@inline swizzle_index_tuple(::SwizzleField{NIn, NOut, F, Swizzle, TField}) where {NIn, NOut, F, Swizzle<:Tuple, TField} = swizzle_index_tuple(Swizzle)
 @inline swizzle_index_tuple(::Type{Swizzle}) where {Swizzle<:Tuple} = tuple(Swizzle.parameters...)
 
 prepare_field(f::SwizzleField{NIn}) where {NIn} = prepare_field(f.field)
@@ -53,31 +34,49 @@ prepare_field(f::SwizzleField{NIn}) where {NIn} = prepare_field(f.field)
                                pos::Vec{NIn, F},
                                prepared_data
                              )::Vec{NOut, F} where {NIn, NOut, F, Swizzle, TField}
-    indices = swizzle_index_tuple(Swizzle)
-    output_components = map(i -> :( input[$i] ), indices)
-    return quote
-        input = get_field(f.field, pos, prepared_data)
-        return Vec{NOut, F}($(output_components...))
+    if (Swizzle isa Type) && (Swizzle <: Tuple)
+        indices = swizzle_index_tuple(Swizzle)
+        output_components = map(i -> :( input[$i] ), indices)
+        return quote
+            input = get_field(f.field, pos, prepared_data)
+            return Vec{NOut, F}($(output_components...))
+        end
+    elseif Swizzle isa Symbol
+        return quote
+            input::VecT{F} = get_field(f.field, pos, prepared_data)
+            return getproperty(input, Swizzle)
+        end
+    else
+        return :( error("Unkonwn swizzle type: ", Swizzle) )
     end
 end
 @generated function get_field_gradient( f::SwizzleField{NIn, NOut, F, Swizzle, TField},
                                         pos::Vec{NIn, F},
                                         prepared_data
                                       )::Vec{NIn, Vec{NOut, F}} where {NIn, NOut, F, Swizzle, TField}
-    indices = swizzle_index_tuple(Swizzle)
     return quote
         input = get_field_gradient(f.field, pos, prepared_data)
-        Vec{NIn, Vec{NOut, F}}(
+        return Vec{NIn, Vec{NOut, F}}(
             $((
-                # Swizzle the derivative along each individual axis.
+                # Swizzle the derivative along each individual input axis.
                 map(1:NIn) do axis::Int
                     return :(
                         let derivative = input[$axis]
                             Vec{NOut, F}(
-                                # For each index of the swizzle, extract that component.
-                                $(map(indices) do src_component::Int
-                                    return :( derivative[$src_component] )
-                                end...)
+                                $((
+                                    # For each index of the swizzle, extract that component.
+                                    if (Swizzle isa Type) && (Swizzle <: Tuple)
+                                        map(swizzle_index_tuple(Swizzle)) do src_component::Int
+                                            return :( derivative[$src_component] )
+                                        end
+                                    elseif Swizzle isa Symbol
+                                        map(collect(string(Swizzle))) do property::Char
+                                            return :( derivative.$(Symbol(property)) )
+                                        end
+                                    else
+                                        :( error("Unexpected Swizzle type: ", Swizzle) )
+                                    end
+                                )...)
                             )
                         end
                     )
@@ -113,24 +112,12 @@ end
 function dsl_from_field(s::SwizzleField{NIn, NOut, F, Swizzle, TField}) where {NIn, NOut, F, Swizzle, TField}
     source = dsl_from_field(s.field)
 
-    # The dot syntax (e.x. ".xzy") is preferred.
-    if all(i -> i <= 4, Swizzle.parameters)
-        property = Symbol(String(collect(Char, map(Swizzle.parameters) do i::Int
-            if i == 1
-                'x'
-            elseif i == 2
-                'y'
-            elseif i == 3
-                'z'
-            elseif i == 4
-                'w'
-            else
-                error("Unhandled case: ", i)
-            end
-        end)))
-        return :( $source.$property )
-    else
+    if Swizzle isa Symbol
+        return :( $source.$Swizzle )
+    elseif (Swizzle isa Type) && (Swizzle <: Tuple)
         return :( $source[$(Swizzle.parameters...)] )
+    else
+        error("Unexpected Swizzle type: ", Swizzle)
     end
 end
 
