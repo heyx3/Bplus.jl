@@ -64,6 +64,8 @@ end
 field_from_dsl_func(::Val{:⋅}, context::DslContext, state::DslState, args::Tuple) = field_from_dsl_func(Val(:vdot), context, state, args)
 
 
+
+
 ##   Cross product   ##
 
 struct CrossProductField{ NIn, F,
@@ -181,18 +183,17 @@ end
 
 ##   Simpler vector ops   ##
 
-DistanceSqrField(a, b) = LengthSqrField(SubtractField(a, b))
-
-LengthField(v) = SqrtField(LengthSqrField(v))
-DistanceField(a, b) = SqrtField(DistanceSqrField(a, b))
+DistanceSqrField(a, b) = AggregateField{:DistanceSqr}(LengthSqrField(SubtractField(a, b)))
+LengthField(v) = AggregateField{:Length}(SqrtField(LengthSqrField(v)))
+DistanceField(a, b) = AggregateField{:Distance}(SqrtField(DistanceSqrField(a, b)))
 
 NormalizeField(v::AbstractField{NIn, NOut, F}) where {NIn, NOut, F} = let eps = convert(F, 0.0000001),
                                                                           eps_field = ConstantField{NIn}(Vec(eps))
-    DivideField(v, MaxField(eps_field, LengthField(v)))
+    AggregateField{:Normalize}(DivideField(v, MaxField(eps_field, LengthField(v))))
 end
 
 # Their representation in DSL is as function calls, with names matching the B+ functions.
-for (dsl_name, type_name) in [ (:vlength_sqr, :LengthSqrField),
+for (dsl_name, type_name) in [ (:vlength_sqr, :LengthSqr),
                                (:vlength, :LengthField),
                                (:vdist_sqr, :DistanceSqrField),
                                (:vdist, :DistanceField),

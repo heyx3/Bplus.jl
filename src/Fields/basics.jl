@@ -304,3 +304,21 @@ end
 
 export SampleModes, E_SampleModes, TextureField,
        texture_field_wrapping, texture_field_sampling
+
+
+####################
+#  AggregateField  #
+####################
+
+"A field that has its own identity, but is definable in terms of simpler Fields"
+struct AggregateField{ ID, # A Symbol identifying this particular kind of aggregate.
+                       NIn, NOut, F,
+                       TDefinition<:AbstractField{NIn, NOut, F}
+                     } <: AbstractField{NIn, NOut, F}
+    actual_field::TDefinition
+end
+
+@inline prepare_field(s::AggregateField) = prepare_field(s.actual_field)
+@inline get_field(s::AggregateField, pos::Vec, prepared_data) = get_field(s.actual_field, pos, prepared_data)
+@inline get_field_gradient(s::AggregateField, pos::Vec, prepared_data) = get_field_gradient(s.actual_field, pos, prepared_data)
+
