@@ -113,6 +113,12 @@ macro game_loop(block)
         $loop_var.last_frame_time_ns = time_ns()
         $loop_var.delta_seconds = zero(Float32)
 
+        # Auto-resize the GL viewport when the window's size changes.
+        push!($loop_var.context.glfw_callbacks_window_resized, (new_size::v2i) ->
+            set_viewport($loop_var.context, Box2Di(min=Vec(1, 1), size=new_size))
+        )
+
+
         # Run the loop.
         $(esc(setup_code))
         while true

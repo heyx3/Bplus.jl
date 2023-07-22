@@ -14,6 +14,8 @@ Base.@kwdef mutable struct GuiText
 
     # Internal; leave this alone
     _buffer_has_been_updated = false
+    _edit_callback::Base.Callable = Nothing
+    _c_func_edit_callback::Optional{Base.CFunction} = nothing
     #TODO: Dear ImGUI callbacks for resizing text buffer as needed
 end
 
@@ -27,12 +29,35 @@ Displays a Dear ImGUI widget for the given text editor.
 Returns whether the text has been edited on this frame.
 "
 function gui_text!(t::GuiText)::Bool
+    # Lazy-initialize the C callback for buffer resizing.
+    if isnothing(t._c_func_edit_callback)
+        t._edit_callback = (p::Ptr{CImGui.ImGuiInputTextCallbackData}) -> begin
+            data::CImGui.ImGuiInputTextCallbackData = unsafe_load(p)
+            if data.EventFlag == CImGui.ImGuiInputTextFlags_CallbackResize
+                desired_size::Int = data.BufSize
+                if length(t.raw_value.c_buffer) < desired_size
+                    resize!(t.raw_value.c_buffer, desired_size * 2)
+                end
+            elseif data.EventFlag == CImGui.ImGuiInputTextFlags_CallbackCompletion
+                println("Completed!")
+            else
+                println("Other event: ", data.EventFlag)
+            end
+            return Cint(0) # Does anybody know if this value has any meaning?
+        end
+        t._c_func_edit_callback = @cfunction($(t._edit_callback), Cint, (Ptr{CImGui.ImGuiInputTextCallbackData}, ))
+    end
+
     changed::Bool = false
     if t.is_multiline
         changed = @c CImGui.InputTextMultiline(
             t.label,
             &t.raw_value.c_buffer[0], length(t.raw_value.c_buffer),
-            t.multiline_requested_size, t.imgui_flags
+            t.multiline_requested_size,
+            t.imgui_flags |
+                CImGui.ImGuiInputTextFlags_CallbackResize |
+                CImGui.ImGuiInputTextFlags_CallbackCompletion,
+            t._c_func_edit_callback
         )
     else
         changed = @c CImGui.InputText(
