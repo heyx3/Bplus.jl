@@ -233,6 +233,12 @@ swizzle_test()
     Vec(3, 3, 3, typemin_finite(Float32)),
     Vec(1, 1, 2, 2, 3, 0, 1, typemin(Int), typemax(Int), 4)
 ))
+@bp_test_no_allocations(v4i(3, 2, 1, 4)[2, 3, 1, 1, 3, 4, 1],
+                        VecI{7}(2, 1, 3, 3, 1, 4, 3),
+                        "Swizzling via getindex")
+
+@bp_test_no_allocations(typeof(rand(v3f)), v3f)
+@bp_test_no_allocations(typeof(rand(v4u)), v4u)
 
 # Test array-like behavior.
 @bp_test_no_allocations(map(f->f*f, Vec(1, 2, 3, 4)) === Vec(1, 4, 9, 16),
@@ -293,6 +299,14 @@ end
 #@bp_test_no_allocations(f(), sum(1:30))
 @bp_check(f() == sum(1:30))
 
+# Test random values inside vector ranges.
+@bp_test_no_allocations(typeof(rand(1:v3i(4, 5, 6))), v3i)
+for _ in 1:100
+    range = v3i(1, 5, 9):v3i(3, 2, 1):v3i(100, 2000, 400)
+    val = rand(range)
+    @bp_test_no_allocations(val in range, true,
+                            val, " not in ", range)
+end
 
 # Test vdist_sqr and vdist:
 @bp_test_no_allocations(vdist_sqr(Vec(1, 1, 1), Vec(3, 1, 1)), 4)

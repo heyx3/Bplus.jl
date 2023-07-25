@@ -246,6 +246,8 @@ Base.minmax(p1::Number, p2::Vec) = minmax(p2, p1)
 
 @inline Base.abs(v::Vec) = Vec((abs(f) for f in v)...)
 
+@inline Base.round(v::Vec, a...; kw...) = map(f -> round(f, a...; kw...), v)
+
 "Finds the minimum component which passes a given predicate"
 function Base.findmin(pred::F, v::Vec{N, T})::Optional{T} where {F, N, T}
     min_i::Int = 0
@@ -273,6 +275,8 @@ Base.clamp(v::Vec{N, T}, a::Vec{N, T2}, b::Vec{N, T3}) where {N, T, T2, T3} = Ve
     clamp(x, aa, bb) for (x, aa, bb) in zip(v, a, b)
 )...)
 
+Random.rand(rng::Random.AbstractRNG, ::Type{Vec{N, F}}) where {N, F} = Vec{N, F}(i -> Random.rand(rng, F))
+
 Base.convert(::Type{Vec{N, T2}}, v::Vec{N, T}) where {N, T, T2} = map(x -> convert(T2, x), v)
 Base.convert(::Type{Vec{N, T}}, v::Vec{N, T}) where {N, T} = v
 Base.promote_rule(::Type{Vec{N, T1}}, ::Type{Vec{N, T2}}) where {N, T1, T2} = Vec{N, promote_type(T1, T2)}
@@ -282,13 +286,16 @@ Base.reverse(v::Vec) = Vec(reverse(v.data))
 Base.getindex(a::Array, i::VecT{<:Integer}) = a[i...]
 Base.setindex!(a::Array, t, i::VecT{<:Integer}) = (a[i...] = t)
 
-Base.getindex(v::Vec, i::Int) = v.data[i]
+Base.getindex(v::Vec, i::Integer) = v.data[i]
 Base.getindex(v::Vec, r::UnitRange) = Vec(v.data[r])
 Base.eltype(::Vec{N, T}) where {N, T} = T
 Base.length(::Vec{N, T}) where {N, T} = N
 Base.size(::Vec{N, T}) where {N, T} = (N, )
 Base.IndexStyle(::Vec{N, T}) where {N, T} = IndexLinear()
 @inline Base.iterate(v::Vec, state...) = iterate(v.data, state...)
+
+# Allow for swizzling by passing multiple indices for getindex().
+@inline Base.getindex(v::Vec, idcs::Integer...) = Vec((v[i] for i in idcs)...)
 
 # The simpler syntax does not appear to work for type inference :(
 @generated function Base.map(f, v::Vec{N}...)::Vec{N} where {N}
@@ -456,6 +463,13 @@ Base.unsafe_convert(::Type{Ptr{NTuple{N, T}}}, r::Base.RefValue{Vec{N, T}}) wher
 #    Colon Operator   #
 #######################
 
+"Implements iteration over a range of coordinates (you can also use the `:` operator)"
+struct VecRange{N, T} <: AbstractRange{Vec{N, T}}
+    a::Vec{N, T}
+    b::Vec{N, T}
+    step::Vec{N, T}
+end
+
 @inline function Base.:(:)(a::Vec{N, T1}, b::Vec{N, T2}) where {N, T1, T2}
     T = promote_type(T1, T2)
     V = Vec{N, T}
@@ -475,13 +489,6 @@ Base.:(:)(a::Number, step::Number, b::Vec) = typeof(b)(i->a) : typeof(b)(i->step
 Base.:(:)(a::Number, step::Vec, b::Number) = typeof(step)(i->a) : step : typeof(step)(i->b)
 Base.:(:)(a::T, step::Vec, b::T) where {T<:Real} = typeof(step)(i->a) : step : typeof(step)(i->b)
 
-"Implements iteration over a range of coordinates (you can also use the `:` operator)"
-struct VecRange{N, T} <: AbstractRange{Vec{N, T}}
-    a::Vec{N, T}
-    b::Vec{N, T}
-    step::Vec{N, T}
-end
-
 @inline Base.in(v::Vec{N, T2}, r::VecRange{N, T}) where {N, T, T2} = all(tuple(
     (v[i] in r.a[i]:r.step[i]:r.b[i]) for i in 1:N
 )...)
@@ -489,6 +496,11 @@ end
     (v_ in range) for v_ in v
 )...)
 Base.eltype(::VecRange{N, T}) where {N, T} = T
+
+function Random.rand(rng::Random.AbstractRNG, range::VecRange{N, T}) where {N, T}
+    rand_along_axis(i) = rand(rng, range.a[i]:range.step[i]:range.b[i])
+    Vec{N, T}(rand_along_axis)
+end
 
 Base.first(r::TVecRange) where {TVecRange<:VecRange} = r.a
 Base.last(r::TVecRange) where {TVecRange<:VecRange} = r.b
@@ -669,8 +681,8 @@ If the vectors are equal, then the up axis will usually be calculated with the g
 Returns the new forward and up vectors.
 "
 function vbasis( forward::Vec3{F1},
-                 up::Vec3{F2},
-                 atol::Real = 0.001
+                 up::Vec3{F2} = get_up_vector(F1),
+                 atol::Real = F1(0.001)
                )::@NamedTuple{forward::Vec3, right::Vec3, up::Vec3} where {F1, F2}
     F3 = promote_type(F1, F2)
     @inline are_parallel(a::Vec3, b::Vec3) = (1 - abs(vdot(a, b))) <= atol
@@ -729,6 +741,7 @@ const ⋅ = vdot
 const × = vcross
 export ⋅, ×
 
+
 ###########################
 #   Vertical Coordinates  #
 ###########################
@@ -771,6 +784,8 @@ By default, is true.
 Redefine this (`get_right_handed() = false`) to make your project left-handed.
 Julia's JIT will allow it to act as a compile-time constant
     after the initial overhead of recompilation.
+
+For example, you might want to do this if your game is primarily rendered through Dear ImGUI
 """
 get_right_handed()::Bool = true
 
@@ -778,7 +793,7 @@ get_right_handed()::Bool = true
 ##  Helpers  ##
 
 "Does a cross product in the correct way to get a rightward vector from forward and upward ones"
-v_rightward(forward::Vec3{F}, up::Vec3{F}) where {F} = get_right_handed() ? (forward × up) : (up × forward)
+v_rightward(forward::Vec3, up::Vec3) = get_right_handed() ? (forward × up) : (up × forward)
 
 "Gets a normalized vector pointing in the positive direction along the Up axis"
 @inline get_up_vector(F = Float32) = Vec3{F}(

@@ -171,7 +171,8 @@ export show_quat
 
 function Base.:(*)(q1::Quaternion{F1}, q2::Quaternion{F2}) where {F1, F2}
     F3::DataType = promote_type(F1, F2)
-    xyz::Vec3{F3} = (q1.xyz × q2.xyz) +
+
+    xyz::Vec3{F3} = v_rightward(q1.xyz, q2.xyz) +
                     (q1.w * q2.xyz) +
                     (q2.w * q1.xyz)
     w::F3 = (q1.w * q2.w) -
@@ -307,11 +308,11 @@ function pick_arbitrary_rot_axis(v::Vec3{F}) where {F}
     axis::Vec3{F} = (abs(v.x) < one(F)) ?
                        Vec3{F}(1, 0, 0) :
                        Vec3{F}(0, 1, 0)
-    axis = vnorm(get_right_handed() ? (axis × from) : (from × axis))
+    axis = vnorm(v_rightward(axis, from))
 end
 
 function pick_rot_axis(from::Vec3{F1}, to::Vec3{F2}, cos_angle::F) where {F, F1, F2}
-    norm::Vec3{F} = map(F, get_right_handed() ? (from × to) : (to × from))
+    norm::Vec3{F} = map(F, v_rightward(from, to))
     theta::F = one(F) + convert(F, cos_angle)
     return vnorm(Vec4{F}(norm..., theta))
 end

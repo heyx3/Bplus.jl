@@ -40,7 +40,9 @@ export lerp, smoothstep, smootherstep
 
 "The inverse of `lerp()`. Given a min, max, and value, finds the interpolant for that value."
 @inline inv_lerp(a, b, x) = (x - a) / (b - a)
-export inv_lerp
+"An alternative inverse-lerp that uses integer division to return an integer value."
+@inline inv_lerp_i(a, b, x) = (x - a) ÷ (b - a)
+export inv_lerp, inv_lerp_i
 
 
 "Like typemin(), but returns a finite value for floats"

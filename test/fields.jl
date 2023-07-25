@@ -360,6 +360,7 @@ const FIELD_DSL_TESTS = Tuple{Any, Type, VecT{Float32}}[
       AddField{2, 1, Float32},
       Vec(@f32(4) * @f32(5))
     )
+    #TODO: Vector ops
 ]
 # Because the types aren't known at compile-time, we can't test for no-allocation here.
 # However, earlier tests that don't use the DSL should catch those problems already.
