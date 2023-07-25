@@ -10,6 +10,10 @@ Base.@kwdef mutable struct GameLoop
     # Counter that's incremented at the beginning of every frame
     frame_idx::Int = 0
 
+
+    ##################################
+    #   Below are fields you can set!
+
     # THe maximum framerate.
     # The game loop will wait at the end of each frame if the game is running faster.
     max_fps::Optional{Int} = nothing

@@ -12,7 +12,7 @@ module GUI
 
     include("aliases.jl")
     include("gui_service.jl")
-    
+
     include("simple_helpers.jl")
     include("text.jl")
     include("file_dialog.jl")

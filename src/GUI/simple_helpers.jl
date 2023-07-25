@@ -1,14 +1,21 @@
 ##  Blocks of temporary GUI state  ##
 
-"Nests some GUI code within a window. Extra arguments get passed directly into `CImGui.Begin()`."
-function gui_window(to_do, args...; kw_args...)
-    output = CImGui.Begin(args..., kw_args...)
+"
+Nests some GUI code within a window.
+Extra arguments get passed directly into `CImGui.Begin()`.
+Returns the output of your code block, or `nothing` if the UI was culled.
+"
+function gui_window(to_do, args...; kw_args...)::Optional
+    is_open = CImGui.Begin(args..., kw_args...)
     try
-        to_do()
-        return output
+        if is_open
+            return to_do()
+        end
     finally
         CImGui.End()
     end
+
+    return nothing
 end
 
 "
@@ -16,8 +23,9 @@ Executes some GUI code with a different item width.
 
 See: https://pixtur.github.io/mkdocs-for-imgui/site/api-imgui/ImGui--Dear-ImGui-end-user/#PushItemWidth
 
-\">0.0f: width in pixels, <0.0f align xx pixels to the right of window
-  (so -1.0f always align width to the right side). 0.0f = default to ~⅔ of windows width.\"
+* >0.0f: width in pixels
+* <0.0f: align xx pixels to the right of window (so -1.0f always align width to the right side)
+* ==0.0f: default to ~⅔ of windows width
 "
 function gui_with_item_width(to_do, width::Real)
     CImGui.PushItemWidth(Float32(width))
@@ -25,6 +33,15 @@ function gui_with_item_width(to_do, width::Real)
         return to_do()
     finally
         CImGui.PopItemWidth()
+    end
+end
+
+function gui_with_padding(to_do, padding...)
+    CImGui.PushStyleVar(CImGui.ImGuiStyleVar_WindowPadding, padding...)
+    try
+        return to_do()
+    finally
+        CImGui.PopStyleVar()
     end
 end
 
@@ -87,9 +104,27 @@ function gui_within_group(to_do)
     end
 end
 
-export gui_window, gui_with_item_width, gui_with_unescaped_tabbing,
+"
+Groups a GUI together into a smaller window.
+Returns the output of 'to_do()', or `nothing` if the window is closed.
+"
+function gui_within_child_window(to_do, size, flags=0)::Optional
+    is_open = CImGui.BeginChildFrame(size, flags)
+    try
+        if is_open
+            return to_do()
+        end
+    finally
+        CImGui.EndChildFrame()
+    end
+
+    return nothing
+end
+
+export gui_with_item_width, gui_with_unescaped_tabbing, gui_with_padding,
        gui_with_style_color, gui_with_nested_id,
-       gui_within_fold, gui_within_group
+       gui_window, gui_within_fold, gui_within_group, gui_within_child_window
+#
 
 
 ##  Custom editors  ##
