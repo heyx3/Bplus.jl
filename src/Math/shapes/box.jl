@@ -289,7 +289,7 @@ Base.union(b1::Box{N, F1}, b2::Box{N, F2}) where {N, F1, F2} = Box(
     min=min(min_inclusive(b1), min_inclusive(b2)),
     max=max(max_inclusive(b1), max_inclusive(b2))
 )
-Base.union(b1::Box, b2::Box...) where {T} = foldl(union, b2, init=b1)
+Base.union(b1::Box, b2::Box...) = foldl(union, b2, init=b1)
 
 "
 Changes the dimensionality of the box.

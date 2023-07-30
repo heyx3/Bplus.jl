@@ -133,8 +133,8 @@ export VertexData_DVector
 
 vertex_data_byte_size(::Type{VertexData_DVector{N}}) where {N} = N * sizeof(Float64)
 get_component_ogl_enum(::Type{<:VertexData_DVector}) = GL_DOUBLE
-count_components(::Type{VertexData_DVector{Val{N}}}) where {N, I} = N
-count_attribs(::Type{VertexData_DVector{Val{N}}}) where {N, I} = 1
+count_components(::Type{VertexData_DVector{Val{N}}}) where {N} = N
+count_attribs(::Type{VertexData_DVector{Val{N}}}) where {N} = 1
 
 
 ######################################
