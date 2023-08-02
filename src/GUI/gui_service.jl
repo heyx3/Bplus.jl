@@ -583,12 +583,9 @@ function service_gui_end_frame(serv::GuiService, context::GL.Context = get_conte
     draw_size = v2f(unsafe_load(draw_data.DisplaySize.x),
                     unsafe_load(draw_data.DisplaySize.y))
     draw_pos_max = draw_pos_min + draw_size
-    draw_pos_min, draw_pos_max = tuple(
-        v2f(draw_pos_min.x, draw_pos_max.y),
-        v2f(draw_pos_max.x, draw_pos_min.y)
-    )
-    mat_proj::fmat4 = m4_ortho(vappend(draw_pos_min, -one(Float32)),
-                               vappend(draw_pos_max, one(Float32)))
+    # Flip the Y for the projection matrix.
+    mat_proj::fmat4 = m4_ortho(v3f(draw_pos_min.x, draw_pos_max.y, -1),
+                               v3f(draw_pos_max.x, draw_pos_min.y, 1))
     set_uniform(serv.render_program, "u_transform", mat_proj)
 
     # Set up render state.
@@ -666,43 +663,45 @@ function service_gui_end_frame(serv::GuiService, context::GL.Context = get_conte
                 clip_rect_projected = unsafe_load(cmd_ptr.ClipRect)
                 clip_minmax_projected = v4f(clip_rect_projected.x, clip_rect_projected.y,
                                             clip_rect_projected.z, clip_rect_projected.w)
-                clip_min = clip_scale * (clip_minmax_projected.xy - clip_offset)
-                clip_max = clip_scale * (clip_minmax_projected.zw - clip_offset)
-                if all(clip_min < framebuffer_size) && all(clip_max >= 0)
+                clip_min = clip_scale * (clip_minmax_projected.xy + clip_offset)
+                clip_max = clip_scale * (clip_minmax_projected.zw + clip_offset)
+                if all(clip_min < clip_max)
                     # The scissor min and max depend on the assumption
                     #    of lower-left-corner clip-mode.
                     scissor_min = Vec(clip_min.x, framebuffer_size.y - clip_max.y)
-                    scissor_max = clip_max
+                    scissor_max = Vec(clip_max.x, framebuffer_size.y - clip_min.y)
 
                     scissor_min_pixel = map(x -> trunc(Cint, x), scissor_min)
                     scissor_max_pixel = map(x -> trunc(Cint, x), scissor_max)
-                    # ImGUI is using 0-based, but B+ uses 1-based.
+                    # ImGUI is using 0-based pixels, but B+ uses 1-based.
                     scissor_min_pixel += one(Int32)
                     scissor_max_pixel += one(Int32)
                     # Max pixel doesn't need to add 1, but I'm not quite sure why.
                     set_scissor(context, Box2Di(min=scissor_min_pixel, max=scissor_max_pixel))
-                end
 
-                # Draw the texture.
-                tex_id = unsafe_load(cmd_ptr.TextureId)
-                tex = haskey(serv.user_textures_by_handle, tex_id) ?
-                          serv.user_textures_by_handle[tex_id] :
-                          error("Unknown GUI texture handle: ", tex_id)
-                set_uniform(serv.render_program, "u_texture", tex)
-                (tex_id != font_tex_id) && view_activate(tex)
-                render_mesh(
-                    context,
-                    serv.buffer, serv.render_program
-                    ;
-                    indexed_params = DrawIndexed(
-                        value_offset = UInt64(unsafe_load(cmd_ptr.VtxOffset))
-                    ),
-                    elements = IntervalU((
-                        min=unsafe_load(cmd_ptr.IdxOffset) + 1,
-                        size=n_elements
-                    ))
-                )
-                (tex_id != font_tex_id) && view_deactivate(tex)
+                    # Draw the texture.
+                    tex_id = unsafe_load(cmd_ptr.TextureId)
+                    tex = haskey(serv.user_textures_by_handle, tex_id) ?
+                            serv.user_textures_by_handle[tex_id] :
+                            error("Unknown GUI texture handle: ", tex_id)
+                    set_uniform(serv.render_program, "u_texture", tex)
+                    (tex_id != font_tex_id) && view_activate(tex)
+                    render_mesh(
+                        context,
+                        serv.buffer, serv.render_program
+                        ;
+                        indexed_params = DrawIndexed(
+                            value_offset = UInt64(unsafe_load(cmd_ptr.VtxOffset))
+                        ),
+                        elements = IntervalU((
+                            min=unsafe_load(cmd_ptr.IdxOffset) + 1,
+                            size=n_elements
+                        ))
+                    )
+                    if (tex_id != font_tex_id)
+                        view_deactivate(tex)
+                    end
+                end
             end
         end
     end
