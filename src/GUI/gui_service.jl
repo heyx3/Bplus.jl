@@ -249,7 +249,8 @@ end
 ###################
 
 "Starts and returns the GUI service."
-function service_gui_init( context::GL.Context
+function service_gui_init( context::GL.Context,
+                           configure_imgui_fonts::Base.Callable = () -> nothing
                            ;
                            initial_vertex_capacity::Int = 1024,
                            initial_index_capacity::Int = (initial_vertex_capacity * 2) ÷ 3
@@ -367,6 +368,7 @@ function service_gui_init( context::GL.Context
         }
     """
     # Font texture data comes from querying the ImGUI's IO structure.
+    configure_imgui_fonts()
     font_pixels = Ptr{Cuchar}(C_NULL)
     font_size_x = Cint(-1)
     font_size_y = Cint(-1)

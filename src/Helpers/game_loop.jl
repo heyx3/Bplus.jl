@@ -3,7 +3,7 @@ Base.@kwdef mutable struct GameLoop
     context::Context
     service_input::InputService
     service_basic_graphics::BasicGraphicsService
-    service_gui::Optional{GuiService}
+    service_gui::GuiService
 
     # The amount of time elapsed since the last frame
     delta_seconds::Float32 = 0
@@ -40,6 +40,12 @@ The syntax looks like this:
         debug_mode=true
     )
 
+    GUI_CONFIG = begin
+        # Configure Dear ImGUI before the rendering backend is finished setting up;
+        #    in particular, before it builds the font texture.
+        CImGui.AddFontFromFileTTF(unsafe_load(CImGui.GetIO().Fonts), "my_font.ttf", 30)
+    end
+
     SETUP = begin
         # Julia code block that runs at the beginning of the loop.
         # You can configure loop paramers by changing fields of the variable `LOOP::GameLoop`.
@@ -67,8 +73,8 @@ macro game_loop(block)
     statements = block.args
     filter!(s -> !isa(s, LineNumberNode), statements)
 
-    skip_gui::Bool = false
     init_args = ()
+    gui_config_code = nothing
     setup_code = nothing
     loop_code = nothing
     teardown_code = nothing
@@ -78,6 +84,11 @@ macro game_loop(block)
                 error("Provided INIT more than once")
             end
             init_args = statement.args[2:end]
+        elseif Base.is_expr(statement, :(=)) && (statement.args[1] == :GUI_CONFIG)
+            if exists(gui_config_code)
+                error("Provided GUI_CONFIG more than once")
+            end
+            gui_config_code = statement.args[2]
         elseif Base.is_expr(statement, :(=)) && (statement.args[1] == :SETUP)
             if exists(setup_code)
                 error("Provided SETUP more than once")
@@ -93,8 +104,6 @@ macro game_loop(block)
                 error("Provided TEARDOWN more than once")
             end
             teardown_code = statement.args[2]
-        elseif Base.is_expr(statement, :(=)) && (statement.args[1] == :USE_GUI)
-            skip_gui = !statement.args[2]
         else
             error("Unknown code block: ", statement)
         end
@@ -107,11 +116,7 @@ macro game_loop(block)
             context=game_loop_impl_context,
             service_input=service_input_init(game_loop_impl_context),
             service_basic_graphics=get_basic_graphics(game_loop_impl_context),
-            service_gui=if $(esc(skip_gui))
-                nothing
-            else
-                service_gui_init(game_loop_impl_context)
-            end
+            service_gui=service_gui_init(game_loop_impl_context, () -> $gui_config_code)
         )
         # Set up timing.
         $loop_var.last_frame_time_ns = time_ns()
@@ -122,7 +127,6 @@ macro game_loop(block)
             set_viewport($loop_var.context, Box2Di(min=Vec(1, 1), size=new_size))
         )
 
-
         # Run the loop.
         $(esc(setup_code))
         while true
@@ -130,13 +134,9 @@ macro game_loop(block)
 
             # Update/render.
             service_input_update($loop_var.service_input)
-            if exists($loop_var.service_gui)
-                service_gui_start_frame($loop_var.service_gui)
-            end
+            service_gui_start_frame($loop_var.service_gui)
             $(esc(loop_code))
-            if exists($loop_var.service_gui)
-                service_gui_end_frame($loop_var.service_gui, $loop_var.context)
-            end
+            service_gui_end_frame($loop_var.service_gui, $loop_var.context)
             GLFW.SwapBuffers($loop_var.context.window)
 
             # Advance the timer.

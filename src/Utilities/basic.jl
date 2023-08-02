@@ -3,6 +3,7 @@ const Optional{T} = Union{T, Nothing}
 export Optional, exists
 
 
+"The inverse of `any(args...)`"
 @inline none(args...) = !any(args...)
 export none
 
