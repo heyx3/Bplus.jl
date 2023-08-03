@@ -91,6 +91,8 @@ The actual `Vec` struct has a `data` field which is a tuple of all the values. H
 
 You can also use special swizzling characters; `1` to output 1 for that channel, `0` to output 0, `Δ` (\\delta) to output the maximum finite value for the vector's type, and `∇` (\\del) to ouptut the minimum finite value for the vector's type. For example, to set a color value's alpha to 1, you could use `v.rgbΔ` if it's `vRGBAu8`, or `v.rgb1` if it's `vRGBAf`.
 
+An alternative swizzling syntax is with array indices: `v[2, 3, 1] == v.yzx`. However, note that passing a lone index results in a scalar, not a `Vec{1, F}`.
+
 `Vec` implements `AbstractVector`, meaning you can index it and otherwise treat it like a 1D array. Most of the built-in Julia array operations are overloaded to return a `Vec` intead of an array. For example, you can do component-wise equality with `map(==, v1, v2)`.
 
 Standard vector operations are prefixed with a v: `vlength`, `vcross`, `vdot`, `vdist`, etc. Additionally, the operator \\times (`×`) is defined to mean `vcross`, and \\cdot (`⋅`) is defined to mean `vdot`.

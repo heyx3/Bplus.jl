@@ -63,7 +63,7 @@ function field_from_dsl_func(::Val{:vdot}, context::DslContext, state::DslState,
 end
 field_from_dsl_func(::Val{:⋅}, context::DslContext, state::DslState, args::Tuple) = field_from_dsl_func(Val(:vdot), context, state, args)
 
-
+dsl_from_field(d::DotProductField) = :( $(dsl_from_field(d.field1)) ⋅ $(dsl_from_field(d.field2)) )
 
 
 ##   Cross product   ##
@@ -82,10 +82,8 @@ function get_field( c::CrossProductField{NIn, F},
                     pos::Vec{NIn, F},
                     prepared_data::Tuple
                   )::Vec{3, F} where {NIn, F}
-    values::NTuple{2, Vec{3, F}} = get_field.((c.field1, c.field2),
-                                              Ref(pos),
-                                              prepared_data)
-    return vcross(values...)
+    return vcross(get_field(c.field1, pos, prepared_data[1]),
+                  get_field(c.field2, pos, prepared_data[2]))
 end
 function get_field_gradient( c::CrossProductField{NIn, F},
                              pos::Vec{NIn, F},
@@ -146,8 +144,14 @@ function field_from_dsl_func(::Val{:vcross}, context::DslContext, state::DslStat
 end
 field_from_dsl_func(::Val{:×}, context::DslContext, state::DslState, args::Tuple) = field_from_dsl_func(Val(:vcross), context, state, args)
 
+dsl_from_field(c::CrossProductField) = :( $(dsl_from_field(c.field1)) × $(dsl_from_field(c.field2)) )
+
 
 ##   Length-squared   ##
+
+# Length-squared is just a vector's dot product with itself.
+# Unfortunately we can't just do 'LengthSqrField(x) = DotProductField(x, x)'
+#    because I doubt the compiler would be smart enough to only evaluate x once.
 
 struct LengthSqrField{ NIn, NParamOut, F,
                        T<:AbstractField{NIn, NParamOut, F}
@@ -166,9 +170,6 @@ function get_field_gradient( l::LengthSqrField{NIn, NParamOut, F},
                              pos::Vec{NIn, F},
                              prepared_data
                            )::Vec{NIn, Vec{1, F}} where {NIn, NParamOut, F}
-    # Length-squared is just a vector's dot product with itself.
-    # Unfortunately we can't just do 'LengthSqrField(x) = DotProductField(x, x)'
-    #    because I doubt the compiler would be smart enough to only evaluate x once.
     value::Vec{NParamOut, F} = get_field(l.field, pos, prepared_data)
     gradient::Vec{NIn, Vec{NParamOut, F}} = get_field_gradient(l.field, pos, prepared_data)
     # Use a simplified version of the dot product gradient derived above.
@@ -193,14 +194,25 @@ NormalizeField(v::AbstractField{NIn, NOut, F}) where {NIn, NOut, F} = let eps = 
 end
 
 # Their representation in DSL is as function calls, with names matching the B+ functions.
-for (dsl_name, type_name) in [ (:vlength_sqr, :LengthSqr),
-                               (:vlength, :LengthField),
-                               (:vdist_sqr, :DistanceSqrField),
-                               (:vdist, :DistanceField),
-                               (:vnorm, :NormalizeField) ]
-    @eval field_from_dsl_func(::Val{$(QuoteNode(dsl_name))},
-                              context::DslContext, state::DslState,
-                              args::Tuple) =
-              $type_name(field_from_dsl.(args, Ref(context), Ref(state))...)
-    @eval export $type_name
+for (dsl_name, key_name) in [ (:vlength_sqr, :LengthSqr),
+                              (:vlength, :Length),
+                              (:vdist_sqr, :DistanceSqr),
+                              (:vdist, :Distance),
+                              (:vnorm, :Normalize) ]
+    type_name = Symbol(key_name, :Field)
+    @eval begin
+        field_from_dsl_func(::Val{$(QuoteNode(dsl_name))},
+                            context::DslContext, state::DslState,
+                            args::Tuple) =
+            $type_name(field_from_dsl.(args, Ref(context), Ref(state))...)
+
+        if $(dsl_name == :vlength_sqr)
+            dsl_from_field(a::LengthSqrField) = :( vlength_sqr($(dsl_from_field(a.field))) )
+        else
+            dsl_from_field(a::AggregateField{$(QuoteNode(key_name))}) =
+                :( $dsl_name($(dsl_from_field(a.actual_field))) )
+        end
+
+        export $type_name
+    end
 end

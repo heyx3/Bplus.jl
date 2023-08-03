@@ -318,7 +318,10 @@ struct AggregateField{ ID, # A Symbol identifying this particular kind of aggreg
     actual_field::TDefinition
 end
 
+@inline AggregateField{ID}(actual_field::AbstractField{NIn, NOut, F}) where {ID, NIn, NOut, F} =
+    AggregateField{ID, NIn, NOut, F, typeof(actual_field)}(actual_field)
+
 @inline prepare_field(s::AggregateField) = prepare_field(s.actual_field)
 @inline get_field(s::AggregateField, pos::Vec, prepared_data) = get_field(s.actual_field, pos, prepared_data)
 @inline get_field_gradient(s::AggregateField, pos::Vec, prepared_data) = get_field_gradient(s.actual_field, pos, prepared_data)
-
+@inline dsl_from_field(s::AggregateField, args...; kw...) = dsl_from_field(s.actual_field, args...; kw...)

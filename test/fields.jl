@@ -359,8 +359,24 @@ const FIELD_DSL_TESTS = Tuple{Any, Type, VecT{Float32}}[
       ),
       AddField{2, 1, Float32},
       Vec(@f32(4) * @f32(5))
+    ),
+    ( :( vdot({ 1, 2, 3 }, {4, 5, 6}) ),
+      DotProductField{2, 3, Float32},
+      Vec(vdot(v3f(1, 2, 3), v3f(4, 5, 6)))
+    ),
+    ( :( { 1, 2, 3 } ⋅ {4, 5, 6} ),
+      DotProductField{2, 3, Float32},
+      Vec(vdot(v3f(1, 2, 3), v3f(4, 5, 6)))
+    ),
+    ( :( vcross({ 1, 2, 3 }, {4, -5, -6}) ),
+      CrossProductField{2, Float32},
+      vcross(v3f(1, 2, 3), v3f(4, -5, -6))
+    ),
+    ( :( { 1, 2, 3 } × {4, -5, -6} ),
+      CrossProductField{2, Float32},
+      vcross(v3f(1, 2, 3), v3f(4, -5, -6))
     )
-    #TODO: Vector ops
+    #TODO: vlength_sqr, vlength, vdist_sqr, vdist, vnorm
 ]
 # Because the types aren't known at compile-time, we can't test for no-allocation here.
 # However, earlier tests that don't use the DSL should catch those problems already.
