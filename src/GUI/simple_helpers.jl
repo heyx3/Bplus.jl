@@ -45,6 +45,15 @@ function gui_with_padding(to_do, padding...)
     end
 end
 
+function gui_with_font(to_do, font::Ptr)
+    CImGui.PushFont(font)
+    try
+        return to_do()
+    finally
+        CImGui.PopFont(font)
+    end
+end
+
 "
 Executes some GUI code without allowing the user to tab to different widgets
   (so tabs get inserted into text editors).
@@ -122,7 +131,7 @@ function gui_within_child_window(to_do, size, flags=0)::Optional
 end
 
 export gui_with_item_width, gui_with_unescaped_tabbing, gui_with_padding,
-       gui_with_style_color, gui_with_nested_id,
+       gui_with_style_color, gui_with_font, gui_with_nested_id,
        gui_window, gui_within_fold, gui_within_group, gui_within_child_window
 #
 

@@ -432,8 +432,11 @@ function service_gui_init( context::GL.Context,
         (CImGui.ImGuiMouseCursor_NotAllowed, GLFW.ARROW_CURSOR) # GLFW.NOT_ALLOWED_CURSOR
     ]
     for (slot, type) in cursors
-        # Remember that the libraries specify things in 0-based indices.
-        serv.mouse_cursors[slot + 1] = GLFW.CreateStandardCursor(type)
+        # GLFW is a C lib, using 0-based indices.
+        slot += 1
+        serv.mouse_cursors[slot] = GLFW.CreateStandardCursor(type)
+    end
+
     end
 
     # Finally, register and return the service.
@@ -595,12 +598,11 @@ function service_gui_end_frame(serv::GuiService, context::GL.Context = get_conte
     set_depth_writes(context, false)
 
     # Pre-activate the font texture, which will presumably be rendered in most calls.
-    @bp_gui_assert(io.Fonts != C_NULL, "Dear ImGUI's IO.Fonts atlas is null")
     font_tex_id = unsafe_load(unsafe_load(io.Fonts).TexID)
     @bp_gui_assert(serv.user_textures_by_handle[font_tex_id] ==
                      serv.font_texture,
                    "Font texture ID is not ", font_tex_id, " as reported. ",
-                     "Full ImGUI texture map: ", serrv.user_textures_by_handle)
+                     "Full ImGUI texture map: ", serv.user_textures_by_handle)
     view_activate(serv.font_texture)
 
     # Scissor/clip rectangles will come in projection space.

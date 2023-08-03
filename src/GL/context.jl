@@ -307,15 +307,17 @@ This is because tasks can get shifted to different threads
 
     task.sticky = true
     schedule(task)
-    # If the task throws, unwrap the TaskFailedException for convenience and rethrow.
+    # If the task throws, unwrap the TaskFailedException for convenience.
     try
         return fetch(task)
     catch e
         if e isa TaskFailedException
             # Unwrap the exception.
-            stack = current_exceptions(task)
-            throw(stack[end].exception) #NOTE: If you see this line show up in the stacktrace, it's a red herring.
-                                        #      Look further down in the printout to the third trace.
+            @bp_check(task.result isa Exception,
+                      "TaskException's inner exception isn't actually an exception??")
+            throw(task.result)  # If you see this line show up in an error's stacktrace,
+                                #    it's a red herring. Look further down in the printout
+                                #    to the *third* stacktrace.
         else
             rethrow()
         end

@@ -1,30 +1,28 @@
 "The game loop's state and parameters"
 Base.@kwdef mutable struct GameLoop
+    # Game stuff:
     context::Context
     service_input::InputService
     service_basic_graphics::BasicGraphicsService
     service_gui::GuiService
 
-    # The amount of time elapsed since the last frame
-    delta_seconds::Float32 = 0
-    # Counter that's incremented at the beginning of every frame
+    # Timing stuff:
+    last_frame_time_ns::UInt64 = 0
     frame_idx::Int = 0
+    delta_seconds::Float32 = 0
 
 
     ##################################
     #   Below are fields you can set!
 
-    # THe maximum framerate.
-    # The game loop will wait at the end of each frame if the game is running faster.
-    max_fps::Optional{Int} = nothing
+    # The maximum framerate.
+    # The game loop will wait at the end of each frame if the game is running faster than this.
+    max_fps::Optional{Int} = 300
 
     # The maximum frame duration.
     # 'delta_seconds' will be capped at this value, even if the frame took longer.
     # This stops the game from significantly jumping after one hang.
     max_frame_duration::Float32 = 0.1
-
-    # The timestamp of the beginning of this loop.
-    last_frame_time_ns::UInt64 = 0
 end
 
 """
