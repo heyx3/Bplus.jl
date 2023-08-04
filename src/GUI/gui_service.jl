@@ -437,8 +437,6 @@ function service_gui_init( context::GL.Context,
         serv.mouse_cursors[slot] = GLFW.CreateStandardCursor(type)
     end
 
-    end
-
     # Finally, register and return the service.
     GL.register_service(
         context, SERVICE_NAME_GUI,
