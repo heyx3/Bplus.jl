@@ -50,7 +50,7 @@ function gui_with_font(to_do, font::Ptr)
     try
         return to_do()
     finally
-        CImGui.PopFont(font)
+        CImGui.PopFont()
     end
 end
 

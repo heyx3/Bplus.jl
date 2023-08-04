@@ -114,7 +114,7 @@ macro game_loop(block)
             context=game_loop_impl_context,
             service_input=service_input_init(game_loop_impl_context),
             service_basic_graphics=get_basic_graphics(game_loop_impl_context),
-            service_gui=service_gui_init(game_loop_impl_context, () -> $gui_config_code)
+            service_gui=service_gui_init(game_loop_impl_context, () -> $(esc(gui_config_code)))
         )
         # Set up timing.
         $loop_var.last_frame_time_ns = time_ns()
