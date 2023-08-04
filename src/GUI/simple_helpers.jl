@@ -53,6 +53,12 @@ function gui_with_font(to_do, font::Ptr)
         CImGui.PopFont()
     end
 end
+function gui_with_font(to_do, font_idx::Integer)
+    font_singleton = unsafe_load(CImGui.GetIO().Fonts)
+    font_list::CImGui.ImVector_ImFontPtr = unsafe_load(font_singleton.Fonts)
+    font::Ptr{CImGui.ImFont} = unsafe_load(font_list.Data, font_idx)
+    return gui_with_font(to_do, font)
+end
 
 "
 Executes some GUI code without allowing the user to tab to different widgets

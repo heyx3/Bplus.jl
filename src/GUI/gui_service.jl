@@ -233,6 +233,36 @@ const IM_GUI_CONTEXT_LOCKER = ReentrantLock()
 const IM_GUI_BACKEND_NAME_RENDERER = "B+ GL"
 const IM_GUI_BACKEND_NAME_PLATFORM = "B+ and GLFW"
 
+const TEX_ID_FONT = CImGui.ImTextureID(1)
+
+function make_gui_font_texture_atlas()::Texture
+    gui_fonts = unsafe_load(CImGui.GetIO().Fonts)
+    CImGui.Build(gui_fonts) #TODO: Remove this, shouldn't be necessary
+
+    font_pixels = Ptr{Cuchar}(C_NULL)
+    font_size_x = Cint(-1)
+    font_size_y = Cint(-1)
+    @c CImGui.GetTexDataAsRGBA32(gui_fonts, &font_pixels, &font_size_x, &font_size_y)
+
+    # After rebuilding the font texture, the font texture ID is nulled out by Dear ImGUI.
+    # So we have to tell it again.
+    CImGui.SetTexID(unsafe_load(CImGui.GetIO().Fonts), TEX_ID_FONT)
+
+    font_pixels_casted = Ptr{vRGBAu8}(font_pixels)
+    font_pixels_managed = unsafe_wrap(Matrix{vRGBAu8}, font_pixels_casted,
+                                      (font_size_x, font_size_y))
+
+    return Texture(
+        SimpleFormat(FormatTypes.normalized_uint,
+                     SimpleFormatComponents.RGBA,
+                     SimpleFormatBitDepths.B8),
+        font_pixels_managed,
+        sampler = TexSampler{2}(
+            wrapping = WrapModes.clamp
+        )
+    )
+end
+
 
 # Getting and setting values within an NTuple, through raw pointers.
 # Taken from ImGuiGLFWBackend.jl.
@@ -248,9 +278,8 @@ end
 ##   Interface   ##
 ###################
 
-"Starts and returns the GUI service."
-function service_gui_init( context::GL.Context,
-                           configure_imgui_fonts::Base.Callable = () -> nothing
+"Starts and returns the GUI service"
+function service_gui_init( context::GL.Context
                            ;
                            initial_vertex_capacity::Int = 1024,
                            initial_index_capacity::Int = (initial_vertex_capacity * 2) ÷ 3
@@ -367,25 +396,10 @@ function service_gui_init( context::GL.Context,
             fOut_color = fIn_color * texture(u_texture, fIn_uv);
         }
     """
-    # Font texture data comes from querying the ImGUI's IO structure.
-    configure_imgui_fonts()
-    font_pixels = Ptr{Cuchar}(C_NULL)
-    font_size_x = Cint(-1)
-    font_size_y = Cint(-1)
-    CImGui.Build(gui_fonts)
-    @c CImGui.GetTexDataAsRGBA32(gui_fonts, &font_pixels, &font_size_x, &font_size_y)
-    font_pixels_casted = Ptr{vRGBAu8}(font_pixels)
-    font_pixels_managed = unsafe_wrap(Matrix{vRGBAu8}, font_pixels_casted,
-                                      (font_size_x, font_size_y))
-    font_texture = Texture(
-        SimpleFormat(FormatTypes.normalized_uint,
-                     SimpleFormatComponents.RGBA,
-                     SimpleFormatBitDepths.B8),
-        font_pixels_managed,
-        sampler = TexSampler{2}(
-            wrapping = WrapModes.clamp
-        )
-    )
+    # Generate an initial font texture with just the default font.
+    #NOTE: Skipping this initial texture build leads to a weird issue
+    #    where drawing commands come in with null texture ID's.
+    font_texture = make_gui_font_texture_atlas()
     # Mesh vertex/index data is generated procedurally, into a single mesh object.
     buffer_vertices = Buffer(sizeof(CImGui.ImDrawVert) * initial_vertex_capacity,
                              true, KEEP_MESH_DATA_ON_CPU)
@@ -394,7 +408,6 @@ function service_gui_init( context::GL.Context,
     mesh = gui_generate_mesh(buffer_vertices, buffer_indices)
 
     # Create the service instance.
-    FONT_TEXTURE_ID = CImGui.ImTextureID(1)
     serv = GuiService(
         window = context.window,
 
@@ -406,16 +419,15 @@ function service_gui_init( context::GL.Context,
 
         user_textures_by_handle = Dict{CImGui.ImTextureID,
                                        Union{GL.Texture, GL.View}}(
-            FONT_TEXTURE_ID => font_texture
+            TEX_ID_FONT => font_texture
         ),
         user_texture_handles = Dict{Union{GL.Texture, GL.View},
                                     CImGui.ImTextureID}(
-            font_texture => FONT_TEXTURE_ID
+            font_texture => TEX_ID_FONT
         ),
-        max_tex_handle = FONT_TEXTURE_ID,
-        next_tex_handle_to_prune = FONT_TEXTURE_ID
+        max_tex_handle = TEX_ID_FONT,
+        next_tex_handle_to_prune = TEX_ID_FONT
     )
-    CImGui.SetTexID(gui_fonts, FONT_TEXTURE_ID)
 
     # Configure the cursors to use.
     cursors = [
@@ -447,6 +459,23 @@ function service_gui_init( context::GL.Context,
     )
     return serv
 end
+"Call after changing the set of available fonts for ImGui"
+function service_gui_rebuild_fonts(serv::GuiService = service_gui_get())
+    new_font_texture = make_gui_font_texture_atlas()
+
+    old_font_texture = serv.font_texture
+    serv.font_texture = new_font_texture
+
+    println("Replacing font tex ", get_ogl_handle(old_font_texture),
+            " with ", new_font_texture)
+
+    serv.user_texture_handles[new_font_texture] = TEX_ID_FONT
+    serv.user_textures_by_handle[TEX_ID_FONT] = new_font_texture
+
+    delete!(serv.user_texture_handles, old_font_texture)
+    close(old_font_texture)
+end
+
 function service_gui_get(context::GL.Context = get_context())::GuiService
     return GL.get_service(context, SERVICE_NAME_GUI)
 end
@@ -480,8 +509,9 @@ end
 service_gui_start_frame(context::GL.Context = get_context()) = service_gui_start_frame(service_gui_get(context))
 function service_gui_start_frame(serv::GuiService)
     io::Ptr{CImGui.ImGuiIO} = CImGui.GetIO()
-    @bp_gui_assert(CImGui.ImFontAtlas_IsBuilt(unsafe_load(io.Fonts)),
-                   "Font atlas isn't built! This implies the renderer isn't initialized properly")
+    if !CImGui.ImFontAtlas_IsBuilt(unsafe_load(io.Fonts))
+        service_gui_rebuild_fonts(serv)
+    end
 
     # Set up the display size.
     window_size::v2i = get_window_size(serv.window)
@@ -563,7 +593,7 @@ service_gui_end_frame(context::GL.Context = get_context()) = service_gui_end_fra
 function service_gui_end_frame(serv::GuiService, context::GL.Context = get_context())
     io::Ptr{CImGui.ImGuiIO} = CImGui.GetIO()
     @bp_check(CImGui.ImFontAtlas_IsBuilt(unsafe_load(io.Fonts)),
-              "Font atlas isn't built! This implies the renderer isn't initialized properly")
+              "Font atlas isn't built! Make sure you've called `service_gui_rebuild_fonts()`")
 
     CImGui.Render()
     draw_data::Ptr{CImGui.ImDrawData} = CImGui.GetDrawData()
@@ -601,6 +631,7 @@ function service_gui_end_frame(serv::GuiService, context::GL.Context = get_conte
                      serv.font_texture,
                    "Font texture ID is not ", font_tex_id, " as reported. ",
                      "Full ImGUI texture map: ", serv.user_textures_by_handle)
+    @bp_gui_assert(font_tex_id == TEX_ID_FONT)
     view_activate(serv.font_texture)
 
     # Scissor/clip rectangles will come in projection space.
@@ -728,5 +759,5 @@ end
 
 
 export GuiService, service_gui_init, service_gui_get, service_gui_cleanup,
-       service_gui_start_frame, service_gui_end_frame,
+       service_gui_start_frame, service_gui_end_frame, service_gui_rebuild_fonts,
        gui_tex

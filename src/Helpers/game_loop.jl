@@ -38,15 +38,11 @@ The syntax looks like this:
         debug_mode=true
     )
 
-    GUI_CONFIG = begin
-        # Configure Dear ImGUI before the rendering backend is finished setting up;
-        #    in particular, before it builds the font texture.
-        CImGui.AddFontFromFileTTF(unsafe_load(CImGui.GetIO().Fonts), "my_font.ttf", 30)
-    end
-
     SETUP = begin
         # Julia code block that runs at the beginning of the loop.
         # You can configure loop paramers by changing fields of the variable `LOOP::GameLoop`.
+        # You can also configure Dear ImGUI, add fonts to it, etc
+        #    (the library's font texture is automatically built after SETUP).
     end
     LOOP = begin
         # Julia code block that runs inside the loop.
@@ -72,7 +68,6 @@ macro game_loop(block)
     filter!(s -> !isa(s, LineNumberNode), statements)
 
     init_args = ()
-    gui_config_code = nothing
     setup_code = nothing
     loop_code = nothing
     teardown_code = nothing
@@ -82,11 +77,6 @@ macro game_loop(block)
                 error("Provided INIT more than once")
             end
             init_args = statement.args[2:end]
-        elseif Base.is_expr(statement, :(=)) && (statement.args[1] == :GUI_CONFIG)
-            if exists(gui_config_code)
-                error("Provided GUI_CONFIG more than once")
-            end
-            gui_config_code = statement.args[2]
         elseif Base.is_expr(statement, :(=)) && (statement.args[1] == :SETUP)
             if exists(setup_code)
                 error("Provided SETUP more than once")
@@ -114,7 +104,7 @@ macro game_loop(block)
             context=game_loop_impl_context,
             service_input=service_input_init(game_loop_impl_context),
             service_basic_graphics=get_basic_graphics(game_loop_impl_context),
-            service_gui=service_gui_init(game_loop_impl_context, () -> $(esc(gui_config_code)))
+            service_gui=service_gui_init(game_loop_impl_context)
         )
         # Set up timing.
         $loop_var.last_frame_time_ns = time_ns()
