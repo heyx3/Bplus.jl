@@ -34,7 +34,7 @@ function BasicGraphicsService()
     ]))
     screen_tri = Mesh(PrimitiveTypes.triangle_strip,
                       [ VertexDataSource(screen_tri_poses, sizeof(Vec{2, Int8})) ],
-                      [ VertexAttribute(1, 0x0, VertexData_FVector(2, Int8, false)) ])
+                      [ VertexAttribute(1, 0x0, VSInput_FVector(Vec2{Int8}, false)) ])
 
     quad_poses = Buffer(false, map(Vec{2, Int8}, [
         (-1, -1),
@@ -44,7 +44,7 @@ function BasicGraphicsService()
     ]))
     quad = Mesh(PrimitiveTypes.triangle_strip,
                 [ VertexDataSource(quad_poses, sizeof(Vec{2, Int8})) ],
-                [ VertexAttribute(1, 0x0, VertexData_FVector(2, Int8, false)) ])
+                [ VertexAttribute(1, 0x0, VSInput_FVector(Vec2{Int8}, false)) ])
 
     #TODO: Bool uniforms to avoid the matrix math if they're identity matrices?
     blit = bp_glsl"""

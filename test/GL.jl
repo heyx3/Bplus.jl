@@ -112,15 +112,15 @@ function test_textures()
                     #TODO: Do the below tests for each mip level. Also check that mips are different after recomputation
 
                     # Clear the texture, then check the pixels.
-                    val = Vec(ntuple(i -> rand(I), Int(components)))
+                    val = Vec{Int(components), I}(i -> rand(I))
                     clear_tex_color(tex, val)
                     out_buf = Array{Vec{Int(components), I}, D}(undef, reverse(sizeD).data)
                     get_tex_color(tex, out_buf)
                     @bp_check(all(p -> p == val, out_buf),
                               "Cleared pixels to ", val, " but got: ", out_buf)
                     # Clear a subset, then check the pixels again.
-                    if all(sizeD >= 3)
-                        val2 = Vec(ntuple(i -> rand(I), Int(components)))
+                      if all(sizeD >= 3)
+                        val2 = Vec{Int(components), I}(i -> rand(I))
                         clear_range = Box(min=Vec(i->2, D), size=max(sizeD - 3, 1))
                         clear_tex_color(tex, val2; subset=TexSubset(clear_range))
                         uncleared_range = union(collect(1:(min_inclusive(clear_range) - 1)),
@@ -137,7 +137,7 @@ function test_textures()
 
                     # Try getting and setting individual pixels.
                     for pixel::VecI in 1:sizeD
-                        val = Vec(ntuple(i -> rand(I), Int(components)))
+                        val = Vec{Int(components), I}(i -> rand(I))
                         in_buf = Array{typeof(val)}(undef, ntuple(i->1, D))
                         in_buf[1] = val
                         set_tex_color(tex, in_buf;
@@ -190,6 +190,10 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
 
     # Run some basic tests with GL resources.
     if GL_TEST_FULL
+        seed = rand(UInt64)
+        println("Seed for GL test: ", seed)
+        Random.seed!(seed)
+
         test_buffers()
         test_textures()
         check_gl_logs("running test battery")
@@ -215,9 +219,9 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
                             VertexDataSource(buf_tris_color_and_IDs,
                                              sizeof(Tuple{vRGBu8, Vec{2, UInt8}}))
                           ],
-                          [ VertexAttribute(1, 0x0, VertexData_FVector(4, Float32)),  # The positions, pulled directly from a v4f
-                            VertexAttribute(2, 0x0, VertexData_FVector(3, UInt8, true)), # The colors, normalized from [0,255] to [0,1]
-                            VertexAttribute(2, sizeof(vRGBu8), VertexData_UVector(2, UInt8)) # The IDs, left as integers
+                          [ VertexAttribute(1, 0x0, VSInput(v4f)),  # The positions, pulled directly from a v4f
+                            VertexAttribute(2, 0x0, VSInput_FVector(Vec3{UInt8}, true)), # The colors, normalized from [0,255] to [0,1]
+                            VertexAttribute(2, sizeof(vRGBu8), VSInput(Vec2{UInt8})) # The IDs, left as integers
                           ])
     check_gl_logs("creating the simple triangle mesh")
     @bp_check(count_mesh_vertices(mesh_triangles) == 3,

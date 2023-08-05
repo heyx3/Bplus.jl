@@ -160,12 +160,11 @@ gui_generate_mesh(verts::Buffer, indices::Buffer) = Mesh(
     PrimitiveTypes.triangle,
     [ VertexDataSource(verts, sizeof(CImGui.ImDrawVert)) ],
     # The vertex data is interleaved, and equivalent to the struct CImGui.ImDrawVert.
-    map(zip(1:3, [ VertexData_FVector(2, Float32),
-                   VertexData_FVector(2, Float32),
-                   VertexData_FVector(4, UInt8, true) ])
-       ) do (i, v_type)
-        return VertexAttribute(1, fieldoffset(CImGui.ImDrawVert, i), v_type)
-    end,
+    [
+        VertexAttribute(1, fieldoffset(CImGui.ImDrawVert, 1), VSInput(v2f)),
+        VertexAttribute(1, fieldoffset(CImGui.ImDrawVert, 2), VSInput(v2f)),
+        VertexAttribute(1, fieldoffset(CImGui.ImDrawVert, 3), VSInput_FVector(Vec4{UInt8}, true))
+    ],
     MeshIndexData(indices, CImGui.ImDrawIdx)
 )
 
@@ -620,6 +619,7 @@ function service_gui_end_frame(serv::GuiService, context::GL.Context = get_conte
     set_uniform(serv.render_program, "u_transform", mat_proj)
 
     # Set up render state.
+    original_scissor = context.state.scissor
     set_blending(context, make_blend_alpha(BlendStateRGBA))
     set_culling(context, FaceCullModes.off)
     set_depth_test(context, ValueTests.pass)
@@ -738,6 +738,7 @@ function service_gui_end_frame(serv::GuiService, context::GL.Context = get_conte
     end
 
     view_deactivate(serv.font_texture)
+    context.scissor = original_scissor
 
     return nothing
 end

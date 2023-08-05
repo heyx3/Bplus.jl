@@ -368,9 +368,16 @@ function texture_data( tex::Texture,
                       "Internal field 'get_buf_pixel_byte_size' not passed for getting texture data")
         @bp_gl_assert(!recompute_mips,
                       "Asked to recompute mips after getting a texture's pixels, which is pointless")
+# println(
+#     "Getting a ", tex.type, " texture's pixels.\n",
+#     "\tReading pixel range ", range, " into a ", check_input_size, " array\n",
+#     "\tComponents: ", ModernGLbp.GLENUM(components), "\n",
+#     "\tComponentType: ", ModernGLbp.GLENUM(component_type), "\n",
+#     "\tBuf pixel byte size: ", get_buf_pixel_byte_size, "\n"
+# )
         if get_component_count(typeof(check_input_size)) == 1
             @bp_check(size(range).x <= check_input_size.x,
-                    "Trying to read ", size(range).x, " pixels",
+                      "Trying to read ", size(range).x, " pixels",
                         " into an array with ", check_input_size.x, " elements")
         elseif get_component_count(typeof(check_input_size)) == 2
             @bp_check(all(size(range).xy <= check_input_size.xy),
@@ -389,6 +396,13 @@ function texture_data( tex::Texture,
                              prod(size(range)) * get_buf_pixel_byte_size,
                              value)
     elseif mode isa Val{:Clear}
+# println(
+#     "\n-------------------\nClearing tex #", tex.handle, " to ", value,
+#     "\n\tComponents: ", ModernGLbp.GLENUM(components),
+#     "\\ntComponentType: ", ModernGLbp.GLENUM(component_type),
+#     "\n\t",
+#     "\n----------------\n"
+# )
         glClearTexSubImage(tex.handle, subset.mip - 1,
                            (min_inclusive(range) - 1)..., size(range)...,
                            components, component_type,

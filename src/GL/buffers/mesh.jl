@@ -43,7 +43,7 @@ struct VertexAttribute
     #    to the specific field inside it.
     field_byte_offset::UInt
     # The type of this data.
-    field_type::Type{<:VertexData}
+    field_type::AbstractVertexShaderInput
 
     # If 0, this data is regular old per-vertex data.
     # If 1, this data is per-innstance, for instanced rendering.
@@ -54,7 +54,7 @@ end
 
 VertexAttribute(data_source_idx::Integer,
                 field_byte_offset::Integer,
-                field_type::Type{<:VertexData},
+                field_type::AbstractVertexShaderInput,
                 per_instance::Integer = 0) =
     VertexAttribute(Int(data_source_idx), UInt(field_byte_offset),
                     field_type, UInt(per_instance))
@@ -194,20 +194,24 @@ function Mesh( type::E_PrimitiveTypes,
 
         # Pick the correct OpenGL call for this type of vertex data.
         gl_func = nothing
-        if vert.field_type <: VertexData_IVector
+        if vert.field_type isa VSInput_IntVector
             gl_func = glVertexArrayAttribIFormat
-        elseif vert.field_type <: VertexData_DVector
+        elseif vert.field_type isa VSInput_DoubleVector
             gl_func = glVertexArrayAttribLFormat
-        elseif vert.field_type <: VertexData_MatrixF
-            normalized_args = tuple(GL_FALSE)
-            gl_func = glVertexArrayAttribFormat
-        elseif vert.field_type <: VertexData_MatrixD
-            gl_func = glVertexArrayAttribLFormat
-        elseif vert.field_type <: VertexData_FVector
-            normalized_args = tuple(vert_data_is_normalized(vert.field_type) ? GL_TRUE : GL_FALSE)
+        elseif vert.field_type isa VSInput_Matrix
+            if vert.field_type.type == VertexInputMatrixTypes.float32
+                normalized_args = tuple(GL_FALSE)
+                gl_func = glVertexArrayAttribFormat
+            elseif vert.field_type.type == VertexInputMatrixTypes.float64
+                gl_func = glVertexArrayAttribLFormat
+            else
+                error("Unimplemented: ", vert.field_type.type)
+            end
+        elseif vert.field_type isa VSInput_FloatVector
+            normalized_args = tuple(fvector_data_is_normalized(vert.field_type) ? GL_TRUE : GL_FALSE)
             gl_func = glVertexArrayAttribFormat
         else
-            error("Unhandled case: ", vert.field_type)
+            error("Unhandled case: ", typeof(vert.field_type))
         end
 
         # Make the OpenGL calls, and increment the vertex attribute counter.

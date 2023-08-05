@@ -4,266 +4,309 @@ The types of Buffer data that can be read as input into the vertex shader are:
     * 1D - 4D vector of 64-bit doubles
     * 2x2 - 4x4 matrix of 32-bit floats or 64-bit doubles
     * 1D - 4D vector of 32-bit float
+
 Most of these inputs are simple, except for the most common type: 32-bit float vectors.
-Float vectors can be created from all sorts of Buffer data:
-    * It can come from 16-bit, 32-bit, or 64-bit float components
-    * It can come from int/uint components, normalized (or alternatively, casted from int to float)
-    * It can come from 32-bit fixed decimal components
-    * It can come from special pre-packed data formats
+Float vectors can be created from any of the following:
+    * From 16-bit, 32-bit, or 64-bit float components
+    * From int/uint components, normalized (or alternatively, casted from int to float)
+    * From 32-bit fixed decimal components
+    * From special pre-packed data formats
 =#
 
-###################################
-#        Vertex Data Types        #
-###################################
+"Some kind of vertex data that can be read from a Buffer."
+abstract type AbstractVertexShaderInput end
 
-"The root type for any kind of vertex data coming from a Buffer into a vertex shader"
-abstract type VertexData end
 
-"Gets the byte-size of one element of the given VertexData type"
-vertex_data_byte_size(t::Type{<:VertexData}) = error("vertex_data_byte_size() not implemented for ", t)
+"Gets the byte-size of one vertex input of the given type"
+vertex_data_byte_size(i::AbstractVertexShaderInput) = error("vertex_data_byte_size() not implemented for ", i)
 
-"Gets the OpenGL enum for the given VertexData type"
-get_component_ogl_enum(t::Type{<:VertexData}) = error("get_component_ogl_enum() not implemented for ", t)
+"Gets the OpenGL enum for the given type"
+get_component_ogl_enum(i::AbstractVertexShaderInput) = error("get_component_ogl_enum() not implemented for ", i)
 
 "
 Gets the number of components in this type's OpenGL vertex attributes
    (i.e. the length of a vector, or the number of columns in a matrix).
 "
-count_components(t::Type{<:VertexData}) = error("count_components() not implemented for ", t)
+count_components(i::AbstractVertexShaderInput) = error("count_components() not implemented for ", i)
 
 "
 Gets the number of OpenGL vertex attributes that are needed for this data type
    (i.e. 1 for a vector, or the number of rows in a matrix).
 "
-count_attribs(t::Type{<:VertexData}) = error("count_attribs() not implemented for ", t)
-
-export VertexData,
-       vertex_data_byte_size, get_component_ogl_enum, count_attribs
+count_attribs(i::AbstractVertexShaderInput) = error("count_attribs() not implemented for ", i)
 
 
-const VertexData_VecSizes = Union{Val{1}, Val{2}, Val{3}, Val{4}}
-const VertexData_MatrixSizes = Union{Val{2}, Val{3}, Val{4}}
-const VertexData_Bool = Union{Val{true}, Val{false}}
+export AbstractVertexShaderInput
+#
 
 
-#####################################
-#        Vertex Data: Matrix        #
-#####################################
+###############################
+#         Basic Types         #
+###############################
 
-"Vertex data that gets interpreted as matrices of floats"
-abstract type VertexData_Matrix{ Cols<:VertexData_MatrixSizes,
-                                 Rows<:VertexData_MatrixSizes,
-                                 F<:Union{Float32, Float64}
-                               } <: VertexData
+@bp_enum(VertexInputVectorDimensions, D1=1, D2=2, D3=3, D4=4)
+@bp_enum(VertexInputMatrixDimensions, D2=2, D3=3, D4=4)
+
+@bp_enum(VertexInputIntSizes, B8=1, B16=2, B32=4)
+@bp_enum(VertexInputFloatSizes, B16=2, B32=4, B64=8)
+
+@bp_enum(VertexInputMatrixTypes, float32=4, float64=8)
+
+
+struct VSInput_IntVector <: AbstractVertexShaderInput
+    n_dimensions::E_VertexInputVectorDimensions
+    is_signed::Bool
+    type::E_VertexInputIntSizes
 end
-@inline VertexData_Matrix(cols::Integer, rows::Integer, F::Type{<:AbstractFloat}) = VertexData_Matrix{Val{Int(cols)}, Val{Int(rows)}, F}
+struct VSInput_DoubleVector <: AbstractVertexShaderInput
+    n_dimensions::E_VertexInputVectorDimensions
+end
 
-const VertexData_MatrixF{Col, Row} = VertexData_Matrix{Col, Row, Float32}
-const VertexData_MatrixD{Col, Row} = VertexData_Matrix{Col, Row, Float64}
+struct VSInput_Matrix <: AbstractVertexShaderInput
+    n_rows::E_VertexInputMatrixDimensions
+    n_columns::E_VertexInputMatrixDimensions
+    type::E_VertexInputMatrixTypes
+end
 
-export VertexData_Matrix, VertexData_MatrixF, VertexData_MatrixD
+abstract type VSInput_FloatVector <: AbstractVertexShaderInput end
 
 
-vertex_data_byte_size(::Type{VertexData_Matrix{Val{C}, Val{R}, F}}) where {C, R, F} = (C * R * sizeof(F))
-function get_component_ogl_enum(::Type{VertexData_Matrix{Val{C}, Val{R}, F}}) where {C, R, F}
-    if F == Float32
+export VSInput_IntVector, VSInput_FloatVector, VSInput_DoubleVector, VSInput_Matrix
+
+
+#########################################
+#         Basic Implementations         #
+#########################################
+
+vertex_data_byte_size(i::VSInput_IntVector) = sizeof(i.is_signed ? Int32 : UInt32) * Int(i.n_dimensions)
+vertex_data_byte_size(i::VSInput_DoubleVector) = sizeof(Float64) * Int(i.n_dimensions)
+vertex_data_byte_size(i::VSInput_Matrix) = Int(i.type) * Int(i.n_rows) * Int(i.n_columns)
+
+function get_component_ogl_enum(i::VSInput_IntVector)
+    if i.is_signed
+        if i.type == VertexInputIntSizes.B8
+            return GL_BYTE
+        elseif i.type == VertexInputIntSizes.B16
+            return GL_SHORT
+        elseif i.type == VertexInputIntSizes.B32
+            return GL_INT
+        else
+            error("Unimplemented: signed ", i.type)
+        end
+    else # Unsigned
+        if i.type == VertexInputIntSizes.B8
+            return GL_UNSIGNED_BYTE
+        elseif i.type == VertexInputIntSizes.B16
+            return GL_UNSIGNED_SHORT
+        elseif i.type == VertexInputIntSizes.B32
+            return GL_UNSIGNED_INT
+        else
+            error("Unimplemented: unsigned ", i.type)
+        end
+    end
+end
+function get_component_ogl_enum(i::VSInput_DoubleVector)
+    return GL_DOUBLE
+end
+function get_component_ogl_enum(i::VSInput_Matrix)
+    if i.type == VertexInputMatrixTypes.float32
         return GL_FLOAT
-    elseif F == Float64
+    elseif i.type == VertexInputMatrixTypes.float64
         return GL_DOUBLE
     else
-        error("Unhandled case: ", F)
+        error("Unhandled case: ", i.type)
     end
 end
-count_components(::Type{VertexData_Matrix{Val{C}, Val{R}, F}}) where {C, R, F} = C
-count_attribs(::Type{VertexData_Matrix{Val{C}, Val{R}, F}}) where {C, R, F} = R
+
+count_components(i::VSInput_IntVector) = Int(i.n_dimensions)
+count_components(i::VSInput_DoubleVector) = Int(i.n_dimensions)
+count_components(i::VSInput_Matrix) = Int(i.n_columns)
+
+count_attribs(i::VSInput_IntVector) = 1
+count_attribs(i::VSInput_DoubleVector) = 1
+count_attribs(i::VSInput_Matrix) = Int(i.n_rows)
 
 
-######################################
-#        Vertex Data: IVector        #
-######################################
+#########################################
+#         Float Implementations         #
+#########################################
+
+fvector_data_is_normalized(i::VSInput_FloatVector) = error("Not implemented: ", typeof(i))
+
+# Assume all sub-types have a field 'n_dimensions::E_VertexInputVectorDimensions'.
+count_components(i::VSInput_FloatVector) = Int(i.n_dimensions)
+count_attribs(::VSInput_FloatVector) = 1
+
 
 "
-Vertex data that comes in as 1D-4D vectors of 8-/16-/32-bit ints or uints,
-   and comes out as corresponding 32-bit ints in the shader.
+Vertex data that comes in as some kind of float vector (e.x. Float16)
+    and appears in the shader as a Float32 vector
 "
-abstract type VertexData_IVector{ N<:VertexData_VecSizes,
-                                  I<:Union{Int8, Int16, Int32,
-                                           UInt8, UInt16, UInt32}
-                                } <: VertexData
+struct VSInput_FVector_Plain <: VSInput_FloatVector
+    n_dimensions::E_VertexInputVectorDimensions
+    in_size::E_VertexInputFloatSizes
 end
-
-VertexData_IVector(n::Integer, i::Type{<:Integer} ) = VertexData_IVector{Val{Int(n)}, i}
-VertexData_UVector(n::Integer, i::Type{<:Unsigned}) = VertexData_IVector{Val{Int(n)}, i}
-
-@doc (@doc VertexData_IVector) VertexData_UVector
-export VertexData_IVector, VertexData_UVector
-
-
-vertex_data_byte_size(::Type{VertexData_IVector{Val{N}, I}}) where {N, I} = (N * sizeof(I))
-function get_component_ogl_enum(::Type{VertexData_IVector{Val{N}, I}}) where {N, I}
-    if I == Int8
-        return GL_BYTE
-    elseif I == Int16
-        return GL_SHORT
-    elseif I == Int32
-        return GL_INT
-    elseif I == UInt8
-        return GL_UNSIGNED_BYTE
-    elseif I == UInt16
-        return GL_UNSIGNED_SHORT
-    elseif I == UInt32
-        return GL_UNSIGNED_INT
-    else
-        error("Unhandled case: ", I)
-    end
-end
-count_components(::Type{VertexData_IVector{Val{N}, I}}) where {N, I} = N
-count_attribs(::Type{VertexData_IVector{Val{N}, I}}) where {N, I} = 1
-
-
-######################################
-#        Vertex Data: DVector        #
-######################################
-
-"Vertex data that comes in as 64-bit float vectors, and come out in the same way"
-abstract type VertexData_DVector{N<:VertexData_VecSizes} <: VertexData end
-
-export VertexData_DVector
-
-
-vertex_data_byte_size(::Type{VertexData_DVector{N}}) where {N} = N * sizeof(Float64)
-get_component_ogl_enum(::Type{<:VertexData_DVector}) = GL_DOUBLE
-count_components(::Type{VertexData_DVector{Val{N}}}) where {N} = N
-count_attribs(::Type{VertexData_DVector{Val{N}}}) where {N} = 1
-
-
-######################################
-#        Vertex Data: FVector        #
-######################################
-
-"Vertex data that gets interpreted as 32-bit float vectors"
-abstract type VertexData_FVector <: VertexData end
-
-"Gets whether a subtype of `VertexData_Vector` needs to normalize its data"
-vert_data_is_normalized(::Type{<:VertexData_FVector}) = false
-
-
-"
-Vertex data that comes in as some kind of float vector,
-  and gets interpreted as 32-bit float vector.
-"
-abstract type VertexData_FVector_Simple{ N<:VertexData_VecSizes,
-                                         FIn<:Union{Float16, Float32, Float64}
-                                       } <: VertexData_FVector
-end
-vertex_data_byte_size(::Type{VertexData_FVector_Simple{Val{N}, FIn}}) where {N, FIn} = (N * sizeof(FIn))
-function get_component_ogl_enum(::Type{VertexData_FVector_Simple{Val{N}, FIn}}) where {N, FIn}
-    if FIn == Float16
+VSInput_FVector_Plain(n_dimensions::Integer, component_byte_size::Integer) = VSInput_FVector_Plain(
+    E_VertexInputVectorDimensions(n_dimensions),
+    E_VertexInputFloatSizes(component_byte_size)
+)
+VSInput_FVector_Plain(n_dimensions::Integer, component_type::Type{<:AbstractFloat}) = VSInput_FVector_Plain(
+    E_VertexInputVectorDimensions(n_dimensions),
+    E_VertexInputFloatSizes(sizeof(component_type))
+)
+fvector_data_is_normalized(i::VSInput_FVector_Plain) = false
+vertex_data_byte_size(i::VSInput_FVector_Plain) = Int(i.in_size) * Int(i.n_dimensions)
+function get_component_ogl_enum(i::VSInput_FVector_Plain)
+    if i.in_size == VertexInputFloatSizes.B16
         return GL_HALF_FLOAT
-    elseif FIn == Float32
+    elseif i.in_size == VertexInputFloatSizes.B32
         return GL_FLOAT
-    elseif FIn == Float64
+    elseif i.in_size == VertexInputFloatSizes.B64
         return GL_DOUBLE
     else
-        error("Unhandled case: ", FIn)
+        error("Unhandled case: ", i.in_size)
     end
 end
-count_components(::Type{VertexData_FVector_Simple{Val{N}, F}}) where {N, F} = N
-count_attribs(::Type{VertexData_FVector_Simple{Val{N}, F}}) where {N, F} = 1
 
 
 "
 Vertex data that comes in as some kind of integer vector,
-  and gets interpreted as 32-bit float vector.
-If 'Normalize' is off, then the values are converted with a simple cast.
-If 'Normalize' is on, then the values are converted from the integer's range to the range [0, 1] or [-1, 1].
+    and gets interpreted as 32-bit float vector.
+
+If 'normalized' is true, then the values are converted
+    from the integer's range to the range [0, 1] or [-1, 1].
+Otherwise, the values are simply casted to float.
 "
-abstract type VertexData_FVector_Int{ N<:VertexData_VecSizes,
-                                      FIn<:Union{Int8, Int16, Int32, UInt8, UInt16, UInt32},
-                                      Normalize<:VertexData_Bool
-                                    } <: VertexData_FVector
+struct VSInput_FVector_FromInt <: VSInput_FloatVector
+    input::VSInput_IntVector
+    normalized::Bool
 end
-vertex_data_byte_size(::Type{VertexData_FVector_Int{Val{N}, FIn, Normalize}}) where {N, FIn, Normalize} =
-    (N * sizeof(FIn))
-function get_component_ogl_enum(::Type{VertexData_FVector_Int{Val{N}, FIn, Normalize}}) where {N, FIn, Normalize}
-    if FIn == Int8
-        return GL_BYTE
-    elseif FIn == Int16
-        return GL_SHORT
-    elseif FIn == Int32
-        return GL_INT
-    elseif FIn == UInt8
-        return GL_UNSIGNED_BYTE
-    elseif FIn == UInt16
-        return GL_UNSIGNED_SHORT
-    elseif FIn == UInt32
-        return GL_UNSIGNED_INT
-    else
-        error("Unhandled case: ", FIn)
-    end
-end
-count_components(::Type{VertexData_FVector_Int{Val{N}, F, Norm}}) where {N, F, Norm} = N
-count_attribs(::Type{VertexData_FVector_Int{Val{N}, F, Norm}}) where {N, F, Norm} = 1
-vert_data_is_normalized(::Type{VertexData_FVector_Int{N, F, Val{Norm}}}) where {N, F, Norm} = Norm
+fvector_data_is_normalized(i::VSInput_FVector_FromInt) = i.normalized
+count_components(i::VSInput_FVector_FromInt) = count_components(i.input)
+vertex_data_byte_size(i::VSInput_FVector_FromInt) = vertex_data_byte_size(i.input)
+get_component_ogl_enum(i::VSInput_FVector_FromInt) = get_component_ogl_enum(i.input)
 
 
 "
-Vertex data that comes in as a vector of fixed-point decimals
-   (16 bits for integer, and 16 for fractional),
-   and gets interpreted as a vector of 32-bit float.
+Vertex data that comes in as a vector of fixed-point decimals (16 integer bits, 16 fractional bits)
+    and gets casted into float32
 "
-abstract type VertexData_FVector_Fixed{N<:VertexData_VecSizes} <: VertexData_FVector end
-VertexData_FVector_Fixed(n::Integer) = VertexData_FVector_Fixed{Val{Int(n)}}
-vertex_data_byte_size(::Type{VertexData_FVector_Fixed{Val{N}}}) where {N} = (N * 4)
-get_component_ogl_enum(::Type{<:VertexData_FVector_Fixed}) = GL_FIXED
-count_components(::Type{VertexData_FVector_Fixed{Val{N}}}) where {N} = N
-count_attribs(::Type{VertexData_FVector_Fixed{Val{N}}}) where {N} = 1
+struct VSInput_FVector_Fixed <: VSInput_FloatVector
+    n_dimensions::E_VertexInputVectorDimensions
+end
+fvector_data_is_normalized(i::VSInput_FVector_Fixed) = false
+vertex_data_byte_size(i::VSInput_FVector_Fixed) = 4 * Int(i.n_dimensions)
+get_component_ogl_enum(i::VSInput_FVector_Fixed) = GL_FIXED
 
 
 "
 Vertex data that comes in as a 32-bit uint, and gets interpreted as
     an RGB vector of 32-bit floats.
-The uint stores 3 unsigned floats, with 10 bits for Blue/Z,
-    then 11 for Green/Y, then 11 more for Red/X.
+The uint stores 3 unsigned floats, in order:
+  1. 10 bits for Blue/Z
+  2. 11 bits for Green/Y
+  3. 11 more for Red/X
+
+#TODO: How many bits for mantissa vs exponent?
 "
-abstract type VertexData_FVector_Pack_UFloat_B10_G11_R11 <: VertexData_FVector end
-vertex_data_byte_size(::Type{VertexData_FVector_Pack_UFloat_B10_G11_R11}) = 4
-get_component_ogl_enum(::Type{VertexData_FVector_Pack_UFloat_B10_G11_R11}) = GL_UNSIGNED_INT_10F_11F_11F_REV
-count_components(::Type{VertexData_FVector_Pack_UFloat_B10_G11_R11}) = 3
-count_attribs(::Type{VertexData_FVector_Pack_UFloat_B10_G11_R11}) = 1
+struct VSInput_FVector_Packed_UF_B10_G11_R11 <: VSInput_FloatVector
+end
+fvector_data_is_normalized(i::VSInput_FVector_Packed_UF_B10_G11_R11) = false
+count_components(i::VSInput_FVector_Packed_UF_B10_G11_R11) = 3
+vertex_data_byte_size(i::VSInput_FVector_Packed_UF_B10_G11_R11) = 4
+get_component_ogl_enum(i::VSInput_FVector_Packed_UF_B10_G11_R11) = GL_UNSIGNED_INT_10F_11F_11F_REV
+
 
 "
 Vertex data that comes in as a 32-bit uint, and gets interpreted as
   an RGBA vector of 32-bit floats.
-The uint stores the components as integers, optionally signed and/or normallized:
+The uint stores the components as integers, optionally signed and/or normalized:
   2 bits for Alpha/W,
   10 bits for Blue/Z,
   10 bits for Green/Y,
   then 10 bis for Red/X.
+
+The integer values for each component are either normalized to the 0-1 range,
+    or simply casted to float.
 "
-abstract type VertexData_FVector_Pack_Integer_A2_BGR10{ Signed<:VertexData_Bool,
-                                                        Normalized<:VertexData_Bool
-                                                      } <: VertexData_FVector end
-VertexData_FVector_Pack_Integer_A2_BGR10(signed = false, normalized = true) = VertexData_FVector_Pack_Integer_A2_BGR10{Val{signed}, Val{normalized}}
-vertex_data_byte_size(::Type{VertexData_FVector_Pack_Integer_A2_BGR10}) = 4
-function get_component_ogl_enum(::Type{VertexData_FVector_Pack_Integer_A2_BGR10{Val{Sign}, Val{Norm}}}) where {Sign, Norm}
-    if Sign
-        return GL_INT_2_10_10_10_REV
+struct VSInput_FVector_Packed_A2_BGR10 <: VSInput_FloatVector
+    signed::Bool
+    normalized::Bool
+end
+fvector_data_is_normalized(i::VSInput_FVector_Packed_A2_BGR10) = i.normalized
+count_components(i::VSInput_FVector_Packed_A2_BGR10) = 4
+vertex_data_byte_size(i::VSInput_FVector_Packed_A2_BGR10) = 4
+get_component_ogl_enum(i::VSInput_FVector_Packed_A2_BGR10) = i.signed ?
+                                                                 GL_INT_2_10_10_10_REV :
+                                                                 GL_UNSIGNED_INT_2_10_10_10_REV
+
+
+export VSInput_FVector_Plain, VSInput_FVector_FromInt, VSInput_FVector_Fixed,
+       VSInput_FVector_Packed_A2_BGR10, VSInput_FVector_Packed_UF_B10_G11_R11
+
+
+############################################
+#         Convenience constructors         #
+############################################
+
+
+"Creates a simple float- or int- or double-vector vertex input"
+function VSInput(::Type{Vec{N, T}}) where {N, T}
+    if T == Float64
+        return VSInput_DoubleVector(E_VertexInputVectorDimensions(N))
+    elseif T <: AbstractFloat
+        return VSInput_FVector_Plain(E_VertexInputVectorDimensions(N),
+                                     E_VertexInputFloatSizes(sizeof(T)))
+    elseif T <: Integer
+        return VSInput_IntVector(E_VertexInputVectorDimensions(N),
+                                 T <: Signed,
+                                 E_VertexInputIntSizes(sizeof(T)))
     else
-        return GL_UNSIGNED_INT_2_10_10_10_REV
+        error("Unexpected vector type for VSInput(): ", Vec{N, T})
     end
 end
-count_components(::Type{<:VertexData_FVector_Pack_Integer_A2_BGR10}) = 4
-count_attribs(::Type{<:VertexData_FVector_Pack_Integer_A2_BGR10}) = 1
-vert_data_is_normalized(::Type{VertexData_FVector_Pack_Integer_A2_BGR10{Val{Sign}, Val{Norm}}}) where {Sign, Norm} = Norm
+"Creates a float or double matrix input"
+function VSInput(::Type{Mat{C, R, F}}) where {C, R, F<:AbstractFloat}
+    c = E_VertexInputMatrixDimensions(C)
+    r = E_VertexInputMatrixDimensions(R)
+    if F == Float32
+        return VSInput_Matrix(r, c, VertexInputMatrixTypes.float32)
+    elseif F == Float64
+        return VSInput_Matrix(r, c, VertexInputMatrixTypes.float64)
+    else
+        error("Unsupported matrix type for VSInput(): ", Mat{C, R, F})
+    end
+end
+
+"Creates a type for an integer vector that get casted or normalized into a float vector in the shader"
+function VSInput_FVector(::Type{Vec{N, I}}, normalized::Bool) where {N, I<:Integer}
+    return VSInput_FVector_FromInt(VSInput(Vec{N, I}), normalized)
+end
 
 
-VertexData_FVector(n::Integer, f_in::Type{<:AbstractFloat}) = VertexData_FVector_Simple{Val{Int(n)}, f_in}
-VertexData_FVector(n::Integer, f_in::Type{<:Integer}, normalize::Bool) = VertexData_FVector_Int{Val{Int(n)}, f_in, Val{normalize}}
+VSInput_IntVector(n_dimensions::Integer, is_signed::Bool, component_byte_size::Integer) = VSInput_IntVector(
+    E_VertexInputVectorDimensions(n_dimensions),
+    is_signed,
+    E_VertexInputIntSizes(component_byte_size)
+)
 
+VSInput_DoubleVector(n_dimensions::Integer) = VSInput_DoubleVector(
+    E_VertexInputVectorDimensions(n_dimensions)
+)
 
-export VertexData_FVector,
-       VertexData_FVector_Simple, VertexData_FVector_Int,
-       VertexData_FVector_Fixed,
-       VertexData_FVector_Pack_UFloat_B10_G11_R11,
-       VertexData_FVector_Pack_Integer_A2_BGR10
+VSInput_FVector_Fixed(n_dimensions::Integer) = VSInput_FVector_Fixed(
+    E_VertexInputVectorDimensions(n_dimensions)
+)
+
+VSInput_Matrix(n_rows::Integer, n_columns::Integer, float_byte_size::Integer) = VSInput_Matrix(
+    E_VertexInputMatrixDimensions(n_rows),
+    E_VertexInputMatrixDimensions(n_columns),
+    E_VertexInputMatrixTypes(float_byte_size)
+)
+VSInput_Matrix(n_rows::Integer, n_columns::Integer, float_type::Type{<:AbstractFloat}) = VSInput_Matrix(
+    E_VertexInputMatrixDimensions(n_rows),
+    E_VertexInputMatrixDimensions(n_columns),
+    E_VertexInputMatrixTypes(sizeof(float_type))
+)
+
+export VSInput, VSInput_FVector
