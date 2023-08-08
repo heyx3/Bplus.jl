@@ -17,7 +17,11 @@ The last parameter must be the number of elements (a.k.a. R*C).
 "
 const Mat{C, R, F, Len} = SMatrix{R, C, F, Len}
 
-"Short-hand for matrix types that calculates the last type parameter automatically."
+"
+Short-hand for matrix types that calculates the last type parameter automatically.
+For example: `@Mat(2, 4, Float32)` makes `fmat2x4`.
+"
+#TODO: Change syntax to @Mat{C, R, F}
 macro Mat(C, R, F)
     @assert(C isa Integer, "C must be an integer value")
     @assert(R isa Integer, "R must be an integer value")
@@ -28,6 +32,8 @@ end
 "Splits a matrix type into its important type arguments: Columns, Rows, and Component"
 mat_params(::Type{Mat{C, R, F, Len}}) where {C, R, F, Len} = (C, R, F)
 
+
+const MatT{F, C, R, Len} = Mat{C, R, F, Len}
 
 const MatF{C, R, Len} = Mat{C, R, Float32, Len}
 const fmat2x2 = MatF{2, 2, 2*2}
@@ -60,7 +66,7 @@ const dmat4 = dmat4x4
 const Mat3{F} = Mat{3, 3, F, 9}
 const Mat4{F} = Mat{4, 4, F, 16}
 
-export Mat, @Mat, MatF, MatD, Mat3, Mat4,
+export Mat, @Mat, MatT, MatF, MatD, Mat3, Mat4,
        mat_params,
        fmat2, fmat3, fmat4, dmat2, dmat3, dmat4,
        fmat2x2, fmat2x3, fmat2x4, fmat3x2, fmat3x3, fmat3x4, fmat4x2, fmat4x3, fmat4x4,

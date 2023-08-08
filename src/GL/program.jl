@@ -5,9 +5,9 @@
 # Uniforms are shader parameters, set by the user through OpenGL calls.
 
 
-const UniformScalar = Union{Int32, UInt32, Bool, Float32, Float64}
-const UniformVector{N} = @unionspec Vec{N, _} Int32 UInt32 Bool Float32 Float64
-const UniformMatrix{C, R, L} = @unionspec Mat{C, R, _, L} Float32 Float64
+const UniformScalar = Union{Scalar32, Scalar64, Bool}
+const UniformVector{N} = Vec{N, <:UniformScalar}
+const UniformMatrix{C, R, L} = Mat{C, R, <:Union{Float32, Float64}, L}
 
 
 "Acceptable types of uniforms"
@@ -19,7 +19,6 @@ const Uniform = Union{UniformScalar,
                             for size in Iterators.product(2:4, 2:4)
                       )...,
                       # "Opaque" types:
-                      Ptr_Buffer,
                       Texture, Ptr_View, View
                      }
 
@@ -31,12 +30,26 @@ export Uniform
 Information about a specific Program uniform.
 A uniform can be an array of its data type; if the uniform is an array of structs,
     each UniformData instance will be about one specific field of one specific element.
+
+The name is not stored because it will be used as the key for an instance of this struct.
 "
 struct UniformData
     handle::Ptr_Uniform
     type::Type{<:Uniform}
     array_size::Int  # Set to 1 for non-array uniforms.
 end
+
+"
+Information about a specific Program uniform block (a.k.a. UBO).
+
+The name is not stored because it will be used as the key for an instance of this struct.
+"
+struct UniformBlockData
+    handle::Ptr_UniformBuffer
+    byte_size::Int32
+end
+
+
 
 """
 `set_uniform(::Program, ::String, ::T[, array_index::Int])`
@@ -68,8 +81,24 @@ This naming is 0-based, not 1-based, unfortunately.
 """
 function set_uniforms end
 
+"""
+`set_uniform_block(::Buffer, ::Int; byte_range=[full buffer])`
 
-export Uniform, UniformData, set_uniform, set_uniforms
+Sets the given buffer to be used for one of the
+    globally-available Uniform Block (a.k.a. "UBO") slots.
+Assign your program's Uniform Block to use one of these slots with the other overload.
+
+`set_uniform_block(::Program, ::String, ::Int)`
+
+Sets a program's uniform block (a.k.a. "UBO") to use the given global slot,
+    which will be assigned a Buffer with the other overload.
+
+**NOTE**: Indices and byte ranges are 1-based!
+"""
+function set_uniform_block end
+
+
+export Uniform, UniformData, set_uniform, set_uniforms, set_uniform_block
 
 
 ################################
@@ -249,6 +278,7 @@ export ProgramCompiler, compile_program
 mutable struct Program <: AbstractResource
     handle::Ptr_Program
     uniforms::Dict{String, UniformData}
+    uniform_blocks::Dict{String, UniformBlockData}
     flexible_mode::Bool # Whether to silently ignore invalid uniforms
 end
 
@@ -270,17 +300,53 @@ function Program(handle::Ptr_Program, flexible_mode::Bool = false)
     context = get_context()
     @bp_check(exists(context), "Creating a Program without a valid Context")
 
+    name_c_buffer = Vector{GLchar}(undef, 128)
+
+    # Get the uniform buffer blocks.
+    n_uniform_blocks = get_from_ogl(GLint, glGetProgramiv, handle, GL_ACTIVE_UNIFORM_BLOCKS)
+    uniform_blocks = Dict{String, UniformBlockData}()
+    resize!(name_c_buffer,
+            get_from_ogl(GLint, glGetProgramiv, handle, GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH))
+    for block_idx::Int in 1:n_uniform_blocks
+        block_name_length::GLsizei = 0
+        @c glGetActiveUniformBlockName(handle, block_idx, length(name_c_buffer),
+                                       &block_name_length, &name_c_buffer[0])
+
+        block_name = String(@view name_c_buffer[1 : (block_name_length-1)])
+        uniform_blocks[block_name] = UniformBlockData(
+            Ptr_UniformBuffer(block_idx),
+            get_from_ogl(GLint, glGetActiveUniformBlockiv,
+                         handle, block_idx, GL_UNIFORM_BLOCK_DATA_SIZE)
+        )
+    end
+
+    # Gather handles of uniforms witin the blocks and ignore them below.
+    uniform_indices_to_skip = Set{GLint}()
+    block_uniform_indices = Vector{GLint}(undef, 128)
+    for block_idx::Int in 1:n_uniform_blocks
+        resize!(block_uniform_indices,
+                get_from_ogl(GLint, glGetActiveUniformBlockiv, handle, block_idx,
+                             GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS))
+        @c glGetActiveUniformBlockiv(handle, GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES,
+                                     block_idx, &block_uniform_indices[0])
+        append!(uniform_indices_to_skip, block_uniform_indices)
+    end
+
     # Get the uniforms.
     uniforms = Dict{String, UniformData}()
     glu_array_count = Ref{GLint}()  # The length of this uniform array (1 if it's not an array).
     glu_type = Ref{GLenum}()
-    glu_name_buf = Vector{UInt8}(
-                           undef,
-                           get_from_ogl(GLint, glGetProgramiv,
-                                        handle, GL_ACTIVE_UNIFORM_MAX_LENGTH)
-                   )
+    glu_name_buf = Vector{GLchar}(
+        undef,
+        get_from_ogl(GLint, glGetProgramiv,
+                     handle, GL_ACTIVE_UNIFORM_MAX_LENGTH)
+    )
     glu_name_len = Ref{GLsizei}()
     for i in 1:get_from_ogl(GLint, glGetProgramiv, handle, GL_ACTIVE_UNIFORMS)
+        if i in uniform_indices_to_skip
+            continue
+        end
+
         glGetActiveUniform(handle, i - 1,
                            length(glu_name_buf), glu_name_len,
                            glu_array_count,
@@ -306,7 +372,7 @@ function Program(handle::Ptr_Program, flexible_mode::Bool = false)
     # Connect to the view-debugger service.
     service_view_debugger_add_program(context, handle)
 
-    return Program(handle, uniforms, flexible_mode)
+    return Program(handle, uniforms, uniform_blocks, flexible_mode)
 end
 
 function Base.close(p::Program)
@@ -335,6 +401,15 @@ const UNIFORM_TYPE_FROM_GL_ENUM = Dict{GLenum, Type{<:Uniform}}(
     GL_UNSIGNED_INT_VEC2 => Vec{2, UInt32},
     GL_UNSIGNED_INT_VEC3 => Vec{3, UInt32},
     GL_UNSIGNED_INT_VEC4 => Vec{4, UInt32},
+
+    GL_INT64_ARB => Int64,
+    GL_INT64_VEC2_ARB => Vec{2, Int64},
+    GL_INT64_VEC3_ARB => Vec{3, Int64},
+    GL_INT64_VEC4_ARB => Vec{4, Int64},
+    GL_UNSIGNED_INT64_ARB => UInt64,
+    GL_UNSIGNED_INT64_VEC2_ARB => Vec{2, UInt64},
+    GL_UNSIGNED_INT64_VEC3_ARB => Vec{3, UInt64},
+    GL_UNSIGNED_INT64_VEC4_ARB => Vec{4, UInt64},
 
     GL_BOOL => Bool,
     GL_BOOL_VEC2 => v2b,
@@ -426,6 +501,8 @@ const UNIFORM_TYPE_FROM_GL_ENUM = Dict{GLenum, Type{<:Uniform}}(
     GL_UNSIGNED_INT_IMAGE_2D_ARRAY => Ptr_View,
     GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE => Ptr_View,
     GL_UNSIGNED_INT_IMAGE_2D_MULTISAMPLE_ARRAY => Ptr_View,
+
+    #TODO: GL_UNSIGNED_INT_ATOMIC_COUNTER => Ptr_Buffer ??
 )
 
 
@@ -590,7 +667,32 @@ end
     end
 end
 
-# Gets the correct OpenGL uniform function letter for a given type of data.
+
+# Uniform blocks:
+function set_uniform_block(buf::Buffer, idx::Int;
+                           context::Context = get_context(),
+                           byte_range::Interval{<:Integer} = Interval(
+                               min=1,
+                               max=buf.byte_size
+                           ))
+    handle = get_ogl_handle(buf)
+    if context.active_ubos[idx] != (handle, byte_range)
+        context.active_ubos[idx] = (handle, byte_range)
+        glBindBufferRange(GL_UNIFORM_BUFFER, idx - 1, handle,
+                          min_inclusive(byte_range) - 1,
+                          size(byte_range))
+    end
+    return nothing
+end
+function set_uniform_block(program::Program, name::AbstractString, idx::Int)
+    glUniformBlockBinding(get_ogl_handle(buf),
+                          program.uniform_blocks[name].handle,
+                          idx - 1)
+    return nothing
+end
+
+
+# Retrieve the correct OpenGL uniform function letter for a given type of data.
 get_uniform_ogl_letter(::Type{Float32}) = :f
 get_uniform_ogl_letter(::Type{Float64}) = :d
 get_uniform_ogl_letter(::Type{Int32}) = :i

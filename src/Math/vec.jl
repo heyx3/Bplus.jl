@@ -294,6 +294,9 @@ Base.size(::Vec{N, T}) where {N, T} = (N, )
 Base.IndexStyle(::Vec{N, T}) where {N, T} = IndexLinear()
 @inline Base.iterate(v::Vec, state...) = iterate(v.data, state...)
 
+Base.length(::Type{Vec{N, T}}) where {N, T} = N
+Base.eltype(::Type{Vec{N, T}}) where {N, T} = T
+
 # Allow for swizzling by passing multiple indices for getindex().
 @inline Base.getindex(v::Vec, idcs::Integer...) = Vec((v[i] for i in idcs)...)
 

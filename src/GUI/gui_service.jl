@@ -465,9 +465,6 @@ function service_gui_rebuild_fonts(serv::GuiService = service_gui_get())
     old_font_texture = serv.font_texture
     serv.font_texture = new_font_texture
 
-    println("Replacing font tex ", get_ogl_handle(old_font_texture),
-            " with ", new_font_texture)
-
     serv.user_texture_handles[new_font_texture] = TEX_ID_FONT
     serv.user_textures_by_handle[TEX_ID_FONT] = new_font_texture
 

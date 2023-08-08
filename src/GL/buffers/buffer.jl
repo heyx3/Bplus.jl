@@ -148,13 +148,13 @@ function get_buffer_data( b::Buffer,
                           # The start of the buffer's array data
                           src_byte_offset::Integer = zero(UInt),
                           # The elements to read from the buffer (defaults to as much as possible)
-                          src_elements::IntervalU = IntervalU((
+                          src_elements::IntervalU = IntervalU(
                               min=1,
                               size=min((b.byte_size - src_byte_offset) ÷ sizeof(T),
                                        (output isa Vector{T}) ?
                                            (length(output) - dest_offset) :
                                            typemax(UInt))
-                          ))
+                          )
                         )::Optional{Vector{T}} where {T}
     src_first_byte::UInt = convert(UInt, src_byte_offset + ((min_inclusive(src_elements) - 1) * sizeof(T)))
     n_bytes::UInt = convert(UInt, size(src_elements) * sizeof(T))
@@ -211,3 +211,427 @@ function copy_buffer( src::Buffer, dest::Buffer
 end
 
 export set_buffer_data, get_buffer_data, copy_buffer
+
+
+###############################
+#       Automatic Layout      #
+###############################
+
+#TODO: My whole approach to @std140 is broken because Julia pads bits data itself. I need to switch to a raw ntuple of bytes that's entirely accessed via properties.
+#=
+abstract type AbstractOglBlock end
+
+padding_size(b::AbstractOglBlock) = padding_size(typeof(b))
+padding_size(T::Type{<:AbstractOglBlock}) = error("Not implemented: ", T)
+
+base_alignment(b::AbstractOglBlock) = base_alignment(typeof(b))
+base_alignment(T::Type{<:AbstractOglBlock}) = error("Not implemented: ", T)
+
+@inline Base.propertynames(a::AbstractOglBlock) = propertynames(typeof(a))
+@generated function Base.:(==)(a::T, b::T)::Bool where {T<:AbstractOglBlock}
+    output = :( true )
+    for p_name in propertynames(T)
+        qp = QuoteNode(p_name)
+        output = :( $output && (getfield(a, $qp) == getfield(b, $qp)) )
+    end
+    return output
+end
+@generated function Base.hash(a::T, h::UInt)::UInt where {T<:AbstractOglBlock}
+    output = quote end
+    for p_name in propertynames(T)
+        qp = QuoteNode(p_name)
+        output = quote
+            $output
+            h = hash(getfield(a, $qp), h)
+        end
+    end
+    return quote
+        $output
+        return h
+    end
+end
+
+function Base.show(io::IO, a::AbstractOglBlock)
+    print(io, typeof(a), '(')
+    for (i, prop) in enumerate(propertynames(a))
+        if i > 1
+            print(io, ", ")
+        end
+        show(io, getproperty(a, prop))
+    end
+    print(io, ')')
+end
+
+
+abstract type OglBlock_std140 <: AbstractOglBlock end
+abstract type OglBlock_std430 <: AbstractOglBlock end
+
+
+#TODO: Support some kind of annotation for row-major matrices.
+"""
+Generates an immutable struct using OpenGL-friendly types,
+    whose byte layout exactly follows the std140 standard in shader blocks.
+
+Sample usage:
+````
+@std140 struct MyInnerUniformBlock
+    f::Float32
+    bools::vb4
+    position_array::NTuple{12, v3f}
+end
+
+@std140 struct MyOuterUniformBlock
+    i::Int32 # Be careful; 'Int' in Julia means Int64
+    items::NTuple{5, MyInnerUniformBlock}
+    b::Bool
+end
+
+const MY_UBO_DATA = MyOuterUniformBlock(
+    3,
+    ntuple(i -> zero(MyInnerUniformBlock), 5),
+    true
+)
+println("i is: ", MY_UBO_DATA.i)
+````
+"""
+macro std140(struct_expr)
+    return block_struct_impl(struct_expr)
+end
+function block_struct_impl(struct_expr)
+    if !Base.is_expr(struct_expr, :struct)
+        error("Expected struct block, got: ", struct_expr)
+    end
+
+    # Parse the header.
+    (is_mutable::Bool, struct_name, body::Expr) = struct_expr.args
+    if !isa(struct_name, Symbol)
+        error("std140 struct has invalid name: '", struct_name, "'")
+    elseif is_mutable
+        error("std140 struct '", struct_name, "' must not be mutable")
+    end
+
+    lines = [line for line in body.args if !isa(line, LineNumberNode)]
+
+    # Generate per-field code.
+
+    property_names = Symbol[ ]
+    field_definitions = Expr[ ]
+    constructor_params = [ ]
+    constructor_values = [ ]
+    getproperty_clauses = Expr[ ]
+    max_field_base_alignment::Int = zero(Int)
+    n_padding_fields::Int = 0
+    n_padding_bytes::Int = 0
+    n_total_size::Int = 0
+
+    SCALAR_TYPES = Union{Scalar32, Scalar64, Bool}
+    VECTOR_TYPES = Union{(
+        Vec{n, t}
+          for (n, t) in Iterators.product(1:4, union_types(SCALAR_TYPES))
+    )...}
+    MATRIX_TYPES = Union{(
+        @Mat(c, r, f)
+          for (c, r, f) in Iterators.product(1:4, 1:4, (Float32, Float64))
+    )...}
+    NON_ARRAY_TYPES = Union{SCALAR_TYPES, VECTOR_TYPES, MATRIX_TYPES, OglBlock_std140}
+
+    function add_padding_field(n_bytes::Integer, core_name,
+                               pad_value::UInt8 = UInt8(n_padding_fields + 1))
+        n_padding_fields += 1
+        n_total_size += n_bytes
+        n_padding_bytes += n_bytes
+        push!(field_definitions, :(
+            $(Symbol(core_name, ": ", n_padding_fields))::NTuple{$n_bytes, UInt8}
+        ))
+        push!(constructor_values, :(
+            ntuple(i -> $pad_value, Val($n_bytes))
+        ))
+    end
+    function align_for_next_field(alignment_bytes::Int)
+        max_field_base_alignment = max(max_field_base_alignment, alignment_bytes)
+
+        missing_bytes = (alignment_bytes - (n_total_size % alignment_bytes))
+        if missing_bytes < alignment_bytes # Only if not already aligned
+            add_padding_field(missing_bytes, :PAD)
+        end
+    end
+    function add_field(field_def, constructor_value, getproperty_clause, byte_size)
+        push!(field_definitions, field_def)
+        push!(constructor_values, constructor_value)
+        push!(getproperty_clauses, getproperty_clause)
+        n_total_size += byte_size
+    end
+    function check_field_errors(field_name, T, is_within_array::Bool = false)
+        if T <: Vec
+            if !(T <: VECTOR_TYPES)
+                error("Invalid vector count or type in ", field_name, ": ", T)
+            end
+        elseif T <: Mat
+            if !(T <: MATRIX_TYPES)
+                error("Invalid matrix size or component type in ", field_name, ": ", T)
+            end
+        elseif isstructtype(T)
+            if !(T <: OglBlock_std140)
+                error("Non-std140 struct referenced by ", field_name, ": ", T)
+            end
+        elseif T <: NTuple
+            if is_within_array
+                error("No nested arrays allowed, for simplicity. Flatten field ", field_name)
+            end
+            check_field_errors(field_name, eltype(T), true)
+        elseif T <: SCALAR_TYPES
+            # Nothing to check
+        else
+            error("Unexpected type in field ", field_name, ": ", T)
+        end
+    end
+
+    # Note that 'esc' is automatically inserted at the end; it isn't needed in this loop.
+    for line in lines
+        if isa(line, LineNumberNode)
+            continue
+        end
+        if !Base.is_expr(line, :(::))
+            error("Expected only field declarations ('a::B'). Got: ", line)
+        end
+
+        (field_name, field_type) = line.args
+        if !isa(field_name, Symbol)
+            error("Name of the field should be a simple token. Got: '", field_name, "'")
+        end
+        field_type = eval(field_type)
+        if !isa(field_type, Type)
+            error("Expected a concrete type for the field's value. Got: ", field_type)
+        end
+
+        check_field_errors(field_name, field_type)
+
+        push!(property_names, field_name)
+        push!(constructor_params, :( $field_name ))
+
+        # Generate code for the field.
+        quoted_name = QuoteNode(field_name)
+        if field_type == Bool
+            align_for_next_field(4)
+            add_field(
+                :( $field_name::UInt32 ),
+                :( convert(Bool, $field_name) ),
+                :( (name == $quoted_name) &&
+                     return convert(Bool, getfield(s, $quoted_name)) ),
+                4
+            )
+        elseif field_type <: VecB
+            N = length(field_type)
+            if !in(N, 1:4)
+                error("Vector type must be 1D - 4D. Got ", N, "D in field ",
+                        struct_name, ".", field_type)
+            end
+
+            align_for_next_field(4 * (1, 2, 4, 4)[N])
+            add_field(
+                :( $field_name::Vec{$N, UInt32} ),
+                :( convert(Vec{$N, UInt32}($field_name)) ),
+                :( (name == $quoted_name) &&
+                     return Vec{$N, Bool}(getfield(s, $quoted_name)) ),
+                N * 4
+            )
+        elseif field_type <: SCALAR_TYPES
+            align_for_next_field(sizeof(field_type))
+            add_field(
+                :( $field_name::$field_type ),
+                :( convert($field_type, $field_name) ),
+                :( (name == $quoted_name) && return getfield(s, $quoted_name) ),
+                sizeof(field_type)
+            )
+        elseif field_type <: VECTOR_TYPES
+            (N, T) = field_type.parameters
+            align_for_next_field(4 * (1, 2, 4, 4)[N])
+            add_field(
+                :( $field_name::$field_type ),
+                :( convert($field_type, $field_name) ),
+                :( (name == $quoted_name) &&
+                     return getfield(s, $quoted_name) ),
+                N * sizeof(T)
+            )
+        elseif field_type <: MATRIX_TYPES
+            (C, R, F) = mat_params(field_type)
+            ColumnVec = Vec{R, F}
+            vec_alignment = max(sizeof(F) * (1, 2, 4, 4)[R],
+                                sizeof(v4f))
+
+            column_names = Symbol[ ]
+            align_for_next_field(vec_alignment)
+            for v_idx in 1:C
+                column_name = Symbol(field_name, ": column: ", v_idx)
+                push!(column_names, column_name)
+
+                push!(field_definitions, :( $column_name::Vec{$R, $F} ))
+                push!(constructor_values, :(
+                    Vec{$R, $F}($field_name[:, $v_idx]...)
+                ))
+                n_total_size += sizeof(ColumnVec)
+
+                align_for_next_field(vec_alignment)
+            end
+
+            push!(getproperty_clauses, :(
+                $field_type($((
+                    :( getfield(s, $(QuoteNode(c_name))) )
+                      for c_name in column_names
+                )...))
+            ))
+        elseif field_type <: OglBlock_std140
+            align_for_next_field(base_alignment(field_type))
+            add_field(
+                :( $field_name::$field_type ),
+                :( convert($field_type, $field_name) ),
+                :( (name == $quoted_name) &&
+                     return getfield(s, $quoted_name) ),
+                sizeof(field_type)
+            )
+        elseif field_type <: ConstVector{<:NON_ARRAY_TYPES}
+            element_count = tuple_length(field_type)
+            T = field_type.parameters[1]
+
+            if T == Bool
+                element_alignment = sizeof(v4f)
+                padded_type = NTuple{element_count, v4u}
+                align_for_next_field(element_alignment)
+                add_field(
+                    :( $field_name::$padded_type ),
+                    :( v4u(UInt32.($field_name), 0, 0, 0) ),
+                    :( (name == $quoted_name) &&
+                         return map(v -> Bool(v.x), getfield(s, $quoted_name)) ),
+                    sizeof(padded_type)
+                )
+            elseif T <: VecB
+                element_alignment = sizeof(v4f)
+                component_count = length(T)
+                extra_components = 4 - component_count
+                padded_type = NTuple{element_count, v4u}
+                align_for_next_field(element_alignment)
+                add_field(
+                    :( $field_name::$padded_type ),
+                    :( ntuple(i -> vappend(convert(Vec{$component_count, UInt32},
+                                                   $field_name[i]),
+                                           zero(Vec{$extra_components, UInt32})),
+                              Val($element_count)) ),
+                    :( (name == $quoted_name) &&
+                         return map(v -> map(Bool, v[1:$component_count]),
+                                    getfield(s, $quoted_name)) ),
+                    sizeof(padded_type)
+                )
+            elseif T <: SCALAR_TYPES
+                element_alignment = max(sizeof(T), sizeof(v4f))
+                extra_bytes = max(0, Int(sizeof(T)) - element_alignment)
+                padded_element_type = Tuple{field_type, NTuple{extra_bytes, UInt8}}
+                padded_type = NTuple{element_count, padded_element_type}
+                align_for_next_field(element_alignment)
+                add_field(
+                    :( $field_name::$padded_type ),
+                    :( ntuple(i -> ($field_name[i], ntuple(i->0x0, Val($extra_bytes))),
+                              Val($element_count)) ),
+                    :( (name == $quoted_name) &&
+                         return map(v -> (v, ntuple(i->0x0, Val($extra_bytes))),
+                                    getfield(s, $quoted_name)) ),
+                    sizeof(padded_type)
+                )
+            else
+                error("Unexpected type in std140 array '", field_name, "': ", T)
+            end
+        else
+            error("Unexpected type in std140 struct: ", field_type)
+        end
+    end
+
+    # Struct alignment is the largest field alignment, rounded up to a vec4 alignment.
+    struct_alignment = begin
+        (quotient, remainder) = divrem(max_field_base_alignment, sizeof(v4f))
+        iszero(remainder) ?
+            max_field_base_alignment :
+            max_field_base_alignment + (sizeof(v4f) - remainder)
+    end
+
+    # Add padding to the struct to match its alignment.
+    # Note that this incorrectly modifies 'max_field_base_alignment',
+    #    but that variable isn't used past this point.
+    align_for_next_field(struct_alignment)
+
+    # Output the final code.
+    struct_name = esc(struct_name)
+    ret = quote
+        struct $struct_name <: OglBlock_std140
+            $(esc.(field_definitions)...)
+            $struct_name($(esc.(constructor_params)...)) = new($(esc.(constructor_values)...))
+        end
+
+        # Properties:
+        @inline Base.propertynames(::Type{$struct_name}) = tuple($(QuoteNode.(property_names)...))
+        @inline Base.getproperty($(esc(:s))::$struct_name, $(esc(:name))::Symbol) = begin
+            $(esc.(getproperty_clauses)...)
+            ($(esc(:name)) in fieldnames($struct_name)) && error("Do not depend on internal fields of the std140 struct!")
+            error("Unknown field name '", $(esc(:name)), "'")
+        end
+
+        # AbstractOglBlock interface:
+        base_alignment(::Type{$struct_name}) = $struct_alignment
+        padding_size(::Type{$struct_name}) = $n_padding_bytes
+    end
+    # println(ret, "\n\n\n")
+    return ret
+end
+
+#TODO: @std430. Unfortunately it requires a distinction between top-level and nested data.
+
+# std140 rules:
+#=
+    (1) If the member is a scalar consuming <N> basic machine units, the
+        base alignment is <N>.
+
+    (2) If the member is a two- or four-component vector with components
+        consuming <N> basic machine units, the base alignment is 2<N> or
+        4<N>, respectively.
+
+    (3) If the member is a three-component vector with components consuming
+        <N> basic machine units, the base alignment is 4<N>.
+
+    (4) If the member is an array of scalars or vectors, the base alignment
+        and array stride are set to match the base alignment of a single
+        array element, according to rules (1), (2), and (3), and rounded up
+        to the base alignment of a vec4. The array may have padding at the
+        end; the base offset of the member following the array is rounded up
+        to the next multiple of the base alignment.
+
+    (5) If the member is a column-major matrix with <C> columns and <R>
+        rows, the matrix is stored identically to an array of <C> column
+        vectors with <R> components each, according to rule (4).
+
+    (6) If the member is an array of <S> column-major matrices with <C>
+        columns and <R> rows, the matrix is stored identically to a row of
+        <S>*<C> column vectors with <R> components each, according to rule
+        (4).
+
+    (7) If the member is a row-major matrix with <C> columns and <R> rows,
+        the matrix is stored identically to an array of <R> row vectors
+        with <C> components each, according to rule (4).
+
+    (8) If the member is an array of <S> row-major matrices with <C> columns
+        and <R> rows, the matrix is stored identically to a row of <S>*<R>
+        row vectors with <C> components each, according to rule (4).
+
+    (9) If the member is a structure, the base alignment of the structure is
+        <N>, where <N> is the largest base alignment value of any of its
+        members, and rounded up to the base alignment of a vec4. The
+        individual members of this sub-structure are then assigned offsets 
+        by applying this set of rules recursively, where the base offset of
+        the first member of the sub-structure is equal to the aligned offset
+        of the structure. The structure may have padding at the end; the 
+        base offset of the member following the sub-structure is rounded up
+        to the next multiple of the base alignment of the structure.
+
+    (10) If the member is an array of <S> structures, the <S> elements of
+        the array are laid out in order, according to rule (9).
+=#
+export padding_size, base_alignment, @std140, @std430
+
+=#

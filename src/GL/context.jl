@@ -42,10 +42,20 @@ struct Device
     max_anisotropy::Float32
 
     # The max number of individual float/int/bool uniform values
-    #    that can exist in a vertex shader.
+    #    that can exist in a shader.
     # Guaranteed by OpenGL to be at least 1024.
     max_uniform_components_in_vertex_shader::Int
     max_uniform_components_in_fragment_shader::Int
+    #TODO: Other shader types
+
+    # The maximum byte size of a UBO.
+    max_uniform_block_byte_size::Int
+    # The number of available UBO slots for programs to share.
+    n_uniform_block_slots::Int
+    # The number of UBO's that a single shader can reference at once.
+    max_uniform_blocks_in_vertex_shader::Int
+    max_uniform_blocks_in_fragment_shader::Int
+    #TODO: Other shader types
 
     # Driver hints about thresholds you should not cross or else performance gets bad:
     recommended_max_mesh_vertices::Int
@@ -64,6 +74,10 @@ function Device(window::GLFW.Window)
                   get_from_ogl(GLfloat, glGetFloatv, GL_MAX_TEXTURE_MAX_ANISOTROPY),
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_VERTEX_UNIFORM_COMPONENTS),
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_FRAGMENT_UNIFORM_COMPONENTS),
+                  get_from_ogl(GLint, glGetIntegerv, GL_MAX_UNIFORM_BLOCK_SIZE),
+                  get_from_ogl(GLint, glGetIntegerv, GL_MAX_UNIFORM_BUFFER_BINDINGS),
+                  get_from_ogl(GLint, glGetIntegerv, GL_MAX_VERTEX_UNIFORM_BLOCKS),
+                  get_from_ogl(GLint, glGetIntegerv, GL_MAX_FRAGMENT_UNIFORM_BLOCKS),
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_ELEMENTS_VERTICES),
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_ELEMENTS_INDICES),
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_COLOR_ATTACHMENTS),
@@ -113,8 +127,8 @@ mutable struct Context
 
     active_program::Ptr_Program
     active_mesh::Ptr_Mesh
-
-    #TODO: current binding points for UBO's and SSBO's: https://computergraphics.stackexchange.com/questions/6045/how-to-use-the-data-manipulated-in-opengl-compute-shader
+    active_ubos::Vector{Tuple{Ptr_Buffer, Interval{Int}}} # Handle and byte range
+    #TODO: Active SSBO's
 
     # You can register any number of callbacks to GLFW events here.
     # Each is invoked with similar arguments to the raw callbacks minus the window handle.
@@ -176,6 +190,8 @@ mutable struct Context
         @bp_check(isnothing(get_context()), "A Context already exists on this thread")
         con::Context = new(window, vsync, device, RenderState(),
                            Ptr_Program(), Ptr_Mesh(),
+                           fill((Ptr_Buffer(), Interval{Int}(min=-1, max=-1)),
+                                device.n_uniform_block_slots),
                            Vector{Base.Callable}(), Vector{Base.Callable}(),
                            Vector{Base.Callable}(), Vector{Base.Callable}(),
                            Vector{Base.Callable}(), Vector{Base.Callable}(),
@@ -460,6 +476,20 @@ function refresh(context::Context)
         context, :active_program,
         Ptr_Program(get_from_ogl(GLint, glGetIntegerv, GL_CURRENT_PROGRAM))
     )
+    for i in 1:length(context.active_ubos)
+        getfield(context, :active_ubos)[i] = (
+            Ptr_Buffer(
+                get_from_ogl(GLint, glGetIntegeri_v,
+                            GL_UNIFORM_BUFFER_BINDING, i - 1)
+            ),
+            Interval{Int}(
+                min=1 + get_from_ogl(GLint, glGetIntegeri_v,
+                                     GL_UNIFORM_BUFFER_START, i - 1),
+                size=get_from_ogl(GLint, glGetIntegeri_v,
+                                  GL_UNIFORM_BUFFER_SIZE, i - 1)
+            )
+        )
+    end
 
     # Update any attached services.
     for service::Service in values(context.services)
@@ -467,14 +497,6 @@ function refresh(context::Context)
     end
 end
 export refresh
-
-
-
-######################
-#   GLFW callbacks   #
-######################
-
-
 
 
 ################

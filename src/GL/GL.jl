@@ -2,7 +2,7 @@
 module GL
 
 using Setfield, TupleTools, StructTypes
-using ModernGLbp, GLFW
+using ModernGLbp, GLFW, CSyntax
 using ..Utilities, ..Math
 
 @decentralized_module_init

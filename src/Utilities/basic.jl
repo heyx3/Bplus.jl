@@ -11,6 +11,8 @@ export none
 @inline specify(TOuter, TInner...) = TOuter{TInner...}
 export specify
 
+@inline tuple_length(T::Type{<:Tuple})::Int = length(T.parameters)
+export tuple_length
 
 """
 A value (or values) that may or may not exist, based on a condition.
@@ -96,6 +98,14 @@ function find_matching(target, collection, comparison = Base.:(==))::Optional
     return nothing
 end
 export find_matching
+
+"Provides `append!()` for sets, which is missing from Julia for some reason"
+function Base.append!(s::AbstractSet{T}, new_items) where {T}
+    for t::T in new_items
+        push!(s, t)
+    end
+    return s
+end
 
 
 "

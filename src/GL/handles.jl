@@ -44,6 +44,7 @@ end
 
 @ogl_handle Program GLuint
 @ogl_handle Uniform GLint "uniform" -1
+@ogl_handle UniformBuffer GLuint "uniformBuffer" GL_INVALID_INDEX
 
 @ogl_handle Texture GLuint
 @ogl_handle Image GLuint
@@ -61,7 +62,7 @@ end
 
 # Some handle types benefit from supporting pointer arithmetic.
 const POINTER_ARITHMETIC_HANDLES = tuple(
-    Ptr_Uniform
+    Ptr_Uniform, Ptr_UniformBuffer
 )
 for TP in POINTER_ARITHMETIC_HANDLES
     for op in (:+, :-, :*, :÷)
@@ -71,7 +72,7 @@ for TP in POINTER_ARITHMETIC_HANDLES
                     $op(gl_type(p), gl_type($TP)(i))
                 )
             )
-            Base.$op(i::Integer, p::Ptr_Uniform) = $TP(
+            Base.$op(i::Integer, p::$TP) = $TP(
                 gl_type($TP)(
                     $op(gl_type($TP)(i), gl_type(p))
                 )
