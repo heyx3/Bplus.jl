@@ -101,16 +101,15 @@ export Buffer
 
 "
 Uploads the given data into the buffer.
-Note that counts are per-element, not per-byte.
 "
 function set_buffer_data( b::Buffer,
                           new_elements::Vector{T}
                           ;
                           # Which part of the input array to read from
-                          src_element_range::IntervalU = IntervalU((min=1, size=length(new_elements))),
+                          src_element_range::IntervalU = IntervalU(min=1, size=length(new_elements)),
                           # Shifts the first element of the buffer's array to write to
                           dest_element_offset::UInt = zero(UInt),
-                          # A byte offset, to be combined wth 'dest_element_start'
+                          # A byte offset, to be combined wth 'dest_element_offset'
                           dest_byte_offset::UInt = zero(UInt)
                         ) where {T}
     @bp_check(b.is_mutable, "Buffer is immutable")

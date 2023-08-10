@@ -122,7 +122,7 @@ function simple_blit(basic_graphics::BasicGraphicsService,
                     )
     basic_graphics = get_basic_graphics(context)
 
-    tex_view = get_view(tex)
+    tex_view = (tex isa View) ? tex : get_view(tex)
     if manage_tex_view
         was_active::Bool = tex_view.is_active
         view_activate(tex_view)
