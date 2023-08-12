@@ -169,7 +169,18 @@ function gui_spherical_vector( label, vec::v3f
         @c CImGui.InputFloat("$label Length", &radius)
         CImGui.SameLine()
     end
-    @c CImGui.SliderFloat2(label, &yawpitch, -π, π)
+
+    # Show two sliders, but with different ranges so we can't use CImGui.SliderFloat2().
+    yaw, pitch = yawpitch
+    content_width = CImGui.GetContentRegionAvailWidth()
+    CImGui.SetNextItemWidth(content_width * 0.4)
+    @c CImGui.SliderFloat("##Yaw", &yaw, -π, π)
+    CImGui.SameLine()
+    CImGui.SetNextItemWidth(content_width * 0.4)
+    gui_with_nested_id("Slider 2") do
+        @c CImGui.SliderFloat(label, &pitch, 0, π - 0.00001)
+    end
+    yawpitch = (yaw, pitch)
 
     # Convert back to cartesian coordinates.
     pitch_sincos = sincos(yawpitch[2])

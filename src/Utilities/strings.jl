@@ -28,7 +28,7 @@ A decorator for numbers that outputs their bit pattern for both `print()` and `s
 
 The number type `TNum` must support the following:
 
-    * `sizeof()` to determine the max number of bits.
+    * `sizeof() * 8` to determine the max number of bits.
         * If your type doesn't do this, overload `binary_size(n::TNum)`
             or `binary_size(::Type{TNum})`.
     * To check individual bits: bitwise `&` and `<<`;

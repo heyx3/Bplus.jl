@@ -55,6 +55,44 @@ do_append() = append(UpTo{2, Int}((1, )),
             Union{Array{Int, 4}, Array{Int, 5}},
           @unionspec(Array{Int, _}, 4, 5))
 
+# Test reinterpret_bytes
+@bp_test_no_allocations(reinterpret_bytes(4.5f0), (0x00, 0x00, 0x90, 0x40))
+@bp_test_no_allocations(reinterpret_bytes((0x00, 0x00, 0x90, 0x40), 0, Float32), 4.5f0)
+@bp_test_no_allocations(reinterpret_bytes(-4345.35001),
+                        (0x46, 0x5f, 0x41, 0x9a, 0x59, 0xf9, 0xb0, 0xc0))
+@bp_test_no_allocations(reinterpret_bytes((0x46, 0x5f, 0x41, 0x9a, 0x59, 0xf9, 0xb0, 0xc0), 0, Float64),
+                        -4345.35001)
+struct ByteReinterpretable
+    i32::Int32
+    f32::Float32
+    d64::UInt64
+end
+@bp_test_no_allocations(reinterpret_bytes(ByteReinterpretable(reinterpret(Int32, 0xabcdef34),
+                                                              reinterpret(Float32, 0x98765432),
+                                                              0xabcdef1234567890)),
+                        (
+                            # Watch endianness! If this test fails for you,
+                            #    perhaps you're on a machine with a different endianness?
+                            0x34, 0xef, 0xcd, 0xab,
+                            0x32, 0x54, 0x76, 0x98,
+                            0x90, 0x78, 0x56, 0x34, 0x12, 0xef, 0xcd, 0xab
+                        ))
+@bp_test_no_allocations(reinterpret_bytes(
+                            (
+                                0x34, 0xef, 0xcd, 0xab,
+                                0x32, 0x54, 0x76, 0x98,
+                                0x90, 0x78, 0x56, 0x34, 0x12, 0xef, 0xcd, 0xab
+                            ),
+                            0,
+                            ByteReinterpretable
+                        ),
+                        # Watch endianness! If this test fails for you,
+                        #    perhaps you're on a machine with a different endianness?
+                        ByteReinterpretable(reinterpret(Int32, 0xabcdef34),
+                                            reinterpret(Float32, 0x98765432),
+                                            0xabcdef1234567890)
+                        )
+
 # Test ConstVector:
 @bp_check((4.0, 3.0, 1.0, 4.0) isa ConstVector{Float64})
 

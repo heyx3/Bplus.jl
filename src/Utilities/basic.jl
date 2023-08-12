@@ -40,6 +40,28 @@ end
 export @optional, @optionalkw
 
 
+"Grabs the bytes of some bitstype, as a tuple of `UInt8`"
+@inline function reinterpret_bytes(x)::NTuple{sizeof(x), UInt8}
+    @bp_check(isbitstype(typeof(x)), "Can't get bytes of a non-bitstype: ", typeof(x))
+    let r = Ref(x)
+        ptr = Base.unsafe_convert(Ptr{typeof(x)}, r)
+        ptr_bytes = Base.unsafe_convert(Ptr{NTuple{sizeof(x), UInt8}}, ptr)
+        return GC.@preserve r unsafe_load(ptr_bytes)
+    end
+end
+"Turns a subset of some bytes into a bitstype"
+@inline function reinterpret_bytes(bytes::NTuple{N, UInt8}, first_byte::Integer, T::Type)::T where {N}
+    @bp_check(isbitstype(T), "Can't convert bytes to a non-bitstype: ", T)
+    let r = Ref(bytes)
+        ptr = Base.unsafe_convert(Ptr{NTuple{N, UInt8}}, r)
+        ptr += first_byte
+        ptrData = Base.unsafe_convert(Ptr{T}, ptr)
+        return GC.@preserve r unsafe_load(ptrData)
+    end
+end
+export reinterpret_bytes
+
+
 "
 An immutable alternative to Vector, using tuples.
 The size is a type parameter, but you can omit it so that it's 'resizable'.

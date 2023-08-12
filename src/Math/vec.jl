@@ -286,8 +286,8 @@ Base.reverse(v::Vec) = Vec(reverse(v.data))
 Base.getindex(a::Array, i::VecT{<:Integer}) = a[i...]
 Base.setindex!(a::Array, t, i::VecT{<:Integer}) = (a[i...] = t)
 
-Base.getindex(v::Vec, i::Integer) = v.data[i]
-Base.getindex(v::Vec, r::UnitRange) = Vec(v.data[r])
+@inline Base.getindex(v::Vec, i::Integer) = v.data[i]
+@inline Base.getindex(v::Vec, r::UnitRange) = Vec(v.data[r])
 Base.eltype(::Vec{N, T}) where {N, T} = T
 Base.length(::Vec{N, T}) where {N, T} = N
 Base.size(::Vec{N, T}) where {N, T} = (N, )

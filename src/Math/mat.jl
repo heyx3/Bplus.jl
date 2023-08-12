@@ -23,9 +23,7 @@ For example: `@Mat(2, 4, Float32)` makes `fmat2x4`.
 "
 #TODO: Change syntax to @Mat{C, R, F}
 macro Mat(C, R, F)
-    @assert(C isa Integer, "C must be an integer value")
-    @assert(R isa Integer, "R must be an integer value")
-    return esc(:( Mat{$C, $R, $F, $(C * R)} ))
+    return esc(:( Mat{$C, $R, $F, $C * $R} ))
 end
 
 
