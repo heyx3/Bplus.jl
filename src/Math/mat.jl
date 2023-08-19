@@ -160,14 +160,17 @@ m_identityf(n_cols::Int, n_rows::Int) = m_identity(n_cols, n_rows, Float32)
 m_identityd(n_cols::Int, n_rows::Int) = m_identity(n_cols, n_rows, Float64)
 export m_identity, m_identityf, m_identityd
 
-"""
-Embeds a 3x3 matrix into a 4x4 matrix.
-A 4x4 matrix is needed to represent 3D translations.
-"""
+"Embeds a 3x3 matrix into a 4x4 matrix, using 0 for the new components except for 1 at {4, 4}"
 @inline m_to_mat4x4(m::Mat{3, 3, F, 9}) where {F} = Mat{4, 4}(
     m[:, 1]..., zero(F),
     m[:, 2]..., zero(F),
     m[:, 3]..., zero(F),
     zero(F), zero(F), zero(F), one(F)
 )
-export m_to_mat4x4
+"Strips out the last row and column of a 4x4 matrix, to get a 3x3 matrix"
+@inline m_to_mat3x3(m::Mat{4, 4, F, 16}) where {F} = Mat{3, 3}(
+    m[1:3, 1]...,
+    m[1:3, 2]...,
+    m[1:3, 3]...
+)
+export m_to_mat4x4, m_to_mat3x3

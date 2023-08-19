@@ -788,7 +788,7 @@ Redefine this (`get_right_handed() = false`) to make your project left-handed.
 Julia's JIT will allow it to act as a compile-time constant
     after the initial overhead of recompilation.
 
-For example, you might want to do this if your game is primarily rendered through Dear ImGUI
+For example, you might want to do this if your game is primarily rendered through Dear ImGUI.
 """
 get_right_handed()::Bool = true
 

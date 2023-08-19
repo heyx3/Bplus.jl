@@ -80,6 +80,20 @@ function solve_quadratic( a::F, b::F, c::F
 end
 export solve_quadratic
 
-"Multiplies a value by itself."
-@inline square(x) = (x*x)
+"Multiplies a value by itself"
+square(x) = (x*x)
 export square
+
+"
+Rounds a value up to the nearest multiple of another value.
+
+Behavior with negative inputs is not defined, because I haven't bothered to think about it
+    (feel free to do it yourself and update this comment!)
+"
+function round_up_to_multiple(value::Integer, multiple::Integer)
+    (quotient, remainder) = divrem(value, multiple)
+    return iszero(remainder) ?
+        value :
+        value + (multiple - remainder)
+end
+export round_up_to_multiple
