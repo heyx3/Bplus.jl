@@ -64,6 +64,7 @@ macro game_loop(block)
     if !Base.is_expr(block, :block)
         error("Game loop should be a 'begin ... end' block")
     end
+
     statements = block.args
     filter!(s -> !isa(s, LineNumberNode), statements)
 

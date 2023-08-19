@@ -46,7 +46,7 @@ function BasicGraphicsService()
                 [ VertexDataSource(quad_poses, sizeof(Vec{2, Int8})) ],
                 [ VertexAttribute(1, 0x0, VSInput_FVector(Vec2{Int8}, false)) ])
 
-    #TODO: Bool uniforms to avoid the matrix math if they're identity matrices?
+    #TODO: Bool uniforms to avoid the extra math
     blit = bp_glsl"""
 uniform mat3 u_mesh_transform = mat3(1, 0, 0,
                                      0, 1, 0,
@@ -56,6 +56,8 @@ uniform mat4 u_color_map = mat4(1, 0, 0, 0,
                                 0, 1, 0, 0,
                                 0, 0, 1, 0,
                                 0, 0, 0, 1);
+uniform float u_curve = 1.0;
+
 #START_VERTEX
 in vec2 vIn_corner;
 out vec2 vOut_uv;
@@ -69,7 +71,8 @@ void main() {
 in vec2 vOut_uv;
 out vec4 vOut_color;
 void main() {
-    vOut_color = u_color_map * texture(u_tex, vOut_uv);
+    vOut_color = pow(u_color_map * texture(u_tex, vOut_uv),
+                     vec4(u_curve, u_curve, u_curve, u_curve));
 }
 """
 
@@ -117,6 +120,7 @@ function simple_blit(basic_graphics::BasicGraphicsService,
                      ;
                      quad_transform::fmat3x3 = m_identityf(3, 3),
                      color_transform::fmat4x4 = m_identityf(4, 4),
+                     output_curve::Float32 = 1.0f0,
                      disable_depth_test::Bool = true,
                      manage_tex_view::Bool = true
                     )
@@ -131,6 +135,7 @@ function simple_blit(basic_graphics::BasicGraphicsService,
     set_uniform(basic_graphics.blit, "u_tex", tex_view)
     set_uniform(basic_graphics.blit, "u_mesh_transform", quad_transform)
     set_uniform(basic_graphics.blit, "u_color_map", color_transform)
+    set_uniform(basic_graphics.blit, "u_curve", output_curve)
 
     old_depth_test = context.state.depth_test
     if disable_depth_test

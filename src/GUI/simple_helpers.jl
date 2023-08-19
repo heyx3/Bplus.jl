@@ -190,3 +190,17 @@ function gui_spherical_vector( label, vec::v3f
 end
 
 export gui_spherical_vector
+
+
+##  Small helper functions  ##
+
+"Sizes the next CImGui window in terms of a percentage of the actual window's size"
+function gui_next_window_space(uv_space::Box2Df; window_size::v2i = get_window_size(get_context()))
+    pos = window_size * min_inclusive(uv_space)
+    w_size = window_size * size(uv_space)
+
+    CImGui.SetNextWindowPos(CImGui.ImVec2(pos...))
+    CImGui.SetNextWindowSize(CImGui.ImVec2(w_size...))
+end
+
+export gui_next_window_space
