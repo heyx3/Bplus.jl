@@ -36,7 +36,7 @@ mutable struct Buffer <: AbstractResource
                         min=1,
                         size=contiguous_length(initial_elements, T)
                      )
-                   )::Buffer where {I<:Integer, T}
+                   )::Buffer where {T}
         @bp_check(isbitstype(T), "Can't make a GPU buffer of ", T)
         b = new(Ptr_Buffer(), 0, false)
         set_up_buffer(
@@ -252,15 +252,25 @@ raw_bytes(b::AbstractOglBlock)::ConstVector{UInt8} = getfield(b, Symbol("raw byt
 @inline Base.setproperty!(r::Ref{<:AbstractOglBlock}, name::Symbol, value) = setproperty!(r, Val(name), value)
 
 
-#TODO: Pretty sure getproperty and setproperty could be implemented as normal, generic functions.
-#      Although, once this code works, it shouldn't need any maintenance
+#NOTE: I'm pretty sure getproperty and setproperty could be implemented as normal, generic functions.
+# However, once this code works, it shouldn't need any maintenance
 #          as it's attached to a strict standard.
 
 # Functions which generate code to memcpy the property data
 #    into and out of the block struct's bytes.
 function block_macro_get_property_body(T_expr, property_name::Symbol,
                                        property_byte_offset::Int,
-                                       property_type::Type)::Expr
+                                       property_type::Type,
+                                       mode::Symbol)::Expr
+    mode_switch(std140, std430) = if mode == :std140
+                                      std140()
+                                  elseif mode == :std430
+                                      std430()
+                                  else
+                                      error("Unexpected mode: ", mode)
+                                  end
+    base_type::Type{<:AbstractOglBlock} = mode_switch(() -> OglBlock_std140,
+                                                      () -> OglBlock_std430)
     # Emits code that loads data from the block:
     @inline raw_value(; offset=property_byte_offset, t=property_type) =
         :( reinterpret_bytes(raw_bytes(a), $offset, $t) )
@@ -273,16 +283,21 @@ function block_macro_get_property_body(T_expr, property_name::Symbol,
     elseif property_type <: VecT{Bool}
         N = length(property_type)
         return :(
-            convert(Vec{N, Bool}, $(raw_value(t=Vec{N, UInt32})))
+            convert(Vec{$N, Bool}, $(raw_value(t=Vec{N, UInt32})))
         )
     # Non-bool scalars, vectors, and nested structs are trivially readable.
-    elseif property_type <: Union{ScalarBits, Vec, OglBlock_std140}
+    elseif property_type <: Union{ScalarBits, Vec, base_type}
         return raw_value()
     # Matrices are stored like an array of vectors.
     elseif property_type <: Mat
         (C, R, F) = mat_params(property_type)
-        column_stride_bytes = round_up_to_multiple(sizeof(F) * (1, 2, 4, 4)[R],
-                                                   sizeof(v4f))
+
+        column_stride_bytes = sizeof(F) * (1, 2, 4, 4)[R]
+        column_stride_bytes = mode_switch(
+            () -> round_up_to_multiple(column_stride_bytes, sizeof(v4f)),
+            () -> column_stride_bytes
+        )
+
         column_stride_elements = column_stride_bytes ÷ sizeof(F)
         component_count = column_stride_elements * C
 
@@ -299,15 +314,24 @@ function block_macro_get_property_body(T_expr, property_name::Symbol,
         ))
 
         return let_block
-    # Array elements have a stride of at least sizeof(v4f).
+    # Array elements have a certain calculated stride (at least sizeof(v4f) in std140).
     elseif property_type <: NTuple
         array_N = tuple_length(property_type)
         array_T = eltype(property_type)
 
         # Emits code that loads an array of data from the block:
         function raw_values(; element_t = array_T,
-                              element_stride_bytes = round_up_to_multiple(sizeof(element_t),
-                                                                          sizeof(v4f)),
+                              element_stride_bytes = begin
+                                  element_size_t = if element_t <: Vec3
+                                                       sizeof(Vec{4, eltype(element_t)})
+                                                   else
+                                                       sizeof(element_t)
+                                                   end
+                                  mode_switch(
+                                      () -> round_up_to_multiple(element_size_t, sizeof(v4f)),
+                                      () -> element_size_t
+                                  )
+                              end,
                               byte_offset = 0,
                               element_expr_postprocess = identity)
             return :( let bytes = raw_bytes(a)
@@ -331,26 +355,36 @@ function block_macro_get_property_body(T_expr, property_name::Symbol,
             vec_N = length(array_T)
             vec_us = raw_values(element_t=Vec{vec_N, UInt32})
             return :( convert.(Ref(Vec{$vec_N, Bool}), $vec_us) )
-        elseif array_T <: Union{ScalarBits, Vec, OglBlock_std140}
+        elseif array_T <: Union{ScalarBits, Vec, base_type}
             # Note that nested structs are already padded in their size
             #    to take up a multiple of their alignment.
             # This means their stride is always equal to their size.
             return raw_values()
         elseif array_T <: Mat
             (C, R, F) = mat_params(array_T)
-            column_stride_bytes = round_up_to_multiple(sizeof(F) * (1, 2, 4, 4)[R],
-                                                       sizeof(v4f))
+
+            column_stride_bytes = sizeof(F) * (1, 2, 4, 4)[R]
+            column_stride_bytes = mode_switch(
+                () -> round_up_to_multiple(column_stride_bytes, sizeof(v4f)),
+                () -> column_stride_bytes
+            )
+
             matrix_stride_bytes = column_stride_bytes * C
 
             # For each column of the matrix type,
             #    gather an array of that specific column.
             # Then, broadcast-construct all arrays at once.
-            function matrix_column_expr(col)
-                raw_values(element_t=NTuple{R, F},
-                           element_stride_bytes=matrix_stride_bytes)
+            function matrix_columns_expr(col)
+                raw_values(element_t=Vec{R, F},
+                           element_stride_bytes=matrix_stride_bytes,
+                           byte_offset=(col - 1) * column_stride_bytes)
             end
-            column_exprs = (matrix_column_expr(i) for i in 1:C)
-            return :( @Mat($C, $R, $F).($(column_exprs...)) )
+            column_exprs = (matrix_columns_expr(i) for i in 1:C)
+            return quote
+                @inline constructor($((Symbol(:column, i) for i in 1:C)...)) =
+                    @Mat($C, $R, $F)($((:( $(Symbol(:column, i))... ) for i in 1:C)...))
+                constructor.($(column_exprs...))
+            end
         else
             return :( error("Unexpected array element type: ", $T_expr, "::", $array_T) )
         end
@@ -361,11 +395,23 @@ end
 # The setproperty version assumes the instance being set is hidden inside a Ref[].
 function block_macro_set_property_body(T_expr, property_name::Symbol,
                                        property_byte_offset::Int,
-                                       property_type::Type)::Expr
+                                       property_type::Type,
+                                       mode::Symbol)::Expr
     name_str = string(property_name)
+    mode_switch(std140, std430) = if mode == :std140
+                                      std140()
+                                  elseif mode == :std430
+                                      std430()
+                                  else
+                                      error("Unexpected mode: ", mode)
+                                  end
+    base_type::Type{<:AbstractOglBlock} = mode_switch(() -> OglBlock_std140,
+                                                      () -> OglBlock_std430)
 
     # Emits code that stores data into the block:
-    function store_value_expr(; value_expr=:value, byte_offset=property_byte_offset)
+    function store_value_expr(;
+                              value_expr=:( convert($property_type, value) ),
+                              byte_offset=property_byte_offset)
         return :( let value = $value_expr
             ptr_base = Base.unsafe_convert(Ptr{$T_expr}, r)
             ptr_data = Ptr{typeof(value)}(ptr_base) + $byte_offset
@@ -378,24 +424,27 @@ function block_macro_set_property_body(T_expr, property_name::Symbol,
         return store_value_expr(value_expr=:( UInt32(value) ))
     elseif property_type <: VecT{Bool}
         return store_value_expr(value_expr=:( map(UInt32, value) ))
-    # Non-bool scalars, vectors, and nested structs are trivially readable.
-    elseif property_type <: Union{ScalarBits, Vec, OglBlock_std140}
+    # Non-bool scalars, vectors, and nested structs are trivially writable.
+    elseif property_type <: Union{ScalarBits, Vec, base_type}
         return store_value_expr()
     # Matrices are stored like an array of vectors.
     elseif property_type <: Mat
         (C, R, F) = mat_params(property_type)
-        column_stride_bytes = round_up_to_multiple(sizeof(F) * (1, 2, 4, 4)[R],
-                                                   sizeof(v4f))
+        column_stride_bytes = sizeof(F) * (1, 2, 4, 4)[R]
+        column_stride_bytes = mode_switch(
+            () -> round_up_to_multiple(column_stride_bytes, sizeof(v4f)),
+            () -> column_stride_bytes
+        )
 
         column_exprs = map(1:C) do col::Int
             column_byte_offset = column_stride_bytes * (col - 1)
-            return store_value_expr(value_expr=:( value[:, $col] ),
+            return store_value_expr(value_expr=:( convert.(Ref($F), value[:, $col]) ),
                                     byte_offset=property_byte_offset + column_byte_offset)
         end
         return quote
             $(column_exprs...)
         end
-    # Array elements have a stride of at least sizeof(v4f).
+    # Array elements have a calculated stride (at least sizeof(v4f) in std140).
     elseif property_type <: NTuple
         array_N = tuple_length(property_type)
         array_T = eltype(property_type)
@@ -411,13 +460,20 @@ function block_macro_set_property_body(T_expr, property_name::Symbol,
         end
         # Generates a block of expressions that sets each element of the array,
         #    using the given code to generate values and byte offsets from a tuple of indices.
-        function set_per_element_expr(; expr_values_from_idcs = :( value ),
-                                        raw_element_t = array_T,
-                                        expr_byte_offsets_from_idcs = :(
-                                            (idcs .- 1) .*
-                                                round_up_to_multiple($(sizeof(raw_element_t)),
-                                                                     sizeof(v4f))
-                                        )
+        function set_per_element_expr(; raw_element_t = array_T,
+                                        expr_values_from_idcs = :( convert.(Ref($raw_element_t), value) ),
+                                        expr_byte_offsets_from_idcs = begin
+                                            element_size_t = if raw_element_t <: Vec3
+                                                                 sizeof(Vec4{eltype(raw_element_t)})
+                                                             else
+                                                                 sizeof(raw_element_t)
+                                                             end
+                                            element_stride = mode_switch(
+                                                () -> round_up_to_multiple(element_size_t, sizeof(v4f)),
+                                                () -> element_size_t
+                                            )
+                                            :( (idcs .- 1) .* $element_stride )
+                                        end
                                      )::Expr
             setup = quote
                 ptr_base = Base.unsafe_convert(Ptr{$T_expr}, r)
@@ -458,8 +514,7 @@ function block_macro_set_property_body(T_expr, property_name::Symbol,
                 end
             )
         # Non-bool scalars and vectors, and nested structs, are trivial to set:
-        elseif array_T <: Union{ScalarBits, Vec, OglBlock_std140}
-            @bp_check(!(array_T <: Vec3), "Code assumes Vec3 isn't used")
+        elseif array_T <: Union{ScalarBits, Vec, base_type}
             # Note that nested structs are already padded in their size
             #    to take up a multiple of their alignment.
             # This means their stride is always equal to their size.
@@ -467,23 +522,29 @@ function block_macro_set_property_body(T_expr, property_name::Symbol,
         # Matrices are treated like arrays of column vectors:
         elseif array_T <: Mat
             (C, R, F) = mat_params(array_T)
-            column_stride_bytes = round_up_to_multiple(sizeof(F) * (1, 2, 4, 4)[R],
-                                                       sizeof(v4f))
+
+            column_stride_bytes = sizeof(F) * (1, 2, 4, 4)[R]
+            column_stride_bytes = mode_switch(
+                () -> round_up_to_multiple(column_stride_bytes, sizeof(v4f)),
+                () -> column_stride_bytes
+            )
+
             matrix_stride_bytes = column_stride_bytes * C
 
             # For each column of the matrix type,
             #    grab and store an array of that specific column.
             column_exprs = map(1:C) do col::Int
+                column_byte_offset = (col - 1) * column_stride_bytes
                 set_per_element_expr(;
                     raw_element_t = Vec{R, F},
                     expr_values_from_idcs = quote
                         matrices = getindex.(Ref(value), idcs)
                         columns = getindex.(matrices, Ref(:), $col)
-                        columns
+                        convert.(Ref(Vec{$R, $F}), columns)
                     end,
-                    expr_byte_offsets_from_idcs = :(
-                        (idcs .- 1) .* $matrix_stride_bytes
-                    )
+                    expr_byte_offsets_from_idcs = :( begin
+                        ((idcs .- 1) .* $matrix_stride_bytes) .+ $column_byte_offset
+                    end )
                 )
             end
             return quote
@@ -497,7 +558,6 @@ function block_macro_set_property_body(T_expr, property_name::Symbol,
     end
 end
 
-#TODO: Test that construction doesn't allocate
 "Internal constructor for a buffer block (i.e. std140, std430)"
 function construct_block(T::Type{<:AbstractOglBlock}, properties...)::T
     # Store an instance in a Ref, mutate its fields, then return it.
@@ -575,13 +635,16 @@ function block_struct_impl(struct_expr, mode::Symbol, invoking_module::Module)
         error("Expected struct block, got: ", struct_expr)
     end
 
-    base_type::Type{<:AbstractOglBlock} = if mode == :std140
-                                              OglBlock_std140
-                                          elseif mode == :std430
-                                              OglBlock_std430
-                                          else
-                                              error("Unexpected mode: '", mode, "'")
-                                          end
+    mode_switch(std140, std430) = if mode == :std140
+                                      std140()
+                                  elseif mode == :std430
+                                      std430()
+                                  else
+                                      error("Unexpected mode: ", mode)
+                                  end
+    base_type::Type{<:AbstractOglBlock} = mode_switch(() -> OglBlock_std140,
+                                                      () -> OglBlock_std430)
+
     SCALAR_TYPES = Union{Scalar32, Scalar64, Bool}
     VECTOR_TYPES = Union{(
         Vec{n, t}
@@ -609,12 +672,19 @@ function block_struct_impl(struct_expr, mode::Symbol, invoking_module::Module)
             if !(T <: VECTOR_TYPES)
                 error("Invalid vector count or type in ", field_name, ": ", T)
             elseif T <: Vec3
-                error("3D vectors are not handled correctly in every graphics driver, ",
-                        "and they're usually padded out to 4D anyway. Just use a 4D vector``.")
+                error("Problem with field ", field_name,
+                        ": 3D vectors are not padded correctly by every graphics driver, ",
+                        "and their size is almost always padded out to 4D anyway, so just use ",
+                        "a 4D vector")
             end
         elseif T <: Mat
             if !(T <: MATRIX_TYPES)
                 error("Invalid matrix size or component type in ", field_name, ": ", T)
+            elseif (T <: Mat{C, 3} where {C})
+                error("Problem with field ", field_name,
+                        ": 3D vectors (and by extension, 3-row matrices) are not padded correctly ",
+                        "by every graphics driver. Their size gets padded out to 4D anyway, ",
+                        "so just use a 4-row matrix.")
             end
         elseif T <: NTuple
             if is_within_array
@@ -696,12 +766,17 @@ function block_struct_impl(struct_expr, mode::Symbol, invoking_module::Module)
             total_byte_size += byte_size
         elseif field_type <: Mat
             (C, R, F) = mat_params(field_type)
-            column_alignment = round_up_to_multiple(sizeof(F) * (1, 2, 4, 4)[R],
-                                                    sizeof(v4f))
-            byte_size = C * column_alignment
-            alignment = byte_size
 
-            align_next_field(column_alignment)
+            column_alignment = sizeof(F) * (1, 2, 4, 4)[R]
+            column_alignment = mode_switch(
+                () -> round_up_to_multiple(column_alignment, sizeof(v4f)),
+                () -> column_alignment
+            )
+
+            byte_size = C * column_alignment
+            alignment = column_alignment
+
+            align_next_field(alignment)
             total_byte_size += byte_size
         elseif field_type <: base_type
             byte_size = sizeof(field_type)
@@ -713,32 +788,60 @@ function block_struct_impl(struct_expr, mode::Symbol, invoking_module::Module)
             array_length = tuple_length(field_type)
             element_type = eltype(field_type)
 
-            element_alignment = round_up_to_multiple(
-                if element_type <: Union{SCALAR_TYPES, VECTOR_TYPES, base_type}
-                    # We don't have a special case for bool here, because
-                    #    bool and bool vectors round up to vec4 size anyway
-                    sizeof(element_type)
+            (element_alignment, element_stride) =
+                if element_type <: SCALAR_TYPES
+                    size = (element_type == Bool) ? 4 : sizeof(element_type)
+                    mode_switch(
+                        () -> (size = round_up_to_multiple(size, sizeof(v4f))),
+                        () -> nothing
+                    )
+                    (size, size)
+                elseif element_type <: Vec
+                    component_size = (eltype(element_type) == Bool) ?
+                                            4 :
+                                            sizeof(eltype(element_type))
+                    vec_size = (1, 2, 4, 4)[length(element_type)] * component_size
+                    mode_switch(
+                        () -> (vec_size = round_up_to_multiple(vec_size, sizeof(v4f))),
+                        () -> nothing
+                    )
+                    (vec_size, vec_size)
                 elseif element_type <: Mat
                     (C, R, F) = mat_params(element_type)
-                    column_alignment = sizeof(F) * (1, 2, 4, 4)[R]
-                    column_alignment
+                    column_size = sizeof(F) * (1, 2, 4, 4)[R]
+                    mode_switch(
+                        () -> (column_size = round_up_to_multiple(column_size, sizeof(v4f))),
+                        () -> nothing
+                    )
+                    (column_size, column_size * C)
+                elseif element_type <: base_type
+                    # Any @std140/@std430 struct will already be padded to the right size,
+                    #    but the padding logic is still here for completeness.
+                    (a, s) = (base_alignment(element_type), sizeof(element_type))
+                    mode_switch(
+                        () -> (round_up_to_multiple(a, sizeof(v4f)),
+                               round_up_to_multiple(s, sizeof(v4f))),
+                        () -> (a, s)
+                    )
                 else
-                    error("Unimplemented: ", element_type)
-                end,
-                sizeof(v4f)
-            )
+                    error("Unhandled case: ", element_type)
+                end
+
             align_next_field(element_alignment)
-            total_byte_size += element_alignment * array_length
+            total_byte_size += element_stride * array_length
         else
             error("Unhandled: ", field_type)
         end
     end
 
-    # Struct alignment is the largest field alignment, rounded up to a vec4 alignment.
-    struct_alignment = round_up_to_multiple(max_field_alignment, sizeof(v4f))
+    # Struct alignment is the largest field alignment, then in std140 rounded up to a vec4 alignment.
+    struct_alignment = mode_switch(
+        () -> round_up_to_multiple(max_field_alignment, sizeof(v4f)),
+        () -> max_field_alignment
+    )
 
     # Add padding to the struct to match its alignment.
-    # Note that this incorrectly modifies 'max_field_alignment',
+    # Note that this inadvertently modifies 'max_field_alignment',
     #    but that variable isn't used past this point.
     align_next_field(struct_alignment, false)
 
@@ -753,9 +856,9 @@ function block_struct_impl(struct_expr, mode::Symbol, invoking_module::Module)
             $(@__MODULE__).property_type(::Type{$struct_name}, ::$compile_time_name) = $type
 
             $(esc(:Base)).getproperty(a::$struct_name, ::$compile_time_name) =
-                $(block_macro_get_property_body(struct_name, name, offset, type))
+                $(block_macro_get_property_body(struct_name, name, offset, type, mode))
             $(esc(:Base)).setproperty!(r::Ref{$struct_name}, ::$compile_time_name, value) =
-                $(block_macro_set_property_body(struct_name, name, offset, type))
+                $(block_macro_set_property_body(struct_name, name, offset, type, mode))
         end
     end
     return quote
@@ -778,62 +881,3 @@ end
 
 export @std140,
        padding_size, raw_bytes
-
-#=
-
-
-
-#TODO: @std430. Unfortunately it requires a distinction between top-level and nested data.
-
-# std140 rules:
-#=
-    (1) If the member is a scalar consuming <N> basic machine units, the
-        base alignment is <N>.
-
-    (2) If the member is a two- or four-component vector with components
-        consuming <N> basic machine units, the base alignment is 2<N> or
-        4<N>, respectively.
-
-    (3) If the member is a three-component vector with components consuming
-        <N> basic machine units, the base alignment is 4<N>.
-
-    (4) If the member is an array of scalars or vectors, the base alignment
-        and array stride are set to match the base alignment of a single
-        array element, according to rules (1), (2), and (3), and rounded up
-        to the base alignment of a vec4. The array may have padding at the
-        end; the base offset of the member following the array is rounded up
-        to the next multiple of the base alignment.
-
-    (5) If the member is a column-major matrix with <C> columns and <R>
-        rows, the matrix is stored identically to an array of <C> column
-        vectors with <R> components each, according to rule (4).
-
-    (6) If the member is an array of <S> column-major matrices with <C>
-        columns and <R> rows, the matrix is stored identically to a row of
-        <S>*<C> column vectors with <R> components each, according to rule
-        (4).
-
-    (7) If the member is a row-major matrix with <C> columns and <R> rows,
-        the matrix is stored identically to an array of <R> row vectors
-        with <C> components each, according to rule (4).
-
-    (8) If the member is an array of <S> row-major matrices with <C> columns
-        and <R> rows, the matrix is stored identically to a row of <S>*<R>
-        row vectors with <C> components each, according to rule (4).
-
-    (9) If the member is a structure, the base alignment of the structure is
-        <N>, where <N> is the largest base alignment value of any of its
-        members, and rounded up to the base alignment of a vec4. The
-        individual members of this sub-structure are then assigned offsets 
-        by applying this set of rules recursively, where the base offset of
-        the first member of the sub-structure is equal to the aligned offset
-        of the structure. The structure may have padding at the end; the 
-        base offset of the member following the sub-structure is rounded up
-        to the next multiple of the base alignment of the structure.
-
-    (10) If the member is an array of <S> structures, the <S> elements of
-        the array are laid out in order, according to rule (9).
-=#
-export padding_size, base_alignment, @std140, @std430
-
-=#

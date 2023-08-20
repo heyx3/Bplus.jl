@@ -281,6 +281,8 @@ Base.convert(::Type{Vec{N, T2}}, v::Vec{N, T}) where {N, T, T2} = map(x -> conve
 Base.convert(::Type{Vec{N, T}}, v::Vec{N, T}) where {N, T} = v
 Base.promote_rule(::Type{Vec{N, T1}}, ::Type{Vec{N, T2}}) where {N, T1, T2} = Vec{N, promote_type(T1, T2)}
 
+Base.convert(::Type{Vec{N, T2}}, a::SVector{N, T}) where {N, T, T2} = Vec(T2.(a)...)
+
 Base.reverse(v::Vec) = Vec(reverse(v.data))
 
 Base.getindex(a::Array, i::VecT{<:Integer}) = a[i...]
