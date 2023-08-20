@@ -59,7 +59,51 @@ struct Quaternion{F}
         end
     end
 
-    "Creates a rotation by combining a sequence of rotations together."
+    "Creates a rotation from a rotation matrix"
+    function Quaternion(rot_mat::SMatrix{3, 3, F, 9}) where {F}
+        # Reference: https://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
+
+        trace = rot_mat[1, 1] + rot_mat[2, 2] + rot_mat[3, 3]
+        local qw::F,
+              qx::F,
+              qy::F,
+              qz::F,
+              s::F
+        @inline f(x) = convert(F, x)
+    
+        if trace > 0
+            s = f(0.5) / sqrt(trace + f(1))
+            qw = f(0.25) / s
+            qx = (rot_mat[3, 2] - rot_mat[2, 3]) * s
+            qy = (rot_mat[1, 3] - rot_mat[3, 1]) * s
+            qz = (rot_mat[2, 1] - rot_mat[1, 2]) * s
+        elseif (rot_mat[1, 1] > rot_mat[2, 2]) && (rot_mat[1, 1] > rot_mat[3, 3])
+            s = f(2) * sqrt(f(1) + rot_mat[1, 1] - rot_mat[2, 2] - rot_mat[3, 3])
+            qw = (rot_mat[3, 2] - rot_mat[2, 3]) / s
+            qx = f(0.25) * s
+            qy = (rot_mat[1, 2] + rot_mat[2, 1]) / s
+            qz = (rot_mat[1, 3] + rot_mat[3, 1]) / s
+        elseif (rot_mat[2, 2] > rot_mat[3, 3])
+            s = f(2) * sqrt(f(1) + rot_mat[2, 2] - rot_mat[1, 1] - rot_mat[3, 3])
+            qw = (rot_mat[1, 3] - rot_mat[3, 1]) / s
+            qx = (rot_mat[1, 2] + rot_mat[2, 1]) / s
+            qy = f(0.25) * s
+            qz = (rot_mat[2, 3] + rot_mat[3, 2]) / s
+        else
+            s = f(2) * sqrt(f(1) + rot_mat[3, 3] - rot_mat[1, 1] - rot_mat[2, 2])
+            qw = (rot_mat[2, 1] - rot_mat[1, 2]) / s
+            qx = (rot_mat[1, 3] + rot_mat[3, 1]) / s
+            qy = (rot_mat[2, 3] + rot_mat[3, 2]) / s
+            qz = f(0.25) * s
+        end
+
+        # Normalize the quaternion before constructing.
+        return new{F}(vnorm(Vec(qx, qy, qz, qw)))
+    end
+    @inline Quaternion{F}(rot_mat::SMatrix{3, 3, F2, 9}) where {F, F2} =
+        Quaternion(convert(similar_type(rot_mat, F), rot_mat))
+
+    "Creates a rotation representing a sequence of other rotations."
     @inline Quaternion(rots_in_order::Quaternion...) = foldl(*, rots_in_order)
     @inline Quaternion{F}(rots_in_order::Quaternion...) where {F} = foldl(*, rots_in_order)
 end

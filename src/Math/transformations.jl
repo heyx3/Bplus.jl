@@ -65,9 +65,30 @@ end
 @inline m4_rotateZ(rad::F) where {F<:AbstractFloat} = m_to_mat4x4(m3_rotateZ(rad))
 
 "Generates a 3x3 rotation matrix from a quaternion"
-@inline m3_rotate(q::Quaternion{F}) where {F} = q_mat3x3(q)
+function m3_rotate(q::Quaternion{F}) where {F}
+    # Source: https://www.euclideanspace.com/maths/geometry/rotations/conversions/quaternionToMatrix/index.htm
+    # There is a second equation for this out on the internet,
+    #    but it assumes the Quaternion is normalized so I went with this one.
+
+    v::Vec3{F} = q.xyz
+    v_sqr::Vec3{F} = map(f->f*f, v)
+
+    ONE::F = one(F)
+    TWO::F = convert(F, 2)
+
+    xy2::F = v.x * v.y * TWO
+    xz2::F = v.x * v.z * TWO
+    yz2::F = v.y * v.z * TWO
+    vw2::Vec3{F} = v * (w * TWO) 
+
+    return @SMatrix [
+        (ONE - (TWO * (v_sqr.y + v_sqr.z)))               (xy2 - vw2.z)                       (xz2 + vw2.y)
+                  (xy2 + vw2.z)               (ONE - (TWO * (v_sqr.x + v_sqr.z)))             (yz2 - vw2.x)
+                  (xz2 - vw2.y)                           (yz2 + vw2.x)             (ONE - (TWO * (v_sqr.x + v_sqr.y)))
+    ]
+end
 "Generates a 4x4 rotation matrix from a quaternion"
-@inline m4_rotate(q::Quaternion{F}) where {F} = q_mat4x4(q)
+@inline m4_rotate(q::Quaternion{F}) where {F} = m_to_mat4x4(m3_rotate(q))
 
 "Builds the world-space matrix for an object with the given position, rotation, and scale."
 @inline function m4_world( pos::Vec3{F},
@@ -107,24 +128,82 @@ end
 @inline function m4_look_at( cam_pos::Vec3{F},
                              target_pos::Vec3{F},
                              up::Vec3{F}
+                             ;
+                             forward_axis::Int = get_horz_axes()[1],
+                             forward_dir::Int = 1,
+                             upward_axis::Int = get_up_axis(),
+                             upward_dir::Int = get_up_sign(),
+                             rightward_axis::Int = get_horz_axes()[2],
+                             rightward_dir::Int = 1
                            )::Mat{4, 4, F} where {F}
     # Reference: https://www.geertarien.com/blog/2017/07/30/breakdown-of-the-lookAt-function-in-OpenGL/
 
-    forward::Vec3{F} = vnorm(target_pos - cam_pos)
-    if (forward == up) || (forward == -up)
-        up = Vec{3, F}(up.y, up.z, up.x)
-    end
+    look_dir::Vec3{F} = vnorm(target_pos - cam_pos)
+    basis = vbasis(look_dir, up)
+    println("View mat:")
+    println("\tForward: ", basis.forward,
+            "\n\tUp: ", basis.up,
+            "\n\tRight: ", basis.right)
 
-    right::Vec3{F} = vnorm(vcross(forward, up))
-    up = vcross(right, forward)
+    @inline copy_sign(v::Vec, dir::Int) = (dir < 0) ? -v : v
+    row_rightward = copy_sign(vappend(basis.right,
+                                      -vdot(basis.right, cam_pos)),
+                              rightward_dir)
+    row_upward = copy_sign(vappend(basis.up,
+                                   -vdot(basis.up, cam_pos)),
+                           upward_dir)
+    row_forward = copy_sign(vappend(basis.forward,
+                                    -vdot(basis.forward, cam_pos)),
+                            forward_dir)
 
-    forward = -forward
+    get_row(axis::Int)::Vec{4, F} =
+        if forward_axis == axis
+            row_forward
+        elseif upward_axis == axis
+            row_upward
+        elseif rightward_axis == axis
+            row_rightward
+        else
+            error("Invalid axis setup: ", forward_axis, "|", upward_axis, "|", rightward_axis)
+        end
     return m_transpose(Mat{4, 4, F}( # Notice the call to transpose --
                                      #    these are the rows, not the columns.
-        right..., -vdot(right, cam_pos),
-        up..., -vdot(up, cam_pos),
-        forward..., -vdot(forward, cam_pos),
+        get_row(1)...,
+        get_row(2)...,
+        get_row(3)...,
         zero(F), zero(F), zero(F), one(F)
+    ))
+end
+@inline function m3_look_at(forward::Vec3{F},
+                            up::Vec3{F},
+                            right::Vec3{F} = v_rightward(forward, up)
+                            ;
+                            forward_axis::Int = get_horz_axes()[1],
+                            forward_dir::Int = 1,
+                            upward_axis::Int = get_up_axis(),
+                            upward_dir::Int = get_up_sign(),
+                            rightward_axis::Int = get_horz_axes()[2],
+                            rightward_dir::Int = 1
+                           )::Mat{3, 3, F} where {F}
+    @inline copy_sign(v::Vec3{F}, dir::Int) = (dir < 0) ? -v : v
+    row_rightward = copy_sign(right, rightward_dir)
+    row_upward = copy_sign(up, upward_dir)
+    row_forward = copy_sign(forward, forward_dir)
+
+    get_row(axis::Int) = if forward_axis == axis
+                             row_forward
+                         elseif upward_axis == axis
+                             row_upward
+                         elseif rightward_axis == axis
+                             row_rightward
+                         else
+                             error("Invalid axis setup: ", forward_axis, "|", upward_axis, "|", rightward_axis)
+                         end
+    return m_transpose(Mat{3, 3, F}( # Notice the call to transpose --
+                                     #    these are the rows, not the columns.
+        get_row(1)...,
+        get_row(2)...,
+        get_row(3)...,
     ))
 end
 
@@ -171,6 +250,5 @@ export m3_translate, m4_translate, m_scale,
        m3_rotateX, m3_rotateY, m3_rotateZ,
        m4_rotateX, m4_rotateY, m4_rotateZ,
        m3_rotate, m4_rotate,
-       m4_world,
-       m3_reorient, m4_look_at, m4_reorient, m4_projection,
-       m4_ortho
+       m4_world, m3_look_at, m4_look_at,
+       m4_projection, m4_ortho

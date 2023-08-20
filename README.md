@@ -120,7 +120,7 @@ Like `Vec`, there are many aliases for `Mat`:
 
 Like `Vec` and `Quaternion`, matrix functions are prefixed with `m_`. `m_apply_point`, `m_apply_vector`, `m_combine`, `m_identity`.
 
-Numerous functions exist for computing particular matrices: `m3_translate`, `m4_translate`, `m_scale`, `m3_rotate`, `m4_world`, `m4_look_at`, `m4_projection`, `m4_ortho`.
+Numerous functions exist for computing particular matrices: `m3_translate`, `m4_translate`, `m_scale`, `m3_rotate`, `m4_world`, `m4_look_at`, `m3_look_at`, `m4_projection`, `m4_ortho`.
 
 #### Ray{N, F}
 
