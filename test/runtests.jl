@@ -2,20 +2,23 @@
 # Otherwise, it'll run every file in this folder.
 # E.x. to only run tests for Vec (from vec.jl), you can set `TEST_NAME = "vec"`.
 
+# Each test is siloed into its own module to avoid name collisions.
+const TESTS_DEPENDENCIES = quote
+    # External dependencies:
+    using Random, TupleTools, Setfield, InteractiveUtils,
+        StaticArrays, StructTypes, JSON3,
+        DataStructures, Suppressor,
+        ModernGL, GLFW, CImGui
 
-# Import dependencies.
-using Random, TupleTools, Setfield, InteractiveUtils,
-      StaticArrays, StructTypes, JSON3,
-      DataStructures, Suppressor,
-      ModernGL, GLFW, CImGui
+    # The main codebase:
+    using Bplus
+    using Bplus.Utilities, Bplus.Math, Bplus.GL,
+        Bplus.Helpers, Bplus.Fields, Bplus.SceneTree, Bplus.Input, Bplus.GUI
 
-# Import the main codebase.
-using Bplus
-using Bplus.Utilities, Bplus.Math, Bplus.GL,
-      Bplus.Helpers, Bplus.Fields, Bplus.SceneTree, Bplus.Input, Bplus.GUI
-
-# Unambiguate the ⋅ operator, between Images and Bplus.Math.
-const ⋅ = vdot
+    # Unambiguate the ⋅ operator, between Images and Bplus.Math.
+    const ⋅ = vdot
+end
+eval(TESTS_DEPENDENCIES)
 
 # Enable all asserts for the codebase.
 @inline Bplus.Utilities.bp_utils_asserts_enabled() = true
@@ -105,6 +108,13 @@ const ALL_FLOATS = (Float16, Float32, Float64)
 
 const ALL_REALS = TupleTools.vcat(ALL_INTEGERS, ALL_FLOATS, (Bool, ))
 
+
+# Import the above definitions into each test module.
+push!(TESTS_DEPENDENCIES.args, quote
+    import ..@bp_test_no_allocations, ..@bp_test_no_allocations_setup,
+           ..ALL_SIGNED, ..ALL_UNSIGNED, ..ALL_INTEGERS, ..ALL_FLOATS, ..ALL_REALS
+end)
+
 #############################
 
 
@@ -119,10 +129,13 @@ else
                endswith(name, ".jl")
     end
     for f_path in test_files
-        f_name = split(f_path, ('/', '\\'))[end]
+        f_name = basename(f_path)
         println("\nRunning ", f_name, "...")
         try
-            include(f_path)
+            @eval module $(Symbol(:UnitTests_, f_name))
+                $TESTS_DEPENDENCIES
+                include($(f_path))
+            end
         finally end
     end
 end
