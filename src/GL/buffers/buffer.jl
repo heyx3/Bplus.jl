@@ -583,7 +583,7 @@ function Base.hash(a::T, h::UInt)::UInt where {T<:AbstractOglBlock}
 end
 
 function Base.show(io::IO, a::AbstractOglBlock)
-    print(io, typeof(a), '(')
+    print(io, Base.typename(typeof(a)).name, '(')
     for (i, prop) in enumerate(propertynames(a))
         if i > 1
             print(io, ", ")
@@ -629,6 +629,41 @@ println("i is: ", MUTABLE_UBO[].f)
 """
 macro std140(struct_expr)
     return block_struct_impl(struct_expr, :std140, __module__)
+end
+"""
+Generates an immutable struct using OpenGL-friendly types,
+    whose byte layout exactly follows the std430 standard in shader blocks.
+
+Sample usage:
+````
+@std430 struct MyInnerUniformBlock
+    f::Float32
+    bools::vb4
+    position_array::NTuple{12, v3f}
+end
+
+@std430 struct MyOuterUniformBlock
+    i::Int32 # Be careful; 'Int' in Julia means Int64
+    items::NTuple{5, MyInnerUniformBlock}
+    b::Bool
+end
+
+const MY_UBO_DATA = MyOuterUniformBlock(
+    3,
+    ntuple(i -> zero(MyInnerUniformBlock), 5),
+    true
+)
+println("i is: ", MY_UBO_DATA.i)
+
+const MUTABLE_UBO = Ref(MyInnerUniformBlock(3.5,
+                                            vb4(false, false, true, true),
+                                            ntuple(i -> zero(v3f))))
+MUTABLE_UBO.f = 3.4f0
+println("i is: ", MUTABLE_UBO[].f)
+````
+"""
+macro std430(struct_expr)
+    return block_struct_impl(struct_expr, :std430, __module__)
 end
 function block_struct_impl(struct_expr, mode::Symbol, invoking_module::Module)
     if !Base.is_expr(struct_expr, :struct)
@@ -879,5 +914,5 @@ function block_struct_impl(struct_expr, mode::Symbol, invoking_module::Module)
     end
 end
 
-export @std140,
+export @std140, @std430
        padding_size, raw_bytes

@@ -1,4 +1,4 @@
-@std140 struct A
+@std430 struct A
     f::Float32
     b::Bool
     v::v4f
@@ -16,7 +16,7 @@ end
 # Test struct A:
 @bp_test_no_allocations(sizeof(A),
                         32,
-                        "Struct 'A' in std140 layout should be 32 bytes but it's ",
+                        "Struct 'A' in std430 layout should be 32 bytes but it's ",
                           sizeof(A))
 @bp_test_no_allocations(propertynames(A), (:f, :b, :v))
 @bp_test_no_allocations(typeof(A(1.4f0, true, v4f(4.4, 5.5, 6.6, 7.7))),
@@ -44,14 +44,15 @@ end
 @bp_test_no_allocations(Bplus.GL.base_alignment(A), 16)
 
 
-@std140 struct B
+@std430 struct B
     a::A # 32B
     m::fmat4 # 64B = 96
     i::Int32 # 4B = 100
     # Pad 12B to align with dvec2 (16B): 112
     d::dmat3x2 # 48B = 160
-    bs::NTuple{6, Bool} # 96B = 256
-    backup_as::NTuple{10, A} # 320B = 576
+    bs::NTuple{6, Bool} # 24B = 184
+    # Pad 8B to align with 16B: 192
+    backup_as::NTuple{10, A} # 320B = 512
 end
 
 # For debugging, make a very clear print() for B.
@@ -79,7 +80,7 @@ function Base.print(io::IO, b::B; indentation="")
 end
 
 # Test struct B:
-@bp_test_no_allocations(sizeof(B), 576)
+@bp_test_no_allocations(sizeof(B), 512)
 @bp_test_no_allocations(propertynames(B), (:a, :m, :i, :d, :bs, :backup_as),
                         propertynames(B))
 Random.rand(::Type{A})::A = A(rand(Float32), rand(Bool), rand(v4f))
@@ -115,22 +116,22 @@ end
 check_B_field(:m, fmat4, 32)
 check_B_field(:d, dmat3x2, 112)
 check_B_field(:bs, NTuple{6, Bool}, 160)
-check_B_field(:backup_as, NTuple{10, A}, 256)
+check_B_field(:backup_as, NTuple{10, A}, 192)
 @bp_test_no_allocations(Bplus.GL.base_alignment(B), 16)
 
 
-@std140 struct C
-    bool_vec::Vec{2, Bool} # 8B
+@std430 struct C
+    bool_vec::Vec{2, Bool} # 8
     # Pad 8B to align with struct B (16B): 16
-    b::B # 576B = 592
-    f1::Float32 # 596
-    # Pad 12B to align with v4f: 608
-    array1::NTuple{10, Vec{2, Bool}} # alignment is v4f
-                                     # 160B = 768
-    array2::NTuple{5, fmat3x2} # alignment is v2f => v4f
-                               # element stride is v4f*3 = 48
-                               # 240B = 1008
-    # No padding needed to align with 16B base alignment
+    b::B # 512B = 528
+    f1::Float32 # 532
+    # Pad 4B to align with v2u: 536
+    array1::NTuple{10, Vec{2, Bool}} # alignment is v2u
+                                     # 80B = 616
+    array2::NTuple{5, fmat3x2} # alignment is v2f (8B)
+                               # element stride is v2f*3 = 24
+                               # 120B = 736
+    # Total size is 736
 end
 
 # For debugging, make a very clear print() for C.
@@ -155,7 +156,7 @@ function Base.print(io::IO, c::C; indentation="")
 end
 
 # Test struct C:
-@bp_test_no_allocations(sizeof(C), 1008)
+@bp_test_no_allocations(sizeof(C), 736)
 @bp_test_no_allocations(propertynames(C), (:bool_vec, :b, :f1, :array1, :array2))
 Random.rand(::Type{B})::B = B(
     rand(A),
@@ -199,7 +200,7 @@ end
 end
 check_C_field(:bool_vec, Vec{2, Bool}, 0)
 check_C_field(:b, B, 16)
-check_C_field(:f1, Float32, 592)
-check_C_field(:array1, NTuple{10, Vec{2, Bool}}, 608)
-check_C_field(:array2, NTuple{5, fmat3x2}, 768)
+check_C_field(:f1, Float32, 528)
+check_C_field(:array1, NTuple{10, Vec{2, Bool}}, 536)
+check_C_field(:array2, NTuple{5, fmat3x2}, 616)
 @bp_test_no_allocations(Bplus.GL.base_alignment(C), 16)
