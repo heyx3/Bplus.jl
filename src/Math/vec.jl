@@ -695,8 +695,8 @@ function vbasis( forward::Vec3{F1},
     # Find the right vector.
     local right::Vec3{F3}
     if !are_parallel(forward, up)
-        right = vnorm(get_right_handed() ? (forward × up) : (up × forward))
-        up = vnorm(get_right_handed() ? (right × forward) : (forward × right))
+        right = vnorm(v_rightward(forward, up))
+        up = vnorm(v_rightward(right, forward))
         return (forward=forward, right=right, up=up)
     else
         right = Vec3{F3}(1, 0, 0)
@@ -708,9 +708,9 @@ function vbasis( forward::Vec3{F1},
             end
         end
 
-        up = vnorm(get_right_handed() ? (right × forward) : (forward × right))
-        right = get_right_handed() ? (forward × up) : (up × forward) # Normalization not needed;
-                                                                     #  they're perpendicular
+        up = vnorm(v_rightward(right, forward))
+        right = v_rightward(forward, up) # Normalization not needed; inputs are normalized
+                                         #    and perpendicular.
         return (forward=forward, right=right, up=up)
     end
 end

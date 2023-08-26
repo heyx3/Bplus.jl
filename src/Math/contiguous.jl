@@ -9,9 +9,12 @@ export Contiguous, ContiguousSimple, ContiguousRaw,
 ##  Aliases  ##
 ###############
 
+
 "
 Collections which can be contiguous in memory, even when nested arbitrarily-many times.
 Includes the type itself, i.e. `Int <: ContiguousRaw{Int}`.
+
+The length of these containers can be determined with only the type information.
 "
 const ContiguousRaw{T} = Union{
     T,
@@ -23,9 +26,11 @@ const ContiguousRaw{T} = Union{
 "
 A flat, contiguous collection of some type `T`.
 Includes the type itself, i.e. `Int <: ContiguousSimple{Int}`.
+A `Ref{T}` is assumed to have length 1.
 "
 const ContiguousSimple{T} = Union{
     ContiguousRaw{T},
+    Ref{T},
     MArray{S, T} where {S},
     StridedArray{T},
 }
@@ -56,15 +61,25 @@ Gets the total length of a contiguous array of `T` data, regardless of how deepl
 Note that there's an implementation limit on how deeply-nested the array can really be;
     see `Contiguous{T}` if you get MethodErrors.
 "
-contiguous_length(x::T, ::Type{T}) where {T} = 1
-contiguous_length(x::ContiguousSimple{T}, ::Type{T}) where {T} = length(x)
-contiguous_length(x::Contiguous{T}, ::Type{T}) where {T} =
-    if isempty(x)
-        0
+function contiguous_length(x::ContiguousRaw{TInner}, ::Type{TInner})::Int where {TInner}
+    return contiguous_length(typeof(x), TInner)
+end
+function contiguous_length(x::Contiguous{TInner}, ::Type{TInner})::Int where {TInner}
+    return length(x) * contiguous_length(eltype(x), TInner)
+end
+function contiguous_length(TOuter::Type, ::Type{TInner}) where {TInner}
+    if TOuter == TInner
+        return 1
+    elseif TOuter <: Vec
+        return length(TOuter) * contiguous_length(eltype(TOuter), TInner)
+    elseif TOuter <: SArray
+        return length(TOuter) * contiguous_length(eltype(TOuter), TInner)
+    elseif TOuter <: NTuple
+        return length(TOuter.parameters) * contiguous_length(eltype(TOuter), TInner)
     else
-        length(x) * contiguous_length(x[1], T)
+        error("Unexpected ContiguousRaw type for ", TInner, ": ", TOuter)
     end
-#
+end
 
 "
 Gets a `Ptr{T}` to an element of a contiguous array of `T` data,
@@ -77,12 +92,7 @@ If the Ref wasn't generated with `contiguous_ref()`,
 Note that there's an implementation limit on how deeply-nested the array can really be;
     see `Contiguous{T}` if you get MethodErrors.
 "
-function contiguous_ptr(r::Ref{T2}, ::Type{T}, i::Int = 1) where {T, T2}
-    # Make sure the reference is to a contiguous chunk of T data.
-    # NOTE: I originally had this in the method signature, `r::Ref{<:Contiguous{T}}`,
-    #    but then Julia fails to call this overload for some reason.
-    @bp_check(T2 <: Contiguous{T}, "Reference to ", T2, " isn't a Contiguous{", T, "}")
-
+function contiguous_ptr(r::Contiguous{T2}, ::Type{T}, i::Int = 1) where {T, T2}
     ptr = Base.unsafe_convert(Ptr{Nothing}, r)
     ptr += (i - 1) * sizeof(T)
     return Base.unsafe_convert(Ptr{T}, ptr)
@@ -106,7 +116,7 @@ end
 function Base.unsafe_convert( P::Union{Type{Ptr{TEl}}, Type{Ptr{Cvoid}}},
                               r::ContiguousRef{TEl, TC}
                             )::P where {TEl, TC}
-    @bp_math_assert(isbitstype(TEl), "Can't have a contiguous reference to non-bits types")
+    @bp_check(isbitstype(TEl), "Can't have a contiguous reference to non-bits types")
 
     n_elements::Int = contiguous_length(r.data, TEl)
     @boundscheck(@bp_check(r.element_idx in 1:n_elements))

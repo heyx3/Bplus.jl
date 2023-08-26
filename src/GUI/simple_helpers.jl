@@ -36,6 +36,16 @@ function gui_with_item_width(to_do, width::Real)
     end
 end
 
+
+function gui_with_indentation(to_do, width::Optional{Real} = nothing)
+    CImGui.Indent(@optional(exists(width), width))
+    try
+        return to_do()
+    finally
+        CImGui.Unindent()
+    end
+end
+
 function gui_with_padding(to_do, padding...)
     CImGui.PushStyleVar(CImGui.ImGuiStyleVar_WindowPadding, padding...)
     try
@@ -136,7 +146,7 @@ function gui_within_child_window(to_do, size, flags=0)::Optional
     return nothing
 end
 
-export gui_with_item_width, gui_with_unescaped_tabbing, gui_with_padding,
+export gui_with_item_width, gui_with_indentation, gui_with_unescaped_tabbing, gui_with_padding,
        gui_with_style_color, gui_with_font, gui_with_nested_id,
        gui_window, gui_within_fold, gui_within_group, gui_within_child_window
 #
