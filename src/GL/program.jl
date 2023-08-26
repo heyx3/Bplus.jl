@@ -589,7 +589,7 @@ function set_uniforms( program::Program, name::String,
                   "Passing a collection of textures/views to set a uniform array,",
                   " but the collection isn't array-like! It's a ", TCollection)
 
-        handles::Vector{Ptr_View} = map(data) do element::Union{Texture, View}
+        handles::Vector{Ptr_View} = map(values) do element::Union{Texture, View}
             if element isa Texture
                 return get_view(element).handle
             elseif element isa View

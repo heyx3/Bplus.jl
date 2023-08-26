@@ -32,6 +32,8 @@ If you wish to add definitions inside the enum module (e.x. import a package),
 macro bp_enum(name, args...)
     return generate_enum(name, :(begin end), args)
 end
+#NOTE: Nobody needs to use 'generate_enum' externally, just eval the data inside the invoker's module.
+#      However, it already works and would be kinda arduous to change.
 
 
 """

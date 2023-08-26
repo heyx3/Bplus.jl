@@ -59,7 +59,7 @@ function intersections( c::Capsule{N, F},
 
         # Pick an orthonormal basis where 'forward' is the capsule's A=>B direction.
         local kU::V
-        #TODO: Turn this technique into a Vec function: 'vbasis(forward::Vec3)'
+        #TODO: Replace vbasis() logic with this, it looks nifty
         if fW_length > ZERO
             #TODO: Remove the branch by parameterizing the axes involved
             if abs(kW.x) >= abs(kW.y)
