@@ -1,7 +1,7 @@
 "A light wrapper around OpenGL"
 module GL
 
-using Setfield, TupleTools, StructTypes
+using Setfield, TupleTools, MacroTools, StructTypes
 using ModernGLbp, GLFW, CSyntax
 using ..Utilities, ..Math
 
@@ -33,6 +33,7 @@ include("depth_stencil.jl")
 include("blending.jl")
 include("data.jl")
 
+include("service.jl")
 include("context.jl")
 include("resource.jl")
 
