@@ -57,6 +57,13 @@ struct Device
     max_uniform_blocks_in_fragment_shader::Int
     #TODO: Other shader types
 
+    # The number of available SSBO slots for programs to share.
+    n_storage_block_slots::Int
+    # The number of SSBO's that a single shader can reference at once.
+    max_storage_blocks_in_vertex_shader::Int
+    max_storage_blocks_in_fragment_shader::Int
+    #TODO: Other shader types
+
     # Driver hints about thresholds you should not cross or else performance gets bad:
     recommended_max_mesh_vertices::Int
     recommended_max_mesh_indices::Int
@@ -78,6 +85,9 @@ function Device(window::GLFW.Window)
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_UNIFORM_BUFFER_BINDINGS),
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_VERTEX_UNIFORM_BLOCKS),
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_FRAGMENT_UNIFORM_BLOCKS),
+                  get_from_ogl(GLint, glGetIntegerv, GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS),
+                  get_from_ogl(GLint, glGetIntegerv, GL_MAX_VERTEX_SHADER_STORAGE_BLOCKS),
+                  get_from_ogl(GLint, glGetIntegerv, GL_MAX_FRAGMENT_SHADER_STORAGE_BLOCKS),
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_ELEMENTS_VERTICES),
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_ELEMENTS_INDICES),
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_COLOR_ATTACHMENTS),
@@ -128,7 +138,7 @@ mutable struct Context
     active_program::Ptr_Program
     active_mesh::Ptr_Mesh
     active_ubos::Vector{Tuple{Ptr_Buffer, Interval{Int}}} # Handle and byte range
-    #TODO: Active SSBO's
+    active_ssbos::Vector{Tuple{Ptr_Buffer, Interval{Int}}} # Handle and byte range
 
     # You can register any number of callbacks to GLFW events here.
     # Each is invoked with similar arguments to the raw callbacks minus the window handle.
@@ -192,6 +202,8 @@ mutable struct Context
                            Ptr_Program(), Ptr_Mesh(),
                            fill((Ptr_Buffer(), Interval{Int}(min=-1, max=-1)),
                                 device.n_uniform_block_slots),
+                           fill((Ptr_Buffer(), Interval{Int}(min=-1, max=-1)),
+                                device.n_storage_block_slots),
                            Vector{Base.Callable}(), Vector{Base.Callable}(),
                            Vector{Base.Callable}(), Vector{Base.Callable}(),
                            Vector{Base.Callable}(), Vector{Base.Callable}(),
@@ -487,6 +499,20 @@ function refresh(context::Context)
                                      GL_UNIFORM_BUFFER_START, i - 1),
                 size=get_from_ogl(GLint, glGetIntegeri_v,
                                   GL_UNIFORM_BUFFER_SIZE, i - 1)
+            )
+        )
+    end
+    for i in 1:length(context.active_ssbos)
+        getfield(context, :active_ssbos)[i] = (
+            Ptr_Buffer(
+                get_from_ogl(GLint, glGetIntegeri_v,
+                             GL_SHADER_STORAGE_BUFFER_BINDING, i - 1)
+            ),
+            Interval{Int}(
+                min=1 + get_from_ogl(GLint, glGetIntegeri_v,
+                                     GL_SHADER_STORAGE_BUFFER_START, i - 1),
+                size=get_from_ogl(GLint, glGetIntegeri_v,
+                                  GL_SHADER_STORAGE_BUFFER_SIZE, i - 1)
             )
         )
     end

@@ -140,10 +140,6 @@ end
 
     look_dir::Vec3{F} = vnorm(target_pos - cam_pos)
     basis = vbasis(look_dir, up)
-    println("View mat:")
-    println("\tForward: ", basis.forward,
-            "\n\tUp: ", basis.up,
-            "\n\tRight: ", basis.right)
 
     @inline copy_sign(v::Vec, dir::Int) = (dir < 0) ? -v : v
     row_rightward = copy_sign(vappend(basis.right,

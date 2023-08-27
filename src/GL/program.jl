@@ -10,7 +10,10 @@ const UniformVector{N} = Vec{N, <:UniformScalar}
 const UniformMatrix{C, R, L} = Mat{C, R, <:Union{Float32, Float64}, L}
 
 
-"Acceptable types of uniforms"
+"
+Acceptable types of data for `set_uniform()` and `set_uniforms()`
+    (note that buffers are handled separately)
+"
 const Uniform = Union{UniformScalar,
                       @unionspec(UniformVector{_}, 1, 2, 3, 4),
                       # All Float32 and Float64 matrices from 2x2 to 4x4:
@@ -21,8 +24,6 @@ const Uniform = Union{UniformScalar,
                       # "Opaque" types:
                       Texture, Ptr_View, View
                      }
-
-
 export Uniform
 
 
@@ -40,13 +41,14 @@ struct UniformData
 end
 
 "
-Information about a specific Program uniform block (a.k.a. UBO).
+Information about a specific Program buffer block (a.k.a. UBO/SSBO).
 
 The name is not stored because it will be used as the key for an instance of this struct.
 "
-struct UniformBlockData
-    handle::Ptr_UniformBuffer
-    byte_size::Int32
+struct ShaderBlockData
+    handle::Ptr_ShaderBuffer
+    byte_size::Int32 # For SSBO's with a dynamic-length array at the end,
+                     #    this assumes an element count of 1 (although 0 elements is legal).
 end
 
 
@@ -86,19 +88,37 @@ function set_uniforms end
 
 Sets the given buffer to be used for one of the
     globally-available Uniform Block (a.k.a. "UBO") slots.
-Assign your program's Uniform Block to use one of these slots with the other overload.
+A second overload allows you to assign your program's Uniform Block
+    to use one of these slots.
 
 `set_uniform_block(::Program, ::String, ::Int)`
 
-Sets a program's uniform block (a.k.a. "UBO") to use the given global slot,
-    which will be assigned a Buffer with the other overload.
+Sets a program's Uniform Block (a.k.a. "UBO")
+    to use the given global slot, which can be assigned a Buffer with the other overload.
 
 **NOTE**: Indices and byte ranges are 1-based!
 """
 function set_uniform_block end
 
+"""
+`set_storage_block(::Buffer, ::Int; byte_range=[full buffer])`
 
-export Uniform, UniformData, set_uniform, set_uniforms, set_uniform_block
+Sets the given buffer to be used for one of the
+    globally-available Shader Storage Block (a.k.a. "SSBO") slots.
+A second overload allows you to assign your program's Shader-Storage Block
+    to use one of these slots.
+
+`set_storage_block(::Program, ::String, ::Int)`
+
+Sets a program's Shader-Storage Block (a.k.a. "SSBO")
+    to use the given global slot, which can be assigned a Buffer with the other overload.
+
+**NOTE**: Indices and byte ranges are 1-based!
+"""
+function set_storage_block end
+
+
+export Uniform, UniformData, set_uniform, set_uniforms, set_uniform_block, set_storage_block
 
 
 ################################
@@ -278,7 +298,8 @@ export ProgramCompiler, compile_program
 mutable struct Program <: AbstractResource
     handle::Ptr_Program
     uniforms::Dict{String, UniformData}
-    uniform_blocks::Dict{String, UniformBlockData}
+    uniform_blocks::Dict{String, ShaderBlockData}
+    storage_blocks::Dict{String, ShaderBlockData}
     flexible_mode::Bool # Whether to silently ignore invalid uniforms
 end
 
@@ -302,9 +323,42 @@ function Program(handle::Ptr_Program, flexible_mode::Bool = false)
 
     name_c_buffer = Vector{GLchar}(undef, 128)
 
+    # Get the shader storage blocks.
+    n_storage_blocks = get_from_ogl(GLint, glGetProgramInterfaceiv,
+                                    handle, GL_SHADER_STORAGE_BLOCK, GL_ACTIVE_RESOURCES)
+    storage_blocks = Dict{String, ShaderBlockData}()
+    resize!(name_c_buffer,
+            get_from_ogl(GLint, glGetProgramInterfaceiv,
+                         handle, GL_SHADER_STORAGE_BLOCK, GL_MAX_NAME_LENGTH))
+    for block_idx::Int in 1:n_storage_blocks
+        block_name_length = Ref(zero(GLsizei))
+        glGetProgramResourceiv(handle,
+                               # The resource:
+                               GL_SHADER_STORAGE_BLOCK, block_idx,
+                               # The desired data:
+                               1, Ref(GL_NAME_LENGTH),
+                               # The output buffer(s):
+                               1, C_NULL, block_name_length)
+
+        glGetProgramResourceName(handle,
+                                 GL_SHADER_STORAGE_BLOCK, block_idx,
+                                 block_name_length, C_NULL, Ref(name_c_buffer, 1))
+        block_name = String(@view name_c_buffer[1 : (block_name_length[] - 1)])
+        storage_blocks[block_name] = ShaderBlockData(
+            Ptr_ShaderBuffer(block_idx),
+            get_from_ogl(GLint, glGetProgramResourceiv,
+                         # The resource:
+                         handle, GL_SHADER_STORAGE_BLOCK, block_idx,
+                         # The desired data:
+                         1, Ref(GL_BUFFER_DATA_SIZE),
+                         # The output buffer(s):
+                         1, C_NULL)
+        )
+    end
+
     # Get the uniform buffer blocks.
     n_uniform_blocks = get_from_ogl(GLint, glGetProgramiv, handle, GL_ACTIVE_UNIFORM_BLOCKS)
-    uniform_blocks = Dict{String, UniformBlockData}()
+    uniform_blocks = Dict{String, ShaderBlockData}()
     resize!(name_c_buffer,
             get_from_ogl(GLint, glGetProgramiv, handle, GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH))
     for block_idx::Int in 1:n_uniform_blocks
@@ -312,9 +366,9 @@ function Program(handle::Ptr_Program, flexible_mode::Bool = false)
         @c glGetActiveUniformBlockName(handle, block_idx, length(name_c_buffer),
                                        &block_name_length, &name_c_buffer[0])
 
-        block_name = String(@view name_c_buffer[1 : (block_name_length-1)])
-        uniform_blocks[block_name] = UniformBlockData(
-            Ptr_UniformBuffer(block_idx),
+        block_name = String(@view name_c_buffer[1 : (block_name_length - 1)])
+        uniform_blocks[block_name] = ShaderBlockData(
+            Ptr_ShaderBuffer(block_idx),
             get_from_ogl(GLint, glGetActiveUniformBlockiv,
                          handle, block_idx, GL_UNIFORM_BLOCK_DATA_SIZE)
         )
@@ -372,7 +426,7 @@ function Program(handle::Ptr_Program, flexible_mode::Bool = false)
     # Connect to the view-debugger service.
     service_view_debugger_add_program(context, handle)
 
-    return Program(handle, uniforms, uniform_blocks, flexible_mode)
+    return Program(handle, uniforms, uniform_blocks, storage_blocks, flexible_mode)
 end
 
 function Base.close(p::Program)
@@ -688,6 +742,29 @@ function set_uniform_block(program::Program, name::AbstractString, idx::Int)
     glUniformBlockBinding(get_ogl_handle(buf),
                           program.uniform_blocks[name].handle,
                           idx - 1)
+    return nothing
+end
+
+# Shader Storage blocks:
+function set_storage_block(buf::Buffer, idx::Int;
+                           context::Context = get_context(),
+                           byte_range::Interval{<:Integer} = Interval(
+                               min=1,
+                               max=buf.byte_size
+                           ))
+    handle = get_ogl_handle(buf)
+    if context.active_ssbos[idx] != (handle, byte_range)
+        context.active_ssbos[idx] = (handle, byte_range)
+        glBindBufferRange(GL_SHADER_STORAGE_BUFFER, idx - 1, handle,
+                          min_inclusive(byte_range) - 1,
+                          size(byte_range))
+    end
+    return nothing
+end
+function set_storage_block(program::Program, name::AbstractString, idx::Int)
+    glShaderStorageBlockBinding(get_ogl_handle(buf),
+                                program.uniform_blocks[name].handle,
+                                idx - 1)
     return nothing
 end
 

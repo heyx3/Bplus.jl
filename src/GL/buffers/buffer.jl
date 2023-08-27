@@ -624,7 +624,7 @@ const MUTABLE_UBO = Ref(MyInnerUniformBlock(3.5,
                                             vb4(false, false, true, true),
                                             ntuple(i -> zero(v3f))))
 MUTABLE_UBO.f = 3.4f0
-println("i is: ", MUTABLE_UBO[].f)
+println("f is: ", MUTABLE_UBO[].f)
 ````
 """
 macro std140(struct_expr)
@@ -636,30 +636,30 @@ Generates an immutable struct using OpenGL-friendly types,
 
 Sample usage:
 ````
-@std430 struct MyInnerUniformBlock
+@std430 struct MyInnerShaderStorageBlock
     f::Float32
     bools::vb4
     position_array::NTuple{12, v3f}
 end
 
-@std430 struct MyOuterUniformBlock
+@std430 struct MyOuterShaderStorageBlock
     i::Int32 # Be careful; 'Int' in Julia means Int64
-    items::NTuple{5, MyInnerUniformBlock}
+    items::NTuple{5, MyInnerShaderStorageBlock}
     b::Bool
 end
 
-const MY_UBO_DATA = MyOuterUniformBlock(
+const MY_SSBO_DATA = MyOuterShaderStorageBlock(
     3,
-    ntuple(i -> zero(MyInnerUniformBlock), 5),
+    ntuple(i -> zero(MyInnerShaderStorageBlock), 5),
     true
 )
-println("i is: ", MY_UBO_DATA.i)
+println("i is: ", MY_SSBO_DATA.i)
 
-const MUTABLE_UBO = Ref(MyInnerUniformBlock(3.5,
-                                            vb4(false, false, true, true),
-                                            ntuple(i -> zero(v3f))))
-MUTABLE_UBO.f = 3.4f0
-println("i is: ", MUTABLE_UBO[].f)
+const MUTABLE_SSBO = Ref(MyInnerShaderStorageBlock(3.5,
+                                                   vb4(false, false, true, true),
+                                                   ntuple(i -> zero(v3f))))
+MUTABLE_SSBO.f = 3.4f0
+println("f is: ", MUTABLE_SSBO[].f)
 ````
 """
 macro std430(struct_expr)

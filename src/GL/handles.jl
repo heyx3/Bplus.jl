@@ -12,7 +12,7 @@ The type will also have an empty constructor which creates a "null" value
 """
 macro ogl_handle(name::Symbol, gl_type_name,
                  display_name = lowercase(string(name)),
-                 null_val = zero(eval(gl_type_name)))
+                 null_val = zero(eval(gl_type_name))) #TODO: Eliminate eval by using `:( zero($gl_type_name) )`
     gl_type = eval(gl_type_name)
     @bp_gl_assert(gl_type <: Integer,
                   "Unexpected GL type: ", gl_type, ".",
@@ -44,7 +44,7 @@ end
 
 @ogl_handle Program GLuint
 @ogl_handle Uniform GLint "uniform" -1
-@ogl_handle UniformBuffer GLuint "uniformBuffer" GL_INVALID_INDEX
+@ogl_handle ShaderBuffer GLuint "shaderBuffer" GL_INVALID_INDEX
 
 @ogl_handle Texture GLuint
 @ogl_handle Image GLuint
@@ -62,7 +62,7 @@ end
 
 # Some handle types benefit from supporting pointer arithmetic.
 const POINTER_ARITHMETIC_HANDLES = tuple(
-    Ptr_Uniform, Ptr_UniformBuffer
+    Ptr_Uniform, Ptr_ShaderBuffer
 )
 for TP in POINTER_ARITHMETIC_HANDLES
     for op in (:+, :-, :*, :÷)
