@@ -282,10 +282,11 @@ function Base.close(c::Context)
               "Trying to close a context on the wrong thread!")
 
     # Clean up all services.
-    for service::ServiceWrapper in values(c.services)
-        service.on_destroyed(service.data)
+    for service::AbstractService in c.services
+        service_internal_shutdown(service, true)
     end
     empty!(c.services)
+    empty!(c.unique_service_lookup)
 
     GLFW.DestroyWindow(c.window)
     setfield!(c, :window, GLFW.Window(C_NULL))
@@ -501,61 +502,11 @@ function refresh(context::Context)
     end
 
     # Update any attached services.
-    for service::ServiceWrapper in values(context.services)
-        service.on_refresh(service.data)
+    for service::AbstractService in c.services
+        service_internal_refresh(service)
     end
 end
 export refresh
-
-
-################
-#   Services   #
-################
-
-"Registers some kind of singleton associated with a Context."
-function register_service( context::Context,
-                           service_key::Symbol,
-                           service_value::ServiceWrapper
-                         )
-    @bp_check(!haskey(context.services, service_key),
-              "Service :", service_key, " already registered with the Context")
-    context.services[service_key] = service_value
-end
-"
-Registers a service with a Context, **if** it doesn't already exist.
-The first parameter is a lambda which generates the `ServiceWrapper` as needed.
-"
-function try_register_service( service_creator::Function,
-                               context::Context,
-                               service_key::Symbol
-                             )
-    return get!(service_creator, context.services, service_key).data
-end
-"
-Gets the data for a service that has been registered with this Context
-    (NOT the `ServiceWrapper` object itself! Just the data inside).
-"
-function get_service(context::Context, service_key::Symbol)
-    @bp_gl_assert(haskey(context.services, service_key))
-    return context.services[service_key].data
-end
-"
-Destroys a registered service.
-Note that the context will clean up services automatically when closing,
-    so you only need to call this if the service should be killed early.
-"
-function destroy_service(context::Context, service_key::Symbol)
-    @bp_check(haskey(context.services, service_key),
-              "Service :", service_key, " doesn't exist in this Context")
-
-    # Run the cleanup code for the service before removing it.
-    service::ServiceWrapper = context.services[service_key]
-    service.on_destroyed(service.data)
-
-    delete!(context.services, service_key)
-end
-
-# Not exported, because specific services should offer their own simplified interfaces.
 
 
 ############################

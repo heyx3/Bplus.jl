@@ -274,58 +274,41 @@ export TexSampler, get_wrapping, apply,
 export DepthStencilSources, E_DepthStencilSources
 
 
-#################################
+####################################
 #   TexSampler Service Interface   #
-#################################
+####################################
 
 # Samplers can be re-used between textures, so you only need to define a few sampler objects
 #    across an entire rendering context.
 
-"Gets an OpenGL sampler object matching the given settings."
-@inline get_sampler(settings::TexSampler)::Ptr_Sampler = get_sampler(get_context(), settings)
-function get_sampler(context::Context, settings::TexSampler{N})::Ptr_Sampler where {N}
-    if N < 3
-        get_sampler(context, convert(TexSampler{3}, settings))
-    else
-        service::SamplerService = get_sampler_service(context)
-        if !haskey(service, settings)
-            handle = Ptr_Sampler(get_from_ogl(gl_type(Ptr_Sampler), glCreateSamplers, 1))
-            apply(settings, handle)
+@bp_service SamplerProvider(force_unique) begin
+    lookup::Dict{TexSampler{3}, Ptr_Sampler}
 
-            service[settings] = handle
-            return handle
+    INIT() = new(Dict{TexSampler{3}, Ptr_Sampler}())
+
+    SHUTDOWN(service, is_context_closing::Bool) = begin
+        if !is_context_closing
+            error("You should not close the SamplerProvider service early!")
+
+            # OpenGL cleanup code is left here for completeness.
+            for handle in values(service.lookup)
+                glDeleteSamplers(1, Ref(gl_type(handle)))
+            end
+        end
+        empty!(service.lookup)
+    end
+
+    "Gets an OpenGL sampler object matching the given settings"
+    function get_sampler(service, settings::TexSampler{N})::Ptr_Sampler where {N}
+        if N < 3
+            return get_sampler(convert(TexSampler{3}, settings))
         else
-            return service[settings]
+            return get!(service.lookup, settings) do
+                handle = Ptr_Sampler(get_from_ogl(gl_type(Ptr_Sampler), glCreateSamplers, 1))
+                apply(settings, handle)
+
+                return handle
+            end
         end
     end
 end
-
-"
-Ensures the service which provides sampler objects is initialized.
-This will get called within the constructor of Texture,
-    so that it's always available before it's first needed
-    without having to check every single time a sampler is requested.
-"
-function init_sampler_service(context::Context)
-    try_register_service(context, SERVICE_NAME_SAMPLERS) do
-        return Service(SamplerService(),
-                       on_destroyed = close_sampler_service)
-    end
-end
-
-
-######################################
-#   TexSampler Service Implementation   #
-######################################
-
-const SERVICE_NAME_SAMPLERS = :sampler_global_lookup
-const SamplerService = Dict{TexSampler{3}, Ptr_Sampler}
-
-function close_sampler_service(s::SamplerService)
-    for handle in values(s)
-        glDeleteSamplers(1, Ref(gl_type(handle)))
-    end
-    empty!(s)
-end
-
-get_sampler_service(context::Context)::SamplerService = get_service(context, SERVICE_NAME_SAMPLERS)

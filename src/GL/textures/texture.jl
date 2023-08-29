@@ -243,7 +243,9 @@ function generate_texture( type::E_TexTypes,
               "Texture type ", type, " doesn't support the format ", sprint(show, format))
 
     # Make sure the global store of samplers has been initialized.
-    init_sampler_service(get_context())
+    if !service_SamplerProvider_exists()
+        service_SamplerProvider_init()
+    end
 
     # Construct the Texture instance.
     tex::Texture = Texture(Ptr_Texture(get_from_ogl(gl_type(Ptr_Texture),

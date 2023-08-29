@@ -1,23 +1,3 @@
-struct ServiceWrapper
-    # The actual service being provided.
-    data::Any
-
-    # Called when the context refreshes, a.k.a. some external library
-    #    has messed with OpenGL state in an unpredictable way.
-    # The `data` field is passed into this function for convenience.
-    on_refresh::Function
-
-    # Called when the service (or the entire Context) is being destroyed.
-    # The `data` field is passed into this function for convenience.
-    on_destroyed::Function
-
-    ServiceWrapper(data;
-            on_refresh = (data -> nothing),
-            on_destroyed = (data -> nothing)) =
-        new(data, on_refresh, on_destroyed)
-end
-
-
 "
 A Context-wide mutable singleton, providing some utility for users.
 It is highly recommended to define a service with `@bp_service`.
@@ -30,14 +10,14 @@ service_internal_refresh(service::AbstractService) = nothing
 service_internal_shutdown(service::AbstractService) = nothing
 
 
-#TODO: A stronger version of 'ForceUnique' for services that must not exist more than once across multiple contexts
+#TODO: A stronger version of 'force_unique' for services that must not exist more than once across multiple contexts
 """
 Defines a B+ Context service with a standardized interface.
 
 Example usage:
 
 ````
-@bp_service Input [ForceUnique] begin
+@bp_service Input(args...) begin
     # Some data that the service will hold:
     buttons::Dict{AbstractString, Any}
     axes::Dict{AbstractString, Any}
@@ -73,7 +53,9 @@ Example usage:
 end
 ````
 
-The flag `ForceUnique` means that you will not be able to create multiple instances of the service,
+The `args...` in the service name currently only accept one optional value, `force_unique`,
+    which makes the service a singleton across the entire Context.
+`force_unique` services will not let you create multiple instances,
     and you do not need to pass in references to the service when calling its functions.
 
 # Interface
@@ -84,21 +66,23 @@ The following functions are generated for you based on your service's name
 ## Startup/shutdown
 * `service_X_init(args...)` : Executes your defined `INIT(args...)` code,
     adds the service to the Context, and returns it.
-    If you did not specify `ForceUnique`, then you may call this multiple times
+    If you did not specify `force_unique`, then you may call this multiple times
     to create multiple service instances.
 * `service_X_shutdown([service])` : Closes your service, executing your defined
     `SHUTDOWN(service, is_context_closing)` code.
     Called automatically on context close, but you may kill it early if you want, in which case
         the value of the second parameter will be `false`.
-    If you specified `ForceUnique`, then you do not have to provide the service instance when calling.
+    If you specified `force_unique`, then you do not have to provide the service instance when calling.
 ## Utility
 * `service_X()` : Gets the current service instance, assuming it's already been created.
-    This function only exists if you specified `ForceUnique`.
+    This function only exists if you specified `force_unique`.
+* `service_X_exists()` : Gets whether the service has already been created.
+    This function only exists if you specified `force_unique`.
 ## Custom
-* `service_X_[name](...)` : Any other functions you declared get turned into this format.
-    For example, `f(service, a, b) = a*b + service.z` turns into one of the functions
-    `service_X_f(service, x, y)` or `service_X_f(x, y)`,
-    depending on whether you specified `ForceUnique`.
+Any other functions you declared get generated basically as-is.
+  The first argument must always be the service, and then if you specified `force_unique`,
+      the user of your function omits that parameter when calling.
+  For example, `f(service, a, b) = a*b + service.z` turns into `f(a, b)` if `force_unique`.
 
 # Notes
 
@@ -106,31 +90,27 @@ You can provide type parameters in your service name, in which case
     you must also pass them in when calling `new` in your `INIT`,
     and the `service_X()` getter will take those types as normal function parameters.
 
-You can similarly provide type parameters in all functions,
-    including the special ones like `INIT`.
+You can similarly provide type parameters in all functions, including special ones like `INIT`.
 """
-macro bp_service(args...)
-    # Grab the arguments based on their position.
-    local service_name,
-          service_is_unique,
-          service_definitions
-    if length(args) == 2
-        service_name = args[1]
-        service_is_unique = false
-        service_definitions = args[2]
-    elseif length(args) == 3
-        service_name = args[1]
-        if args[2] == :ForceUnique
-            service_is_unique = true
-        else
-            error("Unexpected argument to @bp_service: '", args[2], "'")
-        end
-        service_definitions = args[3]
-    else
-        error("Expected 2 or 3 arguments; got ", length(args))
+macro bp_service(service_name, service_definitions)
+    # Retrieve the different elements of the service declaration.
+    service_args = [ ]
+    if @capture(service_name, name_(args__))
+        service_name = name
+        service_args = args
     end
 
-    # Extract type parameters from the service name, if any exist.
+    # Parse the inner parameters to the service.
+    service_is_unique = false
+    for service_arg in service_args
+        if service_arg == :force_unique
+            service_is_unique = true
+        else
+            error("Unexpected argument to '", service_name, "': \"", service_arg, "\"")
+        end
+    end
+
+    # Extract any type parameters for the service.
     service_type_params = nothing
     if @capture(service_name, generic_{types__})
         service_name = generic
@@ -141,7 +121,7 @@ macro bp_service(args...)
     if service_name isa AbstractString
         service_name = Symbol(service_name)
     elseif !isa(service_name, Symbol)
-        error("ServiceWrapper's name should be a simple token (or string), but it's '", service_name, "'")
+        error("Service's name should be a simple token (or string), but it's '", service_name, "'")
     end
     if !Base.is_expr(service_definitions, :block)
         error("Expected a begin...end block for service's definitions; got: ",
@@ -162,6 +142,7 @@ macro bp_service(args...)
     expr_function_name_init = esc(Symbol(function_prefix, :_init))
     expr_function_name_shutdown = esc(Symbol(function_prefix, :_shutdown))
     expr_function_name_get = esc(function_prefix)
+    expr_function_name_exists = esc(Symbol(function_prefix, :_exists))
     # If the service is unique, then we don't need the user to pass it in for every call,
     #    because we can grab it from the context.
     expr_local_service_var = Symbol("IMPL: SERVICE")
@@ -250,7 +231,7 @@ macro bp_service(args...)
                 function_as_call.args[2] = expr_local_service_var
 
                 push!(expr_global_declarations, combinedef(SplitDef(
-                    Symbol(function_prefix, :_, function_data.name),
+                    function_data.name,
                     expr_function_args_with_service(function_data.args[2:end]),
                     function_data.kw_args,
                     quote
@@ -287,6 +268,21 @@ macro bp_service(args...)
                                    $expr_struct_name{type_params...}
                                end
                 return context.unique_service_lookup[service_type]
+            end
+        ))
+    end
+
+    # Generate a function to check if the service exists.
+    if service_is_unique
+        push!(expr_global_declarations, :(
+            @inline function $expr_function_name_exists(type_params...)::$expr_struct_name
+                context = $(@__MODULE__).get_context()
+                service_type = if isempty(type_params)
+                                   $expr_struct_name
+                               else
+                                   $expr_struct_name{type_params...}
+                               end
+                return haskey(context.unique_service_lookup, service_type)
             end
         ))
     end
