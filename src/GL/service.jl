@@ -12,7 +12,8 @@ service_internal_shutdown(service::AbstractService) = nothing
 
 #TODO: A stronger version of 'force_unique' for services that must not exist more than once across multiple contexts
 """
-Defines a B+ Context service with a standardized interface.
+Defines a B+ Context service with a standardized interface. Services are a mutable struct
+  with the name `Service_X`, where `X` is the name you provide.
 
 Example usage:
 
@@ -53,10 +54,12 @@ Example usage:
 end
 ````
 
-The `args...` in the service name currently only accept one optional value, `force_unique`,
-    which makes the service a singleton across the entire Context.
-`force_unique` services will not let you create multiple instances,
-    and you do not need to pass in references to the service when calling its functions.
+The `args...` in the service name includes the following values:
+  * `force_unique` makes the service a singleton across the entire Context,
+      forbidding you from creating multiple ones
+      and removing the need to pass the service in manually to every service function.
+  * `lazy` makes the service initialize automatically (with no passed arguments)
+      if it's retrieved before it's created.
 
 # Interface
 
@@ -83,6 +86,8 @@ Any other functions you declared get generated basically as-is.
   The first argument must always be the service, and then if you specified `force_unique`,
       the user of your function omits that parameter when calling.
   For example, `f(service, a, b) = a*b + service.z` turns into `f(a, b)` if `force_unique`.
+You're encouraged, but not required, to name your functions in the same style as the others:
+  `service_X_f()`.
 
 # Notes
 
@@ -102,9 +107,12 @@ macro bp_service(service_name, service_definitions)
 
     # Parse the inner parameters to the service.
     service_is_unique = false
+    service_lazy_inits = false
     for service_arg in service_args
         if service_arg == :force_unique
             service_is_unique = true
+        elseif service_arg == :lazy
+            service_lazy_inits = true
         else
             error("Unexpected argument to '", service_name, "': \"", service_arg, "\"")
         end
@@ -267,7 +275,17 @@ macro bp_service(service_name, service_definitions)
                                else
                                    $expr_struct_name{type_params...}
                                end
-                return context.unique_service_lookup[service_type]
+                # Check whether the service exists yet.
+                if !haskey(context.unique_service_lookup, service_type)
+                    if $service_lazy_inits
+                        return $expr_function_name_init()
+                    else
+                        error("Trying to get ", $(string(service_name)),
+                                " service before it was created")
+                    end
+                else
+                    return context.unique_service_lookup[service_type]
+                end
             end
         ))
     end

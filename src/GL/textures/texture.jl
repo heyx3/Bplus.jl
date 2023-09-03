@@ -36,7 +36,7 @@ export Texture
 function Base.close(t::Texture)
     # Release the texture's Views.
     for view::View in values(t.known_views)
-        service_view_debugger_remove_view(view.handle)
+        service_ViewDebugging_remove_view(view.handle)
         view.handle = Ptr_View()
     end
 

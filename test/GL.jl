@@ -308,7 +308,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
     set_uniform(draw_triangles, "u_tex", tex)
     check_gl_logs("giving the texture to the simple triangles' shader")
 
-    resources::BasicGraphicsService = get_basic_graphics(context)
+    resources::Service_BasicGraphics = service_BasicGraphics_get(context)
     @assert(GL.count_mesh_vertices(resources.screen_triangle) == 3)
     @assert(GL.count_mesh_vertices(resources.quad) == 4)
 

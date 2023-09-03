@@ -150,7 +150,7 @@
     end
 end
 
-export service_Input_init, service_Input_shutdown,
+export Service_Input, service_Input_init, service_Input_shutdown,
        service_Input_get, service_Input_exists, service_Input_update
        create_button, create_axis,
        remove_button, remove_axis,

@@ -112,6 +112,7 @@ mutable struct Context
     window::GLFW.Window
     vsync::Optional{E_VsyncModes}
     device::Device
+    debug_mode::Bool
 
     state::RenderState
 
@@ -180,7 +181,7 @@ mutable struct Context
 
         # Set up the Context singleton.
         @bp_check(isnothing(get_context()), "A Context already exists on this thread")
-        con::Context = new(window, vsync, device, RenderState(),
+        con::Context = new(window, vsync, device, debug_mode, RenderState(),
                            Ptr_Program(), Ptr_Mesh(),
                            fill((Ptr_Buffer(), Interval{Int}(min=-1, max=-1)),
                                 device.n_uniform_block_slots),

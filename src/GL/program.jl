@@ -424,13 +424,13 @@ function Program(handle::Ptr_Program, flexible_mode::Bool = false)
     end
 
     # Connect to the view-debugger service.
-    service_view_debugger_add_program(context, handle)
+    service_ViewDebugging_add_program(handle)
 
     return Program(handle, uniforms, uniform_blocks, storage_blocks, flexible_mode)
 end
 
 function Base.close(p::Program)
-    service_view_debugger_remove_program(p.handle)
+    service_ViewDebugging_remove_program(p.handle)
     @bp_check(p.handle != Ptr_Program(), "Already closed this Program")
     glDeleteProgram(p.handle)
     setfield!(p, :handle, Ptr_Program())
@@ -695,7 +695,7 @@ end
             #    even if the view-debugger code is compiled into a no-op.
             # This apparently leads to a heap-allocation.
             # Avoid this by manually wrapping in the "debug-only" macro.
-            @bp_gl_debug service_view_debugger_set_views(
+            @bp_gl_debug service_ViewDebugging_set_views(
                 program, first_param,
                 unsafe_wrap(Array, data_ptr, n_params)
             )

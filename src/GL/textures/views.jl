@@ -105,7 +105,7 @@ function View(owner::AbstractResource, sampler::Optional{TexSampler})
     instance = View(Ptr_View(handle), owner,
                     glIsTextureHandleResidentARB(handle),
                     true)
-    service_view_debugger_add_view(get_context(), instance.handle, instance)
+    service_ViewDebugging_add_view(instance.handle, instance)
 
     return instance
 end
@@ -132,7 +132,7 @@ function View(owner::AbstractResource, params::SimpleViewParams)
     instance = View(Ptr_View(handle), owner,
                     glIsImageHandleResidentARB(handle),
                     false)
-    service_view_debugger_add_view(get_context(), instance.handle, instance)
+    service_ViewDebugging_add_view(instance.handle, instance)
 
     return instance
 end
