@@ -35,7 +35,7 @@ In particular, reading the handle from mesh data
         Dict{Ptr_View, View}(),
         Dict{Ptr_Program, Dict{Ptr_Uniform, Ptr_View}}()
     )
-    SHUTDOWN() = nothing
+    SHUTDOWN(service, is_context) = nothing
 
     "Registers a new view instance"
     function service_ViewDebugging_add_view(service, ptr::Ptr_View, instance::View)
@@ -98,7 +98,7 @@ In particular, reading the handle from mesh data
     end
 
     "Checks a program to make sure its Views are all activated."
-    function service_ViewDebugging_check(program::Ptr_Program)
+    function service_ViewDebugging_check(service, program::Ptr_Program)
         if view_debugger_service_enabled()
             @bp_gl_assert(haskey(service.uniform_lookup, program),
                           "Program ", program, " is missing from the View Debugger service")

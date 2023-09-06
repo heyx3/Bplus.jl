@@ -284,7 +284,7 @@ function Base.close(c::Context)
 
     # Clean up all services.
     for service::AbstractService in c.services
-        service_internal_shutdown(service, true)
+        service_internal_shutdown(service)
     end
     empty!(c.services)
     empty!(c.unique_service_lookup)
@@ -503,7 +503,7 @@ function refresh(context::Context)
     end
 
     # Update any attached services.
-    for service::AbstractService in c.services
+    for service::AbstractService in context.services
         service_internal_refresh(service)
     end
 end

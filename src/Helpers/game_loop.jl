@@ -103,9 +103,9 @@ macro game_loop(block)
         # Set up the loop state object.
         $loop_var::GameLoop = GameLoop(
             context=game_loop_impl_context,
-            service_input=service_Input_init(game_loop_impl_context),
-            service_basic_graphics=service_BasicGraphics_init(game_loop_impl_context),
-            service_gui=service_GUI_init(game_loop_impl_context)
+            service_input=service_Input_init(),
+            service_basic_graphics=service_BasicGraphics_init(),
+            service_gui=service_GUI_init()
         )
         # Set up timing.
         $loop_var.last_frame_time_ns = time_ns()
@@ -122,10 +122,10 @@ macro game_loop(block)
             GLFW.PollEvents()
 
             # Update/render.
-            service_Input_update($loop_var.service_input)
-            service_GUI_start_frame($loop_var.service_gui)
+            service_Input_update()
+            service_GUI_start_frame()
             $(esc(loop_code))
-            service_GUI_end_frame($loop_var.service_gui, $loop_var.context)
+            service_GUI_end_frame()
             GLFW.SwapBuffers($loop_var.context.window)
 
             # Advance the timer.

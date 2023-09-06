@@ -117,10 +117,10 @@ A Context service which defines a bunch of useful GL resources:
             view_activate(tex_view)
         end
 
-        set_uniform(basic_graphics.blit, "u_tex", tex_view)
-        set_uniform(basic_graphics.blit, "u_mesh_transform", quad_transform)
-        set_uniform(basic_graphics.blit, "u_color_map", color_transform)
-        set_uniform(basic_graphics.blit, "u_curve", output_curve)
+        set_uniform(service.blit, "u_tex", tex_view)
+        set_uniform(service.blit, "u_mesh_transform", quad_transform)
+        set_uniform(service.blit, "u_color_map", color_transform)
+        set_uniform(service.blit, "u_curve", output_curve)
 
         old_depth_test = context.state.depth_test
         if disable_depth_test
@@ -131,9 +131,9 @@ A Context service which defines a bunch of useful GL resources:
         # If transforming it, use the more precise, intuitive quad.
         render_mesh(context,
                     (quad_transform == m_identityf(3, 3)) ?
-                        basic_graphics.screen_triangle :
-                        basic_graphics.quad,
-                    basic_graphics.blit)
+                        service.screen_triangle :
+                        service.quad,
+                    service.blit)
 
         if manage_tex_view && !was_active
             view_deactivate(tex_view)
@@ -143,6 +143,5 @@ A Context service which defines a bunch of useful GL resources:
     end
 end
 
-
-
-export simple_blit
+export Service_BasicGraphics, service_BasicGraphics_init, service_BasicGraphics_shutdown,
+       simple_blit

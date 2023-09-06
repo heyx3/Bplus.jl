@@ -1,9 +1,69 @@
+"
+Information that can be part of a function definition but isn't normally handled,
+    like `@inline` or doc-strings.
+
+Turn it back into code with `MacrooTools.combinedef()`.
+"
+struct FunctionMetadata
+    doc_string::Optional{AbstractString}
+    inline::Bool
+    generated::Bool
+    core_expr # The actual function definition with everything stripped out
+end
+
+"
+Returns `nothing` if the expression doesn't look like a valid function definition
+    (i.e. it's wrapped by an unexpected macro, or not even a function in the first place).
+"
+function FunctionMetadata(expr)::Optional{FunctionMetadata}
+    if @capture expr (@name_ args__)
+        if name == GlobalRef(Core, Symbol("@doc"))
+            doc_string = args[1]
+            inner = FunctionMetadata(args[2])
+            return FunctionMetadata(doc_string, inner.inline, inner.generated, inner.core_expr)
+        elseif name == Symbol("@inline")
+            inner = FunctionMetadata(args[1])
+            return FunctionMetadata(inner.doc_string, true, inner.generated, inner.core_expr)
+        elseif name == Symbol("@generated")
+            inner = FunctionMetadata(args[1])
+            return FunctionMetadata(inner.doc_string, inner.inline, true, inner.core_expr)
+        else
+            return nothing
+        end
+    #NOTE: this snippet comes from MacroTools source; unfortunately it isn't provided explicitly
+    elseif @capture(longdef(expr), function (fcall_ | fcall_) body_ end)
+        return FunctionMetadata(nothing, false, false, expr)
+    else
+        return nothing
+    end
+end
+
+"Converts a `FunctionMetadata` to the original Expr it came from"
+function MacroTools.combinedef(m::FunctionMetadata)
+    output = m.core_expr
+    if m.generated
+        output = :( @generated $output )
+    end
+    if m.inline
+        output = :( @inline $output )
+    end
+    if exists(m.doc_string)
+        output = :( Core.@doc($(m.doc_string), $output) )
+    end
+    return output
+end
+
+export FunctionMetadata
+
+
 "Gets whether a given expression is a function call/definition"
-#NOTE: this snippet comes from MacroTools source; unfortunately it isn't provided explicitly
-is_function_expr(expr)::Bool = @capture(longdef(fdef), function (fcall_ | fcall_) body_ end)
+is_function_expr(expr)::Bool = exists(FunctionMetadata(expr))
 export is_function_expr
 
-"A data representation of the output of `splitdef()`"
+"
+A data representation of the output of `splitdef()`,
+    plus the ability to recognize doc-strings and `@inline`
+"
 mutable struct SplitDef
     name
     args::Vector
@@ -11,21 +71,41 @@ mutable struct SplitDef
     body
     return_type
     where_params::Tuple
+    doc_string::Optional{AbstractString}
+    inline::Bool
+    generated::Bool
 
-    SplitDef(name, args, kw_args, body, return_type, where_params) = new(name, args, kw_args, body, return_type, where_params)
-    SplitDef(expr) = let dict = splitdef(expr)
-        new(dict[:name], dict[:args], dict[:kwargs], dict[:body],
+    function SplitDef(expr)
+        metadata = FunctionMetadata(expr)
+        expr = metadata.core_expr
+
+        dict = splitdef(expr)
+        return new(
+            dict[:name], dict[:args], dict[:kwargs], dict[:body],
             get(dict, :rtype, nothing),
-            dict[:whereparams])
+            dict[:whereparams],
+            metadata.doc_string, metadata.inline, metadata.generated
+        )
     end
+    SplitDef(s::SplitDef) = deepcopy(s)
 end
-MacroTools.combinedef(struct_representation::SplitDef) = combinedef(Dict(
-    :name => struct_representation.name,
-    :args => struct_representation.args,
-    :kwargs => struct_representation.kw_args,
-    :body => struct_representation.body,
-    :whereparams => struct_representation.where_params,
-))
+function MacroTools.combinedef(struct_representation::SplitDef)
+    definition = combinedef(Dict(
+        :name => struct_representation.name,
+        :args => struct_representation.args,
+        :kwargs => struct_representation.kw_args,
+        :body => struct_representation.body,
+        :whereparams => struct_representation.where_params,
+        @optional(exists(struct_representation.return_type),
+                :rtype => struct_representation.return_type)
+    ))
+    return combinedef(FunctionMetadata(
+        struct_representation.doc_string,
+        struct_representation.inline,
+        struct_representation.generated,
+        definition
+    ))
+end
 export SplitDef
 
 
@@ -37,20 +117,8 @@ For example, passing `:( f(a::Int, b=7; c, d::Float32=10) = a+b/c )` yields
 `:( f(a, b; c, d) )`.
 "
 function func_def_to_call(expr)
-    # If the input is a mere function call, grab that data.
-    # Otherwise, use MacroTools to parse out the full function defintion.
     data::SplitDef = if isexpr(expr, :call)
-                         SplitDef(
-                            expr.args[1],
-                            isexpr(expr.args[2], :parameters) ?
-                                expr.args[3:end] :
-                                expr.args[2:end],
-                            isexpr(expr.args[2], :parameters) ?
-                                expr.args[2].args :
-                                [ ],
-                            quote end,
-                            ()
-                         )
+                         SplitDef(:( $expr = nothing ))
                      else
                          SplitDef(expr)
                      end

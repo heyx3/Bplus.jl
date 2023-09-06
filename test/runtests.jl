@@ -5,7 +5,7 @@
 # Each test is siloed into its own module to avoid name collisions.
 const TESTS_DEPENDENCIES = quote
     # External dependencies:
-    using Random, TupleTools, Setfield, InteractiveUtils,
+    using Random, TupleTools, MacroTools, Setfield, InteractiveUtils,
         StaticArrays, StructTypes, JSON3,
         DataStructures, Suppressor,
         ModernGL, GLFW, CImGui

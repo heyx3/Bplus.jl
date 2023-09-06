@@ -129,7 +129,7 @@ const FAIL_CLIPBOARD_DATA = ""
 function gui_clipboard_get(::Ptr{Cvoid})::Ptr{UInt8}
     # Throwing within a C callback is UB.
     try
-        gui_service = service_GUI_get()
+        gui_service = service_GUI()
 
         clip = clipboard()
         if !isa(clip, String)
@@ -239,7 +239,7 @@ A CImGui (Dear IMGUI) backend, implemented as a B+ GL Service.
 
 To use a `GL.Texture` or `GL.View` in CImGui, wrap it with `gui_tex_handle()`.
 "
-@bp_service GuiService(force_unique) begin
+@bp_service GUI(force_unique) begin
     window::GLFW.Window
     last_time_ns::UInt64
 
@@ -270,10 +270,10 @@ To use a `GL.Texture` or `GL.View` in CImGui, wrap it with `gui_tex_handle()`.
     mouse_cursors::Vector{GLFW.Cursor}
 
     # Stored GLFW callback closures.
-    callback_closures_char::Callable
-    callback_closures_key::Callable
-    callback_closures_mouse_button::Callable
-    callback_closures_scroll::Callable
+    callback_closures_char::Base.Callable
+    callback_closures_key::Base.Callable
+    callback_closures_mouse_button::Base.Callable
+    callback_closures_scroll::Base.Callable
 
 
     function INIT(; initial_vertex_capacity::Int = 1024,
@@ -288,7 +288,7 @@ To use a `GL.Texture` or `GL.View` in CImGui, wrap it with `gui_tex_handle()`.
             end
             IM_GUI_CONTEXT_COUNTER[] += 1
         end
-        @assert(IM_GUI_CONTEXT_REF[] != C_NULL)
+        @bp_check(IM_GUI_CONTEXT_REF[] != C_NULL)
         gui_io::Ptr{CImGui.ImGuiIO} = CImGui.GetIO()
         gui_fonts = unsafe_load(gui_io.Fonts)
         CImGui.AddFontDefault(gui_fonts)
@@ -380,10 +380,10 @@ To use a `GL.Texture` or `GL.View` in CImGui, wrap it with `gui_tex_handle()`.
             fill(false, Int(CImGui.ImGuiMouseButton_COUNT)),
             fill(GLFW.Cursor(C_NULL), Int(CImGui.ImGuiMouseCursor_COUNT)),
 
-            _... -> nothing,
-            _... -> nothing,
-            _... -> nothing,
-            _... -> nothing
+            (_...) -> nothing,
+            (_...) -> nothing,
+            (_...) -> nothing,
+            (_...) -> nothing
         )
 
         # Tell ImGui how to manipulate/query data.
@@ -436,7 +436,7 @@ To use a `GL.Texture` or `GL.View` in CImGui, wrap it with `gui_tex_handle()`.
         push!(context.glfw_callbacks_char, serv.callback_closures_char)
         push!(context.glfw_callbacks_key, serv.callback_closures_key)
         push!(context.glfw_callbacks_mouse_button, serv.callback_closures_mouse_button)
-        push!(context.callback_closures_scroll, serv.callback_closures_scroll)
+        push!(context.glfw_callbacks_scroll, serv.callback_closures_scroll)
 
         # Configure the cursors to use.
         cursors = [
@@ -770,6 +770,6 @@ end
 
 
 export Service_GUI, service_GUI_init, service_GUI_shutdown,
-       service_GUI_get, service_GUI_exists
+       service_GUI_get, service_GUI_exists,
        service_GUI_start_frame, service_GUI_end_frame, service_GUI_rebuild_fonts,
        gui_tex_handle

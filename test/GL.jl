@@ -308,7 +308,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
     set_uniform(draw_triangles, "u_tex", tex)
     check_gl_logs("giving the texture to the simple triangles' shader")
 
-    resources::Service_BasicGraphics = service_BasicGraphics_get(context)
+    resources::Service_BasicGraphics = service_BasicGraphics_init()
     @assert(GL.count_mesh_vertices(resources.screen_triangle) == 3)
     @assert(GL.count_mesh_vertices(resources.quad) == 4)
 
@@ -465,7 +465,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
         set_depth_test(context, ValueTests.pass)
         check_gl_logs("clearing the screen")
         target_tex = target.attachment_colors[1].tex
-        simple_blit(resources, target_tex)
+        simple_blit(target_tex)
 
         GLFW.SwapBuffers(context.window)
 

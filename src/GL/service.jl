@@ -141,16 +141,16 @@ macro bp_service(service_name, service_definitions)
     end
 
     # Generate some basic code/snippets.
-    expr_service_name = esc(service_name)
-    expr_struct_name = esc(Symbol(:Service_, service_name))
+    expr_service_name = (service_name)
+    expr_struct_name = Symbol(:Service_, service_name)
     expr_struct_decl = exists(service_type_params) ?
                            :( $expr_struct_name{$(service_type_params...)} ) :
                            expr_struct_name
     function_prefix::Symbol = Symbol(:service_, service_name)
-    expr_function_name_init = esc(Symbol(function_prefix, :_init))
-    expr_function_name_shutdown = esc(Symbol(function_prefix, :_shutdown))
-    expr_function_name_get = esc(function_prefix)
-    expr_function_name_exists = esc(Symbol(function_prefix, :_exists))
+    expr_function_name_init = (Symbol(function_prefix, :_init))
+    expr_function_name_shutdown = (Symbol(function_prefix, :_shutdown))
+    expr_function_name_get = (function_prefix)
+    expr_function_name_exists = (Symbol(function_prefix, :_exists))
     # If the service is unique, then we don't need the user to pass it in for every call,
     #    because we can grab it from the context.
     expr_local_service_var = Symbol("IMPL: SERVICE")
@@ -174,16 +174,23 @@ macro bp_service(service_name, service_definitions)
         # Is it a function definition?
         if is_function_expr(definition)
             function_data = SplitDef(definition)
+            # Most of the functions should list the service as the first argument.
+            check_service_arg() = if length(function_data.args) < 1
+                                      error("You must provide a 'service' argument for the function '",
+                                            function_data.name, "'")
+                                  end
 
             if function_data.name == :INIT
                 # Define the service's constructor to implement the user's logic.
-                constructor_data = deepcopy(function_data)
+                constructor_data = SplitDef(function_data)
+                constructor_data.doc_string = nothing
                 constructor_data.name = expr_struct_name
                 expr_constructor = combinedef(constructor_data)
-                push!(expr_struct_declarations, func_def_to_call(expr_constructor))
+                push!(expr_struct_declarations, expr_constructor)
+                expr_invoke_constructor = func_def_to_call(expr_constructor)
 
                 # Define the interface function for creating the context.
-                init_function_data = deepcopy(function_data)
+                init_function_data = SplitDef(function_data)
                 init_function_data.name = expr_function_name_init
                 init_function_data.body = quote
                     context = $(@__MODULE__).get_context()
@@ -203,8 +210,14 @@ macro bp_service(service_name, service_definitions)
                 end
                 push!(expr_global_declarations, combinedef(init_function_data))
             elseif function_data.name == :SHUTDOWN
+                check_service_arg()
+                if length(function_data.args) != 2
+                    error("SHUTDOWN() should have two arguments: the service, and a bool")
+                end
+
                 # Define an internal function that implements the user's logic.
-                impl_shutdown_func_data = deepcopy(function_data)
+                impl_shutdown_func_data = SplitDef(function_data)
+                impl_shutdown_func_data.doc_string = nothing
                 impl_shutdown_func_data.name = Symbol(function_prefix, :_shutdown_IMPL)
                 push!(expr_global_declarations, combinedef(impl_shutdown_func_data))
 
@@ -216,7 +229,7 @@ macro bp_service(service_name, service_definitions)
                 ))
 
                 # Define the interface for manually shutting down the service.
-                manual_shutdown_func_data = deepcopy(function_data)
+                manual_shutdown_func_data = SplitDef(function_data)
                 manual_shutdown_func_data.name = expr_function_name_shutdown
                 if service_is_unique # Is the 'service' argument implicit?
                     deleteat!(manual_shutdown_func_data.args, 1)
@@ -227,33 +240,46 @@ macro bp_service(service_name, service_definitions)
                 end
                 push!(expr_global_declarations, combinedef(manual_shutdown_func_data))
             elseif function_data.name == :REFRESH
-                refresh_func_data = deepcopy(function_data)
+                check_service_arg()
+                if length(function_data.args) != 1
+                    error("REFRESH() should have one argument: the service")
+                end
+                refresh_func_data = SplitDef(function_data)
                 refresh_func_data.name = :( $(@__MODULE__).service_internal_refresh)
                 push!(expr_global_declarations, combinedef(refresh_func_data))
             else
+                check_service_arg()
+
                 # Must be a custom function.
                 # Our generated boilerplate will internally define then invoke
                 #    the user's literal written function.
 
                 function_as_call = func_def_to_call(definition)
-                function_as_call.args[2] = expr_local_service_var
+                if isexpr(function_as_call.args[2], :parameters)
+                    function_as_call.args[3] = expr_local_service_var
+                else
+                    function_as_call.args[2] = expr_local_service_var
+                end
 
-                push!(expr_global_declarations, combinedef(SplitDef(
-                    function_data.name,
-                    expr_function_args_with_service(function_data.args[2:end]),
-                    function_data.kw_args,
-                    quote
-                        # Define the users's function locally.
-                        $definition
+                impl_function_data = SplitDef(function_data)
+                impl_function_data.doc_string = nothing
 
-                        # Get the service if it's passed implicitly.
-                        $expr_function_body_get_service
+                custom_function_data = SplitDef(function_data)
+                custom_function_data.args = expr_function_args_with_service(
+                    custom_function_data.args[2:end]
+                )
+                custom_function_data.body = quote
+                    # Define the users's function locally.
+                    $(combinedef(impl_function_data))
 
-                        # Invoke the user's function.
-                        return $function_as_call
-                    end,
-                    ()
-                )))
+                    # Get the service if it's passed implicitly.
+                    $expr_function_body_get_service
+
+                    # Invoke the user's function.
+                    return $function_as_call
+                end
+
+                push!(expr_global_declarations, combinedef(custom_function_data))
             end
         else
             # Must be a field.
@@ -293,7 +319,7 @@ macro bp_service(service_name, service_definitions)
     # Generate a function to check if the service exists.
     if service_is_unique
         push!(expr_global_declarations, :(
-            @inline function $expr_function_name_exists(type_params...)::$expr_struct_name
+            @inline function $expr_function_name_exists(type_params...)::Bool
                 context = $(@__MODULE__).get_context()
                 service_type = if isempty(type_params)
                                    $expr_struct_name
@@ -306,24 +332,18 @@ macro bp_service(service_name, service_definitions)
     end
 
     # Generate the final code.
-    expr_struct_declarations = esc.(expr_struct_declarations)
-    expr_global_declarations = esc.(expr_global_declarations)
-    return quote
+    expr_struct_declarations = (expr_struct_declarations)
+    expr_global_declarations = (expr_global_declarations)
+    final_expr = esc(quote
         # The service data structure:
         Core.@__doc__ mutable struct $expr_struct_decl <: $(@__MODULE__).AbstractService
-            $(expr_struct_declarations)
+            $(expr_struct_declarations...)
         end
 
         $(expr_global_declarations...)
-
-        # The singleton getter:
-        if $service_is_unique
-            function $expr_function_name_get()::$expr_struct_name
-                context = $(@__MODULE__).get_context()
-                return context.unique_service_lookup[$expr_struct_name]
-            end
-        end
-    end
+    end)
+    # (service_name == :ViewDebugging) && println(final_expr)
+    return final_expr
 end
 
 export AbstractService, @bp_service
