@@ -753,7 +753,7 @@ To use a `GL.Texture` or `GL.View` in CImGui, wrap it with `gui_tex_handle()`.
     end
 
     "Converts a B+ texture/view to something the GUI service can draw with"
-    function gui_tex_handle(serv, tex::Union{Texture, View})
+    function gui_tex_handle(service, tex::Union{Texture, View})
         return get!(service.user_texture_handles, tex) do
             @bp_gui_assert(!haskey(service.user_texture_handles, tex),
                            "The call to get!() invoked this lambda twice in a row")
