@@ -2,9 +2,9 @@
 Base.@kwdef mutable struct GameLoop
     # Game stuff:
     context::Context
-    service_input::InputService
-    service_basic_graphics::BasicGraphicsService
-    service_gui::GuiService
+    service_input::Service_Input
+    service_basic_graphics::Service_BasicGraphics
+    service_gui::Service_GUI
 
     # Timing stuff:
     last_frame_time_ns::UInt64 = 0
@@ -103,9 +103,9 @@ macro game_loop(block)
         # Set up the loop state object.
         $loop_var::GameLoop = GameLoop(
             context=game_loop_impl_context,
-            service_input=service_input_init(game_loop_impl_context),
-            service_basic_graphics=get_basic_graphics(game_loop_impl_context),
-            service_gui=service_gui_init(game_loop_impl_context)
+            service_input=service_Input_init(),
+            service_basic_graphics=service_BasicGraphics_init(),
+            service_gui=service_GUI_init()
         )
         # Set up timing.
         $loop_var.last_frame_time_ns = time_ns()
@@ -122,10 +122,10 @@ macro game_loop(block)
             GLFW.PollEvents()
 
             # Update/render.
-            service_input_update($loop_var.service_input)
-            service_gui_start_frame($loop_var.service_gui)
+            service_Input_update()
+            service_GUI_start_frame()
             $(esc(loop_code))
-            service_gui_end_frame($loop_var.service_gui, $loop_var.context)
+            service_GUI_end_frame()
             GLFW.SwapBuffers($loop_var.context.window)
 
             # Advance the timer.

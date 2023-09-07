@@ -49,13 +49,13 @@ bp_gl_context( v2i(800, 500), "GUI demo";
                vsync=VsyncModes.on,
                debug_mode=true
              ) do context::Context
-    gui_service::Bplus.GUI.GuiService = Bplus.GUI.service_gui_init(context)
+    gui_service::Bplus.GUI.GuiService = Bplus.GUI.service_GUI_init(context)
     gui_state::DemoGuiState = DemoGuiState()
 
     while !GLFW.WindowShouldClose(context.window)
         window_size::v2i = get_window_size(context)
 
-        Bplus.GUI.service_gui_start_frame() # You could manually pass the service or context, but it's a thread-local singleton
+        Bplus.GUI.service_GUI_start_frame()
 
         # Clear the screen.
         set_viewport(context, zero(v2i), window_size)
@@ -67,7 +67,7 @@ bp_gl_context( v2i(800, 500), "GUI demo";
 
         demo_gui(gui_service, gui_state)
 
-        Bplus.GUI.service_gui_end_frame() # You could manually pass the service/context, but they are thread-local singletons.
+        Bplus.GUI.service_GUI_end_frame()
 
         GLFW.SwapBuffers(context.window)
         GLFW.PollEvents()

@@ -128,45 +128,24 @@ end
 @inline function m4_look_at( cam_pos::Vec3{F},
                              target_pos::Vec3{F},
                              up::Vec3{F}
-                             ;
-                             forward_axis::Int = get_horz_axes()[1],
-                             forward_dir::Int = 1,
-                             upward_axis::Int = get_up_axis(),
-                             upward_dir::Int = get_up_sign(),
-                             rightward_axis::Int = get_horz_axes()[2],
-                             rightward_dir::Int = 1
                            )::Mat{4, 4, F} where {F}
     # Reference: https://www.geertarien.com/blog/2017/07/30/breakdown-of-the-lookAt-function-in-OpenGL/
 
     look_dir::Vec3{F} = vnorm(target_pos - cam_pos)
     basis = vbasis(look_dir, up)
 
-    @inline copy_sign(v::Vec, dir::Int) = (dir < 0) ? -v : v
-    row_rightward = copy_sign(vappend(basis.right,
-                                      -vdot(basis.right, cam_pos)),
-                              rightward_dir)
-    row_upward = copy_sign(vappend(basis.up,
-                                   -vdot(basis.up, cam_pos)),
-                           upward_dir)
-    row_forward = copy_sign(vappend(basis.forward,
-                                    -vdot(basis.forward, cam_pos)),
-                            forward_dir)
+    row_rightward = vappend(basis.right,
+                            -vdot(basis.right, cam_pos))
+    row_upward = vappend(basis.up,
+                         -vdot(basis.up, cam_pos))
+    row_forward = vappend(basis.forward,
+                          -vdot(basis.forward, cam_pos))
 
-    get_row(axis::Int)::Vec{4, F} =
-        if forward_axis == axis
-            row_forward
-        elseif upward_axis == axis
-            row_upward
-        elseif rightward_axis == axis
-            row_rightward
-        else
-            error("Invalid axis setup: ", forward_axis, "|", upward_axis, "|", rightward_axis)
-        end
     return m_transpose(Mat{4, 4, F}( # Notice the call to transpose --
                                      #    these are the rows, not the columns.
-        get_row(1)...,
-        get_row(2)...,
-        get_row(3)...,
+        row_rightward..., # X in view space is camera-right
+        row_upward..., # Y in view space is camera-up
+        -row_forward..., # Z in view space is camera-backward
         zero(F), zero(F), zero(F), one(F)
     ))
 end

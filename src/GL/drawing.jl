@@ -130,7 +130,7 @@ function render_mesh( context::Context,
                 "instancing, multi-draw, and known_vertex_range!")
 
     # Let the View-Debugger know that we are rendering with this program.
-    service_view_debugger_check(get_ogl_handle(program))
+    service_ViewDebugging_check(get_ogl_handle(program))
 
     # Activate the mesh and program.
     glUseProgram(program.handle)

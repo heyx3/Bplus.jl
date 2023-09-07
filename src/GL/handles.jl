@@ -37,7 +37,7 @@ macro ogl_handle(name::Symbol, gl_type_name,
         Base.convert(::Type{$gl_type_name}, i::$type_name) = reinterpret($gl_type, i)
         Base.unsafe_convert(::Type{Ptr{$gl_type}}, r::Base.RefValue{$type_name}) =
             Base.unsafe_convert(Ptr{$gl_type}, Base.unsafe_convert(Ptr{Nothing}, r))
-        Base.hash(h::$type_name, u::UInt) = hash(tuple(gl_type(u), $hash_extra), u)
+        Base.hash(h::$type_name, u::UInt) = hash(tuple(gl_type(h), $hash_extra), u)
         Base.:(==)(a::$type_name, b::$type_name) = (gl_type(a) == gl_type(b))
     end
 end

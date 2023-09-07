@@ -1,49 +1,6 @@
-"
-A CImGui backend, implemented as a B+ GL Service.
-Hooks into GLFW callbacks, so you should not hook into them youself;
-    instead, use the `glfw_callback_X` fields.
-
-To pass a `Texture` or `View` into a CImGui function, wrap it with `gui_tex()`.
-If you're making the CImgui call from another thread, make sure to
-    manually pass the correct `GuiService` instance into `gui_tex()` yourself!
-"
-Base.@kwdef mutable struct GuiService
-    window::GLFW.Window
-    last_time_ns::UInt64 = time_ns()
-
-    # Rendering assets.
-    render_program::Program
-    font_texture::Texture
-    buffer_vertices::Buffer
-    buffer_indices::Buffer
-    buffer::Mesh
-
-    # Buffers for C calls.
-    clipboard_buffer::Vector{String} = [ ]
-
-    # User textures, indexed by a unique handle.
-    # Needed to use bindless textures with CImGui.
-    user_textures_by_handle::Dict{CImGui.ImTextureID,
-                                  Union{GL.Texture, GL.View}}
-    user_texture_handles::Dict{Union{GL.Texture, GL.View},
-                               CImGui.ImTextureID}
-    # This service periodically prunes destroyed textures from the above lookups.
-    max_tex_handle::CImGui.ImTextureID
-    next_tex_handle_to_prune::CImGui.ImTextureID
-
-    # Mouse button events.
-    mouse_buttons_just_pressed::Vector{Bool} = fill(false, Int(CImGui.ImGuiMouseButton_COUNT))
-
-    # Mouse cursor images.
-    mouse_cursors::Vector{GLFW.Cursor} = fill(GLFW.Cursor(C_NULL), Int(CImGui.ImGuiMouseCursor_COUNT))
-end
-
-
-########################
-##   Implementation   ##
-########################
-
-const SERVICE_NAME_GUI = :cimgui_bplus_integration
+#############################
+##   Implementation data   ##
+#############################
 
 const IMGUI_KEY_TO_GLFW = Dict(
     #TODO: Why do so many keys seem to be missing?
@@ -172,7 +129,7 @@ const FAIL_CLIPBOARD_DATA = ""
 function gui_clipboard_get(::Ptr{Cvoid})::Ptr{UInt8}
     # Throwing within a C callback is UB.
     try
-        gui_service::GuiService = service_gui_get()
+        gui_service = service_GUI()
 
         clip = clipboard()
         if !isa(clip, String)
@@ -277,485 +234,542 @@ end
 ##   Interface   ##
 ###################
 
-"Starts and returns the GUI service"
-function service_gui_init( context::GL.Context
-                           ;
-                           initial_vertex_capacity::Int = 1024,
-                           initial_index_capacity::Int = (initial_vertex_capacity * 2) ÷ 3
-                         )::GuiService
-    # Create/get the CImGui context.
-    #TODO: Throw error if another thread already made the context
-    @lock IM_GUI_CONTEXT_LOCKER begin
-        if IM_GUI_CONTEXT_COUNTER[] < 1
-            IM_GUI_CONTEXT_REF[] = CImGui.CreateContext()
+"
+A CImGui (Dear IMGUI) backend, implemented as a B+ GL Service.
+
+To use a `GL.Texture` or `GL.View` in CImGui, wrap it with `gui_tex_handle()`.
+"
+@bp_service GUI(force_unique) begin
+    window::GLFW.Window
+    last_time_ns::UInt64
+
+    # Rendering assets.
+    render_program::Program
+    font_texture::Texture
+    buffer_vertices::Buffer
+    buffer_indices::Buffer
+    buffer::Mesh
+
+    # Buffers for C calls.
+    clipboard_buffer::Vector{String}
+
+    # User textures, indexed by a unique handle.
+    # Needed to use bindless textures with CImGui.
+    user_textures_by_handle::Dict{CImGui.ImTextureID,
+                                  Union{GL.Texture, GL.View}}
+    user_texture_handles::Dict{Union{GL.Texture, GL.View},
+                               CImGui.ImTextureID}
+    # This service periodically prunes destroyed textures from the above lookups.
+    max_tex_handle::CImGui.ImTextureID
+    next_tex_handle_to_prune::CImGui.ImTextureID
+
+    # Mouse button events.
+    mouse_buttons_just_pressed::Vector{Bool}
+
+    # Mouse cursor images.
+    mouse_cursors::Vector{GLFW.Cursor}
+
+    # Stored GLFW callback closures.
+    callback_closures_char::Base.Callable
+    callback_closures_key::Base.Callable
+    callback_closures_mouse_button::Base.Callable
+    callback_closures_scroll::Base.Callable
+
+
+    function INIT(; initial_vertex_capacity::Int = 1024,
+                    initial_index_capacity::Int = (initial_vertex_capacity * 2) ÷ 3)
+        context = get_context()
+
+        # Create/get the CImGui context.
+        #TODO: Throw error if another thread already made the context
+        @lock IM_GUI_CONTEXT_LOCKER begin
+            if IM_GUI_CONTEXT_COUNTER[] < 1
+                IM_GUI_CONTEXT_REF[] = CImGui.CreateContext()
+            end
+            IM_GUI_CONTEXT_COUNTER[] += 1
         end
-        IM_GUI_CONTEXT_COUNTER[] += 1
-    end
-    @assert(IM_GUI_CONTEXT_REF[] != C_NULL)
-    gui_io::Ptr{CImGui.ImGuiIO} = CImGui.GetIO()
-    gui_fonts = unsafe_load(gui_io.Fonts)
-    CImGui.AddFontDefault(gui_fonts)
+        @bp_check(IM_GUI_CONTEXT_REF[] != C_NULL)
+        gui_io::Ptr{CImGui.ImGuiIO} = CImGui.GetIO()
+        gui_fonts = unsafe_load(gui_io.Fonts)
+        CImGui.AddFontDefault(gui_fonts)
 
-    # Report capabilities to CImGUI.
-    gui_io.BackendPlatformName = pointer(IM_GUI_BACKEND_NAME_PLATFORM)
-    gui_io.BackendRendererName = pointer(IM_GUI_BACKEND_NAME_RENDERER)
-    gui_io.BackendFlags = |(
-        unsafe_load(gui_io.BackendFlags),
-        CImGui.ImGuiBackendFlags_HasMouseCursors,
-        CImGui.ImGuiBackendFlags_HasSetMousePos,
-        CImGui.ImGuiBackendFlags_RendererHasVtxOffset
-    )
+        # Report capabilities to CImGUI.
+        gui_io.BackendPlatformName = pointer(IM_GUI_BACKEND_NAME_PLATFORM)
+        gui_io.BackendRendererName = pointer(IM_GUI_BACKEND_NAME_RENDERER)
+        gui_io.BackendFlags = |(
+            unsafe_load(gui_io.BackendFlags),
+            CImGui.ImGuiBackendFlags_HasMouseCursors,
+            CImGui.ImGuiBackendFlags_HasSetMousePos,
+            CImGui.ImGuiBackendFlags_RendererHasVtxOffset
+        )
 
-    # Set up keybindings.
-    for (imgui_key, glfw_key) in IMGUI_KEY_TO_GLFW
-        c_set!(gui_io.KeyMap, imgui_key, glfw_key)
-    end
-
-    # Set up the clipboard.
-    gui_io.GetClipboardTextFn = GUI_CLIPBOARD_GET[]
-    gui_io.SetClipboardTextFn = GUI_CLIPBOARD_SET[]
-
-    # Tell ImGui how to manipulate/query data.
-    push!(context.glfw_callbacks_char, (c::Char) -> begin
-        # Why this range? The example code doesn't explain.
-        # It limits the char to a 2-byte range, and ignores the null terminator.
-        if UInt(c) in 0x1:0xffff
-            CImGui.AddInputCharacter(gui_io, c)
-        end
-        return nothing
-    end)
-    push!(context.glfw_callbacks_key, (key::GLFW.Key, scancode::Int,
-                                       action::GLFW.Action, mods::Int) -> begin
-        if action == GLFW.PRESS
-            c_set!(gui_io.KeysDown, key, true)
-        elseif action == GLFW.RELEASE
-            c_set!(gui_io.KeysDown, key, false)
+        # Set up keybindings.
+        for (imgui_key, glfw_key) in IMGUI_KEY_TO_GLFW
+            c_set!(gui_io.KeyMap, imgui_key, glfw_key)
         end
 
-        # Calculate modifiers.
-        #   (note from the original implementation: "modifiers are not reliable across systems")
-        gui_io.KeyCtrl = any(c_get.(Ref(gui_io.KeysDown), (GLFW.KEY_LEFT_CONTROL, GLFW.KEY_RIGHT_CONTROL)))
-        gui_io.KeyShift = any(c_get.(Ref(gui_io.KeysDown), (GLFW.KEY_LEFT_SHIFT, GLFW.KEY_RIGHT_SHIFT)))
-        gui_io.KeyAlt = any(c_get.(Ref(gui_io.KeysDown), (GLFW.KEY_LEFT_ALT, GLFW.KEY_RIGHT_ALT)))
-        gui_io.KeySuper = any(c_get.(Ref(gui_io.KeysDown), (GLFW.KEY_LEFT_SUPER, GLFW.KEY_RIGHT_SUPER)))
+        # Set up the clipboard.
+        gui_io.GetClipboardTextFn = GUI_CLIPBOARD_GET[]
+        gui_io.SetClipboardTextFn = GUI_CLIPBOARD_SET[]
 
-        return nothing
-    end)
-    push!(context.glfw_callbacks_mouse_button, (button::GLFW.MouseButton,
-                                                action::GLFW.Action,
-                                                mods::Int) -> begin
-        button_i = Int(button) + 1
-        if button_i in 1:length(serv.mouse_buttons_just_pressed)
+        # Create renderer assets.
+        render_program = bp_glsl"""
+        #START_VERTEX
+            layout (location = 0) in vec2 vIn_pos;
+            layout (location = 1) in vec2 vIn_uv;
+            layout (location = 2) in vec4 vIn_color;
+
+            uniform mat4 u_transform;
+
+            out vec2 fIn_uv;
+            out vec4 fIn_color;
+
+            void main() {
+                fIn_uv = vIn_uv;
+                fIn_color = vIn_color;
+
+                vec4 pos = u_transform * vec4(vIn_pos, 0, 1);
+                gl_Position = vec4(pos.x, pos.y, pos.zw);
+            }
+
+        #START_FRAGMENT
+            in vec2 fIn_uv;
+            in vec4 fIn_color;
+
+            uniform sampler2D u_texture;
+
+            layout (location = 0) out vec4 fOut_color;
+
+            void main() {
+                fOut_color = fIn_color * texture(u_texture, fIn_uv);
+            }
+        """
+        # Generate an initial font texture with just the default font.
+        #NOTE: Skipping this initial texture build leads to a weird issue
+        #    where drawing commands come in with null texture ID's.
+        font_texture = make_gui_font_texture_atlas()
+        # Mesh vertex/index data is generated procedurally, into a single mesh object.
+        buffer_vertices = Buffer(sizeof(CImGui.ImDrawVert) * initial_vertex_capacity,
+                                true, KEEP_MESH_DATA_ON_CPU)
+        buffer_indices = Buffer(sizeof(CImGui.ImDrawIdx) * initial_index_capacity,
+                                true, KEEP_MESH_DATA_ON_CPU)
+        mesh = gui_generate_mesh(buffer_vertices, buffer_indices)
+
+        # Create the service instance.
+        serv = new(
+            context.window,
+            time_ns(),
+
+            render_program,
+            font_texture,
+            buffer_vertices,
+            buffer_indices,
+            mesh,
+
+            [ ],
+
+            Dict{CImGui.ImTextureID, Union{GL.Texture, GL.View}}(
+                TEX_ID_FONT => font_texture
+            ),
+            Dict{Union{GL.Texture, GL.View}, CImGui.ImTextureID}(
+                font_texture => TEX_ID_FONT
+            ),
+            TEX_ID_FONT,
+            TEX_ID_FONT,
+
+            fill(false, Int(CImGui.ImGuiMouseButton_COUNT)),
+            fill(GLFW.Cursor(C_NULL), Int(CImGui.ImGuiMouseCursor_COUNT)),
+
+            (_...) -> nothing,
+            (_...) -> nothing,
+            (_...) -> nothing,
+            (_...) -> nothing
+        )
+
+        # Tell ImGui how to manipulate/query data.
+        serv.callback_closures_char = (c::Char) -> begin
+            # Why this range? The example code doesn't explain.
+            # It limits the char to a 2-byte range, and ignores the null terminator.
+            if UInt(c) in 0x1:0xffff
+                CImGui.AddInputCharacter(gui_io, c)
+            end
+            return nothing
+        end
+        serv.callback_closures_key = (key::GLFW.Key, scancode::Int,
+                                      action::GLFW.Action, mods::Int) -> begin
             if action == GLFW.PRESS
-                serv.mouse_buttons_just_pressed[button_i] = true
+                c_set!(gui_io.KeysDown, key, true)
+            elseif action == GLFW.RELEASE
+                c_set!(gui_io.KeysDown, key, false)
             end
-        else
-            @warn "Mouse button idx too large" button
+
+            # Calculate modifiers.
+            #   (note from the original implementation: "modifiers are not reliable across systems")
+            gui_io.KeyCtrl = any(c_get.(Ref(gui_io.KeysDown), (GLFW.KEY_LEFT_CONTROL, GLFW.KEY_RIGHT_CONTROL)))
+            gui_io.KeyShift = any(c_get.(Ref(gui_io.KeysDown), (GLFW.KEY_LEFT_SHIFT, GLFW.KEY_RIGHT_SHIFT)))
+            gui_io.KeyAlt = any(c_get.(Ref(gui_io.KeysDown), (GLFW.KEY_LEFT_ALT, GLFW.KEY_RIGHT_ALT)))
+            gui_io.KeySuper = any(c_get.(Ref(gui_io.KeysDown), (GLFW.KEY_LEFT_SUPER, GLFW.KEY_RIGHT_SUPER)))
+
+            return nothing
         end
-
-        return nothing
-    end)
-    push!(context.glfw_callbacks_scroll, pos::v2f -> begin
-        unsafe_store!(gui_io.MouseWheelH,
-                      Cfloat(pos.x) + unsafe_load(gui_io.MouseWheelH))
-        unsafe_store!(gui_io.MouseWheel,
-                      Cfloat(pos.y) + unsafe_load(gui_io.MouseWheel))
-        return nothing
-    end)
-
-    # Create renderer assets.
-    render_program = bp_glsl"""
-    #START_VERTEX
-        layout (location = 0) in vec2 vIn_pos;
-        layout (location = 1) in vec2 vIn_uv;
-        layout (location = 2) in vec4 vIn_color;
-
-        uniform mat4 u_transform;
-
-        out vec2 fIn_uv;
-        out vec4 fIn_color;
-
-        void main() {
-            fIn_uv = vIn_uv;
-            fIn_color = vIn_color;
-
-            vec4 pos = u_transform * vec4(vIn_pos, 0, 1);
-            gl_Position = vec4(pos.x, pos.y, pos.zw);
-        }
-
-    #START_FRAGMENT
-        in vec2 fIn_uv;
-        in vec4 fIn_color;
-
-        uniform sampler2D u_texture;
-
-        layout (location = 0) out vec4 fOut_color;
-
-        void main() {
-            fOut_color = fIn_color * texture(u_texture, fIn_uv);
-        }
-    """
-    # Generate an initial font texture with just the default font.
-    #NOTE: Skipping this initial texture build leads to a weird issue
-    #    where drawing commands come in with null texture ID's.
-    font_texture = make_gui_font_texture_atlas()
-    # Mesh vertex/index data is generated procedurally, into a single mesh object.
-    buffer_vertices = Buffer(sizeof(CImGui.ImDrawVert) * initial_vertex_capacity,
-                             true, KEEP_MESH_DATA_ON_CPU)
-    buffer_indices = Buffer(sizeof(CImGui.ImDrawIdx) * initial_index_capacity,
-                            true, KEEP_MESH_DATA_ON_CPU)
-    mesh = gui_generate_mesh(buffer_vertices, buffer_indices)
-
-    # Create the service instance.
-    serv = GuiService(
-        window = context.window,
-
-        render_program = render_program,
-        font_texture = font_texture,
-        buffer_vertices = buffer_vertices,
-        buffer_indices = buffer_indices,
-        buffer = mesh,
-
-        user_textures_by_handle = Dict{CImGui.ImTextureID,
-                                       Union{GL.Texture, GL.View}}(
-            TEX_ID_FONT => font_texture
-        ),
-        user_texture_handles = Dict{Union{GL.Texture, GL.View},
-                                    CImGui.ImTextureID}(
-            font_texture => TEX_ID_FONT
-        ),
-        max_tex_handle = TEX_ID_FONT,
-        next_tex_handle_to_prune = TEX_ID_FONT
-    )
-
-    # Configure the cursors to use.
-    cursors = [
-        (CImGui.ImGuiMouseCursor_Arrow, GLFW.ARROW_CURSOR),
-        (CImGui.ImGuiMouseCursor_TextInput, GLFW.IBEAM_CURSOR),
-        (CImGui.ImGuiMouseCursor_ResizeNS, GLFW.VRESIZE_CURSOR),
-        (CImGui.ImGuiMouseCursor_ResizeEW, GLFW.HRESIZE_CURSOR),
-        (CImGui.ImGuiMouseCursor_Hand, GLFW.HAND_CURSOR),
-        # In GLFW 3.4, there are new cursor images we could use.
-        # However, that version isn't supported.
-        (CImGui.ImGuiMouseCursor_ResizeAll, GLFW.ARROW_CURSOR), # GLFW.RESIZE_ALL_CURSOR
-        (CImGui.ImGuiMouseCursor_ResizeNESW, GLFW.ARROW_CURSOR), # GLFW.RESIZE_NESW_CURSOR
-        (CImGui.ImGuiMouseCursor_ResizeNWSE, GLFW.ARROW_CURSOR), # GLFW.RESIZE_NWSE_CURSOR
-        (CImGui.ImGuiMouseCursor_NotAllowed, GLFW.ARROW_CURSOR) # GLFW.NOT_ALLOWED_CURSOR
-    ]
-    for (slot, type) in cursors
-        # GLFW is a C lib, using 0-based indices.
-        slot += 1
-        serv.mouse_cursors[slot] = GLFW.CreateStandardCursor(type)
-    end
-
-    # Finally, register and return the service.
-    GL.register_service(
-        context, SERVICE_NAME_GUI,
-        GL.Service(
-            serv,
-            on_destroyed = service_gui_cleanup
-        )
-    )
-    return serv
-end
-"Call after changing the set of available fonts for ImGui"
-function service_gui_rebuild_fonts(serv::GuiService = service_gui_get())
-    new_font_texture = make_gui_font_texture_atlas()
-
-    old_font_texture = serv.font_texture
-    serv.font_texture = new_font_texture
-
-    serv.user_texture_handles[new_font_texture] = TEX_ID_FONT
-    serv.user_textures_by_handle[TEX_ID_FONT] = new_font_texture
-
-    delete!(serv.user_texture_handles, old_font_texture)
-    close(old_font_texture)
-end
-
-function service_gui_get(context::GL.Context = get_context())::GuiService
-    return GL.get_service(context, SERVICE_NAME_GUI)
-end
-
-function service_gui_cleanup(s::GuiService)
-    # Clean up mouse cursors.
-    for cursor in s.mouse_cursors
-        GLFW.DestroyCursor(cursor)
-    end
-    empty!(s.mouse_cursors)
-
-    # Clean up GL resources.
-    close(s.render_program)
-    close(s.font_texture)
-    close(s.buffer)
-    close(s.buffer_indices)
-    close(s.buffer_vertices)
-
-    # Clean up the CImGui context if nobody else needs it.
-    @lock IM_GUI_CONTEXT_LOCKER begin
-        IM_GUI_CONTEXT_COUNTER[] -= 1
-        if IM_GUI_CONTEXT_COUNTER[] < 1
-            CImGui.DestroyContext(IM_GUI_CONTEXT_REF[])
-            IM_GUI_CONTEXT_REF[] = C_NULL
-        end
-    end
-
-    return nothing
-end
-
-service_gui_start_frame(context::GL.Context = get_context()) = service_gui_start_frame(service_gui_get(context))
-function service_gui_start_frame(serv::GuiService)
-    io::Ptr{CImGui.ImGuiIO} = CImGui.GetIO()
-    if !CImGui.ImFontAtlas_IsBuilt(unsafe_load(io.Fonts))
-        service_gui_rebuild_fonts(serv)
-    end
-
-    # Set up the display size.
-    window_size::v2i = get_window_size(serv.window)
-    render_size::v2i = let render_size_glfw = GLFW.GetFramebufferSize(serv.window)
-        v2i(render_size_glfw.width, render_size_glfw.height)
-    end
-    io.DisplaySize = CImGui.ImVec2(Cfloat(window_size.x), Cfloat(window_size.y))
-    render_scale::Vec2{Cfloat} = render_size / max(one(v2i), window_size)
-    io.DisplayFramebufferScale = CImGui.ImVec2(render_scale...)
-
-    # Update the frame time.
-    last_time = serv.last_time_ns
-    serv.last_time_ns = time_ns()
-    io.DeltaTime = (serv.last_time_ns - last_time) / 1e9
-
-    # Update mouse buttons.
-    for i in 1:length(serv.mouse_buttons_just_pressed)
-        # If a mouse press happened, always pass it as "mouse held this frame";
-        #    otherwise we'd miss fast clicks.
-        is_down::Bool = serv.mouse_buttons_just_pressed[i] ||
-                        GLFW.GetMouseButton(serv.window, GLFW.MouseButton(i - 1))
-        c_set!(io.MouseDown, i - 1, is_down)
-        serv.mouse_buttons_just_pressed[i] = false
-    end
-
-    # Update mouse position.
-    prev_mouse_pos = io.MousePos
-    io.MousePos = CImGui.ImVec2(-CImGui.FLT_MAX, -CImGui.FLT_MAX)
-    if GLFW.GetWindowAttrib(serv.window, GLFW.FOCUSED) != 0
-        if unsafe_load(io.WantSetMousePos)
-            GLFW.SetCursorPos(serv.window, Cdouble(prev_mouse_pos.x), Cdouble(prev_mouse_pos.y))
-        else
-            (cursor_x, cursor_y) = GLFW.GetCursorPos(serv.window)
-            io.MousePos = CImGui.ImVec2(Cfloat(cursor_x), Cfloat(cursor_y))
-        end
-    end
-
-    # Update the mouse cursor's image.
-    if ((unsafe_load(io.ConfigFlags) & CImGui.ImGuiConfigFlags_NoMouseCursorChange) != CImGui.ImGuiConfigFlags_NoMouseCursorChange) &&
-       (GLFW.GetInputMode(serv.window, GLFW.CURSOR) != GLFW.CURSOR_DISABLED)
-    #begin
-        imgui_cursor::CImGui.ImGuiMouseCursor = CImGui.GetMouseCursor()
-        # Hide the OS mouse cursor if ImGui is drawing it, or if it wants no cursor.
-        if (imgui_cursor == CImGui.ImGuiMouseCursor_None) || unsafe_load(io.MouseDrawCursor)
-            GLFW.SetInputMode(serv.window, GLFW.CURSOR, GLFW.CURSOR_HIDDEN)
-        # Otherwise, make sure it's shown.
-        else
-            cursor = serv.mouse_cursors[imgui_cursor + 1]
-            cursor_img = (cursor.handle == C_NULL) ?
-                                serv.mouse_cursors[imgui_cursor + 1] :
-                                serv.mouse_cursors[CImGui.ImGuiMouseCursor_Arrow + 1]
-            GLFW.SetCursor(serv.window, cursor_img)
-            GLFW.SetInputMode(serv.window, GLFW.CURSOR, GLFW.CURSOR_NORMAL)
-        end
-    end
-
-    # Check for previously-used textures getting destroyed.
-    # Just check a few different textures every frame.
-    for _ in 1:3
-        if haskey(serv.user_textures_by_handle, serv.next_tex_handle_to_prune)
-            tex_to_prune = serv.user_textures_by_handle[serv.next_tex_handle_to_prune]
-            if is_destroyed(tex_to_prune)
-                delete!(serv.user_textures_by_handle, serv.next_tex_handle_to_prune)
-                delete!(serv.user_texture_handles, tex_to_prune)
-            end
-        end
-        serv.next_tex_handle_to_prune = CImGui.ImTextureID(
-            (UInt64(serv.next_tex_handle_to_prune) + 1) %
-                UInt64(serv.max_tex_handle)
-        )
-    end
-
-    CImGui.NewFrame()
-
-    return nothing
-end
-
-service_gui_end_frame(context::GL.Context = get_context()) = service_gui_end_frame(service_gui_get(context), context)
-function service_gui_end_frame(serv::GuiService, context::GL.Context = get_context())
-    io::Ptr{CImGui.ImGuiIO} = CImGui.GetIO()
-    @bp_check(CImGui.ImFontAtlas_IsBuilt(unsafe_load(io.Fonts)),
-              "Font atlas isn't built! Make sure you've called `service_gui_rebuild_fonts()`")
-
-    CImGui.Render()
-    draw_data::Ptr{CImGui.ImDrawData} = CImGui.GetDrawData()
-    if draw_data == C_NULL
-        return nothing
-    end
-
-    # Compute coordinate transforms.
-    framebuffer_size = v2i(trunc(unsafe_load(draw_data.DisplaySize.x) *
-                                 unsafe_load(draw_data.FramebufferScale.x)),
-                           trunc(unsafe_load(draw_data.DisplaySize.y) *
-                                 unsafe_load(draw_data.FramebufferScale.y)))
-    if any(framebuffer_size <= 0)
-        return nothing
-    end
-    draw_pos_min = v2f(unsafe_load(draw_data.DisplayPos.x),
-                       unsafe_load(draw_data.DisplayPos.y))
-    draw_size = v2f(unsafe_load(draw_data.DisplaySize.x),
-                    unsafe_load(draw_data.DisplaySize.y))
-    draw_pos_max = draw_pos_min + draw_size
-    # Flip the Y for the projection matrix.
-    mat_proj::fmat4 = m4_ortho(v3f(draw_pos_min.x, draw_pos_max.y, -1),
-                               v3f(draw_pos_max.x, draw_pos_min.y, 1))
-    set_uniform(serv.render_program, "u_transform", mat_proj)
-
-    # Set up render state.
-    original_scissor = context.state.scissor
-    set_blending(context, make_blend_alpha(BlendStateRGBA))
-    set_culling(context, FaceCullModes.off)
-    set_depth_test(context, ValueTests.pass)
-    set_depth_writes(context, false)
-
-    # Pre-activate the font texture, which will presumably be rendered in most calls.
-    font_tex_id = unsafe_load(unsafe_load(io.Fonts).TexID)
-    @bp_gui_assert(serv.user_textures_by_handle[font_tex_id] ==
-                     serv.font_texture,
-                   "Font texture ID is not ", font_tex_id, " as reported. ",
-                     "Full ImGUI texture map: ", serv.user_textures_by_handle)
-    @bp_gui_assert(font_tex_id == TEX_ID_FONT)
-    view_activate(serv.font_texture)
-
-    # Scissor/clip rectangles will come in projection space.
-    # We'll need to map them into framebuffer space.
-    # Clip offset is (0,0) unless using multi-viewports.
-    clip_offset = -draw_pos_min
-    # Clip scale is (1, 1) unless using retina display, which is often (2, 2).
-    clip_scale = v2f(unsafe_load(draw_data.FramebufferScale.x),
-                     unsafe_load(draw_data.FramebufferScale.y))
-
-    # Execute the individual drawing commands.
-    cmd_lists::Vector{Ptr{CImGui.ImDrawList}} = unsafe_wrap(Vector{Ptr{CImGui.ImDrawList}},
-                                                            unsafe_load(draw_data.CmdLists),
-                                                            unsafe_load(draw_data.CmdListsCount))
-    for cmd_list_ptr in cmd_lists
-        # Upload the vertex/index data.
-        # We may have to reallocate the buffers if they're not large enough.
-        vertices_native::CImGui.ImVector_ImDrawVert = unsafe_load(cmd_list_ptr.VtxBuffer)
-        indices_native::CImGui.ImVector_ImDrawIdx = unsafe_load(cmd_list_ptr.IdxBuffer)
-        reallocated_buffers::Bool = false
-        let vertices = unsafe_wrap(Vector{CImGui.ImDrawVert},
-                                   vertices_native.Data, vertices_native.Size)
-            if serv.buffer_vertices.byte_size < (length(vertices) * sizeof(CImGui.ImDrawVert))
-                close(serv.buffer_vertices)
-                new_size = sizeof(CImGui.ImDrawVert) * length(vertices) * 2
-                serv.buffer_vertices = Buffer(new_size, true, KEEP_MESH_DATA_ON_CPU)
-                reallocated_buffers = true
-            end
-            set_buffer_data(serv.buffer_vertices, vertices)
-        end
-        let indices = unsafe_wrap(Vector{CImGui.ImDrawIdx},
-                                  indices_native.Data, indices_native.Size)
-            if serv.buffer_indices.byte_size < (length(indices) * sizeof(CImGui.ImDrawIdx))
-                close(serv.buffer_indices)
-                new_size = sizeof(CImGui.ImDrawIdx) * length(indices) * 2
-                serv.buffer_indices = Buffer(new_size, true, KEEP_MESH_DATA_ON_CPU)
-                reallocated_buffers = true
-            end
-            set_buffer_data(serv.buffer_indices, indices)
-        end
-        if reallocated_buffers
-            close(serv.buffer)
-            serv.buffer = gui_generate_mesh(serv.buffer_vertices, serv.buffer_indices)
-        end
-
-        # Execute each command in this list.
-        cmd_buffer = unsafe_load(cmd_list_ptr.CmdBuffer)
-        for cmd_i in 1:cmd_buffer.Size
-            cmd_ptr::Ptr{CImGui.ImDrawCmd} = cmd_buffer.Data + ((cmd_i - 1) * sizeof(CImGui.ImDrawCmd))
-            n_elements = unsafe_load(cmd_ptr.ElemCount)
-
-            # If the user provided a custom drawing function, use that.
-            if unsafe_load(cmd_ptr.UserCallback) != C_NULL
-                ccall(unsafe_load(cmd_ptr.UserCallback), Cvoid,
-                      (Ptr{CImGui.ImDrawList}, Ptr{CImGui.ImDrawCmd}),
-                      cmd_list_ptr, cmd_ptr)
-            # Otherwise, do a normal GUI draw.
+        serv.callback_closures_mouse_button = (button::GLFW.MouseButton,
+                                               action::GLFW.Action,
+                                               mods::Int) -> begin
+            button_i = Int(button) + 1
+            if button_i in 1:length(serv.mouse_buttons_just_pressed)
+                if action == GLFW.PRESS
+                    serv.mouse_buttons_just_pressed[button_i] = true
+                end
             else
-                # Set the scissor region.
-                clip_rect_projected = unsafe_load(cmd_ptr.ClipRect)
-                clip_minmax_projected = v4f(clip_rect_projected.x, clip_rect_projected.y,
-                                            clip_rect_projected.z, clip_rect_projected.w)
-                clip_min = clip_scale * (clip_minmax_projected.xy + clip_offset)
-                clip_max = clip_scale * (clip_minmax_projected.zw + clip_offset)
-                if all(clip_min < clip_max)
-                    # The scissor min and max depend on the assumption
-                    #    of lower-left-corner clip-mode.
-                    scissor_min = Vec(clip_min.x, framebuffer_size.y - clip_max.y)
-                    scissor_max = Vec(clip_max.x, framebuffer_size.y - clip_min.y)
+                @warn "Mouse button idx too large" button
+            end
 
-                    scissor_min_pixel = map(x -> trunc(Cint, x), scissor_min)
-                    scissor_max_pixel = map(x -> trunc(Cint, x), scissor_max)
-                    # ImGUI is using 0-based pixels, but B+ uses 1-based.
-                    scissor_min_pixel += one(Int32)
-                    scissor_max_pixel += one(Int32)
-                    # Max pixel doesn't need to add 1, but I'm not quite sure why.
-                    set_scissor(context, Box2Di(min=scissor_min_pixel, max=scissor_max_pixel))
+            return nothing
+        end
+        serv.callback_closures_scroll = pos::v2f -> begin
+            unsafe_store!(gui_io.MouseWheelH,
+                        Cfloat(pos.x) + unsafe_load(gui_io.MouseWheelH))
+            unsafe_store!(gui_io.MouseWheel,
+                        Cfloat(pos.y) + unsafe_load(gui_io.MouseWheel))
+            return nothing
+        end
+        push!(context.glfw_callbacks_char, serv.callback_closures_char)
+        push!(context.glfw_callbacks_key, serv.callback_closures_key)
+        push!(context.glfw_callbacks_mouse_button, serv.callback_closures_mouse_button)
+        push!(context.glfw_callbacks_scroll, serv.callback_closures_scroll)
 
-                    # Draw the texture.
-                    tex_id = unsafe_load(cmd_ptr.TextureId)
-                    tex = haskey(serv.user_textures_by_handle, tex_id) ?
-                            serv.user_textures_by_handle[tex_id] :
-                            error("Unknown GUI texture handle: ", tex_id)
-                    set_uniform(serv.render_program, "u_texture", tex)
-                    (tex_id != font_tex_id) && view_activate(tex)
-                    render_mesh(
-                        context,
-                        serv.buffer, serv.render_program
-                        ;
-                        indexed_params = DrawIndexed(
-                            value_offset = UInt64(unsafe_load(cmd_ptr.VtxOffset))
-                        ),
-                        elements = IntervalU((
-                            min=unsafe_load(cmd_ptr.IdxOffset) + 1,
-                            size=n_elements
-                        ))
-                    )
-                    if (tex_id != font_tex_id)
-                        view_deactivate(tex)
+        # Configure the cursors to use.
+        cursors = [
+            (CImGui.ImGuiMouseCursor_Arrow, GLFW.ARROW_CURSOR),
+            (CImGui.ImGuiMouseCursor_TextInput, GLFW.IBEAM_CURSOR),
+            (CImGui.ImGuiMouseCursor_ResizeNS, GLFW.VRESIZE_CURSOR),
+            (CImGui.ImGuiMouseCursor_ResizeEW, GLFW.HRESIZE_CURSOR),
+            (CImGui.ImGuiMouseCursor_Hand, GLFW.HAND_CURSOR),
+            # In GLFW 3.4, there are new cursor images we could use.
+            # However, that version isn't supported.
+            (CImGui.ImGuiMouseCursor_ResizeAll, GLFW.ARROW_CURSOR), # GLFW.RESIZE_ALL_CURSOR
+            (CImGui.ImGuiMouseCursor_ResizeNESW, GLFW.ARROW_CURSOR), # GLFW.RESIZE_NESW_CURSOR
+            (CImGui.ImGuiMouseCursor_ResizeNWSE, GLFW.ARROW_CURSOR), # GLFW.RESIZE_NWSE_CURSOR
+            (CImGui.ImGuiMouseCursor_NotAllowed, GLFW.ARROW_CURSOR) # GLFW.NOT_ALLOWED_CURSOR
+        ]
+        for (slot, type) in cursors
+            # GLFW is a C lib, using 0-based indices.
+            slot += 1
+            serv.mouse_cursors[slot] = GLFW.CreateStandardCursor(type)
+        end
+
+        return serv
+    end
+
+    function SHUTDOWN(s, is_context_closing::Bool)
+        # Clean up mouse cursors.
+        for cursor in s.mouse_cursors
+            GLFW.DestroyCursor(cursor)
+        end
+        empty!(s.mouse_cursors)
+
+        # Clean up GL resources and Context callbacks.
+        if !is_context_closing
+            close(s.render_program)
+            close(s.font_texture)
+            close(s.buffer)
+            close(s.buffer_indices)
+            close(s.buffer_vertices)
+
+            delete!(context.glfw_callbacks_char, serv.callback_closures_char)
+            delete!(context.glfw_callbacks_key, serv.callback_closures_key)
+            delete!(context.glfw_callbacks_mouse_button, serv.callback_closures_mouse_button)
+            delete!(context.callback_closures_scroll, serv.callback_closures_scroll)
+        end
+
+        # Clean up the CImGui context if nobody else needs it.
+        @lock IM_GUI_CONTEXT_LOCKER begin
+            IM_GUI_CONTEXT_COUNTER[] -= 1
+            if IM_GUI_CONTEXT_COUNTER[] < 1
+                CImGui.DestroyContext(IM_GUI_CONTEXT_REF[])
+                IM_GUI_CONTEXT_REF[] = C_NULL
+            end
+        end
+    end
+
+    "Call after changing the set of available fonts for ImGui"
+    function service_GUI_rebuild_fonts(serv)
+        new_font_texture = make_gui_font_texture_atlas()
+
+        old_font_texture = serv.font_texture
+        serv.font_texture = new_font_texture
+
+        serv.user_texture_handles[new_font_texture] = TEX_ID_FONT
+        serv.user_textures_by_handle[TEX_ID_FONT] = new_font_texture
+
+        delete!(serv.user_texture_handles, old_font_texture)
+        close(old_font_texture)
+    end
+
+    "
+    Call before doing any GUI in each frame.
+    Must be followed by a call to `service_GUI_end_frame()` when it's time to render the GUI.
+    "
+    function service_GUI_start_frame(serv)
+        io::Ptr{CImGui.ImGuiIO} = CImGui.GetIO()
+        if !CImGui.ImFontAtlas_IsBuilt(unsafe_load(io.Fonts))
+            service_GUI_rebuild_fonts()
+        end
+
+        # Set up the display size.
+        window_size::v2i = get_window_size(serv.window)
+        render_size::v2i = let render_size_glfw = GLFW.GetFramebufferSize(serv.window)
+            v2i(render_size_glfw.width, render_size_glfw.height)
+        end
+        io.DisplaySize = CImGui.ImVec2(Cfloat(window_size.x), Cfloat(window_size.y))
+        render_scale::Vec2{Cfloat} = render_size / max(one(v2i), window_size)
+        io.DisplayFramebufferScale = CImGui.ImVec2(render_scale...)
+
+        # Update the frame time.
+        last_time = serv.last_time_ns
+        serv.last_time_ns = time_ns()
+        io.DeltaTime = (serv.last_time_ns - last_time) / 1e9
+
+        # Update mouse buttons.
+        for i in 1:length(serv.mouse_buttons_just_pressed)
+            # If a mouse press happened, always pass it as "mouse held this frame";
+            #    otherwise we'd miss fast clicks.
+            is_down::Bool = serv.mouse_buttons_just_pressed[i] ||
+                            GLFW.GetMouseButton(serv.window, GLFW.MouseButton(i - 1))
+            c_set!(io.MouseDown, i - 1, is_down)
+            serv.mouse_buttons_just_pressed[i] = false
+        end
+
+        # Update mouse position.
+        prev_mouse_pos = io.MousePos
+        io.MousePos = CImGui.ImVec2(-CImGui.FLT_MAX, -CImGui.FLT_MAX)
+        if GLFW.GetWindowAttrib(serv.window, GLFW.FOCUSED) != 0
+            if unsafe_load(io.WantSetMousePos)
+                GLFW.SetCursorPos(serv.window,
+                                  Cdouble(prev_mouse_pos.x), Cdouble(prev_mouse_pos.y))
+            else
+                (cursor_x, cursor_y) = GLFW.GetCursorPos(serv.window)
+                io.MousePos = CImGui.ImVec2(Cfloat(cursor_x), Cfloat(cursor_y))
+            end
+        end
+
+        # Update the mouse cursor's image.
+        if ((unsafe_load(io.ConfigFlags) & CImGui.ImGuiConfigFlags_NoMouseCursorChange) !=
+                 CImGui.ImGuiConfigFlags_NoMouseCursorChange) &&
+           (GLFW.GetInputMode(serv.window, GLFW.CURSOR) != GLFW.CURSOR_DISABLED)
+        #begin
+            imgui_cursor::CImGui.ImGuiMouseCursor = CImGui.GetMouseCursor()
+            # Hide the OS mouse cursor if ImGui is drawing it, or if it wants no cursor.
+            if (imgui_cursor == CImGui.ImGuiMouseCursor_None) || unsafe_load(io.MouseDrawCursor)
+                GLFW.SetInputMode(serv.window, GLFW.CURSOR, GLFW.CURSOR_HIDDEN)
+            # Otherwise, make sure it's shown.
+            else
+                cursor = serv.mouse_cursors[imgui_cursor + 1]
+                cursor_img = (cursor.handle == C_NULL) ?
+                               serv.mouse_cursors[imgui_cursor + 1] :
+                               serv.mouse_cursors[CImGui.ImGuiMouseCursor_Arrow + 1]
+                GLFW.SetCursor(serv.window, cursor_img)
+                GLFW.SetInputMode(serv.window, GLFW.CURSOR, GLFW.CURSOR_NORMAL)
+            end
+        end
+
+        # Check for previously-used textures getting destroyed.
+        # Just check a few different textures every frame.
+        for _ in 1:3
+            if haskey(serv.user_textures_by_handle, serv.next_tex_handle_to_prune)
+                tex_to_prune = serv.user_textures_by_handle[serv.next_tex_handle_to_prune]
+                if is_destroyed(tex_to_prune)
+                    delete!(serv.user_textures_by_handle, serv.next_tex_handle_to_prune)
+                    delete!(serv.user_texture_handles, tex_to_prune)
+                end
+            end
+            serv.next_tex_handle_to_prune = CImGui.ImTextureID(
+                (UInt64(serv.next_tex_handle_to_prune) + 1) %
+                    UInt64(serv.max_tex_handle)
+            )
+        end
+
+        CImGui.NewFrame()
+        return nothing
+    end
+    "
+    Call at the end of a frame to render the GUI
+      into the current framebuffer (presumably the screen).
+    Must be preceded by a corresponding call to `service_GUI_start_frame()`.
+    "
+    function service_GUI_end_frame(serv)
+        context::GL.Context = get_context()
+        io::Ptr{CImGui.ImGuiIO} = CImGui.GetIO()
+        @bp_check(CImGui.ImFontAtlas_IsBuilt(unsafe_load(io.Fonts)),
+                  "Font atlas isn't built! Make sure you've called `service_GUI_rebuild_fonts()`")
+
+        CImGui.Render()
+        draw_data::Ptr{CImGui.ImDrawData} = CImGui.GetDrawData()
+        if draw_data == C_NULL
+            return nothing
+        end
+
+        # Compute coordinate transforms.
+        framebuffer_size = v2i(trunc(unsafe_load(draw_data.DisplaySize.x) *
+                                     unsafe_load(draw_data.FramebufferScale.x)),
+                               trunc(unsafe_load(draw_data.DisplaySize.y) *
+                                     unsafe_load(draw_data.FramebufferScale.y)))
+        if any(framebuffer_size <= 0)
+            return nothing
+        end
+        draw_pos_min = v2f(unsafe_load(draw_data.DisplayPos.x),
+                           unsafe_load(draw_data.DisplayPos.y))
+        draw_size = v2f(unsafe_load(draw_data.DisplaySize.x),
+                        unsafe_load(draw_data.DisplaySize.y))
+        draw_pos_max = draw_pos_min + draw_size
+        # Flip the Y for the projection matrix.
+        mat_proj::fmat4 = m4_ortho(v3f(draw_pos_min.x, draw_pos_max.y, -1),
+                                   v3f(draw_pos_max.x, draw_pos_min.y, 1))
+        set_uniform(serv.render_program, "u_transform", mat_proj)
+
+        # Set up render state.
+        original_scissor = context.state.scissor
+        set_blending(context, make_blend_alpha(BlendStateRGBA))
+        set_culling(context, FaceCullModes.off)
+        set_depth_test(context, ValueTests.pass)
+        set_depth_writes(context, false)
+
+        # Pre-activate the font texture, which will presumably be rendered in most calls.
+        font_tex_id = unsafe_load(unsafe_load(io.Fonts).TexID)
+        @bp_gui_assert(serv.user_textures_by_handle[font_tex_id] ==
+                         serv.font_texture,
+                       "Font texture ID is not ", font_tex_id, " as reported. ",
+                         "Full ImGUI texture map: ", serv.user_textures_by_handle)
+        @bp_gui_assert(font_tex_id == TEX_ID_FONT)
+        view_activate(serv.font_texture)
+
+        # Scissor/clip rectangles will come in projection space.
+        # We'll need to map them into framebuffer space.
+        # Clip offset is (0,0) unless using multi-viewports.
+        clip_offset = -draw_pos_min
+        # Clip scale is (1, 1) unless using retina display, which is often (2, 2).
+        clip_scale = v2f(unsafe_load(draw_data.FramebufferScale.x),
+                         unsafe_load(draw_data.FramebufferScale.y))
+
+        # Execute the individual drawing commands.
+        cmd_lists::Vector{Ptr{CImGui.ImDrawList}} = unsafe_wrap(Vector{Ptr{CImGui.ImDrawList}},
+                                                                unsafe_load(draw_data.CmdLists),
+                                                                unsafe_load(draw_data.CmdListsCount))
+        for cmd_list_ptr in cmd_lists
+            # Upload the vertex/index data.
+            # We may have to reallocate the buffers if they're not large enough.
+            vertices_native::CImGui.ImVector_ImDrawVert = unsafe_load(cmd_list_ptr.VtxBuffer)
+            indices_native::CImGui.ImVector_ImDrawIdx = unsafe_load(cmd_list_ptr.IdxBuffer)
+            reallocated_buffers::Bool = false
+            let vertices = unsafe_wrap(Vector{CImGui.ImDrawVert},
+                                       vertices_native.Data, vertices_native.Size)
+                if serv.buffer_vertices.byte_size < (length(vertices) * sizeof(CImGui.ImDrawVert))
+                    close(serv.buffer_vertices)
+                    new_size = sizeof(CImGui.ImDrawVert) * length(vertices) * 2
+                    serv.buffer_vertices = Buffer(new_size, true, KEEP_MESH_DATA_ON_CPU)
+                    reallocated_buffers = true
+                end
+                set_buffer_data(serv.buffer_vertices, vertices)
+            end
+            let indices = unsafe_wrap(Vector{CImGui.ImDrawIdx},
+                                      indices_native.Data, indices_native.Size)
+                if serv.buffer_indices.byte_size < (length(indices) * sizeof(CImGui.ImDrawIdx))
+                    close(serv.buffer_indices)
+                    new_size = sizeof(CImGui.ImDrawIdx) * length(indices) * 2
+                    serv.buffer_indices = Buffer(new_size, true, KEEP_MESH_DATA_ON_CPU)
+                    reallocated_buffers = true
+                end
+                set_buffer_data(serv.buffer_indices, indices)
+            end
+            if reallocated_buffers
+                close(serv.buffer)
+                serv.buffer = gui_generate_mesh(serv.buffer_vertices, serv.buffer_indices)
+            end
+
+            # Execute each command in this list.
+            cmd_buffer = unsafe_load(cmd_list_ptr.CmdBuffer)
+            for cmd_i in 1:cmd_buffer.Size
+                cmd_ptr::Ptr{CImGui.ImDrawCmd} = cmd_buffer.Data + ((cmd_i - 1) * sizeof(CImGui.ImDrawCmd))
+                n_elements = unsafe_load(cmd_ptr.ElemCount)
+
+                # If the user provided a custom drawing function, use that.
+                if unsafe_load(cmd_ptr.UserCallback) != C_NULL
+                    ccall(unsafe_load(cmd_ptr.UserCallback), Cvoid,
+                          (Ptr{CImGui.ImDrawList}, Ptr{CImGui.ImDrawCmd}),
+                          cmd_list_ptr, cmd_ptr)
+                # Otherwise, do a normal GUI draw.
+                else
+                    # Set the scissor region.
+                    clip_rect_projected = unsafe_load(cmd_ptr.ClipRect)
+                    clip_minmax_projected = v4f(clip_rect_projected.x, clip_rect_projected.y,
+                                                clip_rect_projected.z, clip_rect_projected.w)
+                    clip_min = clip_scale * (clip_minmax_projected.xy + clip_offset)
+                    clip_max = clip_scale * (clip_minmax_projected.zw + clip_offset)
+                    if all(clip_min < clip_max)
+                        # The scissor min and max depend on the assumption
+                        #    of lower-left-corner clip-mode.
+                        scissor_min = Vec(clip_min.x, framebuffer_size.y - clip_max.y)
+                        scissor_max = Vec(clip_max.x, framebuffer_size.y - clip_min.y)
+
+                        scissor_min_pixel = map(x -> trunc(Cint, x), scissor_min)
+                        scissor_max_pixel = map(x -> trunc(Cint, x), scissor_max)
+                        # ImGUI is using 0-based pixels, but B+ uses 1-based.
+                        scissor_min_pixel += one(Int32)
+                        scissor_max_pixel += one(Int32)
+                        # Max pixel doesn't need to add 1, but I'm not quite sure why.
+                        set_scissor(context, Box2Di(min=scissor_min_pixel, max=scissor_max_pixel))
+
+                        # Draw the texture.
+                        tex_id = unsafe_load(cmd_ptr.TextureId)
+                        tex = haskey(serv.user_textures_by_handle, tex_id) ?
+                                serv.user_textures_by_handle[tex_id] :
+                                error("Unknown GUI texture handle: ", tex_id)
+                        set_uniform(serv.render_program, "u_texture", tex)
+                        (tex_id != font_tex_id) && view_activate(tex)
+                        render_mesh(
+                            context,
+                            serv.buffer, serv.render_program
+                            ;
+                            indexed_params = DrawIndexed(
+                                value_offset = UInt64(unsafe_load(cmd_ptr.VtxOffset))
+                            ),
+                            elements = IntervalU((
+                                min=unsafe_load(cmd_ptr.IdxOffset) + 1,
+                                size=n_elements
+                            ))
+                        )
+                        if (tex_id != font_tex_id)
+                            view_deactivate(tex)
+                        end
                     end
                 end
             end
         end
+
+        view_deactivate(serv.font_texture)
+        context.scissor = original_scissor
+
+        return nothing
     end
 
-    view_deactivate(serv.font_texture)
-    context.scissor = original_scissor
+    "Converts a B+ texture/view to something the GUI service can draw with"
+    function gui_tex_handle(service, tex::Union{Texture, View})
+        return get!(service.user_texture_handles, tex) do
+            @bp_gui_assert(!haskey(service.user_texture_handles, tex),
+                           "The call to get!() invoked this lambda twice in a row")
 
-    return nothing
-end
-
-"Wraps a `GL.Texture` or `GL.View` so that it can be passed to CImGui."
-function gui_tex(tex::Union{Texture, View}, service::GuiService = service_gui_get())::CImGui.ImTextureID
-    return get!(service.user_texture_handles, tex) do
-        @bp_gui_assert(!haskey(service.user_texture_handles, tex),
-                       "The call to get!() invoked this lambda twice in a row")
-
-        next_handle = service.max_tex_handle + 1
-        service.max_tex_handle += 1
-        @bp_gui_assert(!haskey(service.user_textures_by_handle, next_handle))
-
-        service.user_textures_by_handle[next_handle] = tex
-        return CImGui.ImTextureID(next_handle)
+            next_handle = service.max_tex_handle + 1
+            service.max_tex_handle += 1
+            @bp_gui_assert(!haskey(service.user_textures_by_handle, next_handle))
+    
+            service.user_textures_by_handle[next_handle] = tex
+            return CImGui.ImTextureID(next_handle)
+        end
     end
 end
 
 
-export GuiService, service_gui_init, service_gui_get, service_gui_cleanup,
-       service_gui_start_frame, service_gui_end_frame, service_gui_rebuild_fonts,
-       gui_tex
+export Service_GUI, service_GUI_init, service_GUI_shutdown,
+       service_GUI, service_GUI_exists,
+       service_GUI_start_frame, service_GUI_end_frame, service_GUI_rebuild_fonts,
+       gui_tex_handle

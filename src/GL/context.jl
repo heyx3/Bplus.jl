@@ -94,26 +94,6 @@ function Device(window::GLFW.Window)
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_DRAW_BUFFERS))
 end
 
-"A Context-wide singleton, providing some kind of resource for users."
-struct Service
-    # The actual service being provided.
-    data::Any
-
-    # Called when the context refreshes, a.k.a. some external library
-    #    has messed with OpenGL state in an unpredictable way.
-    # The `data` field is passed into this function for convenience.
-    on_refresh::Function
-
-    # Called when the service (or the entire Context) is being destroyed.
-    # The `data` field is passed into this function for convenience.
-    on_destroyed::Function
-
-    Service(data;
-            on_refresh = (data -> nothing),
-            on_destroyed = (data -> nothing)) =
-        new(data, on_refresh, on_destroyed)
-end
-
 
 ############################
 #         Context          #
@@ -132,6 +112,7 @@ mutable struct Context
     window::GLFW.Window
     vsync::Optional{E_VsyncModes}
     device::Device
+    debug_mode::Bool
 
     state::RenderState
 
@@ -150,7 +131,9 @@ mutable struct Context
     glfw_callbacks_window_focused::Vector{Base.Callable} # (Bool [if false, lost focus rather than gained])
     glfw_callbacks_window_resized::Vector{Base.Callable} # (v2i)
 
-    services::Dict{Symbol, Service}
+    # To interact with services, see the docstring for '@bp_service'.
+    services::Set{AbstractService}
+    unique_service_lookup::Dict{Type{<:AbstractService}, AbstractService}
 
     function Context( size::v2i, title::String
                       ;
@@ -198,7 +181,7 @@ mutable struct Context
 
         # Set up the Context singleton.
         @bp_check(isnothing(get_context()), "A Context already exists on this thread")
-        con::Context = new(window, vsync, device, RenderState(),
+        con::Context = new(window, vsync, device, debug_mode, RenderState(),
                            Ptr_Program(), Ptr_Mesh(),
                            fill((Ptr_Buffer(), Interval{Int}(min=-1, max=-1)),
                                 device.n_uniform_block_slots),
@@ -208,7 +191,8 @@ mutable struct Context
                            Vector{Base.Callable}(), Vector{Base.Callable}(),
                            Vector{Base.Callable}(), Vector{Base.Callable}(),
                            Vector{Base.Callable}(),
-                           Dict{Symbol, Service}())
+                           Set{AbstractService}(),
+                           Dict{Type{<:AbstractService}, AbstractService}())
         CONTEXTS_PER_THREAD[Threads.threadid()] = con
 
         # Hook GLFW callbacks so that multiple independent sources can subscribe to these events.
@@ -299,10 +283,11 @@ function Base.close(c::Context)
               "Trying to close a context on the wrong thread!")
 
     # Clean up all services.
-    for service::Service in values(c.services)
-        service.on_destroyed(service.data)
+    for service::AbstractService in c.services
+        service_internal_shutdown(service)
     end
     empty!(c.services)
+    empty!(c.unique_service_lookup)
 
     GLFW.DestroyWindow(c.window)
     setfield!(c, :window, GLFW.Window(C_NULL))
@@ -518,61 +503,11 @@ function refresh(context::Context)
     end
 
     # Update any attached services.
-    for service::Service in values(context.services)
-        service.on_refresh(service.data)
+    for service::AbstractService in context.services
+        service_internal_refresh(service)
     end
 end
 export refresh
-
-
-################
-#   Services   #
-################
-
-"Registers some kind of singleton associated with a Context."
-function register_service( context::Context,
-                           service_key::Symbol,
-                           service_value::Service
-                         )
-    @bp_check(!haskey(context.services, service_key),
-              "Service :", service_key, " already registered with the Context")
-    context.services[service_key] = service_value
-end
-"
-Registers a service with a Context, **if** it doesn't already exist.
-The first parameter is a lambda which generates the `Service` as needed.
-"
-function try_register_service( service_creator::Function,
-                               context::Context,
-                               service_key::Symbol
-                             )
-    return get!(service_creator, context.services, service_key).data
-end
-"
-Gets the data for a service that has been registered with this Context
-    (NOT the `Service` object itself! Just the data inside).
-"
-function get_service(context::Context, service_key::Symbol)
-    @bp_gl_assert(haskey(context.services, service_key))
-    return context.services[service_key].data
-end
-"
-Destroys a registered service.
-Note that the context will clean up services automatically when closing,
-    so you only need to call this if the service should be killed early.
-"
-function destroy_service(context::Context, service_key::Symbol)
-    @bp_check(haskey(context.services, service_key),
-              "Service :", service_key, " doesn't exist in this Context")
-
-    # Run the cleanup code for the service before removing it.
-    service::Service = context.services[service_key]
-    service.on_destroyed(service.data)
-
-    delete!(context.services, service_key)
-end
-
-# Not exported, because specific services should offer their own simplified interfaces.
 
 
 ############################

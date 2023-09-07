@@ -60,7 +60,7 @@ A dumping ground for all sorts of convenience functions and macros. Here are som
 * `RandIterator{TIdx, TRng}`: Randomly and efficiently iterates through every value in some range `1:n`. Each value will appear exactly once.
 * `UpTo{N, T}`: A type-stable, immutable (i.e. stack-allocated) container for up to N values of type T. Implements `AbstractVector{T}`.
 * Some neat helper macros that allow you to individually configure each B+ sub=module into a "debug" or "release" mode, mainly to enable/disable asserts respectively. Heavily based on the "ToggleableAsserts" package. You can also set this up in your own project; refer to `@make_toggleable_asserts`
-* A number of metaprogramming helpers in *macros.jl*
+* A number of metaprogramming helpers in *macros.jl*, in combination with the `MacroTools` package
 
 ### Math
 
@@ -309,16 +309,23 @@ You can draw a mesh using a given shader program with `render_mesh([context, ]me
 
 #### Services
 
-Because the GL context is a sort of singleton, it allows you to register global services with it. Several services are provided by B+; use them as a reference if writing your own.
+Because the GL context is a sort of singleton, it allows you to register global services with it. Several services are provided by B+; you can define new ones with the `@bp_service` macro. It has a very detailed doc-string to help you write new services.
 
-* `ViewDebuggerService` : double-checks that you're not using a texture view in a shader without activating it. Automatically included if Bplus.GL is configured for debugging (i.e. you've redefined `Bplus.GL.gl_aserts_enabled() = true`).
-* `InputService` : provides access to `Bplus.Input` (see **Input** below)
-* `GuiService` : provides access to `Bplus.GUI` (see **GUI** below)
-* `BasicGraphicsService` : provides access to various common rendering resources (see **Helpers** below)
+* `Service_Input` : provides access to `Bplus.Input` (see **Input** below)
+* `Service_GUI` : provides access to `Bplus.GUI` and Dear ImGUI (see **GUI** below)
+* `Service_BasicGraphics` : provides access to various common rendering resources (see **Helpers** below)
+* `Service_ViewDebugging` : double-checks that you're not using a texture view in a shader without activating it (although it can't catch every possible bug). Automatically included if Bplus.GL is configured for debugging (i.e. you've redefined `Bplus.GL.gl_aserts_enabled() = true`), or you pass `debug_mode=true` when creating your Context.
+* `Service_SamplerProvider` : an internal service that manages sampler objects, to re-use them across textures
+
+Note that nearly all services are singletons (within a specific Context), which means you do not manually pass the service instance when invoking that service's functions. Though the definitions will explicitly list the service as the first parameter.
+
+All services must be initialized with `service_Name_init(args...)` (e.x. `service_GUI_init()`). However, the built-in services are generally included for you -- `Service_ViewDebugging` and `Service_SamplerProvider` are always created automatically, while `Service_Input`, `Service_GUI`, and `Service_BasicGraphics` are 100% handled for you if you build your game logic within the `@game_loop` macro.
+
+All services are automatically shut down when the Context closes, but you can kill them early with `service_Name_shutdown()`. Don't do this for `Service_SamplerProvider`.
 
 ### Input
 
-Provided through a context service (see **GL**>*Services* above). This module greatly simplifies the use of the GLFW package for reading input, and defines bindings in a data-driven way that you could easily serialize/deserialize. Opt into the service with `service_input_init([context])`. Update the service every frame with `service_input_update([service])`.
+Provided through a context service (see **GL**>*Services* above). This module greatly simplifies the use of the GLFW package for reading input, and defines bindings in a data-driven way that you could easily serialize/deserialize. Make sure to update this service every frame with `service_Input_update()` (already done for you if you build your game logic within `@game_loop`).
 
 #### Buttons
 
@@ -326,7 +333,7 @@ Buttons are binary inputs. A single button can come from more than one source, i
 
 Create a button with `create_button(name::AbstractString, inputs::ButtonInput...)`. Refer to the `ButtonInput` class for more info on how to configure your buttons. A button can come from keyboard keys, mouse buttons, or joystick buttons.
 
-Get the current value of a button with `get_button(name::AbstractString[, service])::Bool`.
+Get the current value of a button with `get_button(name::AbstractString)::Bool`.
 
 #### Axes
 
@@ -334,30 +341,31 @@ Axes are continuous inputs, represented with `Float32`. Unlike buttons, they can
 
 Create an axis with `create_axis(name::AbstractString, input::AxisInput)`. Refer to the `AxisInput` class for more info on how to configure your axis. An axis can come from mouse position, scroll wheel, joystick axes, or a list of `ButtonAsAxis`.
 
-Get the current value of an axis with `get_axis(name::AbstractString[, service])::Float32`.
+Get the current value of an axis with `get_axis(name::AbstractString)::Float32`.
 
 ### GUI
 
-This module provides a context service (see **GL**>*Services* above) that manages the Dear ImGUI library (exposed though the Julia package `CImGui`).
+This module provides a context service (see **GL**>*Services* above) that manages the Dear ImGUI library through the C package `CImGui`.
 
-Opt into the service with `service_gui_init([context])`. Start a frame with     `service_gui_start_frame([context])`. End a frame with `service_gui_end_frame([context])`, which immediately draws the frame's GUI (make sure it draws to the screen and not some render target!).
+Start every frame with `service_GUI_start_frame([context])`. End a frame with `service_GUI_end_frame([context])`, which immediately draws the frame's GUI (presumably to the screen, although you could activate a `Target` before calling it if you wanted). In between the "start frame" and "end frame" calls, you can use Dear ImGUI as normal.
 
-In between the "start frame" and "end frame" calls, you can use Dear ImGUI as normal.
+If you build your game logic within `@game_loop`, then "start frame" and "end frame" are automatically called before and after your `LOOP` logic respectively.
 
 ### Helpers
 
 A dumping ground for useful stuff. Like *Utilities*, but more focused on B+ than on Julia in general.
 
-* `@game_loop`: A macro that makes it easy to run a B+ game.
+* `@game_loop`: A macro that makes it easy to run a B+ game. Refer to its doc-string for usage.
 * `@using_bplus`: A macro that automatically loads all B+ modules with `using` statements.
 * *Cam3D*: A basic customizable 3D camera.
   * State is stored in `Cam3D{F}`
   * Settings are stored in `Cam3D_Settings{F}`
   * Frame inputs are stored in `Cam3D_Input{F}`
-  * Call `cam_update(state, settings, input, delta_seconds)` to tick and compute updated state/settings
-* *BasicGraphicsService*: a context service (see **GL**>*Services* above) which provides important, basic stuff. Such as:
+  * Update the camera with `(state, settings) = cam_update(state, settings, input, delta_seconds)`.
+  * Get view/projection matrices with `cam_view_mat()` and `cam_projection_mat()`.
+* *Service_BasicGraphics*: a context service (see **GL**>*Services* above) which provides important, basic stuff. Automatically included for games built with `@game_loop`. ProvidesWE:
   * Triangle and quad meshes which cover the whole screen
-  * A blit shader (used with `resources_blit()`)
+  * A blit shader (used with `simple_blit()`)
   * An empty mesh, for dispatching draw calls with entirely procedural geometry.
 
 # License
