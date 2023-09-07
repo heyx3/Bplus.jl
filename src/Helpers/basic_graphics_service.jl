@@ -143,5 +143,6 @@ A Context service which defines a bunch of useful GL resources:
     end
 end
 
-export Service_BasicGraphics, service_BasicGraphics_init, service_BasicGraphics_shutdown,
+export Service_BasicGraphics, service_BasicGraphics,
+       service_BasicGraphics_init, service_BasicGraphics_shutdown,
        simple_blit

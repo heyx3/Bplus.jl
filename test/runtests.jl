@@ -58,8 +58,8 @@ macro bp_test_no_allocations_setup(setup, expr, expected_value, msg...)
 end
 
 function impl_bp_test_no_allocations(expr, expected_value, msg, startup)
-    expr_str = string(expr)
-    expected_str = string(expected_value)
+    expr_str = string(prettify(expr))
+    expected_str = string(prettify(expected_value))
     expr = esc(expr)
     expected_value = esc(expected_value)
     msg = map(esc, msg)

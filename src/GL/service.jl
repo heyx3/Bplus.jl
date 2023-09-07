@@ -254,16 +254,21 @@ macro bp_service(service_name, service_definitions)
                 # Our generated boilerplate will internally define then invoke
                 #    the user's literal written function.
 
+                # Define an internal function implementing the service's code.
+                impl_function_data = SplitDef(function_data)
+                impl_function_data.name = Symbol("IMPL: ", impl_function_data.name)
+                impl_function_data.doc_string = nothing
+
+                # Generate an invocation of that function.
                 function_as_call = func_def_to_call(definition)
                 if isexpr(function_as_call.args[2], :parameters)
                     function_as_call.args[3] = expr_local_service_var
                 else
                     function_as_call.args[2] = expr_local_service_var
                 end
+                function_as_call.args[1] = impl_function_data.name
 
-                impl_function_data = SplitDef(function_data)
-                impl_function_data.doc_string = nothing
-
+                # Define the outer function that users will call.
                 custom_function_data = SplitDef(function_data)
                 custom_function_data.args = expr_function_args_with_service(
                     custom_function_data.args[2:end]

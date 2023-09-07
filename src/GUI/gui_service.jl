@@ -513,7 +513,7 @@ To use a `GL.Texture` or `GL.View` in CImGui, wrap it with `gui_tex_handle()`.
     function service_GUI_start_frame(serv)
         io::Ptr{CImGui.ImGuiIO} = CImGui.GetIO()
         if !CImGui.ImFontAtlas_IsBuilt(unsafe_load(io.Fonts))
-            service_GUI_rebuild_fonts(serv)
+            service_GUI_rebuild_fonts()
         end
 
         # Set up the display size.
@@ -770,6 +770,6 @@ end
 
 
 export Service_GUI, service_GUI_init, service_GUI_shutdown,
-       service_GUI_get, service_GUI_exists,
+       service_GUI, service_GUI_exists,
        service_GUI_start_frame, service_GUI_end_frame, service_GUI_rebuild_fonts,
        gui_tex_handle
