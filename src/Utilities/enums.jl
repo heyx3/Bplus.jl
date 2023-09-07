@@ -25,26 +25,45 @@ An alternative to the @enum macro, with the following differences:
     in the original declaration.
 * Provides `MyEnum.instances()` to get a tuple of the elements.
 * Provides an alias for the enum type, `E_MyEnum`.
+
 If you wish to add definitions inside the enum module (e.x. import a package),
   make your own custom macro that returns `generate_enum()`.
   put a `begin ... end` block just after the enum name, containing the desired code.
+
+If you want your enum to act like a bitfield, use `@bp_bitflag` instead.
 """
 macro bp_enum(name, args...)
-    return generate_enum(name, :(begin end), args)
+    return generate_enum(name, :(begin end), args, false)
 end
 #NOTE: Nobody needs to use 'generate_enum' externally, just eval the data inside the invoker's module.
 #      However, it already works and would be kinda arduous to change.
+
+"""
+Combines the features of `@bp_enum` with the bitfield behavior of `@bitflag` from *BitFlags.jl*.
+Along with the usual `@bp_enum` definitions, you also get:
+
+* Power-of-two element numbering by default (if you want a 0 element, put it at the beginning).
+* `a | b` to combine two bitflags.
+* `a & b` to filter bitflags.
+* `a - b` to remove bitflags (equivalent to `a & (~b)`).
+* `Base.contains(value, element)::Bool` as a short-hand for `(value & element) != 0`
+* Pretty printing of combination values.
+"""
+macro bp_bitflag(name, args...)
+    return generate_enum(name, :(begin end), args, true)
+end
+Base.contains
 
 
 """
 The inner logic of @bp_enum.
 Also takes a block of "definitions", in case something needs to be imported into the enum's module.
 """
-function generate_enum(name, definitions, args)
+function generate_enum(name, definitions, args, is_bitfield::Bool)
     # Get the enum name/type.
     process_enum_decl(expr) =
         if expr isa Symbol
-            (expr, Int32)
+            (expr, is_bitfield ? UInt32 : Int32)
         elseif Meta.isexpr(name, :(::))
             (name.args[1], name.args[2])
         elseif Meta.isexpr(name, :escape)
@@ -94,10 +113,15 @@ function generate_enum(name, definitions, args)
         return Meta.isexpr(arg, :escape) ? arg.args[1] : arg
     end
 
+    main_macro = is_bitfield ?
+                     :( @bitflag $inner_name::$enum_type $(args...) ) :
+                     :( @enum $inner_name::$enum_type $(args...) )
+
     output = Expr(:toplevel, :(
         module $enum_name
             $definitions
-            @enum $inner_name::$enum_type $(args...)
+            $(is_bitfield ? :( using BitFlags ) : :())
+            $main_macro
             $converter_name(i::Integer) = $(esc(inner_name))(i)
             $converter_name(s::AbstractString) = $converter_name(Val(Symbol(s)))
             # Note the use of @inline, a macro, inside this macro.
@@ -119,6 +143,14 @@ function generate_enum(name, definitions, args)
             #    as if it's an array of the underlying type.
             Base.unsafe_convert(::Type{Ptr{$enum_type}}, r::Ref{$(esc(inner_name))}) =
                 Base.unsafe_convert(Ptr{$enum_type}, Base.unsafe_convert(Ptr{Nothing}, r))
+
+            # Bitflags-specific operations:
+            $(!is_bitfield ? :() : quote
+                Base.:(-)(a::$(esc(inner_name)), b::$(esc(inner_name))) =
+                    $(esc(inner_name))($enum_type(a) & (~$enum_type(b)))
+                Base.contains(haystack::$(esc(inner_name)), needle::$(esc(inner_name)))::Bool =
+                    ($enum_type(haystack) & $enum_type(needle)) != zero($enum_type)
+            end)
         end), :(
             const $alias_name = $enum_name.$inner_name
         )
@@ -126,4 +158,4 @@ function generate_enum(name, definitions, args)
     return output
 end
 
-export @bp_enum
+export @bp_enum, @bp_bitflag

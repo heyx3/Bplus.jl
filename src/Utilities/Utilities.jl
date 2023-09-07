@@ -1,6 +1,6 @@
 module Utilities
 
-using StaticArrays, MacroTools, Dates, StructTypes
+using StaticArrays, MacroTools, Dates, StructTypes, BitFlags
 
 include("asserts.jl")
 @make_toggleable_asserts bp_utils_

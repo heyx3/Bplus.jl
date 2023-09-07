@@ -47,6 +47,18 @@ end
 @test_enum A 0 1 2
 @test_enum B 0 20 -10
 
+# Test bitflags.
+@bp_bitflag D a b c
+@test_enum D 1 2 4
+@bp_check(Int(D.a | D.b) == 3)
+@bp_check(contains(D.a, D.a))
+@bp_check(!contains(D.a, D.b))
+@bp_check(!contains(D.a, D.c))
+@bp_check((D.a | D.b) - D.b == D.a)
+# Test other bitflag features.
+@bp_bitflag E::UInt8 z=0 a b c
+@bp_check(Int.((E.z, E.a, E.b, E.c)) == (0, 1, 2, 4))
+
 
 # Test the ability of enums to reference dependencies:
 module M
@@ -55,7 +67,7 @@ module M
     using Bplus.Utilities
 
     macro make_custom_enum(name, args...)
-        return Utilities.generate_enum(name, quote using ..M end, args)
+        return Utilities.generate_enum(name, quote using ..M end, args, false)
     end
     @make_custom_enum(D::MyInt,
         a=5,

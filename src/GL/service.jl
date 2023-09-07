@@ -10,7 +10,6 @@ service_internal_refresh(service::AbstractService) = nothing
 service_internal_shutdown(service::AbstractService) = nothing
 
 
-#TODO: A stronger version of 'force_unique' for services that must not exist more than once across multiple contexts
 """
 Defines a B+ Context service with a standardized interface. Services are a mutable struct
   with the name `Service_X`, where `X` is the name you provide.
