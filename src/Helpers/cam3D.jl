@@ -2,7 +2,7 @@
 Base.@kwdef struct Cam3D{F<:AbstractFloat}
     pos::Vec3{F} = zero(Vec3{F})
 
-    forward::Vec3{F} = get_horz_vector(1, F)
+    forward::Vec3{F} = get_horz_vector(2, F)
     up::Vec3{F} = get_up_vector(F)
 
     clip_range::Interval{F} = Interval(min=convert(F, 0.01),
@@ -12,7 +12,7 @@ Base.@kwdef struct Cam3D{F<:AbstractFloat}
 end
 
 "Gets the vector for this camera's right-ward direction."
-cam_rightward(cam::Cam3D{F}) where {F} = v_rightward(cam.forward, cam.up)
+cam_rightward(cam::Cam3D{F}) where {F} = cam_basis(cam).right
 
 function cam_basis(cam::Cam3D{F}
                   )::@NamedTuple{forward::Vec3{F}, right::Vec3{F}, up::Vec3{F}} where {F}
@@ -66,6 +66,7 @@ Base.@kwdef struct Cam3D_Settings{F<:AbstractFloat}
 
     # How the camera handles its own Up-axis.
     up_axis_mode::E_Cam3D_UpModes = Cam3D_UpModes.keep_upright
+    up_movement_is_global::Bool = true
 end
 
 export Cam3D_UpModes, E_Cam3D_UpModes, Cam3D_Settings
@@ -102,15 +103,20 @@ function cam_update( cam::Cam3D{F},
                    )::Tuple{Cam3D{F}, Cam3D_Settings{F}} where {F<:AbstractFloat, F2<:Real}
     delta_seconds_F = convert(F, delta_seconds)
 
+    basis = cam_basis(cam)
+
     # Handle movement.
     max_delta_pos::F = delta_seconds_F * settings.move_speed
     if input.boost
         max_delta_pos *= settings.move_speed_boost_multiplier
     end
+    move_up_dir = settings.up_movement_is_global ?
+                      cam.up :
+                      basis.up
     @set! cam.pos += max_delta_pos *
-                     ((cam.forward * input.forward) +
-                      (cam.up * input.up) +
-                      (cam_rightward(cam) * input.right))
+                     ((basis.forward * input.forward) +
+                      (move_up_dir * input.up) +
+                      (basis.right * input.right))
 
     # Handle movement speed.
     if !iszero(input.speed_change)
