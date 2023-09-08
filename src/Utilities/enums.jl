@@ -47,6 +47,7 @@ Along with the usual `@bp_enum` definitions, you also get:
 * `a & b` to filter bitflags.
 * `a - b` to remove bitflags (equivalent to `a & (~b)`).
 * `Base.contains(value, element)::Bool` as a short-hand for `(value & element) != 0`
+* `ALL` as a value representing all elements of the bitfield enabled
 * Pretty printing of combination values.
 """
 macro bp_bitflag(name, args...)
@@ -150,6 +151,13 @@ function generate_enum(name, definitions, args, is_bitfield::Bool)
                     $(esc(inner_name))($enum_type(a) & (~$enum_type(b)))
                 Base.contains(haystack::$(esc(inner_name)), needle::$(esc(inner_name)))::Bool =
                     ($enum_type(haystack) & $enum_type(needle)) != zero($enum_type)
+
+                const ALL = let a = $(esc(:instances))()[1]
+                    for inst in $(esc(:instances))()
+                        a |= inst
+                    end
+                    a
+                end
             end)
         end), :(
             const $alias_name = $enum_name.$inner_name
