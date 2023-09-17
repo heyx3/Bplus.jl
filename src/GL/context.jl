@@ -1,32 +1,29 @@
 "Global OpenGL state, mostly related to the fixed-function stuff like blending"
-struct RenderState
-    color_write_mask::vRGBA{Bool}
-    depth_write::Bool
-    cull_mode::E_FaceCullModes
+@kwdef struct RenderState
+    # NOTE: these default values do not necessarily represent the default values
+    #    of a new OpenGL context.
+
+    color_write_mask::vRGBA{Bool} = Vec(true, true, true, true)
+    depth_write::Bool = true
+    cull_mode::E_FaceCullModes = FaceCullModes.off
 
     # Viewport and scissor rectangles are 1-based, not 0-based.
-    viewport::Box2Di
-    scissor::Optional{Box2Di}
+    viewport::Box2Di = Box2Di(min=v2i(0, 0), max=v2i(1, 1)) # Dummy initial value
+    scissor::Optional{Box2Di} = nothing
     # TODO: Changing viewport Y axis and depth (how can my matrix math support this depth mode?): https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glClipControl.xhtml
 
-    blend_mode::@NamedTuple{rgb::BlendStateRGB, alpha::BlendStateAlpha}
-
-    depth_test::E_ValueTests
-
-    # There can be different stencil behaviors for the front-faces and back-faces.
-    stencil_test::Union{StencilTest, @NamedTuple{front::StencilTest, back::StencilTest}}
-    stencil_result::Union{StencilResult, @NamedTuple{front::StencilResult, back::StencilResult}}
-    stencil_write_mask::Union{GLuint, @NamedTuple{front::GLuint, back::GLuint}}
-
-    RenderState(fields...) = new(fields...)
-    RenderState() = new(
-        Vec(true, true, true, true), true,
-        FaceCullModes.off,
-        Box2Di(min=v2i(0, 0), max=v2i(1, 1)), nothing,
-        (rgb=make_blend_opaque(BlendStateRGB), alpha=make_blend_opaque(BlendStateAlpha)),
-        ValueTests.pass,
-        StencilTest(), StencilResult(), ~GLuint(0)
+    # There can be different blend modes for color vs alpha.
+    blend_mode::@NamedTuple{rgb::BlendStateRGB, alpha::BlendStateAlpha} = (
+        rgb = make_blend_opaque(BlendStateRGB),
+        alpha = make_blend_opaque(BlendStateAlpha)
     )
+
+    depth_test::E_ValueTests = ValueTests.pass
+
+    # There can be different stencil behaviors for front-faces vs back-faces.
+    stencil_test::Union{StencilTest, @NamedTuple{front::StencilTest, back::StencilTest}} = StencilTest()
+    stencil_result::Union{StencilResult, @NamedTuple{front::StencilResult, back::StencilResult}} = StencilResult()
+    stencil_write_mask::Union{GLuint, @NamedTuple{front::GLuint, back::GLuint}} = ~zero(GLuint)
 end
 
 "GPU- and context-specific constants"
@@ -682,7 +679,7 @@ function set_blending(context::Context, blend_a::BlendStateAlpha)
         glBlendColor(blend_rgb.constant..., blend_a.constant)
         set_render_state_field!(context, :blend_mode, (
             rgb = context.state.blend_mode.rgb,
-            alpha = blend_alpha
+            alpha = context.state.blend_mode.alpha
         ))
     end
 end
@@ -713,7 +710,7 @@ function set_stencil_test(context::Context, test::StencilTest)
 end
 "Sets the stencil test to use for front-faces, leaving the back-faces test unchanged"
 function set_stencil_test_front(context::Context, test::StencilTest)
-    if get_stencil_test_front(context.state.stencil_test) != test
+    if get_stencil_test_front(context) != test
         glStencilFuncSeparate(GL_FRONT, GLenum(test.test), test.reference, test.bitmask)
 
         current_back::StencilTest = get_stencil_test_back(context)
@@ -722,7 +719,7 @@ function set_stencil_test_front(context::Context, test::StencilTest)
 end
 "Sets the stencil test to use for back-faces, leaving the front-faces test unchanged"
 function set_stencil_test_back(context::Context, test::StencilTest)
-    if get_stencil_test_back(context.state.stencil_test) != test
+    if get_stencil_test_back(context) != test
         glStencilFuncSeparate(GL_BACK, GLenum(test.test), test.reference, test.bitmask)
 
         current_front::StencilTest = get_stencil_test_front(context)
@@ -802,7 +799,7 @@ Sets the bitmask which enables/disables bits of the stencil buffer for writing.
 Only applies to front-facing primitives.
 "
 function set_stencil_write_mask_front(context::Context, mask::GLuint)
-    if get_stencil_write_mask_front(context.state.stencil_write_mask) != mask
+    if get_stencil_write_mask_front(context) != mask
         current_back_mask::GLuint = context.state.stencil_write_mask.back
         glStencilMaskSeparate(GL_FRONT, mask)
         set_render_state_field!(context, :stencil_write_mask, (
@@ -816,7 +813,7 @@ Sets the bitmask which enables/disables bits of the stencil buffer for writing.
 Only applies to back-facing primitives.
 "
 function set_stencil_write_mask_back(context::Context, mask::GLuint)
-    if get_stencil_write_mask_back(context.state.stencil_write_mask) != mask
+    if get_stencil_write_mask_back(context) != mask
         current_front_mask::GLuint = context.state.stencil_write_mask.front
         glStencilMaskSeparate(GL_BACK, mask)
         set_render_state_field!(context, :stencil_write_mask, (
@@ -903,6 +900,192 @@ set_stencil_write_mask_back(write_mask::GLuint) = set_stencil_write_mask_back(ge
 set_stencil_write_mask(front::GLuint, back::GLuint) = set_stencil_write_mask(get_context(), front, back)
 set_viewport(area::Box2Di) = set_viewport(get_context(), area)
 set_scissor(area::Optional{Box2Di}) = set_scissor(get_context(), area)
+
+
+##########################
+#  Render State Wrappers #
+##########################
+
+# These functions set render state, execute a lambda, then restore that state.
+# This helps you write more stateless graphics code.
+
+# For example: 'with_culling(FaceCullModes.off) do ... end'
+
+"
+Defines a function which sets some render state, executes a lambda,
+  then restores the original render state.
+
+There will be two overloads, one which takes an explicit Context and one which does not.
+
+The signature you provide should not include the context or the lambda;
+    those parameters are inserted automatically.
+
+The doc-string will be generated with the help of the last macro parameter.
+
+The function is automatically exported.
+"
+macro render_state_wrapper(signature, cache_old, set_new, set_old, description)
+    func_data = SplitDef(:( $signature = nothing ))
+    insert!(func_data.args, 1, :to_do)
+
+    # Define an overload that gets the context implicity,
+    #    then calls the overload with an explicit context.
+    no_context_func_data = SplitDef(func_data)
+    no_context_func_inner_call = SplitDef(no_context_func_data)
+    insert!(no_context_func_inner_call.args, 2,
+            :( $(@__MODULE__).get_context() ))
+    no_context_func_data.body = combinecall(no_context_func_inner_call)
+
+    # Define the main overload which has an explicit context
+    #    as the first parameter after the lambda.
+    with_context_func_data = SplitDef(func_data)
+    insert!(with_context_func_data.args, 2,
+            :( context::$(@__MODULE__).Context ))
+    with_context_func_data.body = quote
+        $cache_old
+        $set_new
+        try
+            return to_do()
+        finally
+            $set_old
+        end
+    end
+
+    return esc(quote
+        Core.@doc(
+            $(string("Executes some code with the given ", description,
+                     ", then restores the original ", description, ". ",
+                     "Optionally takes an explicit context ",
+                     "if you have the reference to it already.")),
+            $(combinedef(no_context_func_data))
+        )
+        $(combinedef(with_context_func_data))
+        export $(func_data.name)
+    end)
+end
+
+@render_state_wrapper(with_culling(cull::E_FaceCullModes),
+                      old_cull = context.cull_mode,
+                      set_culling(context, cull),
+                      set_culling(context, old_cull),
+                      "cull state")
+
+@render_state_wrapper(with_color_writes(enabled_per_channel::vRGBA{Bool}),
+                      old_writes = context.state.color_write_mask,
+                      set_color_writes(context, enabled_per_channel),
+                      set_color_writes(context, old_writes),
+                      "color write mask")
+@render_state_wrapper(with_depth_writes(write_depth::Bool),
+                      old_writes = context.state.depth_write,
+                      set_depth_writes(context, write_depth),
+                      set_depth_writes(context, old_writes),
+                      "depth write flag")
+@render_state_wrapper(with_stencil_writes(bit_mask::GLuint),
+                      old_writes = (get_stencil_write_mask_front(context), get_stencil_write_mask_back(context)),
+                      set_stencil_write_mask(context, bit_mask),
+                      set_stencil_write_mask(context, old_writes...),
+                      "stencil write mask")
+@render_state_wrapper(with_stencil_writes(front_faces_bit_mask::GLuint, back_faces_bit_mask::GLuint),
+                      old_writes = (get_stencil_write_mask_front(context), get_stencil_write_mask_back(context)),
+                      set_stencil_write_mask(context, front_faces_bit_mask, back_faces_bit_mask),
+                      set_stencil_write_mask(context, old_writes...),
+                      "per-face stencil write mask")
+@render_state_wrapper(with_stencil_writes_front(front_faces_bit_mask::GLuint),
+                      old_writes = get_stencil_write_mask_front(context),
+                      set_stencil_write_mask_front(context, front_faces_bit_mask),
+                      set_stencil_write_mask_front(context, old_writes),
+                      "front-faces stencil write mask")
+@render_state_wrapper(with_stencil_writes_back(back_faces_bit_mask::GLuint),
+                      old_writes = get_stencil_write_mask_back(context),
+                      set_stencil_write_mask_back(context, back_faces_bit_mask),
+                      set_stencil_write_mask_back(context, old_writes),
+                      "back-faces stencil write mask")
+
+@render_state_wrapper(with_depth_test(test::E_ValueTests),
+                      old_test = context.state.depth_test,
+                      set_depth_test(context, test),
+                      set_depth_test(context, old_test),
+                      "depth test")
+
+@render_state_wrapper(with_blending(blend::BlendStateRGBA),
+                      old_blend = context.state.blend_mode,
+                      set_blending(context, blend),
+                      set_blending(context, old_blend),
+                      "Color+Alpha blend mode")
+@render_state_wrapper(with_blending(color_blend::BlendStateRGB, alpha_blend::BlendStateAlpha),
+                      old_blend = context.state.blend_mode,
+                      set_blending(context, color_blend, alpha_blend),
+                      set_blending(context, old_blend.rgb, old_blend.alpha),
+                      "Color+Alpha blend mode")
+@render_state_wrapper(with_blending(color_blend::BlendStateRGB),
+                      old_blend = context.state.blend_mode.rgb,
+                      set_blending(context, color_blend),
+                      set_blending(context, old_blend),
+                      "Color blend mode")
+@render_state_wrapper(with_blending(alpha_blend::BlendStateAlpha),
+                      old_blend = context.state.blend_mode.alpha,
+                      set_blending(context, alpha_blend),
+                      set_blending(context, old_blend),
+                      "Alpha blend mode")
+
+@render_state_wrapper(with_stencil_test(test::StencilTest),
+                      old_tests = (get_stencil_test_front(context), get_stencil_test_back(context)),
+                      set_stencil_test(context, test),
+                      set_stencil_test(context, old_tests...),
+                      "stencil test")
+@render_state_wrapper(with_stencil_test(front_faces::StencilTest, back_faces::StencilTest),
+                      old_tests = (get_stencil_test_front(context), get_stencil_test_back(context)),
+                      set_stencil_test(context, front_faces, back_faces),
+                      set_stencil_test(context, old_tests...),
+                      "per-face stencil tests")
+@render_state_wrapper(with_stencil_test_front(test::StencilTest),
+                      old_test = get_stencil_test_front(context),
+                      set_stencil_test_front(context, test),
+                      set_stencil_test_front(context, old_test),
+                      "front-face stencil test")
+@render_state_wrapper(with_stencil_test_back(test::StencilTest),
+                      old_test = get_stencil_test_back(context),
+                      set_stencil_test_back(context, test),
+                      set_stencil_test_back(context, old_test),
+                      "back-face stencil test")
+
+@render_state_wrapper(with_stencil_result(ops::StencilResult),
+                      old_results = (get_stencil_results_front(context), get_stencil_results_back(context)),
+                      set_stencil_result(context, ops),
+                      set_stencil_result(context, old_results...),
+                      "stencil result")
+@render_state_wrapper(with_stencil_result(front_faces::StencilResult, back_faces::StencilResult),
+                      old_results = (get_stencil_results_front(context), get_stencil_results_back(context)),
+                      set_stencil_result(context, front_faces, back_faces),
+                      set_stencil_result(context, old_results...),
+                      "per-face stencil results")
+@render_state_wrapper(with_stencil_result_front(ops::StencilResult),
+                      old_result = get_stencil_results_front(context),
+                      set_stencil_result(context, ops),
+                      set_stencil_result(context, old_result),
+                      "front-face stencil result")
+@render_state_wrapper(with_stencil_result_back(ops::StencilResult),
+                      old_result = get_stencil_results_back(context),
+                      set_stencil_result(context, ops),
+                      set_stencil_result(context, old_result),
+                      "back-face stencil result")
+
+@render_state_wrapper(with_viewport(pixel_area::Box2Di),
+                      old_viewport = context.state.viewport,
+                      set_viewport(context, pixel_area),
+                      set_viewport(context, old_viewport),
+                      "viewport rect")
+@render_state_wrapper(with_scissor(pixel_area::Optional{Box2Di}),
+                      old_scissor = context.state.scissor,
+                      set_scissor(context, pixel_area),
+                      set_scissor(context, old_scissor),
+                      "scissor rect")
+
+@render_state_wrapper(with_render_state(full_state::RenderState),
+                      old_state = context.state,
+                      set_render_state(context, full_state),
+                      set_render_state(context, old_state),
+                      "all render state")
 
 
 ###############

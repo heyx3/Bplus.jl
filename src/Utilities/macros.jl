@@ -60,9 +60,21 @@ export FunctionMetadata
 is_function_expr(expr)::Bool = exists(FunctionMetadata(expr))
 export is_function_expr
 
+"Deep-copies an expression AST, except for things that should not be copied like literal modules"
+expr_deepcopy(ast) = MacroTools.postwalk(ast) do e
+    if e isa Module
+        e
+    elseif e isa Expr
+        Expr(e.head, expr_deepcopy.(e.args)...)
+    else
+        deepcopy(e)
+    end
+end
+export expr_deepcopy
+
 "
 A data representation of the output of `splitdef()`,
-    plus the ability to recognize doc-strings and `@inline`
+    plus the ability to recognize doc-strings and `@inline`.
 "
 mutable struct SplitDef
     name
@@ -87,7 +99,16 @@ mutable struct SplitDef
             metadata.doc_string, metadata.inline, metadata.generated
         )
     end
-    SplitDef(s::SplitDef) = deepcopy(s)
+    SplitDef(s::SplitDef) = new(
+        expr_deepcopy(s.name),
+        expr_deepcopy.(s.args),
+        expr_deepcopy.(s.kw_args),
+        expr_deepcopy(s.body),
+        expr_deepcopy(s.return_type),
+        expr_deepcopy.(s.where_params),
+        expr_deepcopy(s.doc_string),
+        s.inline, s.generated
+    )
 end
 function MacroTools.combinedef(struct_representation::SplitDef)
     definition = combinedef(Dict(
@@ -106,7 +127,17 @@ function MacroTools.combinedef(struct_representation::SplitDef)
         definition
     ))
 end
-export SplitDef
+"Like `MacroTools.combinedef()`, but emits a function call instead of a definition"
+function combinecall(struct_representation::SplitDef)
+    struct_representation = SplitDef(struct_representation)
+    struct_representation.inline = false
+    struct_representation.generated = false
+
+    def_expr = longdef(combinedef(struct_representation))
+
+    return def_expr.args[1]
+end
+export SplitDef, combinecall
 
 
 "

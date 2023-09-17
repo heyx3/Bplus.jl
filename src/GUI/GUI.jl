@@ -1,7 +1,7 @@
 "Implementation of a Dear IMGUI renderer/controller within B+, plus various helpers."
 module GUI
 
-    using Dates, InteractiveUtils
+    using Dates, Setfield
     using CImGui, GLFW, CSyntax, StructTypes
     using ..Utilities, ..Math, ..GL
 

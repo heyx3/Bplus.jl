@@ -603,6 +603,7 @@ To use a `GL.Texture` or `GL.View` in CImGui, wrap it with `gui_tex_handle()`.
         @bp_check(CImGui.ImFontAtlas_IsBuilt(unsafe_load(io.Fonts)),
                   "Font atlas isn't built! Make sure you've called `service_GUI_rebuild_fonts()`")
 
+        # Notify Dear ImGUI that drawing is starting.
         CImGui.Render()
         draw_data::Ptr{CImGui.ImDrawData} = CImGui.GetDrawData()
         if draw_data == C_NULL
@@ -627,18 +628,11 @@ To use a `GL.Texture` or `GL.View` in CImGui, wrap it with `gui_tex_handle()`.
                                    v3f(draw_pos_max.x, draw_pos_min.y, 1))
         set_uniform(serv.render_program, "u_transform", mat_proj)
 
-        # Set up render state.
-        original_scissor = context.state.scissor
-        set_blending(context, make_blend_alpha(BlendStateRGBA))
-        set_culling(context, FaceCullModes.off)
-        set_depth_test(context, ValueTests.pass)
-        set_depth_writes(context, false)
-
-        # Pre-activate the font texture, which will presumably be rendered in most calls.
+        # Pre-activate the font texture, which will be used in many GUI calls.
         font_tex_id = unsafe_load(unsafe_load(io.Fonts).TexID)
         @bp_gui_assert(serv.user_textures_by_handle[font_tex_id] ==
                          serv.font_texture,
-                       "Font texture ID is not ", font_tex_id, " as reported. ",
+                      "Font texture ID is not ", font_tex_id, " as reported. ",
                          "Full ImGUI texture map: ", serv.user_textures_by_handle)
         @bp_gui_assert(font_tex_id == TEX_ID_FONT)
         view_activate(serv.font_texture)
@@ -649,105 +643,121 @@ To use a `GL.Texture` or `GL.View` in CImGui, wrap it with `gui_tex_handle()`.
         clip_offset = -draw_pos_min
         # Clip scale is (1, 1) unless using retina display, which is often (2, 2).
         clip_scale = v2f(unsafe_load(draw_data.FramebufferScale.x),
-                         unsafe_load(draw_data.FramebufferScale.y))
+                        unsafe_load(draw_data.FramebufferScale.y))
 
-        # Execute the individual drawing commands.
-        cmd_lists::Vector{Ptr{CImGui.ImDrawList}} = unsafe_wrap(Vector{Ptr{CImGui.ImDrawList}},
-                                                                unsafe_load(draw_data.CmdLists),
-                                                                unsafe_load(draw_data.CmdListsCount))
-        for cmd_list_ptr in cmd_lists
-            # Upload the vertex/index data.
-            # We may have to reallocate the buffers if they're not large enough.
-            vertices_native::CImGui.ImVector_ImDrawVert = unsafe_load(cmd_list_ptr.VtxBuffer)
-            indices_native::CImGui.ImVector_ImDrawIdx = unsafe_load(cmd_list_ptr.IdxBuffer)
-            reallocated_buffers::Bool = false
-            let vertices = unsafe_wrap(Vector{CImGui.ImDrawVert},
-                                       vertices_native.Data, vertices_native.Size)
-                if serv.buffer_vertices.byte_size < (length(vertices) * sizeof(CImGui.ImDrawVert))
-                    close(serv.buffer_vertices)
-                    new_size = sizeof(CImGui.ImDrawVert) * length(vertices) * 2
-                    serv.buffer_vertices = Buffer(new_size, true, KEEP_MESH_DATA_ON_CPU)
-                    reallocated_buffers = true
+        # We need alpha blending, no culling (the safer option, and no difference in performance),
+        #    no depth-testing (depth is determined by draw order), and no depth writes.
+        # Along with making sure all these are changed and then restored at the end,
+        #    we also need to ensure that scissor rectangle state is restored at the end,
+        #    because individual draw-command lists will change it.
+        # Other render state can remain unchanged.
+        gui_render_state = context.state
+        @set! gui_render_state.depth_test = ValueTests.pass
+        @set! gui_render_state.depth_write = false
+        @set! gui_render_state.blend_mode = (
+            rgb = make_blend_alpha(BlendStateRGB),
+            alpha = make_blend_alpha(BlendStateAlpha)
+        )
+        @set! gui_render_state.cull_mode = FaceCullModes.off
+        @set! gui_render_state.scissor = nothing
+        with_render_state(context, gui_render_state) do
+            cmd_lists::Vector{Ptr{CImGui.ImDrawList}} = unsafe_wrap(Vector{Ptr{CImGui.ImDrawList}},
+                                                                    unsafe_load(draw_data.CmdLists),
+                                                                    unsafe_load(draw_data.CmdListsCount))
+            for cmd_list_ptr in cmd_lists
+                # Upload the vertex/index data.
+                # We may have to reallocate the buffers if they're not large enough.
+                vertices_native::CImGui.ImVector_ImDrawVert = unsafe_load(cmd_list_ptr.VtxBuffer)
+                indices_native::CImGui.ImVector_ImDrawIdx = unsafe_load(cmd_list_ptr.IdxBuffer)
+                reallocated_buffers::Bool = false
+                let vertices = unsafe_wrap(Vector{CImGui.ImDrawVert},
+                                           vertices_native.Data, vertices_native.Size)
+                    if serv.buffer_vertices.byte_size < (length(vertices) * sizeof(CImGui.ImDrawVert))
+                        close(serv.buffer_vertices)
+                        new_size = sizeof(CImGui.ImDrawVert) * length(vertices) * 2
+                        serv.buffer_vertices = Buffer(new_size, true, KEEP_MESH_DATA_ON_CPU)
+                        reallocated_buffers = true
+                    end
+                    set_buffer_data(serv.buffer_vertices, vertices)
                 end
-                set_buffer_data(serv.buffer_vertices, vertices)
-            end
-            let indices = unsafe_wrap(Vector{CImGui.ImDrawIdx},
-                                      indices_native.Data, indices_native.Size)
-                if serv.buffer_indices.byte_size < (length(indices) * sizeof(CImGui.ImDrawIdx))
-                    close(serv.buffer_indices)
-                    new_size = sizeof(CImGui.ImDrawIdx) * length(indices) * 2
-                    serv.buffer_indices = Buffer(new_size, true, KEEP_MESH_DATA_ON_CPU)
-                    reallocated_buffers = true
+                let indices = unsafe_wrap(Vector{CImGui.ImDrawIdx},
+                                         indices_native.Data, indices_native.Size)
+                    if serv.buffer_indices.byte_size < (length(indices) * sizeof(CImGui.ImDrawIdx))
+                        close(serv.buffer_indices)
+                        new_size = sizeof(CImGui.ImDrawIdx) * length(indices) * 2
+                        serv.buffer_indices = Buffer(new_size, true, KEEP_MESH_DATA_ON_CPU)
+                        reallocated_buffers = true
+                    end
+                    set_buffer_data(serv.buffer_indices, indices)
                 end
-                set_buffer_data(serv.buffer_indices, indices)
-            end
-            if reallocated_buffers
-                close(serv.buffer)
-                serv.buffer = gui_generate_mesh(serv.buffer_vertices, serv.buffer_indices)
-            end
+                if reallocated_buffers
+                    close(serv.buffer)
+                    serv.buffer = gui_generate_mesh(serv.buffer_vertices, serv.buffer_indices)
+                end
 
-            # Execute each command in this list.
-            cmd_buffer = unsafe_load(cmd_list_ptr.CmdBuffer)
-            for cmd_i in 1:cmd_buffer.Size
-                cmd_ptr::Ptr{CImGui.ImDrawCmd} = cmd_buffer.Data + ((cmd_i - 1) * sizeof(CImGui.ImDrawCmd))
-                n_elements = unsafe_load(cmd_ptr.ElemCount)
+                # Execute the individual commands.
+                cmd_buffer = unsafe_load(cmd_list_ptr.CmdBuffer)
+                for cmd_i in 1:cmd_buffer.Size
+                    cmd_ptr::Ptr{CImGui.ImDrawCmd} = cmd_buffer.Data +
+                                                       ((cmd_i - 1) * sizeof(CImGui.ImDrawCmd))
+                    n_elements = unsafe_load(cmd_ptr.ElemCount)
 
-                # If the user provided a custom drawing function, use that.
-                if unsafe_load(cmd_ptr.UserCallback) != C_NULL
-                    ccall(unsafe_load(cmd_ptr.UserCallback), Cvoid,
-                          (Ptr{CImGui.ImDrawList}, Ptr{CImGui.ImDrawCmd}),
-                          cmd_list_ptr, cmd_ptr)
-                # Otherwise, do a normal GUI draw.
-                else
-                    # Set the scissor region.
-                    clip_rect_projected = unsafe_load(cmd_ptr.ClipRect)
-                    clip_minmax_projected = v4f(clip_rect_projected.x, clip_rect_projected.y,
-                                                clip_rect_projected.z, clip_rect_projected.w)
-                    clip_min = clip_scale * (clip_minmax_projected.xy + clip_offset)
-                    clip_max = clip_scale * (clip_minmax_projected.zw + clip_offset)
-                    if all(clip_min < clip_max)
-                        # The scissor min and max depend on the assumption
-                        #    of lower-left-corner clip-mode.
-                        scissor_min = Vec(clip_min.x, framebuffer_size.y - clip_max.y)
-                        scissor_max = Vec(clip_max.x, framebuffer_size.y - clip_min.y)
+                    # If the user provided a custom drawing function, use that.
+                    if unsafe_load(cmd_ptr.UserCallback) != C_NULL
+                        ccall(unsafe_load(cmd_ptr.UserCallback), Cvoid,
+                              (Ptr{CImGui.ImDrawList}, Ptr{CImGui.ImDrawCmd}),
+                              cmd_list_ptr, cmd_ptr)
+                    # Otherwise, do a normal GUI draw.
+                    else
+                        # Set the scissor region.
+                        clip_rect_projected = unsafe_load(cmd_ptr.ClipRect)
+                        clip_minmax_projected = v4f(clip_rect_projected.x, clip_rect_projected.y,
+                                                    clip_rect_projected.z, clip_rect_projected.w)
+                        clip_min = clip_scale * (clip_minmax_projected.xy + clip_offset)
+                        clip_max = clip_scale * (clip_minmax_projected.zw + clip_offset)
+                        if all(clip_min < clip_max)
+                            # The scissor min and max depend on the assumption
+                            #    of lower-left-corner clip-mode.
+                            scissor_min = Vec(clip_min.x, framebuffer_size.y - clip_max.y)
+                            scissor_max = Vec(clip_max.x, framebuffer_size.y - clip_min.y)
 
-                        scissor_min_pixel = map(x -> trunc(Cint, x), scissor_min)
-                        scissor_max_pixel = map(x -> trunc(Cint, x), scissor_max)
-                        # ImGUI is using 0-based pixels, but B+ uses 1-based.
-                        scissor_min_pixel += one(Int32)
-                        scissor_max_pixel += one(Int32)
-                        # Max pixel doesn't need to add 1, but I'm not quite sure why.
-                        set_scissor(context, Box2Di(min=scissor_min_pixel, max=scissor_max_pixel))
+                            scissor_min_pixel = map(x -> trunc(Cint, x), scissor_min)
+                            scissor_max_pixel = map(x -> trunc(Cint, x), scissor_max)
+                            # ImGUI is using 0-based pixels, but B+ uses 1-based.
+                            scissor_min_pixel += one(Int32)
+                            scissor_max_pixel += one(Int32)
+                            # Max pixel doesn't need to add 1, but I'm not quite sure why.
+                            set_scissor(context, Box2Di(min=scissor_min_pixel, max=scissor_max_pixel))
 
-                        # Draw the texture.
-                        tex_id = unsafe_load(cmd_ptr.TextureId)
-                        tex = haskey(serv.user_textures_by_handle, tex_id) ?
-                                serv.user_textures_by_handle[tex_id] :
-                                error("Unknown GUI texture handle: ", tex_id)
-                        set_uniform(serv.render_program, "u_texture", tex)
-                        (tex_id != font_tex_id) && view_activate(tex)
-                        render_mesh(
-                            context,
-                            serv.buffer, serv.render_program
-                            ;
-                            indexed_params = DrawIndexed(
-                                value_offset = UInt64(unsafe_load(cmd_ptr.VtxOffset))
-                            ),
-                            elements = IntervalU((
-                                min=unsafe_load(cmd_ptr.IdxOffset) + 1,
-                                size=n_elements
-                            ))
-                        )
-                        if (tex_id != font_tex_id)
-                            view_deactivate(tex)
+                            # Draw the texture.
+                            tex_id = unsafe_load(cmd_ptr.TextureId)
+                            tex = haskey(serv.user_textures_by_handle, tex_id) ?
+                                    serv.user_textures_by_handle[tex_id] :
+                                    error("Unknown GUI texture handle: ", tex_id)
+                            set_uniform(serv.render_program, "u_texture", tex)
+                            (tex_id != font_tex_id) && view_activate(tex)
+                            render_mesh(
+                                context,
+                                serv.buffer, serv.render_program
+                                ;
+                                indexed_params = DrawIndexed(
+                                    value_offset = UInt64(unsafe_load(cmd_ptr.VtxOffset))
+                                ),
+                                elements = IntervalU((
+                                    min=unsafe_load(cmd_ptr.IdxOffset) + 1,
+                                    size=n_elements
+                                ))
+                            )
+                            if (tex_id != font_tex_id)
+                                view_deactivate(tex)
+                            end
                         end
                     end
                 end
             end
-        end
 
-        view_deactivate(serv.font_texture)
-        context.scissor = original_scissor
+            view_deactivate(serv.font_texture)
+        end
 
         return nothing
     end
