@@ -55,10 +55,17 @@ end
 @bp_check(!contains(D.a, D.b))
 @bp_check(!contains(D.a, D.c))
 @bp_check((D.a | D.b) - D.b == D.a)
+@bp_check(D.ALL == D.a | D.b | D.c)
 # Test other bitflag features.
 @bp_bitflag E::UInt8 z=0 a b c
 @bp_check(Int.((E.z, E.a, E.b, E.c)) == (0, 1, 2, 4))
-
+@bp_check(E.ALL == E.a | E.b | E.c)
+# Test aggregates.
+@bp_bitflag F a b c @ab(a|b) @ac(a|c) @bc(b|c) @abc(ab|c)
+@bp_check(F.ab == F.a | F.b)
+@bp_check(F.ac == F.a | F.c)
+@bp_check(F.bc == F.b | F.c)
+@bp_check(F.abc == F.ALL)
 
 # Test the ability of enums to reference dependencies:
 module M

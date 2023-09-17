@@ -43,6 +43,7 @@ Combines the features of `@bp_enum` with the bitfield behavior of `@bitflag` fro
 Along with the usual `@bp_enum` definitions, you also get:
 
 * Power-of-two element numbering by default (if you want a 0 element, put it at the beginning).
+* Aggregate elements with the syntax `@element_name a|b|c`. Note that these are not enumerated in `instances()`.
 * `a | b` to combine two bitflags.
 * `a & b` to filter bitflags.
 * `a - b` to remove bitflags (equivalent to `a & (~b)`).
@@ -79,12 +80,26 @@ function generate_enum(name, definitions, args, is_bitfield::Bool)
     # Note that the "enum name" will actually be the name of the module;
     #    the @enum inside that module needs to use a different name.
     inner_name = Symbol(enum_name, :_)
-    converter_name = esc(:from)
-    index_converter_from_name = esc(:from_index)
-    index_converter_to_name = esc(:to_index)
-    alias_name = esc(Symbol(:E_, enum_name))
-    enum_name = esc(enum_name)
-    definitions = esc(definitions)
+    converter_name = :from
+    index_converter_from_name = :from_index
+    index_converter_to_name = :to_index
+    alias_name = Symbol(:E_, enum_name)
+
+    # For bitfields, extract special aggregate values.
+    # They are not part of the actual enum definition.
+    bitflag_aggregates = Expr[ ]
+    #TODO: Keep aggregates in 'args', rewritten like normal elements, but not in @enum.
+    args = filter(args) do arg
+        if @capture arg @agname_(agvalue_)
+            agname = Symbol(string(agname)[2:end]) # Chop off the '@' symbol
+            push!(bitflag_aggregates, :( const $agname = $agvalue ))
+            return false
+        elseif isexpr(arg, :macrocall)
+            error("Invalid format for aggregate bitflag: ", arg)
+        else
+            return true
+        end
+    end
 
     # Generate a set of functions of the form "from(::Val{:abc}) = abc"
     #   to help with parsing from a string.
@@ -107,9 +122,9 @@ function generate_enum(name, definitions, args, is_bitfield::Bool)
         arg_symbol_expr = :( Symbol($(string(arg_name))) )
 
         push!(converter_dispatch.args, :(
-            $converter_name(::Val{$arg_symbol_expr}) = $(esc(arg_name))
+            $converter_name(::Val{$arg_symbol_expr}) = $arg_name
         ))
-        push!(args_tuple.args, esc(arg_name))
+        push!(args_tuple.args, arg_name)
 
         return Meta.isexpr(arg, :escape) ? arg.args[1] : arg
     end
@@ -118,18 +133,16 @@ function generate_enum(name, definitions, args, is_bitfield::Bool)
                      :( @bitflag $inner_name::$enum_type $(args...) ) :
                      :( @enum $inner_name::$enum_type $(args...) )
 
-    output = Expr(:toplevel, :(
+    output = Expr(:toplevel, esc(:(
         module $enum_name
             $definitions
             $(is_bitfield ? :( using BitFlags ) : :())
             $main_macro
-            $converter_name(i::Integer) = $(esc(inner_name))(i)
+            $(bitflag_aggregates...)
+            $converter_name(i::Integer) = $inner_name(i)
             $converter_name(s::AbstractString) = $converter_name(Val(Symbol(s)))
-            # Note the use of @inline, a macro, inside this macro.
-            # For this reason, my understanding is that we want to NOT escape the names ourselves,
-            #    as @inline will expect to do it.
-            @inline $(index_converter_from_name.args[1])(i::Integer) = instances()[i]
-            @inline $(index_converter_to_name.args[1])(e::$inner_name) = begin
+            @inline $index_converter_from_name(i::Integer) = instances()[i]
+            @inline $index_converter_to_name(e::$inner_name) = begin
                 for (key, value) in pairs(instances())
                     if value == e
                         return key
@@ -138,30 +151,31 @@ function generate_enum(name, definitions, args, is_bitfield::Bool)
                 return nothing
             end
             $converter_dispatch
-            Base.parse(::Type{$(esc(inner_name))}, s::AbstractString) = $converter_name(Val(Symbol(s)))
-            $(esc(:instances))() = $args_tuple
+            Base.parse(::Type{$inner_name}, s::AbstractString) = $converter_name(Val(Symbol(s)))
+            instances() = $args_tuple
             # Add support for passing an array of enum values into a C function
             #    as if it's an array of the underlying type.
-            Base.unsafe_convert(::Type{Ptr{$enum_type}}, r::Ref{$(esc(inner_name))}) =
+            Base.unsafe_convert(::Type{Ptr{$enum_type}}, r::Ref{$inner_name}) =
                 Base.unsafe_convert(Ptr{$enum_type}, Base.unsafe_convert(Ptr{Nothing}, r))
 
             # Bitflags-specific operations:
             $(!is_bitfield ? :() : quote
-                Base.:(-)(a::$(esc(inner_name)), b::$(esc(inner_name))) =
-                    $(esc(inner_name))($enum_type(a) & (~$enum_type(b)))
-                Base.contains(haystack::$(esc(inner_name)), needle::$(esc(inner_name)))::Bool =
+                Base.:(-)(a::$inner_name, b::$inner_name) =
+                    $inner_name($enum_type(a) & (~$enum_type(b)))
+                Base.contains(haystack::$inner_name, needle::$inner_name)::Bool =
                     ($enum_type(haystack) & $enum_type(needle)) != zero($enum_type)
 
-                const ALL = let a = $(esc(:instances))()[1]
-                    for inst in $(esc(:instances))()
+                const ALL = let a = instances()[1]
+                    for inst in instances()
                         a |= inst
                     end
                     a
                 end
             end)
-        end), :(
+        end)),
+        esc(:(
             const $alias_name = $enum_name.$inner_name
-        )
+        ))
     )
     return output
 end

@@ -55,7 +55,7 @@ A dumping ground for all sorts of convenience functions and macros. Here are som
 
 * `PRNG`: An alternative to Julia's various `AbstractRNG`'s which is more suitable for aesthetic, short-term use-cases such as procedural generation (where you might spin up one PRNG for every pixel). An immutable version `ConstPRNG` is also provided, as mutable structs are almost always heap-allocated and therefore bad for tight loops.
 * `@bp_check(condition, error_msg...)`, a run-time test that raises `error()` if the expression is false. Is **not** an assert; it always runs.
-* `@bp_enum`: A wrapper around Julia's `@enum` that hides the enum values in a submodule, and also provides extra conveniences like parsing.
+* `@bp_enum` and `@bp_bitflag`: A wrapper around Julia's `@enum` and BitFlags' `@bitflag` that hides the enum values in a submodule, and also provides further conveniences such as parsing.
 * `SerializedUnion{Union{...}}`: Can serialize *and deserialize* a union of values through StructTypes/JSON3. Use the macro `@SerializedUnion(T1, T2, ...)` as short-hand.
 * `RandIterator{TIdx, TRng}`: Randomly and efficiently iterates through every value in some range `1:n`. Each value will appear exactly once.
 * `UpTo{N, T}`: A type-stable, immutable (i.e. stack-allocated) container for up to N values of type T. Implements `AbstractVector{T}`.
