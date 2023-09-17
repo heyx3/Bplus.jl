@@ -296,6 +296,36 @@ Use q_slerp() instead for smoother rotations.
 @inline lerp(a::Quaternion, b::Quaternion, t) = vnorm(Quaternion(lerp(a.data, b.data, t)))
 # No export needed for lerp(), because it's an overload of an existing function.
 
+"
+Chain Quaternion rotations in the order signified by the arrow.
+E.x. `a << b` means \"Rotate by `b`, then rotate by `a`\".
+"
+@inline Base.:(<<)(lhs::Quaternion, rhs::Quaternion) = Quaternion(rhs, lhs)
+"
+Chain Quaternion rotations in the order signified by the arrow.
+E.x. `a >> b` means \"Rotate by `a`, then rotate by `b`\".
+"
+@inline Base.:(>>)(lhs::Quaternion, rhs::Quaternion) = Quaternion(lhs, rhs)
+
+"Gets the forward/up/right vectors for a given Quaternion rotation"
+function q_basis( q::Quaternion{F}
+                  ;
+                  forward_axis::Vec3{F} = get_horz_vector(1, F),
+                  upward_axis::Vec3{F} = get_up_vector(F),
+                  rightward_axis::Vec3{F} = get_horz_vector(2, F)
+                )::VBasis{F} where {F}
+    #NOTE: This could be significantly optimized by simplifying the math
+    #     for each specific choice of axes.
+    #   However, there are 48 cases (including choice of sign for each axis)
+    #     and the effort likely wouldn't be worth it.
+    return VBasis{F}(
+        q_apply(q, forward_axis),
+        q_apply(q, upward_axis),
+        q_apply(q, rightward_axis)
+    )
+end
+export q_basis
+
 
 ###################
 #   Conversions   #

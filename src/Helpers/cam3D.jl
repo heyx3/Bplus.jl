@@ -14,10 +14,7 @@ end
 "Gets the vector for this camera's right-ward direction."
 cam_rightward(cam::Cam3D{F}) where {F} = cam_basis(cam).right
 
-function cam_basis(cam::Cam3D{F}
-                  )::@NamedTuple{forward::Vec3{F}, right::Vec3{F}, up::Vec3{F}} where {F}
-    return vbasis(cam.forward, cam.up)
-end
+@inline cam_basis(cam::Cam3D)::VBasis = vbasis(cam.forward, cam.up)
 
 "Computes the view matrix for the given camera."
 function cam_view_mat(cam::Cam3D{F})::Mat{4, 4, F} where {F}

@@ -680,6 +680,14 @@ function vrefract( v::Vec{N, F1},
 end
 export vrefract
 
+"Three vectors defining an ortho-normal basis: `forward`, `right`, and `up`"
+struct VBasis{F}
+    forward::Vec3{F}
+    up::Vec3{F}
+    right::Vec3{F}
+end
+export VBasis
+
 "
 Constructs an orthogonal 3D vector basis as similar as possible to the input vectors.
 If the vectors are equal, then the up axis will usually be calculated with the global up axis.
@@ -688,7 +696,7 @@ Returns the new forward and up vectors.
 function vbasis( forward::Vec3{F1},
                  up::Vec3{F2} = get_up_vector(F1),
                  atol::Real = F1(0.001)
-               )::@NamedTuple{forward::Vec3, right::Vec3, up::Vec3} where {F1, F2}
+               )::VBasis where {F1, F2}
     F3 = promote_type(F1, F2)
     @inline are_parallel(a::Vec3, b::Vec3) = (1 - abs(vdot(a, b))) <= atol
 
@@ -697,7 +705,7 @@ function vbasis( forward::Vec3{F1},
     if !are_parallel(forward, up)
         right = vnorm(v_rightward(forward, up))
         up = vnorm(v_rightward(right, forward))
-        return (forward=forward, right=right, up=up)
+        return VBasis(forward, up, right)
     else
         right = Vec3{F3}(1, 0, 0)
         if are_parallel(right, forward) || are_parallel(right, up)
@@ -711,7 +719,7 @@ function vbasis( forward::Vec3{F1},
         up = vnorm(v_rightward(right, forward))
         right = v_rightward(forward, up) # Normalization not needed; inputs are normalized
                                          #    and perpendicular.
-        return (forward=forward, right=right, up=up)
+        return VBasis(forward, up, right)
     end
 end
 export vbasis

@@ -105,6 +105,8 @@ Broadcasting does **not** currently have custom behavior; you can use it but you
 
 The best way to do 3D rotations. Most functions using quaternions are prefixed with `q_`: `q_apply` (to rotate a `Vec3`), `q_slerp`, `q_is_identity`, `q_axisangle`, etc. Refer to the doc-strings for each function, or the source file *quat.jl*.
 
+Of particular note are the operators `<<` and `>>`, which perform quaternion multiplication with a desired order. For example, `a >> b` means "Rotation by `a`, then rotation by `b`" while `a << b` means the inverse. This prevents you from having to remember the order of quaternion multiplication. You can also provide any number of Quaternion rotations in chronological order to the `Quaternion` constructor.
+
 Aliases exist for float32 and float64 quaternions: `fquat` and `dquat`, respectively.
 
 #### Mat{C, R, F, Len}
