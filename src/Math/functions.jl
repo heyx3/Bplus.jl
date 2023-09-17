@@ -44,6 +44,17 @@ export lerp, smoothstep, smootherstep
 @inline inv_lerp_i(a, b, x) = (x - a) ÷ (b - a)
 export inv_lerp, inv_lerp_i
 
+"
+Gets the fractional part of f.
+Negative values wrap around; for example `fract(-0.1) == 0.9` (within floating-point error).
+"
+@inline fract(f) = f - floor(f)
+
+"Clamps between 0 and 1."
+@inline saturate(f) = clamp(f, zero(typeof(f)), one(typeof(f)))
+
+export fract, saturate
+
 
 "Like typemin(), but returns a finite value for floats"
 typemin_finite(T) = typemin(T)
