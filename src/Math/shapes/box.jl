@@ -79,6 +79,7 @@ export BoxT, Box2D, Box3D,
 volume(b::Box) = prod(b.size)
 bounds(b::Box) = b
 center(b::BoxT{F}) where {F} = b.min + (b.size / convert(F, 2))
+center(b::BoxT{I}) where {I<:Integer} = b.min + (b.size ÷ convert(F, 2))
 is_touching(box::Box{N, F1}, point::Vec{N, F2}) where {N, F1, F2} = all(
     (point >= box.min) &
     (point < max_exclusive(box))
@@ -280,18 +281,6 @@ end
 Base.intersect(b1::Box, b2::Box...) = foldl(intersect, b2, init=b1)
 
 "
-Calculate the union of boxes, a.k.a. a bigger box that contains all of them.
-Note that, unlike the union of regular sets, a union of boxes
-   will contain other elements that weren't in either set.
-"
-Base.union(b::Box) = b
-Base.union(b1::Box{N, F1}, b2::Box{N, F2}) where {N, F1, F2} = Box(
-    min=min(min_inclusive(b1), min_inclusive(b2)),
-    max=max(max_inclusive(b1), max_inclusive(b2))
-)
-Base.union(b1::Box, b2::Box...) = foldl(union, b2, init=b1)
-
-"
 Changes the dimensionality of the box.
 By default, new dimensions are given the size 1 (both for integer and float boxes).
 "
@@ -370,7 +359,6 @@ end
     return result
 end
 @inline Base.intersect(i::Interval, rest::Interval...) = Interval(intersect(i.box, (i2.box for i2 in rest)...))
-@inline Base.union(i::Interval, rest::Interval...) = Interval(union(i.box, (i2.box for i2 in rest)...))
 
 
 ##########################################

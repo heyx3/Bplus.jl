@@ -1,5 +1,20 @@
 @inline perlin(f::Real, args...) = perlin(@f32(f), args...)
 @inline perlin(f::AbstractFloat, args...) = perlin(Vec(f), args...)
+
+"
+Highly customizable, N-dimensional Perlin noise.
+
+The `seeds` tuple provides extra seed data to the perlin gradient calculation.
+
+`prng_strength` is a compile-time flag for the strength of the PRNG.
+Stronger ones require more warm-up time.
+
+`filter_pos` can be used to implement wrapping or clamping.
+
+`t_curve` can be used to change the smoothness of the noise by taking a linear `t` value
+    and outputting a custom one.
+Best results come from a function with first- and second-derivatives of 0 at t=0 and t=1.
+"
 @generated function perlin( v::Vec{N, T},
                             # Extra seed data to randomize the output.
                             seeds::TSeeds = tuple(0xabcd9166),

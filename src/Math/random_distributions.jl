@@ -19,7 +19,7 @@ function rand_in_sphere(u::F, v::F, r::F)::Vec3{F} where {F<:AbstractFloat}
                    rr * sp * st,
                    rr * cp)
 end
-@inline function rand_in_sphere(T::Type)::Vec3{T}
+@inline function rand_in_sphere(T::Type = Float32)::Vec3{T}
     return rand_in_sphere(Random.GLOBAL_RNG, T)
 end
 @inline function rand_in_sphere(rng::Random.AbstractRNG, ::Type{F} = Float32)::Vec3{F} where {F<:AbstractFloat}
@@ -32,3 +32,5 @@ function rand_in_sphere(rng::ConstPRNG, ::Type{F} = Float32)::Tuple{Vec3{F}, Con
     return (rand_in_sphere(u, v, r), rng)
 end
 export rand_in_sphere
+
+#TODO: More random distributions

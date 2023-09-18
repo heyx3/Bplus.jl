@@ -1,4 +1,4 @@
-println("#TODO: Math/shapes/collision.jl")
+#TODO: Fix this whole file.
 #TODO: use this reference for the more arcane collisions: https://wickedengine.net/2020/04/26/capsule-collision-detection/
 
 function collides(a::Box{N, F}, b::Box{N, F})::Bool where {N, F}

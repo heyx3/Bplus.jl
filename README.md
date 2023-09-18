@@ -180,8 +180,7 @@ Many aliases are provided, in the same vein as `Vec` and `Mat`'s aliases.
 
 Other important functions:
 * `boundary()`: get the bounds of a group of boxes and points.
-* `intersect()`: get the intersection of two or morme boxes.
-* `union()`: get the union of two or more boxes.
+* `intersect()`: get the intersection of two or more boxes.
 
 #### Interval{F}
 

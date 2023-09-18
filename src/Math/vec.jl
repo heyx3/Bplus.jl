@@ -237,9 +237,11 @@ Base.max(p1::Vec{N, T1}, p2::T2) where {N, T1, T2} = Vec((max(p1[i], p2) for i i
 
 @inline function Base.minmax(p1::Vec{N, T1}, p2::Vec{N, T2}) where {N, T1, T2}
     T3 = promote_type(T1, T2)
-    component_wise = (minmax(a, b) for (a,b) in zip(p1, p2))
-    tuples::NTuple{2, NTuple{N, T3}} = unzip(component_wise)
-    return map(Vec{N, T3}, tuples)
+    minmax_tuple = map(minmax, p1, p2)
+    return (
+        Vec{N, T3}(i -> minmax_tuple[i][1]),
+        Vec{N, T3}(i -> minmax_tuple[i][2])
+    )
 end
 Base.minmax(p1::Vec{N, T1}, p2::T2) where {N, T1, T2} = minmax(p1, Vec{N, T2}(i->p2))
 Base.minmax(p1::Number, p2::Vec) = minmax(p2, p1)

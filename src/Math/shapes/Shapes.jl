@@ -1,15 +1,6 @@
 # NOTE: Not a real module; nested within Math.
 
-"
-A geometric shape that implements the following functions:
-
-* `volume(s)::F`
-* `bounds(s)::Box{N, F}`
-* `center(s)::Vec{N, F}`
-* `is_touching(s, p::Vec{N, F})::Bool`
-* `closest_point(s, p::Vec{N, F})::Vec{N, F}`
-* `intersections(s, r::Ray{N, F}; ...)::UpTo{M, F}`
-"
+"A geometric shape that implements several functions"
 abstract type AbstractShape{N, F} end
 export AbstractShape
 
@@ -37,6 +28,7 @@ is_touching(s::AbstractShape, p)::Bool = error("Unimplemented: ", typeof(s))
 closest_point(s::AbstractShape{N, F}, p::Vec{N, F}) where {N, F} = error("Not implemented: ", typeof(s))
 closest_point(s::AbstractShape{N, F}, p::Vec{N, F2}) where {N, F, F2} = closest_point(s, convert(Vec{N, F}, p))
 
+#TODO: Output intersections into an empty list rather than `UpTo`, as it's not type-stable
 "
 Finds the intersection(s) of a ray passing through a shape.
 Intersections are represented as distances along the ray.
