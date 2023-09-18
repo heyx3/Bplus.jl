@@ -12,7 +12,7 @@ Base.@kwdef mutable struct GuiText
     multiline_requested_size::NTuple{2, Integer} = (0, 0)
     imgui_flags::Integer = 0x00000
 
-    # Internal; leave this alone
+    # Internal; leave these alone
     _buffer_has_been_updated = false
     _edit_callback::Base.Callable = Nothing
     _c_func_edit_callback::Optional{Base.CFunction} = nothing

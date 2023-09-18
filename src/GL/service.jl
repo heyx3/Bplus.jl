@@ -153,12 +153,6 @@ macro bp_service(service_name, service_definitions)
     # If the service is unique, then we don't need the user to pass it in for every call,
     #    because we can grab it from the context.
     expr_local_service_var = Symbol("IMPL: SERVICE")
-    expr_function_args_with_service(other_args) = if service_is_unique
-                                                      other_args
-                                                  else
-                                                      vcat(:( $expr_local_service_var::$expr_struct_name ),
-                                                           other_args)
-                                                  end
     expr_function_body_get_service = if service_is_unique
                                          :( $expr_local_service_var::$expr_struct_name = $expr_function_name_get() )
                                      else
@@ -171,7 +165,7 @@ macro bp_service(service_name, service_definitions)
     # For simplicity, user-code escaping will be done *after* the loop.
     for definition in service_definitions
         # Is it a function definition?
-        if is_function_expr(definition)
+        if function_wrapping_is_valid(definition)
             function_data = SplitDef(definition)
             # Most of the functions should list the service as the first argument.
             check_service_arg() = if length(function_data.args) < 1
@@ -186,7 +180,7 @@ macro bp_service(service_name, service_definitions)
                 constructor_data.name = expr_struct_name
                 expr_constructor = combinedef(constructor_data)
                 push!(expr_struct_declarations, expr_constructor)
-                expr_invoke_constructor = func_def_to_call(expr_constructor)
+                expr_invoke_constructor = combinecall(constructor_data)
 
                 # Define the interface function for creating the context.
                 init_function_data = SplitDef(function_data)
@@ -259,19 +253,20 @@ macro bp_service(service_name, service_definitions)
                 impl_function_data.doc_string = nothing
 
                 # Generate an invocation of that function.
-                function_as_call = func_def_to_call(definition)
-                if isexpr(function_as_call.args[2], :parameters)
-                    function_as_call.args[3] = expr_local_service_var
-                else
-                    function_as_call.args[2] = expr_local_service_var
-                end
+                function_as_call = combinecall(function_data)
                 function_as_call.args[1] = impl_function_data.name
+                # This is the call into the service function, so
+                #    we're passing our internal service variable.
+                first_nonkw_param_idx = isexpr(function_as_call.args[2], :parameters) ?
+                                           3 :
+                                           2
+                function_as_call.args[first_nonkw_param_idx] = expr_local_service_var
 
                 # Define the outer function that users will call.
                 custom_function_data = SplitDef(function_data)
-                custom_function_data.args = expr_function_args_with_service(
-                    custom_function_data.args[2:end]
-                )
+                if service_is_unique
+                    deleteat!(custom_function_data.args, 1)
+                end
                 custom_function_data.body = quote
                     # Define the users's function locally.
                     $(combinedef(impl_function_data))

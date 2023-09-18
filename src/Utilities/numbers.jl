@@ -14,6 +14,8 @@ const Scalar16 = Union{UInt16, Int16, Float16}
 const Scalar32 = Union{UInt32, Int32, Float32}
 const Scalar64 = Union{UInt64, Int64, Float64}
 const Scalar128 = Union{UInt128, Int128}
+
 const ScalarBits = Union{Scalar8, Scalar16, Scalar32, Scalar64, Scalar128}
+
 export Scalar8, Scalar16, Scalar32, Scalar64, Scalar128,
        ScalarBits

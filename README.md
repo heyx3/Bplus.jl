@@ -51,7 +51,9 @@ Below is a quick overview. A thorough description will be written up elsewhere. 
 
 ### Utilities
 
-A dumping ground for all sorts of convenience functions and macros. Here are some of the most interesting ones:
+A dumping ground for all sorts of convenience functions and macros.
+
+Detailed info can be found [in this document](docs/Utilities.md). Here are some of the most interesting ones:
 
 * `PRNG`: An alternative to Julia's various `AbstractRNG`'s which is more suitable for aesthetic, short-term use-cases such as procedural generation (where you might spin up one PRNG for every pixel). An immutable version `ConstPRNG` is also provided, as mutable structs are almost always heap-allocated and therefore bad for tight loops.
 * `@bp_check(condition, error_msg...)`, a run-time test that raises `error()` if the expression is false. Is **not** an assert; it always runs.

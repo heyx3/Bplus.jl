@@ -47,7 +47,7 @@ Along with the usual `@bp_enum` definitions, you also get:
 * `a | b` to combine two bitflags.
 * `a & b` to filter bitflags.
 * `a - b` to remove bitflags (equivalent to `a & (~b)`).
-* `Base.contains(value, element)::Bool` as a short-hand for `(value & element) != 0`
+* `Base.contains(haystack, needle)::Bool` as a short-hand for `(haystack & needle) == needle`
 * `ALL` as a value representing all elements of the bitfield enabled
 * Pretty printing of combination values.
 """
@@ -56,6 +56,7 @@ macro bp_bitflag(name, args...)
 end
 Base.contains
 
+#TODO: Bitflag aggregate values should participate in `parse()`, `to_index()`, `from_index()`.
 
 """
 The inner logic of @bp_enum.
@@ -88,10 +89,10 @@ function generate_enum(name, definitions, args, is_bitfield::Bool)
     # For bitfields, extract special aggregate values.
     # They are not part of the actual enum definition.
     bitflag_aggregates = Expr[ ]
-    #TODO: Keep aggregates in 'args', rewritten like normal elements, but not in @enum.
     args = filter(args) do arg
         if @capture arg @agname_(agvalue_)
-            agname = Symbol(string(agname)[2:end]) # Chop off the '@' symbol
+            # Chop off the '@' symbol and declare it as a global const.
+            agname = Symbol(string(agname)[2:end])
             push!(bitflag_aggregates, :( const $agname = $agvalue ))
             return false
         elseif isexpr(arg, :macrocall)
@@ -163,14 +164,9 @@ function generate_enum(name, definitions, args, is_bitfield::Bool)
                 Base.:(-)(a::$inner_name, b::$inner_name) =
                     $inner_name($enum_type(a) & (~$enum_type(b)))
                 Base.contains(haystack::$inner_name, needle::$inner_name)::Bool =
-                    ($enum_type(haystack) & $enum_type(needle)) != zero($enum_type)
+                    ($enum_type(haystack) & $enum_type(needle)) == $enum_type(needle)
 
-                const ALL = let a = instances()[1]
-                    for inst in instances()
-                        a |= inst
-                    end
-                    a
-                end
+                const ALL = reduce(|, instances())
             end)
         end)),
         esc(:(

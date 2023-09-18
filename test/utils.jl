@@ -1,13 +1,25 @@
-# Test that unzip2() can be inlined/folded into something that doesn't require the heap.
+# Test unzip():
+@bp_test_no_allocations(unzip(zip(1:10, 2:20)),
+                        (1:10, 2:20),
+                        "Unzipping a zip() call")
+@bp_test_no_allocations(begin
+                            iterator = unzip(((1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9), (9, 10), (10, 11)))
+                            # Put the unzipped data into tuples for easy comparison.
+                            Tuple(Tuple(i) for i in iterator)
+                        end,
+                        ((1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+                         (2, 3, 4, 5, 6, 7, 8, 9, 10, 11)),
+                        "Unzipping pseudo-zipped data")
+# Test that unzip() can be inlined/folded into something that doesn't require the heap.
 @bp_test_no_allocations(begin
         # To prevent compiling into a simple "return [constant]",
-        #    run unzip2 in a big loop and perform some mixing of tuple data.
+        #    run unzip in a big loop and perform some mixing of tuple data.
         outp::Tuple{NTuple{3, Int}, NTuple{3, Int}} = ((0, 0, 0), (0, 0, 0))
         for i in 1:2000
             z = zip((1, i, 3), (-i, 2, 6))
             mm = (minmax(a, b) for (a,b) in z)
-            (a, b) = unzip2(mm)
-            outp = (b, outp[1])
+            (a, b) = unzip(mm, 2)
+            outp = (Tuple(b), outp[1])
         end
         outp # Return the data so it doesn't get compiled out
     end,

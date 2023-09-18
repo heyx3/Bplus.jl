@@ -926,21 +926,27 @@ The function is automatically exported.
 "
 macro render_state_wrapper(signature, cache_old, set_new, set_old, description)
     func_data = SplitDef(:( $signature = nothing ))
-    insert!(func_data.args, 1, :to_do)
+    insert!(func_data.args, 1, SplitArg(:to_do))
 
-    # Define an overload that gets the context implicity,
+    # Define an overload that gets the context implicitly,
     #    then calls the overload with an explicit context.
     no_context_func_data = SplitDef(func_data)
-    no_context_func_inner_call = SplitDef(no_context_func_data)
-    insert!(no_context_func_inner_call.args, 2,
-            :( $(@__MODULE__).get_context() ))
-    no_context_func_data.body = combinecall(no_context_func_inner_call)
+    # Generate the inner call:
+    inner_call_ordered_args = Any[a.name for a in func_data.args]
+    insert!(inner_call_ordered_args, 2, :( $(@__MODULE__).get_context() ))
+    inner_call_named_args = map(a -> Expr(:kw, a, a), func_data.kw_args)
+    no_context_func_inner_call = Expr(:call,
+        func_data.name,
+        @optional(!isempty(inner_call_named_args), Expr(:parameters, inner_call_named_args...)),
+        inner_call_ordered_args...
+    )
+    no_context_func_data.body = no_context_func_inner_call
 
     # Define the main overload which has an explicit context
     #    as the first parameter after the lambda.
     with_context_func_data = SplitDef(func_data)
     insert!(with_context_func_data.args, 2,
-            :( context::$(@__MODULE__).Context ))
+            SplitArg(:( context::$(@__MODULE__).Context )))
     with_context_func_data.body = quote
         $cache_old
         $set_new
@@ -954,7 +960,7 @@ macro render_state_wrapper(signature, cache_old, set_new, set_old, description)
     return esc(quote
         Core.@doc(
             $(string("Executes some code with the given ", description,
-                     ", then restores the original ", description, ". ",
+                     ", then restores the original setting. ",
                      "Optionally takes an explicit context ",
                      "if you have the reference to it already.")),
             $(combinedef(no_context_func_data))

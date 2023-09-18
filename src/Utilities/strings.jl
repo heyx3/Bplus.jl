@@ -17,6 +17,7 @@ type_str(::Type{Float64}) = "f64"
 
 type_str(::Type{Bool}) = "b"
 
+# Fallback prints the type's full name surrounded by question marks:
 type_str(T) = "?$T?"
 
 export type_str
@@ -88,9 +89,9 @@ mutable struct InteropString
     julia::String
     c_buffer::Vector{UInt8}
 
-    function InteropString(s::String, capacity_multiple::Int = 3)
+    function InteropString(s::String, capacity_size_multiple::Int = 3)
         s_bytes = codeunits(s)
-        is = new(s, Vector{UInt8}(undef, length(s_bytes) * capacity_multiple))
+        is = new(s, Vector{UInt8}(undef, length(s_bytes) * capacity_size_multiple))
 
         copyto!(is.c_buffer, s_bytes)
         is.c_buffer[length(s_bytes) + 1] = 0 # Add a null terminator

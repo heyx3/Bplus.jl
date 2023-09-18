@@ -128,6 +128,10 @@ else
         return !endswith(name, "runtests.jl") &&
                endswith(name, ".jl")
     end
+
+    # For some reason, most of the simplest/lowest-level test files come near last alphabetically.
+    reverse!(test_files)
+
     for f_path in test_files
         f_name = basename(f_path)
         println("\nRunning ", f_name, "...")

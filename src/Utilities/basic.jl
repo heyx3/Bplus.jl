@@ -50,11 +50,15 @@ export @optional, @optionalkw
     end
 end
 "Turns a subset of some bytes into a bitstype"
-@inline function reinterpret_bytes(bytes::NTuple{N, UInt8}, first_byte::Integer, T::Type)::T where {N}
+@inline function reinterpret_bytes(bytes::NTuple{N, UInt8}, byte_offset::Integer, T::Type)::T where {N}
     @bp_check(isbitstype(T), "Can't convert bytes to a non-bitstype: ", T)
+    @bp_check(N - byte_offset >= sizeof(T),
+              "Didn't provide enough bytes to create a ", T,
+                ": need ", sizeof(T), ", passed ", N,
+                " (with a byte offset of ", byte_offset, ")")
     let r = Ref(bytes)
         ptr = Base.unsafe_convert(Ptr{NTuple{N, UInt8}}, r)
-        ptr += first_byte
+        ptr += byte_offset
         ptrData = Base.unsafe_convert(Ptr{T}, ptr)
         return GC.@preserve r unsafe_load(ptrData)
     end
@@ -76,10 +80,27 @@ export ConstVector
 export val_type
 
 
-"Takes two zipped pieces of data and unzips them into two tuples."
-@inline unzip2(zipped) = (tuple((first(a) for a in zipped)...),
-                          tuple((last(a) for a in zipped)...))
-export unzip2
+"
+Takes a zipped piece of data and unzips into the original iterators.
+
+Anything that behaves like the output of `zip()` can be similarly unzipped;
+    however this general implementation will iterate on `zipped` several times,
+    and may not even be type-stable (we have to test it).
+
+If the number of zipped iterators can't be deduced statically,
+  you should feed it in as the second argument.
+"
+@inline function unzip(zipped::T, N::Integer = tuple_length(eltype(zipped))) where {T}
+    # Handle the case for actual zip() data.
+    if (T <: Iterators.Zip)
+        return zipped.is
+    else
+        # Manually unzip the outputs.
+        return ( (tup[i] for tup in zipped)
+                   for i in 1:N )
+    end
+end
+export unzip
 
 "A variant of 'reduce()' which skips elements that fail a certain predicate"
 @inline function reduce_some(f::Func, pred::Pred, iter; init=0) where {Func, Pred}
