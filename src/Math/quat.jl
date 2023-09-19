@@ -100,17 +100,38 @@ struct Quaternion{F}
         # Normalize the quaternion before constructing.
         return new{F}(vnorm(Vec(qx, qy, qz, qw)))
     end
-    @inline Quaternion{F}(rot_mat::SMatrix{3, 3, F2, 9}) where {F, F2} =
-        Quaternion(convert(similar_type(rot_mat, F), rot_mat))
+    @inline Quaternion{F}(rot_mat::SMatrix{3, 3, F2, 9}) where {F, F2} = Quaternion(
+        convert(similar_type(rot_mat, F), rot_mat)
+    )
+
+    "Creates a Quaternion from a vector basis"
+    function Quaternion(basis::VBasis{F}
+                        ;
+                        # Describe what a basic, un-rotated basis is:
+                        original_forward_axis::Int = get_horz_axes()[1],
+                        original_forward_dir::Int = 1,
+                        original_up_axis::Int = get_up_axis(),
+                        original_up_dir::Int = get_up_sign(),
+                        original_rightward_axis::Int = get_horz_axes()[2],
+                        original_rightward_dir::Int = 1
+                       ) where {F}
+        original_basis = VBasis{F}(
+            Vec3{F}(i -> (i == original_forward_axis)   ? original_forward_dir   : 0),
+            Vec3{F}(i -> (i == original_up_axis)        ? original_up_dir        : 0),
+            Vec3{F}(i -> (i == original_rightward_axis) ? original_rightward_dir : 0)
+        )
+        return Quaternion(original_basis, basis)
+    end
+    "Creates a Quaternion rotating one vector basis into another"
+    Quaternion(from::VBasis{F}, to::VBasis{F}) where {F} = Quaternion(m3_look_at(from, to))
+    Quaternion{F}(from::VBasis{F1}, to::VBasis{F2}) where {F, F1, F2} = Quaternion{F}(m3_look_at(convert(VBasis{F}, from),
+                                                                                                 convert(VBasis{F}, to)))
 
     "Creates a rotation representing a sequence of other rotations."
     @inline Quaternion(rots_in_order::Quaternion...) = foldl(*, rots_in_order)
     @inline Quaternion{F}(rots_in_order::Quaternion...) where {F} = foldl(*, rots_in_order)
 end
 export Quaternion
-
-println("#TODO: Quaternion constructor from VBasis")
-
 @inline Base.getproperty(q::Quaternion, n::Symbol) = getproperty(getfield(q, :data), n)
 
 @inline Base.convert(::Type{Quaternion{F2}}, q::Quaternion) where {F2} = Quaternion{F2}(q.data)

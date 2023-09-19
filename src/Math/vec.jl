@@ -692,6 +692,11 @@ struct VBasis{F}
     up::Vec3{F}
     right::Vec3{F}
 end
+Base.convert(::Type{VBasis{F2}}, b::VBasis{F1}) where {F1, F2} = VBasis(
+    convert(Vec3{F2}, b.forward),
+    convert(Vec3{F2}, b.up),
+    convert(Vec3{F2}, b.right)
+)
 export VBasis
 
 "

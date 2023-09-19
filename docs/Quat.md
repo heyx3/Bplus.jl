@@ -19,6 +19,8 @@ Like `Vec`, this type is immutable and able to be allocated on the stack. Fortun
 * You can provide a start and end vector, both normalized, to get the rotation from one to the other. For example, `Quaternion(get_up_vector(), vnorm(v3f(1, 1, 1)))`.
 * You can provide a rotation matrix (see [`Mat{C, R, F}`](Matrix.md)) to convert it to a quaternion.
 * You can provide a `VBasis` (the output of `vbasis(forward, up)`) to create a Quaternion representing the rotation that creates this basis.
+  * This constructor needs to know what an "un-rotated" basis is. For example, what direction is Up? By default, this comes from [the coordinate system configured for B+](Vec.md#Coordinate-System).
+* You can provide a start and end `VBasis` to create a rotation transforming the former to the latter.
 * You can provide a sequence of quaternions in chronological order, to make one quaternion representing all those rotations done in sequence.
 
 ## Operations

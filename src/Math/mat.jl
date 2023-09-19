@@ -81,60 +81,64 @@ export Mat, @Mat, MatT, MatF, MatD, Mat2, Mat3, Mat4,
 
 
 @inline Base.:*(m::Mat, v::Vec) = Vec((m * SVector(v...))...)
-#NOTE: theoretically we should implement multiplication in the opposite order,
-#        but then there's ambiguity as to whether the calculated transform matrices are supposed to be pre- or post-multiplied.
+#NOTE: While we can legally define v*m as well,
+#        it creates ambiguity as to whether B+ is post- or pre-multiplied.
+#      You can achieve it manually pretty easily anyway.
+@inline Base.:*(v::Vec, m::Mat) = error("B+ uses pre-multiplication. Instead of doing v*m, do m'*v.")
 
 "Applies a transform matrix to the given coordinate."
-function m_apply_point(m::Mat{4, 4, F}, v::Vec{3, F})::Vec{3, F} where {F}
-    v4::Vec{4, F} = vappend(v, one(F))
-    v4 = m * v4
-    return v4.xyz / v4.w
+function m_apply_point(m::Mat{4, 4, F1}, v::Vec{3, F2})::Vec{3} where {F1, F2}
+    v4::Vec{4, F2} = vappend(v, one(F2))
+    u4::Vec{4, promote_type(F1, F2)} = m * v4
+    return u4.xyz / u4.w
 end
-function m_apply_point(m::Mat{3, 3, F}, v::Vec{2, F})::Vec{2, F} where {F}
-    v3::Vec{3, F} = vappend(v, one(F))
-    v3 = m * v3
-    return v3.xy / v3.z
+function m_apply_point(m::Mat{3, 3, F1}, v::Vec{2, F2})::Vec{2} where {F1, F2}
+    v3::Vec{3, F2} = vappend(v, one(F2))
+    u3::Vec{3, promote_type(F1, F2)} = m * v3
+    return u3.xy / u3.z
 end
+m_apply_point(m::Mat{N, N}, v::Vec{N}) where {N} = m * v
 "
 Applies a transform matrix to the given coordinate, assuming the homogeneous component stays at 1.0
     and does not need to be processed.
 This is generally true for world and view matrices, but not projection matrices.
 "
-function m_apply_point_affine(m::Mat{3, 3, F}, v::Vec{2, F}) where {F}
-    return (m * vappend(v, one(F))).xy
+function m_apply_point_affine(m::Mat{3, 3, F1}, v::Vec{2, F2}) where {F1, F2}
+    return (m * vappend(v, one(F2))).xy
 end
-function m_apply_point_affine(m::Mat{4, 4, F}, v::Vec{3, F}) where {F}
-    return (m * vappend(v, one(F))).xyz
+function m_apply_point_affine(m::Mat{4, 4, F1}, v::Vec{3, F2}) where {F1, F2}
+    return (m * vappend(v, one(F2))).xyz
 end
 "Applies a transform matrix to the given vector (i.e. ignoring translation)."
-function m_apply_vector(m::Mat{4, 4, F}, v::Vec{3, F}) where {F}
-    v4::Vec{4, F} = vappend(v, zero(F))
-    v4 = m * v4
-    return v4.xyz / v4.w
+function m_apply_vector(m::Mat{4, 4, F1}, v::Vec{3, F2}) where {F1, F2}
+    v4::Vec{4, F2} = vappend(v, zero(F2))
+    u4::Vec{4, promote_type(F1, F2)} = m * v4
+    return u4.xyz / u4.w
 end
-function m_apply_vector(m::Mat{3, 3, F}, v::Vec{2, F}) where {F}
-    v3::Vec{3, F} = vappend(v, zero(F))
-    v3 = m * v3
-    return v3.xy / v3.z
+function m_apply_vector(m::Mat{3, 3, F1}, v::Vec{2, F2}) where {F1, F2}
+    v3::Vec{3, F2} = vappend(v, zero(F2))
+    u3::Vec{3, promote_type(F1, F2)} = m * v3
+    return u3.xy / u3.z
 end
+m_apply_vector(m::Mat{N, N}, v::Vec{N}) where {N} = m * v
 "
 Applies a transform matrix to the given vector (i.e. ignoring translation),
     assuming the homogeneous component stays at 1.0 and does not need to be processed.
 This is generally true for world and view matrices, but not projection matrices.
 "
-function m_apply_vector_affine(m::Mat{3, 3, F}, v::Vec{2, F}) where {F}
+function m_apply_vector_affine(m::Mat{3, 3, F1}, v::Vec{2, F2}) where {F1, F2}
     # No translation *and* no skew means we can just drop the last row and column.
     # Unfortunately, slicing a static array does not yield another static array.
-    m2 = @Mat(2, 2, F)(m[1], m[2],
-                       m[4], m[5])
+    m2 = @Mat(2, 2, F1)(m[1], m[2],
+                        m[4], m[5])
     return m2 * v
 end
-function m_apply_vector_affine(m::Mat{4, 4, F}, v::Vec{3, F}) where {F}
+function m_apply_vector_affine(m::Mat{4, 4, F1}, v::Vec{3, F2}) where {F1, F2}
     # No translation *and* no skew means we can just drop the last row and column.
     # Unfortunately, slicing a static array does not yield another static array.
-    m3 = @Mat(3, 3, F)(m[1], m[2], m[3],
-                       m[5], m[6], m[7],
-                       m[9], m[10], m[11])
+    m3 = @Mat(3, 3, F1)(m[1], m[2], m[3],
+                        m[5], m[6], m[7],
+                        m[9], m[10], m[11])
     return m3 * v
 end
 export m_apply_point, m_apply_vector,

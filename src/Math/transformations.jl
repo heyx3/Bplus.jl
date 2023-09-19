@@ -178,11 +178,36 @@ end
                              error("Invalid axis setup: ", forward_axis, "|", upward_axis, "|", rightward_axis)
                          end
     return m_transpose(Mat{3, 3, F}( # Notice the call to transpose --
-                                     #    these are the rows, not the columns.
+                                     #    these become rows, not columns.
         get_row(1)...,
         get_row(2)...,
         get_row(3)...,
     ))
+end
+@inline m3_look_at(basis::VBasis; kw...) = m3_look_at(basis.forward, basis.up, basis.right; kw...)
+
+"Gets the relative rotation from one vector basis to another"
+function m3_look_at(from::VBasis{F}, to::VBasis{F})::Mat{3, 3, F} where {F}
+    # Source: ChatGPT, trust me bro
+    m_from = Mat{3, 3, F}(
+        from.forward...,
+        from.up...,
+        from.right...
+    )
+    m_to = Mat{3, 3, F}(
+        to.forward...,
+        to.up...,
+        to.right...
+    )
+    #NOTE: the ordering of forward/up/right doesn't matter
+    #    as long as it's the same in both matrices.
+    #NOTE: The rightward vector is implicit given forward and up vectors.
+    #      That means it might be possible to slightly optimize this formula
+    #        by working out all the individual multiplication/addition ops,
+    #        replacing the components of 'right' with the cross product math that derived them,
+    #        and then simplifying the ops further.
+    #     However, I don't think the effort and damage to readability would be worth it.
+    return m_to * m_transpose(m_from)
 end
 
 "Generates the standard OpenGL perspective matrix"

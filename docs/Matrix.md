@@ -35,12 +35,14 @@ In keeping with vectors and quaternions, matrix operations are prefixed with `m_
 * `m_combine(a, b...)` multiplies matrices together in chronological order, to produce a transformation of "a, then b, then ..."
 * `m_invert(m)` inverts a matrix.
 * `m_tranpose(m)` transposes a matrix.
+  * You can also use the `'` operator, for example `m = m'`.
 * `m_identity(C, R, F)` creates an identity matrix.
   * `m_identityf(C, R)` creates a Float32 matrix.
   * `m_identityd(C, R)` creates a Float64 matrix.
 * `m_to_mat4x4(m)` converts a 3x3 matrix to 4x4.
 * `m_to_mat3x3(m)` drops the last row and column off a 4x4 matrix.
 * Operator `*` performs multiplication with `Vec`, or other `Mat` instances. You can use it to transform a point/vector by a matrix, but the above explicit functions are preferred.
+  * Post-multiplication (i.e. `v*M`) is not legal, in order to make it clear that B+ uses pre-multiplication.
 
 ## Transforms
 
@@ -53,6 +55,7 @@ In keeping with vectors and quaternions, matrix operations are prefixed with `m_
 * `m4_look_at(cam_pos, target_pos, up)` makes a typical View transform matrix.
 * `m3_look_at(forward, up, right; [options])` makes a rotation matrix to turn the given basis into a typical View basis (by default: +X right, +Y up, -Z forward).
   * You can also think of this as a camera View matrix without the translation.
+* `m3_look_at(from::VBasis, to::VBasis)` makes a rotation matrix that turns the "from" vector basis into the "to" vector basis.
 * `m4_projection(near_clip, far_clip, aspect_width_over_height, fov_degrees)` creates a typical OpenGL perspective matrix.
 * `m4_ortho(range::Box3)` makes an orthographic projection matrix, mapping the given axis-aligned box to the range -1 => +1 along each axis.
 
