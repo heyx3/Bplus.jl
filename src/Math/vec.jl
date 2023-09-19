@@ -158,7 +158,7 @@ export Vec2, Vec3, Vec4,
 
 # Base.show() prints the vector with a certain number of digits.
 
-VEC_N_DIGITS = 2
+VEC_N_DIGITS::Int = 2
 
 printable_component(x, args...) = x
 printable_component(f::AbstractFloat, n_digits::Int) = round(f; digits=n_digits)
@@ -289,6 +289,10 @@ Base.reverse(v::Vec) = Vec(reverse(v.data))
 
 Base.getindex(a::Array, i::VecT{<:Integer}) = a[i...]
 Base.setindex!(a::Array, t, i::VecT{<:Integer}) = (a[i...] = t)
+
+# StaticArrays tries to interpret Vec as an array of indices rather than a multidimensional index.
+Base.getindex(a::StaticArray{N}, i::Vec{N, <:Integer}) where {N} = a[i...]
+Base.setindex!(a::StaticArray{N}, t, i::Vec{N, <:Integer}) where {N} = (a[i...] = t)
 
 @inline Base.getindex(v::Vec, i::Integer) = v.data[i]
 @inline Base.getindex(v::Vec, r::UnitRange) = Vec(v.data[r])
@@ -727,9 +731,9 @@ end
 export vbasis
 
 "Checks whether a vector is normalized, within the given epsilon"
-is_normalized(v::Vec{N, T}, atol::T2 = 0.0) where {N, T, T2} =
+v_is_normalized(v::Vec{N, T}, atol::T2 = 0.0) where {N, T, T2} =
     isapprox(vlength_sqr(v), one(T); atol=atol*atol)
-export is_normalized
+export v_is_normalized
 
 "Computes the 3D cross product."
 function vcross( a::Vec3{T1},

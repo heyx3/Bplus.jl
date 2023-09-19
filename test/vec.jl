@@ -326,16 +326,16 @@ end
                                  sqrt(3.0)),
                         true)
 
-# Test vnorm and is_normalized:
+# Test vnorm and v_is_normalized:
 @bp_test_no_allocations(isapprox(vnorm(Vec(1, -1)),
                                  1/Vec(sqrt(2.0), -sqrt(2.0))),
                         true)
 @bp_test_no_allocations(isapprox(vnorm(Vec(1, -1, 1)),
                                  1/Vec(sqrt(3.0), -sqrt(3.0), sqrt(3.0))),
                         true)
-@bp_test_no_allocations(is_normalized(1/Vec(sqrt(2.0), -sqrt(2.0))),
+@bp_test_no_allocations(v_is_normalized(1/Vec(sqrt(2.0), -sqrt(2.0))),
                         true)
-@bp_test_no_allocations(is_normalized(1/Vec(sqrt(2.1), -sqrt(2.0))),
+@bp_test_no_allocations(v_is_normalized(1/Vec(sqrt(2.1), -sqrt(2.0))),
                         false)
 
 # Test vcross:

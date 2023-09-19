@@ -30,6 +30,7 @@ m_scale(amount::Vec{N, F}) where {N, F} = let output = zero(MMatrix{N, N, F})
     end
     return SMatrix(output)
 end
+@inline m_scale(scalar, dimensions) = m_scale(Vec(i->scalar, dimensions))
 
 "Generates a 3x3 rotation matrix around the X axis, in radians"
 @inline m3_rotateX(rad::F) where {F<:AbstractFloat} = let sico = sincos(rad)
@@ -153,11 +154,13 @@ end
                             up::Vec3{F},
                             right::Vec3{F} = v_rightward(forward, up)
                             ;
-                            forward_axis::Int = get_horz_axes()[1],
-                            forward_dir::Int = 1,
-                            upward_axis::Int = get_up_axis(),
-                            upward_dir::Int = get_up_sign(),
-                            rightward_axis::Int = get_horz_axes()[2],
+                            # Default choice of axes is based on a 3D camera view matrix:
+                            #    X is rightward, Y is upward, Z is backwards.
+                            forward_axis::Int = 3,
+                            forward_dir::Int = -1,
+                            upward_axis::Int = 2,
+                            upward_dir::Int = 1,
+                            rightward_axis::Int = 1,
                             rightward_dir::Int = 1
                            )::Mat{3, 3, F} where {F}
     @inline copy_sign(v::Vec3{F}, dir::Int) = (dir < 0) ? -v : v
@@ -185,7 +188,7 @@ end
 "Generates the standard OpenGL perspective matrix"
 @inline function m4_projection( near_clip::F, far_clip::F,
                                 aspect_width_over_height::F,
-                                field_of_view_degrees::F
+                                field_of_view_degrees::F #TODO: What is this angle measuring exactly?
                               ) where {F}
     tan_fov::F = tan(deg2rad(field_of_view_degrees / convert(F, 2)))
     scale_along_clip_planes::F = 1 / (far_clip - near_clip)
@@ -198,15 +201,18 @@ end
 end
 
 "Generates an orthographic projection matrix"
-@inline function m4_ortho(min::Vec3{F}, max::Vec3{F})::@Mat(4, 4, F) where {F}
+@inline function m4_ortho(area::Box3D{F})::@Mat(4, 4, F) where {F}
     # A good reference for the derivation of this:
     #    https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/orthographic-projection-matrix
+
+    min = min_inclusive(area)
+    max = max_inclusive(area)
+    range = size(area)
 
     ZERO = zero(F)
     ONE = one(F)
     TWO = convert(F, 2)
 
-    range = max - min
     sum = min + max
     denom = ONE / range
     offset = (-sum * denom)

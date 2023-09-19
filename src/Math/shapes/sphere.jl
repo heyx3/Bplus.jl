@@ -59,7 +59,7 @@ function intersections( s::Sphere{N, F},
                         atol::F = zero(F)
                       )::Union{UpTo{2, F}, Tuple{UpTo{2, F}, Vec3{F}}} where {N, F, ShouldCalcNormal}
     @bp_check(!ShouldCalcNormal || (N == 3), "Can't calculate normal for a non-3D shape")
-    @bp_math_assert(is_normalized(r.dir), "Ray must be normalized to do ray-sphere intersection: ", r)
+    @bp_math_assert(v_is_normalized(r.dir), "Ray must be normalized to do ray-sphere intersection: ", r)
 
     # Source: https://fiftylinesofcode.com/ray-sphere-intersection/
 

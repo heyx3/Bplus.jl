@@ -25,7 +25,7 @@ struct Quaternion{F}
     The axis should be normalized.
     """
     @inline function Quaternion(axis::Vec3{F}, angle_radians::F2) where {F, F2}
-        @bp_math_assert(is_normalized(axis), "Axis of Quaternion rotation isn't normalized: ", axis)
+        @bp_math_assert(v_is_normalized(axis), "Axis of Quaternion rotation isn't normalized: ", axis)
         (sine::F, cos::F) = sincos(convert(F, angle_radians * 0.5))
         return new{F}(Vec4{F}((axis * sine)..., cos))
     end
@@ -40,10 +40,10 @@ struct Quaternion{F}
     @inline Quaternion(from::Vec3{F1}, to::Vec3{F2}) where {F1, F2} = Quaternion{promote_type(F, F2)}(from, to)
     function Quaternion{F}(from::Vec3{F2}, to::Vec3{F3}) where {F, F2, F3}
         if !(F2<:Integer)
-            @bp_math_assert(is_normalized(from, convert(F2, 0.001)), "'from' vector isn't normalized")
+            @bp_math_assert(v_is_normalized(from, convert(F2, 0.001)), "'from' vector isn't normalized")
         end
         if !(F3<:Integer)
-            @bp_math_assert(is_normalized(to, convert(F3, 0.001)), "'to' vector isn't normalized")
+            @bp_math_assert(v_is_normalized(to, convert(F3, 0.001)), "'to' vector isn't normalized")
         end
         cos_angle::F = convert(F, vdot(from, to))
 
@@ -109,6 +109,8 @@ struct Quaternion{F}
 end
 export Quaternion
 
+println("#TODO: Quaternion constructor from VBasis")
+
 @inline Base.getproperty(q::Quaternion, n::Symbol) = getproperty(getfield(q, :data), n)
 
 @inline Base.convert(::Type{Quaternion{F2}}, q::Quaternion) where {F2} = Quaternion{F2}(q.data)
@@ -132,8 +134,8 @@ export fquat, dquat
 
 # Base.show() prints the quat with a certain number of digits.
 
-QUAT_AXIS_DIGITS = 2
-QUAT_ANGLE_DIGITS = 3
+QUAT_AXIS_DIGITS::Int = 2
+QUAT_ANGLE_DIGITS::Int = 3
 
 function Base.show(io::IO, ::MIME"text/plain", q::Quaternion{F}) where {F}
     qdata::Vec4{F} = getfield(q, :data)
@@ -230,7 +232,7 @@ function Base.:(*)( q::Quaternion{F},
 end
 
 function Base.:(-)(q::Quaternion{F}) where {F}
-    @bp_math_assert(is_normalized(q), "Quaternion isn't normalized: ", q)
+    @bp_math_assert(q_is_normalized(q), "Quaternion isn't normalized: ", q)
     return Quaternion{F}((-q.xyz)..., q.w)
 end
 
@@ -248,8 +250,8 @@ Base.isapprox(a::Quaternion{F}, b::Quaternion{F2}, atol) where {F, F2} =
 #   Quaternion ops   #
 ######################
 
-is_normalized(q::Quaternion{F}, atol::F2 = 0.0) where {F, F2} = is_normalized(getfield(q, :data), atol)
-# No export needed for is_normalized(), because it's an overload of the Vec version.
+q_is_normalized(q::Quaternion{F}, atol::F2 = 0.0) where {F, F2} = v_is_normalized(getfield(q, :data), atol)
+export q_is_normalized
 
 """
 Normalizes a quaternion.
@@ -271,8 +273,8 @@ The interpolation is nonlinear, following the surface of the unit sphere
 The quaternions' 4 components must be normalized.
 """
 @inline function q_slerp(a::Quaternion{F}, b::Quaternion{F}, t::F) where {F}
-    @bp_math_assert(is_normalized(a, convert(F, 0.001)))
-    @bp_math_assert(is_normalized(b, convert(F, 0.001)))
+    @bp_math_assert(q_is_normalized(a, convert(F, 0.001)))
+    @bp_math_assert(q_is_normalized(b, convert(F, 0.001)))
 
     cos_angle::F = vdot(a.data, b.data)
     angle::F = acos(cos_angle) * t

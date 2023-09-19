@@ -624,8 +624,10 @@ To use a `GL.Texture` or `GL.View` in CImGui, wrap it with `gui_tex_handle()`.
                         unsafe_load(draw_data.DisplaySize.y))
         draw_pos_max = draw_pos_min + draw_size
         # Flip the Y for the projection matrix.
-        mat_proj::fmat4 = m4_ortho(v3f(draw_pos_min.x, draw_pos_max.y, -1),
-                                   v3f(draw_pos_max.x, draw_pos_min.y, 1))
+        mat_proj::fmat4 = m4_ortho(Box3Df(
+            min=v3f(draw_pos_min.x, draw_pos_max.y, -1),
+            max=v3f(draw_pos_max.x, draw_pos_min.y, 1)
+        ))
         set_uniform(serv.render_program, "u_transform", mat_proj)
 
         # Pre-activate the font texture, which will be used in many GUI calls.

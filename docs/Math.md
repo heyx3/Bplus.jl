@@ -36,7 +36,7 @@ Ray intersection calculations can be found in the [Shapes](#Shapes) section of t
 
 Contiguous spaces can be represented by `Box{N, T}`, and contiguous number ranges represented by `Interval{T}`. All `Box` functions are also implemented by `Interval`, using scalar data instead of vector data.
 
-`Box` is part of the `AbstractShape` system (see the [Shapes](#Shapes) section), but this section focuses on the more general utility of `Box` and `Interval`.
+`Box` is part of the `AbstractShape` system (see the [Shapes](#Shapes) section), but this section focuses on the more general utility of `Box` (and `Interval`).
 
 Like `Vec`, boxes have many aliases based on type and dimensionality. For example, `Box2Du`, `Box4Df`, `BoxT`. Intervals have aliases for common types: `IntervalI`, `IntervalU`, `IntervalF`, and `IntervalD`.
 

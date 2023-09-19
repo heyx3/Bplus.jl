@@ -61,10 +61,11 @@ const dmat2 = dmat2x2
 const dmat3 = dmat3x3
 const dmat4 = dmat4x4
 
-const Mat3{F} = Mat{3, 3, F, 9}
-const Mat4{F} = Mat{4, 4, F, 16}
+const Mat2{F} = Mat{2, 2, F, 2*2}
+const Mat3{F} = Mat{3, 3, F, 3*3}
+const Mat4{F} = Mat{4, 4, F, 4*4}
 
-export Mat, @Mat, MatT, MatF, MatD, Mat3, Mat4,
+export Mat, @Mat, MatT, MatF, MatD, Mat2, Mat3, Mat4,
        mat_params,
        fmat2, fmat3, fmat4, dmat2, dmat3, dmat4,
        fmat2x2, fmat2x3, fmat2x4, fmat3x2, fmat3x3, fmat3x4, fmat4x2, fmat4x3, fmat4x4,
@@ -139,7 +140,7 @@ end
 export m_apply_point, m_apply_vector,
        m_apply_point_affine, m_apply_vector_affine
 
-"Combines transform matrices in the order they're given."
+"Combines transform matrices in chronologicl order."
 @inline m_combine(first::Mat, rest::Mat...) = m_combine(rest...) * first
 @inline m_combine(m::Mat) = m
 export m_combine

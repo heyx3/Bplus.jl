@@ -13,11 +13,11 @@ include("contiguous.jl")
 
 include("mat.jl")
 include("quat.jl")
-include("transformations.jl")
 
 include("ray.jl")
 include("shapes/Shapes.jl")
 
+include("transformations.jl")
 include("random_distributions.jl")
 include("noise.jl")
 
