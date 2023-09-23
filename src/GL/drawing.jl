@@ -3,66 +3,41 @@
 #        Clearing       #
 #########################
 
-"
-Clears the given render target (or the screen, if you pass a default/null handle).
-Optionally clears only a single attachment of the target (using a 1-based index).
-"
-function render_clear( context::Context,
-                       target::Ptr_Target,
-                       color::vRGBA{T},
-                       attachment_idx::Optional{Int} = nothing
-                     ) where {T<:Union{GLint, GLuint, GLfloat}}
-    draw_buffer::GLint = exists(attachment_idx) ? attachment_idx : GL_NONE
+"Clears the screen's color to the given value"
+function clear_screen(color::vRGBA{<:Union{GLint, GLuint, GLfloat}})
+    @bp_gl_assert(exists(get_context()), "Clearing render target from a non-rendering thread")
     if color isa vRGBA{GLint}
-        glClearNamedFramebufferiv(target, GL_COLOR, draw_buffer, Ref(color.data))
+        glClearNamedFramebufferiv(Ptr_Target(), GL_COLOR, 0, Ref(color.data))
     elseif color isa vRGBA{GLuint}
-        glClearNamedFramebufferuv(target, GL_COLOR, draw_buffer, Ref(color.data))
+        glClearNamedFramebufferuv(Ptr_Target(), GL_COLOR, 0, Ref(color.data))
     elseif color isa vRGBA{GLfloat}
-        glClearNamedFramebufferfv(target, GL_COLOR, draw_buffer, Ref(color.data))
+        glClearNamedFramebufferfv(Ptr_Target(), GL_COLOR, 0, Ref(color.data))
     else
         error("Unexpected color component type: ", T)
     end
 end
-"
-Clears the given depth render target (or the screen's depth buffer, if you pass a default/null handle).
-Optionally clears only a single attachment of the target (using a 1-based index).
-"
-function render_clear( context::Context,
-                       target::Ptr_Target,
-                       depth::GLfloat,
-                       attachment_idx::Optional{Int} = nothing
-                     )
-    draw_buffer::GLint = exists(attachment_idx) ? attachment_idx : GL_NONE
-    glClearNamedFramebufferfv(target, GL_DEPTH, draw_buffer, Ref(depth))
+
+"Clears the screen's depth buffer to the given value"
+function clear_screen(depth::GLfloat)
+    @bp_gl_assert(exists(get_context()), "Clearing the screen from a non-rendering thread")
+    glClearNamedFramebufferfv(Ptr_Target(), GL_DEPTH, 0, Ref(depth))
 end
-"
-Clears the given stencil render target (or the screen's stencil buffer, if you pass a default/null handle).
-Optionally clears only a single attachment of the target (using a 1-based index).
-"
-function render_clear( context::Context,
-                       target::Ptr_Target,
-                       stencil::GLuint,
-                       attachment_idx::Optional{Int} = nothing
-                     )
-    draw_buffer::GLint = exists(attachment_idx) ? attachment_idx : GL_NONE
-    glClearNamedFramebufferiv(target, GL_STENCIL, draw_buffer,
+
+"Clears the screen's stencil buffer to the given value"
+function clear_screen(stencil::GLuint)
+    @bp_gl_assert(exists(get_context()), "Clearing the screen from a non-rendering thread")
+    glClearNamedFramebufferiv(Ptr_Target(), GL_STENCIL, 0,
                               Ref(reinterpret(GLint, stencil)))
 end
-"
-Clears the given depth/stencil render target (or the screen's depth/stencil buffer, if you pass a default/null handle).
-Optionally clears only a single attachment of the target.
-"
-function render_clear( context::Context,
-                       target::Ptr_Target,
-                       depth::GLfloat,
-                       stencil::GLuint,
-                       attachment_idx::Optional{Int} = nothing
-                     )
-    draw_buffer::GLint = exists(attachment_idx) ? attachment_idx : GL_NONE
-    glClearNamedFramebufferfi(target, GL_DEPTH_STENCIL, draw_buffer,
+
+"Clears the screen's hybrid-depth-stencil buffer to the given value"
+function clear_screen(depth::GLfloat, stencil::GLuint)
+    @bp_gl_assert(exists(get_context()), "Clearing the screen from a non-rendering thread")
+    glClearNamedFramebufferfi(Ptr_Target(), GL_DEPTH_STENCIL, 0,
                               depth, reinterpret(GLint, stencil))
 end
-export render_clear
+
+export clear_screen
 
 
 ########################
@@ -102,10 +77,9 @@ NOTE: There is one small, relatively-esoteric OpenGL feature that is not include
    (adding it would probably require separating this function into 3 different ones):
    indexed multi-draw could use different index offsets for each subset of elements.
 "
-function render_mesh( context::Context,
-                      mesh::Mesh,
-                      program::Program
+function render_mesh( mesh::Mesh, program::Program
                       ;
+                      #TODO: Can't do type inference with named parameters! This creates garbage and slowdown.
                       shape::E_PrimitiveTypes = mesh.type,
                       indexed_params::Optional{DrawIndexed} =
                           exists(mesh.index_data) ? DrawIndexed() : nothing,
@@ -118,6 +92,7 @@ function render_mesh( context::Context,
                       instances::Optional{IntervalU} = nothing,
                       known_vertex_range::Optional{IntervalU} = nothing
                     ) where {TMultiDraw<:Union{AbstractVector{IntervalU}, ConstVector{IntervalU}}}
+    context::Context = get_context()
     @bp_check(isnothing(indexed_params) || exists(mesh.index_data),
               "Trying to render with indexed_params but the mesh has no indices")
 
@@ -268,8 +243,5 @@ function render_mesh( context::Context,
         end
     end
 end
-
-"If the Context isn't given already, it is pulled from the global state."
-render_mesh(mesh::Mesh, program::Program; kw_args...) = render_mesh(get_context(), mesh, program; kw_args...)
 
 export DrawIndexed, render_mesh

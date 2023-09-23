@@ -88,8 +88,6 @@ function set_uniforms end
 
 Sets the given buffer to be used for one of the
     globally-available Uniform Block (a.k.a. "UBO") slots.
-A second overload allows you to assign your program's Uniform Block
-    to use one of these slots.
 
 `set_uniform_block(::Program, ::String, ::Int)`
 
@@ -105,8 +103,6 @@ function set_uniform_block end
 
 Sets the given buffer to be used for one of the
     globally-available Shader Storage Block (a.k.a. "SSBO") slots.
-A second overload allows you to assign your program's Shader-Storage Block
-    to use one of these slots.
 
 `set_storage_block(::Program, ::String, ::Int)`
 
@@ -839,11 +835,17 @@ macro bp_glsl_str(src::AbstractString)
         (1 + count(f -> f=='\n', src[1:section_start])),
         "\n"
     )
-    src_vertex = string(src_header, gen_line_command(first(vert_range)), src[vert_range])
-    src_fragment = string(src_header, gen_line_command(first(frag_range)), src[frag_range])
+    src_vertex = string("#define IN_VERTEX_SHADER\n", src_header,
+                        gen_line_command(first(vert_range)),
+                        src[vert_range])
+    src_fragment = string("#define IN_FRAGMENT_SHADER\n", src_header,
+                          gen_line_command(first(frag_range)),
+                          src[frag_range])
     src_geom = isnothing(geom_range) ?
                    nothing :
-                   string(src_header, gen_line_command(first(geom_range)), src[geom_range])
+                   string("#define IN_GEOMETRY_SHADER\n", src_header,
+                          gen_line_command(first(geom_range)),
+                          src[geom_range])
 
     # Reference the Program type from anywhere this macro is invoked
     prog_type = Program

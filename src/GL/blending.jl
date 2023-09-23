@@ -105,17 +105,17 @@ Gets whether the given blend mode uses a 'Constant' value
 export blend_uses_constant
 
 "Makes an opaque blend mode of the given type"
-make_blend_opaque(::Type{BlendState_{T}}) where {T} = BlendState_{T}(
+make_blend_opaque(T::Type{<:BlendState_}) = T(
     BlendFactors.one, BlendFactors.zero,
     BlendOps.add
 )
 "Makes an alpha-blend mode of the given type"
-make_blend_alpha(::Type{BlendState_{T}}) where {T} = BlendState_{T}(
+make_blend_alpha(T::Type{<:BlendState_}) = T(
     BlendFactors.src_alpha, BlendFactors.inverse_src_alpha,
     BlendOps.add
 )
 "Makes an additive blend mode"
-make_blend_additive(::Type{BlendState_{T}}) where {T} = BlendState_{T}(
+make_blend_additive(T::Type{<:BlendState_}) = T(
     BlendFactors.one, BlendFactors.one,
     BlendOps.add
 )

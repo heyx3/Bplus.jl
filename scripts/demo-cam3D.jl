@@ -256,8 +256,8 @@ bp_gl_context( v2i(800, 500), "Cam3D demo";
         # Clear the screen.
         set_viewport(context, zero(v2i), window_size)
         clear_col = vRGBAf(0.2, 0.2, 0.5, 0.0)
-        GL.render_clear(context, GL.Ptr_Target(), clear_col)
-        GL.render_clear(context, GL.Ptr_Target(), @f32 1.0)
+        GL.clear_screen(vRGBAf(0.2, 0.2, 0.5, 0.0))
+        GL.clear_screen(@f32 1.0)
 
         # Draw the triangles.
         set_uniform(draw_triangles, "u_pixelSize", convert(v2f, window_size))
@@ -267,7 +267,7 @@ bp_gl_context( v2i(800, 500), "Cam3D demo";
         set_uniform(draw_triangles, "u_mat_worldview", mat_view)
         set_uniform(draw_triangles, "u_mat_projection", mat_projection)
         view_activate(get_view(tex))
-        GL.render_mesh(context, mesh_triangles, draw_triangles,
+        GL.render_mesh(mesh_triangles, draw_triangles,
                        elements = IntervalU(1, 4))
         view_deactivate(get_view(tex))
 
@@ -277,7 +277,7 @@ bp_gl_context( v2i(800, 500), "Cam3D demo";
         set_uniform(draw_skybox, "u_mat_view", mat_view)
         set_uniform(draw_skybox, "u_mat_projection", mat_projection)
         view_activate(tex_skybox_view)
-        GL.render_mesh(context, mesh_skybox, draw_skybox)
+        GL.render_mesh(mesh_skybox, draw_skybox)
         view_deactivate(tex_skybox_view)
 
         GLFW.SwapBuffers(context.window)

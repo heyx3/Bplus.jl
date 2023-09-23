@@ -107,7 +107,7 @@ It's highly recommended to wrap a context with `bp_gl_context()`, as otherwise
 "
 mutable struct Context
     window::GLFW.Window
-    vsync::Optional{E_VsyncModes}
+    vsync::E_VsyncModes
     device::Device
     debug_mode::Bool
 
@@ -134,7 +134,7 @@ mutable struct Context
 
     function Context( size::v2i, title::String
                       ;
-                      vsync::Optional{E_VsyncModes} = nothing,
+                      vsync::E_VsyncModes = VsyncModes.off,
                       debug_mode::Bool = false, # See GL/debugging.jl
                       glfw_hints::Dict = Dict{Int32, Int32}(),
                       # Below are GLFW input settings that can be changed at will,
@@ -253,9 +253,7 @@ mutable struct Context
 
         # Set up the OpenGL/window state.
         refresh(con)
-        if exists(con.vsync)
-            GLFW.SwapInterval(Int(con.vsync))
-        end
+        GLFW.SwapInterval(Int(con.vsync))
 
         return con
     end
@@ -294,13 +292,13 @@ end
 
 "
 Runs the given code on a new OpenGL context, ensuring the context will get cleaned up.
-This call blocks as if the context runs on this thread/task,
-    but for Julia reasons it actually runs on a separate task.
 
-This is because tasks can get shifted to different threads
-    unless you explicitly mark it with `task.sticky = true`.
+This call blocks as if the context runs on this thread/task,
+    but for technical reasons it actually runs on a separate task.
+The reason is that Julia tasks can get shifted to different threads
+    unless you explicitly mark them as `sticky`.
 "
-@inline function bp_gl_context(to_do::Function, args...; kw_args...)
+@inline function bp_gl_context(to_do::Base.Callable, args...; kw_args...)
     task = Task() do
         c::Optional{Context} = nothing
         try
@@ -986,22 +984,22 @@ end
                       set_depth_writes(context, write_depth),
                       set_depth_writes(context, old_writes),
                       "depth write flag")
-@render_state_wrapper(with_stencil_writes(bit_mask::GLuint),
+@render_state_wrapper(with_stencil_write_mask(bit_mask::GLuint),
                       old_writes = (get_stencil_write_mask_front(context), get_stencil_write_mask_back(context)),
                       set_stencil_write_mask(context, bit_mask),
                       set_stencil_write_mask(context, old_writes...),
                       "stencil write mask")
-@render_state_wrapper(with_stencil_writes(front_faces_bit_mask::GLuint, back_faces_bit_mask::GLuint),
+@render_state_wrapper(with_stencil_write_mask(front_faces_bit_mask::GLuint, back_faces_bit_mask::GLuint),
                       old_writes = (get_stencil_write_mask_front(context), get_stencil_write_mask_back(context)),
                       set_stencil_write_mask(context, front_faces_bit_mask, back_faces_bit_mask),
                       set_stencil_write_mask(context, old_writes...),
                       "per-face stencil write mask")
-@render_state_wrapper(with_stencil_writes_front(front_faces_bit_mask::GLuint),
+@render_state_wrapper(with_stencil_write_mask_front(front_faces_bit_mask::GLuint),
                       old_writes = get_stencil_write_mask_front(context),
                       set_stencil_write_mask_front(context, front_faces_bit_mask),
                       set_stencil_write_mask_front(context, old_writes),
                       "front-faces stencil write mask")
-@render_state_wrapper(with_stencil_writes_back(back_faces_bit_mask::GLuint),
+@render_state_wrapper(with_stencil_write_mask_back(back_faces_bit_mask::GLuint),
                       old_writes = get_stencil_write_mask_back(context),
                       set_stencil_write_mask_back(context, back_faces_bit_mask),
                       set_stencil_write_mask_back(context, old_writes),

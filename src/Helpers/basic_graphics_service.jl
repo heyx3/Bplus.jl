@@ -129,8 +129,7 @@ A Context service which defines a bunch of useful GL resources:
 
         # If drawing full-screen, use the more efficient triangle.
         # If transforming it, use the more precise, intuitive quad.
-        render_mesh(context,
-                    (quad_transform == m_identityf(3, 3)) ?
+        render_mesh((quad_transform == m_identityf(3, 3)) ?
                         service.screen_triangle :
                         service.quad,
                     service.blit)

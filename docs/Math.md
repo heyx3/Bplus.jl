@@ -83,6 +83,14 @@ By default, `intersections(shape, ray)` returns `UpTo{N, F}` intersections. If y
 
 Box, [as mentioned above](#Box-And-Interval), is a particularly useful shape. For more info on the rest of its interface, unrelated to `AbstractShape`, see the linked section. Note that `Interval` does *not* implement `AbstractShape`.
 
+## Contiguous
+
+`Contiguous{T}` is an alias for any nested container of `T` that appears to be contiguous in memory. For example, a `Vector{v2i}` is both a `Contiguous{Int32}` and a `Contiguou{v2i}`.
+
+The number of `T` in a `Contiguous{T}` is found with `contiguous_length(data, T)`.
+
+Contiguous data can be turned into a pointer for interop with `coniguous_ptr()`.
+
 ## Random Generation
 
 * `rand_in_sphere(u, v, r)` generates a uniform-random `Vec3` within the unit sphere, given three uniform-random values.

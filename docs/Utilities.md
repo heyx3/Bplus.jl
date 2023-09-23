@@ -10,13 +10,12 @@ For example, if you invoke `@make_toggleable_asserts(my_game_)`, then you'll get
   1. `@my_game_assert(condition, msg...)` is the debug-only version of `@bp_check`.
   2. `@my_game_debug()` is a compile-time boolean constant for whether you're in debug mode.
   3. `@my_game_debug(debug_code[, release_code])` runs some debug-only code, and alternatively some optional release-only code.
-  4. `my_game_asserts_enabled() = false` is the core function driving this behavior. You can enable "debug mode" by explicitly redefining it, for example `MyGameModule.my_game_asserts_enabled() = true`.
-     * The statement `@my_game_debug some_code()` turns into something like `my_game_asserts_enabled() && some_code()`.
-     * The implementation of `my_game_asserts_enabled()` is so simple that Julia will always inline it, causing the value (`true` or `false`) to propagate out and effectively remove debug statements from the codebase entirely when in release mode.
-     * Redefining the function forces Julia to recompile all functions which referenced this function, respecting the new compile-time constant.
+  4. `my_game_asserts_enabled() = false` is the core function driving this feature. You can enable "debug mode" by explicitly redefining it, either within the module or after the module. For example, `MyGameModule.my_game_asserts_enabled() = true; MyGameModule.run_game()`.
      * You can see an example of toggling debug flags in B+'s unit tests (*test/runtests.jl*).
+     * The way this works is that the implementation of `my_game_asserts_enabled()` is so simple that Julia will always inline it, causing the value (`true` or `false`) to propagate out and effectively remove debug statements from the codebase entirely when in release mode.
+     * Redefining the function forces Julia to recompile all functions which referenced it, causing debug code to suddenly appear.
 
-**Important note**: constants do not get recompiled! For example, if you declare `const C = @my_game_debug(100, 1000)`, then toggle the debug flag, `C` will not change its value accordingly.
+**Important note**: constants do not get recompiled! For example, if you declare `const C = @my_game_debug(100, 1000)`, then toggle the debug flag, `C` will not change its value from 1000 to 100.
 
 *Note*: `@make_toggleable_asserts` is a custom implementation of the *ToggleableAsserts.jl* package, which provides some of this functionality globally.
 

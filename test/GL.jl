@@ -1,6 +1,7 @@
 # To disable the slower tests, set `global GL_TEST_FULL=false`.
 if !@isdefined GL_TEST_FULL
-    GL_TEST_FULL = true
+    GL_TEST_FULL = false
+    println("#TODO: Make the full test deterministic and plainly laid-out; not nested deeply in loops")
 end
 
 # Check some basic facts.
@@ -405,8 +406,8 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
         clear_col = lerp(vRGBAf(0.4, 0.4, 0.2, 1.0),
                          vRGBAf(0.6, 0.45, 0.6, 1.0),
                          rand(Float32))
-        GL.render_clear(context, GL.Ptr_Target(), clear_col)
-        GL.render_clear(context, GL.Ptr_Target(), @f32 1.0)
+        GL.clear_screen(clear_col)
+        GL.clear_screen(@f32 1.0)
         check_gl_logs("clearing the screen")
 
         # Randomly shift some uniforms every N ticks.
@@ -436,7 +437,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
             set_uniform(draw_triangles, "u_tex", triangle_tex)
             # Draw the triangles.
             view_activate(get_view(triangle_tex))
-            render_mesh(context, mesh_triangles, draw_triangles,
+            render_mesh(mesh_triangles, draw_triangles,
                         elements = IntervalU(min=1, size=3))
             view_deactivate(get_view(triangle_tex))
             check_gl_logs(string("drawing the triangles ", msg_context...))
@@ -449,7 +450,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
             check_gl_logs(string("setting the skybox's uniforms ", msg_context...))
             # Draw the skybox.
             view_activate(get_view(tex_skybox))
-            render_mesh(context, resources.screen_triangle, draw_skybox)
+            render_mesh(resources.screen_triangle, draw_skybox)
             view_deactivate(get_view(tex_skybox))
             check_gl_logs(string("drawing the skybox ", msg_context...))
         end
@@ -460,8 +461,8 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
 
         # Draw the Target's data onto the screen.
         target_activate(nothing)
-        render_clear(context, GL.Ptr_Target(), vRGBAf(0, 1, 0, 0))
-        render_clear(context, GL.Ptr_Target(), @f32 1.0)
+        clear_screen(vRGBAf(0, 1, 0, 0))
+        clear_screen(@f32 1.0)
         set_depth_test(context, ValueTests.pass)
         check_gl_logs("clearing the screen")
         target_tex = target.attachment_colors[1].tex

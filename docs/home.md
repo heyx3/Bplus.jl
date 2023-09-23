@@ -1,4 +1,4 @@
-Detailed info on the B+ codebase. For high-level info, see *README.md* at the root of the git repo.
+Detailed info on the B+ codebase. For high-level info, see [the root README.md file](../README.md).
 
 * [Utilities](Utilities.md):
   * [Asserts](Utilities.md#Asserts)
@@ -19,3 +19,14 @@ Detailed info on the B+ codebase. For high-level info, see *README.md* at the ro
   * [Box and Interval](Math.md#Box-and-Interval)
   * [Shapes](Math.md#Shapes)
   * [Random Generation](Math.md#Random-Generation)
+* [GL](GL.md):
+  * [Context](GL.md#Context)
+  * [Resources](Resources.md)
+  * [Services](GL.md#Services)
+  * [Clearing](GL.md#Clearing)
+  * [Drawing](GL.md#Drawing)
+  * [Debugging](GL.md#Debugging)
+* [Input](Input.md):
+* [GUI](GUI.md):
+* [Helpers](Helpers.md):
+  * [Game Loop](Helpers.md#Game-Loop)

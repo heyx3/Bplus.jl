@@ -59,9 +59,8 @@ bp_gl_context( v2i(800, 500), "GUI demo";
 
         # Clear the screen.
         set_viewport(context, zero(v2i), window_size)
-        clear_col = vRGBAf(0.2, 0.2, 0.5, 0.0)
-        GL.render_clear(context, GL.Ptr_Target(), clear_col)
-        GL.render_clear(context, GL.Ptr_Target(), @f32 1.0)
+        GL.clear_screen(vRGBAf(0.2, 0.2, 0.5, 0.0))
+        GL.clear_sceen(@f32 1.0)
 
         # Scene rendering could go here.
 

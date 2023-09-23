@@ -30,7 +30,7 @@ Runs a basic game loop, with all the typical B+ services.
 The syntax looks like this:
 
 ````
-@game_loop {
+@game_loop begin
     INIT(
         # Pass all the usual arguments to the constructor for a `GL.Context`.
         # For example:
@@ -54,7 +54,7 @@ The syntax looks like this:
         # Julia code block that runs after the loop, when the game is ending.
         # Runs in the same scope as `SETUP`.
     end
-}
+end
 ````
 
 In all the code blocks but INIT, you have access to the game loop state through the variable

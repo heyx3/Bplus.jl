@@ -739,7 +739,6 @@ To use a `GL.Texture` or `GL.View` in CImGui, wrap it with `gui_tex_handle()`.
                             set_uniform(serv.render_program, "u_texture", tex)
                             (tex_id != font_tex_id) && view_activate(tex)
                             render_mesh(
-                                context,
                                 serv.buffer, serv.render_program
                                 ;
                                 indexed_params = DrawIndexed(
