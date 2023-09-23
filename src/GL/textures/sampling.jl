@@ -66,9 +66,10 @@ end
 #     Sampler struct    #
 #########################
 
-"Information about a sampler for an N-dimensional texture."
-Base.@kwdef struct TexSampler{N}
-    # The wrapping mode along each individual axis
+"Information about a sampler for an N-dimensional texture"
+@kwdef struct TexSampler{N}
+    # The wrapping mode along each individual axis.
+    # This settings means nothing for cubemap textures.
     wrapping::Union{E_WrapModes, Vec{N, E_WrapModes}} = WrapModes.repeat
 
     pixel_filter::E_PixelFilters = PixelFilters.smooth
@@ -92,12 +93,11 @@ Base.@kwdef struct TexSampler{N}
 
     # Whether cubemaps should be sampled seamlessly.
     # This comes from the extension 'ARB_seamless_cubemap_per_texture',
-    #    and is important for bindless cubemap textures.
+    #    and is important for bindless cubemap textures which ignore the global setting.
     cubemap_seamless::Bool = true
 end
 
 # StructTypes doesn't have any way to deserialize an immutable @kwdef struct.
-#    
 StructTypes.StructType(::Type{<:TexSampler}) = StructTypes.UnorderedStruct()
 function StructTypes.construct(values::Vector{Any}, T::Type{<:TexSampler})
     kw_args = NamedTuple()
@@ -278,9 +278,13 @@ export DepthStencilSources, E_DepthStencilSources
 #   TexSampler Service Interface   #
 ####################################
 
-# Samplers can be re-used between textures, so you only need to define a few sampler objects
-#    across an entire rendering context.
+"
+Samplers can be re-used between textures, so you only need to define a few sampler objects
+   across an entire rendering context.
 
+This service provides re-usable sampler objects
+   for all possible configurations of sampler parameters.
+"
 @bp_service SamplerProvider(force_unique) begin
     lookup::Dict{TexSampler{3}, Ptr_Sampler}
 

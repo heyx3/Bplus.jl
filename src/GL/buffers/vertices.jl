@@ -250,6 +250,22 @@ export VSInput_FVector_Plain, VSInput_FVector_FromInt, VSInput_FVector_Fixed,
 ############################################
 
 
+"Creates a 1D float- or int- or double-vector vertex input"
+function VSInput(T::Type{<:Scalar})
+    dims = VertexInputVectorDimensions.D1
+    if T == Float64
+        return VSInput_DoubleVector(dims)
+    elseif T <: AbstractFloat
+        return VSInput_FVector_Plain(dims,
+                                     E_VertexInputFloatSizes(sizeof(T)))
+    elseif T <: Integer
+        return VSInput_IntVector(dims,
+                                 T <: Signed,
+                                 E_VertexInputIntSizes(sizeof(T)))
+    else
+        error("Unexpected scalar type for VSInput(): ", T)
+    end
+end
 "Creates a simple float- or int- or double-vector vertex input"
 function VSInput(::Type{Vec{N, T}}) where {N, T}
     if T == Float64
@@ -266,7 +282,7 @@ function VSInput(::Type{Vec{N, T}}) where {N, T}
     end
 end
 "Creates a float or double matrix input"
-function VSInput(::Type{Mat{C, R, F}}) where {C, R, F<:AbstractFloat}
+function VSInput(::Type{<:Mat{C, R, F}}) where {C, R, F<:AbstractFloat}
     c = E_VertexInputMatrixDimensions(C)
     r = E_VertexInputMatrixDimensions(R)
     if F == Float32

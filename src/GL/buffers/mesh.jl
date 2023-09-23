@@ -46,7 +46,7 @@ struct VertexAttribute
     field_type::AbstractVertexShaderInput
 
     # If 0, this data is regular old per-vertex data.
-    # If 1, this data is per-innstance, for instanced rendering.
+    # If 1, this data is per-instance, for instanced rendering.
     # If 2, this data is per-instance, and each element is reused for 2 consecutive instances.
     # etc.
     per_instance::UInt

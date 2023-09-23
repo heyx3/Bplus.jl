@@ -2,7 +2,8 @@
 A contiguous block of memory on the GPU,
    for storing any kind of data.
 Most commonly used to store mesh vertices/indices, or other arrays of things.
-Instances can be "mapped" to the CPU, allowing you to write/read them directly
+
+UNIMPLEMENTED: Instances can be "mapped" to the CPU, allowing you to write/read them directly
    as if they were a plain C array.
 This is often more efficient than setting the buffer data the usual way,
    e.x. you could read the mesh data from disk directly into this mapped memory.
@@ -99,21 +100,20 @@ export Buffer
 #       Buffer Operations      #
 ################################
 
-"
-Uploads the given data into the buffer.
-"
+"Uploads the given data into the buffer"
 function set_buffer_data( b::Buffer,
-                          new_elements::Vector{T}
+                          new_elements::Contiguous{T}
+                          T = eltype(new_elements)
                           ;
                           # Which part of the input array to read from
-                          src_element_range::IntervalU = IntervalU(min=1, size=length(new_elements)),
+                          src_element_range::IntervalU = IntervalU(min=1, size=contiguous_length(new_elements, T)),
                           # Shifts the first element of the buffer's array to write to
                           dest_element_offset::UInt = zero(UInt),
                           # A byte offset, to be combined wth 'dest_element_offset'
                           dest_byte_offset::UInt = zero(UInt)
-                        ) where {T}
+                        )
     @bp_check(b.is_mutable, "Buffer is immutable")
-    @bp_check(max_inclusive(src_element_range) <= length(new_elements),
+    @bp_check(max_inclusive(src_element_range) <= contiguous_length(new_elements, T),
               "Trying to upload a range of data beyond the input buffer")
 
     first_byte::UInt = dest_byte_offset + ((dest_element_offset) * sizeof(T))
@@ -125,7 +125,7 @@ function set_buffer_data( b::Buffer,
                  ", when there's only ", b.byte_size, " bytes")
 
     if byte_size >= 1
-        ptr = Ref(new_elements, Int(min_inclusive(src_element_range)))
+        ptr = contiguous_ref(new_elements, Int(min_inclusive(src_element_range)))
         glNamedBufferSubData(b.handle, first_byte, byte_size, ptr)
     end
 end
@@ -134,8 +134,7 @@ end
 Loads the buffer's data into the given array.
 If given a type instead of an array,
    then a new array of that type is allocated and returned.
-Note that counts are per-element, not per-byte
-   (unless the elements you're reading are 1 byte each).
+Note that counts are per-element, not per-byte.
 "
 function get_buffer_data( b::Buffer,
                           # The array which will contain the results,
@@ -176,7 +175,7 @@ function get_buffer_data( b::Buffer,
     output_ptr = Ref(output_array, Int(dest_offset + 1))
 
     glGetNamedBufferSubData(b.handle, src_first_byte, n_bytes, output_ptr)
-    
+
     if !(output isa Vector{T})
         return output_array
     else

@@ -89,7 +89,7 @@ Box, [as mentioned above](#Box-And-Interval), is a particularly useful shape. Fo
 
 The number of `T` in a `Contiguous{T}` is found with `contiguous_length(data, T)`.
 
-Contiguous data can be turned into a pointer for interop with `coniguous_ptr()`.
+Contiguous data can be turned into a `Ref` for interop using `contiguous_ref(values, T, idx=1)`. It can also be turned directly into a pointer with `coniguous_ptr(values, T, idx=1)`.
 
 ## Random Generation
 

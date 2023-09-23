@@ -304,7 +304,7 @@ function texture_data( tex::Texture,
                        recompute_mips::Bool,
                        mode::@ano_enum(Set, Get, Clear)
                        ;
-                       cube_face_range::Tuple{Int, Int},
+                       cube_face_range::IntervalU,
                        get_buf_pixel_byte_size::Int = -1,  # Only for Get ops
                        check_input_size::VecT{<:Integer} = Vec(-1) # Only for Get/Set ops
                      )
@@ -328,9 +328,9 @@ function texture_data( tex::Texture,
     range::Box3D = get_subset_range(full_subset, full_size)
     if (tex.type == TexTypes.cube_map)
         range = typeof(range)((min=v3u(min_inclusive(range).xy...,
-                                       cube_face_range[1]),
+                                       min_inclusive(cube_face_range)),
                                size=v3u(size(range).xy...,
-                                        cube_face_range[2] - cube_face_range[1] + 1)))
+                                        size(cube_face_range))))
     end
 
     # Perform the requested operation.
@@ -482,7 +482,7 @@ function clear_tex_color( t::Texture,
                           ;
                           subset::TexSubset = default_tex_subset(t),
                           bgr_ordering::Bool = false,
-                          cube_face_range::Tuple{Int, Int} = (1, 6),
+                          cube_face_range::IntervalU = IntervalU(min=1, max=6),
                           recompute_mips::Bool = true
                         )
     T = get_component_type(typeof(color))
@@ -508,7 +508,7 @@ function clear_tex_depth( t::Texture,
                           depth::T
                           ;
                           subset::TexSubset = default_tex_subset(t),
-                          cube_face_range::Tuple{Int, Int} = (1, 6),
+                          cube_face_range::IntervalU = IntervalU(min=1, max=6),
                           recompute_mips::Bool = true
                         ) where {T<:PixelIOComponent}
     @bp_check(is_depth_only(t.format),
@@ -524,7 +524,7 @@ end
 function clear_tex_stencil( t::Texture,
                             stencil::UInt8
                             ;
-                            cube_face_range::Tuple{Int, Int} = (1, 6),
+                            cube_face_range::IntervalU = IntervalU(min=1, max=6),
                             subset::TexSubset = default_tex_subset(t)
                           )
     @bp_check(is_stencil_only(t.format),
@@ -540,7 +540,7 @@ function clear_tex_depthstencil( t::Texture,
                                  stencil::UInt8
                                  ;
                                  subset::TexSubset = default_tex_subset(t),
-                                 cube_face_range::Tuple{Int, Int} = (1, 6),
+                                 cube_face_range::IntervalU = IntervalU(min=1, max=6),
                                  recompute_mips::Bool = true
                                )
     if t.format == DepthStencilFormats.depth24u_stencil8
@@ -559,7 +559,7 @@ function clear_tex_depthstencil( t::Texture,
                                  value::Depth24uStencil8u
                                  ;
                                  subset::TexSubset = default_tex_subset(t),
-                                 cube_face_range::Tuple{Int, Int} = (1, 6),
+                                 cube_face_range::IntervalU = IntervalU(min=1, max=6),
                                  recompute_mips::Bool = true
                                )
     @bp_check(t.format == DepthStencilFormats.depth24u_stencil8,
@@ -573,7 +573,7 @@ function clear_tex_depthstencil( t::Texture,
                                  value::Depth32fStencil8u
                                  ;
                                  subset::TexSubset = default_tex_subset(t),
-                                 cube_face_range::Tuple{Int, Int} = (1, 6),
+                                 cube_face_range::IntervalU = IntervalU(min=1, max=6),
                                  recompute_mips::Bool = true
                                )
     @bp_check(t.format == DepthStencilFormats.depth32f_stencil8,
@@ -594,7 +594,7 @@ function set_tex_pixels( t::Texture,
                          ;
                          subset::TexSubset = default_tex_subset(t),
                          color_bgr_ordering::Bool = false,
-                         cube_face_range::Tuple{Int, Int} = (1, 6),
+                         cube_face_range::IntervalU = IntervalU(min=1, max=6),
                          recompute_mips::Bool = true
                        )
     if is_color(t.format)
@@ -628,7 +628,7 @@ function set_tex_color( t::Texture,
                         ;
                         subset::TexSubset = default_tex_subset(t),
                         bgr_ordering::Bool = false,
-                        cube_face_range::Tuple{Int, Int} = (1, 6),
+                        cube_face_range::IntervalU = IntervalU(min=1, max=6),
                         recompute_mips::Bool = true
                       ) where {TBuf <: PixelBuffer}
     T = get_component_type(TBuf)
@@ -658,7 +658,7 @@ function set_tex_depth( t::Texture,
                         pixels::PixelBuffer{T}
                         ;
                         subset::TexSubset = default_tex_subset(t),
-                        cube_face_range::Tuple{Int, Int} = (1, 6),
+                        cube_face_range::IntervalU = IntervalU(min=1, max=6),
                         recompute_mips::Bool = true
                       ) where {T<:Union{Number, Vec{1, <:Number}}}
     @bp_check(is_depth_only(t.format),
@@ -675,7 +675,7 @@ function set_tex_stencil( t::Texture,
                           pixels::@unionspec(PixelBuffer{_}, UInt8, Vec{1, UInt8})
                           ;
                           subset::TexSubset = default_tex_subset(t),
-                          cube_face_range::Tuple{Int, Int} = (1, 6),
+                          cube_face_range::IntervalU = IntervalU(min=1, max=6),
                           recompute_mips::Bool = true
                         )
     @bp_check(is_stencil_only(t.format),
@@ -694,7 +694,7 @@ function set_tex_depthstencil( t::Texture,
                                pixels::PixelBuffer{T}
                                ;
                                subset::TexSubset = default_tex_subset(t),
-                               cube_face_range::Tuple{Int, Int} = (1, 6),
+                               cube_face_range::IntervalU = IntervalU(min=1, max=6),
                                recompute_mips::Bool = true
                              ) where {T <: Union{Depth24uStencil8u, Depth32fStencil8u}}
     local component_type::GLenum
@@ -723,7 +723,7 @@ function get_tex_color( t::Texture,
                         out_pixels::TBuf
                         ;
                         subset::TexSubset = default_tex_subset(t),
-                        cube_face_range::Tuple{Int, Int} = (1, 6),
+                        cube_face_range::IntervalU = IntervalU(min=1, max=6),
                         bgr_ordering::Bool = false,
                       ) where {TBuf <: PixelBuffer}
     T = get_component_type(TBuf)
@@ -754,7 +754,7 @@ function get_tex_depth( t::Texture,
                         out_pixels::PixelBuffer{T}
                         ;
                         subset::TexSubset = default_tex_subset(t),
-                        cube_face_range::Tuple{Int, Int} = (1, 6)
+                        cube_face_range::IntervalU = IntervalU(min=1, max=6),
                       ) where {T <: Union{Number, Vec{1, <:Number}}}
     @bp_check(is_depth_only(t.format), "Can't get depth data from a texture of format ", t.format)
     texture_data(t, GLenum(get_pixel_io_type(T)), GL_DEPTH_COMPONENT,
@@ -767,11 +767,11 @@ function get_tex_depth( t::Texture,
 end
 "Gets the pixel data for a stencil texture"
 function get_tex_stencil( t::Texture,
-                          out_pixels::TBuf
+                          out_pixels::PixelBuffer{<:Union{UInt8, Vec{1, UInt8}}}
                           ;
                           subset::TexSubset = default_tex_subset(t),
-                          cube_face_range::Tuple{Int, Int} = (1, 6)
-                        ) where {TBuf <: @unionspec(PixelBuffer{_}, UInt8, Vec{1, UInt8})}
+                          cube_face_range::IntervalU = IntervalU(min=1, max=6),
+                        )
     @bp_check(is_stencil_only(t.format), "Can't get stencil data from a texture of format ", t.format)
     texture_data(t, GLenum(get_pixel_io_type(UInt8)), GL_STENCIL_INDEX,
                  subset, Ref(out_pixels, 1), false,
@@ -786,7 +786,7 @@ function get_tex_depthstencil( t::Texture,
                                out_pixels::PixelBuffer{T}
                                ;
                                subset::TexSubset = default_tex_subset(t),
-                               cube_face_range::Tuple{Int, Int} = (1, 6)
+                               cube_face_range::IntervalU = IntervalU(min=1, max=6),
                              ) where {T <: Union{Depth24uStencil8u, Depth32fStencil8u}}
     local component_type::GLenum
     if T == Depth24uStencil8u
