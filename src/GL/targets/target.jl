@@ -1,5 +1,5 @@
 export Target, TargetUnsupportedException,
-       target_activate, target_use_color_slots, target_clear
+       target_activate, target_configure_fragment_outputs, target_clear
 
 
 #######################
@@ -50,7 +50,7 @@ Has a set of Textures attached to it, described as `TargetOutput` instances,
 OpenGL calls these "framebuffers".
 
 The full list of attached textures is fixed after creation,
-    but the specific subset used in rendering can be configured with `target_use_color_slots()`.
+    but the specific subset used in rendering can be configured with `target_configure_fragment_outputs()`.
 """
 mutable struct Target <: AbstractResource
     handle::Ptr_Target
@@ -320,7 +320,7 @@ For example, passing `[5, nothing, 1]` means that
     the third output goes to color attachment 1,
     and all other outputs (i.e. 2 and 4+) are safely discarded.
 "
-function target_use_color_slots(target::Target, slots::AbstractVector{<:Optional{Integer}})
+function target_configure_fragment_outputs(target::Target, slots::AbstractVector{<:Optional{Integer}})
     is_valid_slot(i) = isnothing(i) ||
                        ((i > 0) && (i <= length(target.attachment_colors)))
     @bp_check(all(is_valid_slot, slots),
@@ -355,7 +355,7 @@ Otherwise, the color texture is `float` or `normalized_[u]int`, and you must cle
 
 The index is *not* the color attachment itself but the render slot,
     a.k.a. the fragment shader output.
-    For example, if you previously called `target_use_color_slots(t, [ 3, nothing, 1])`,
+    For example, if you previously called `target_configure_fragment_outputs(t, [ 3, nothing, 1])`,
     and you want to clear color attachment 1, pass the index `3`.
 "
 function target_clear(target::Target,
@@ -429,10 +429,10 @@ If the masking behavior is desired, you can disable the check by passing `false`
 function target_clear(target::Target, stencil::Unsigned,
                       prevent_partial_clears::Bool = true)
     if prevent_partial_clears
-        @bp_gl_assert(get_context().state.stencil_write_mask == typemax(GLuint),
-                      "The Context has had its `stencil_write_mask` set,",
-                        " which can screw up the clearing of stencil buffers!",
-                        " To disable this check, pass `false` to this `target_clear()` call.")
+        @bp_check(get_context().state.stencil_write_mask == typemax(GLuint),
+                    "The Context has had its `stencil_write_mask` set,",
+                      " which can screw up the clearing of stencil buffers!",
+                      " To disable this check, pass `false` to this `target_clear()` call.")
     end
 
     @bp_check(stencil <= typemax(UInt8),

@@ -413,7 +413,31 @@ To remove a mesh's index data buffer, use `remove_index_data(mesh)`.
 
 # Target
 
-## TargetBuffer
+What OpenGL calls a "FrameBuffer Object" or "FBO". A collection of textures you can draw into instead of drawing into the screen.
 
+For each color output, the fragment shader can write to one output variable. There can only be one depth, stencil, or depth-stencil texture. If you don't need the depth/stencil texture, you can omit it. If you only need depth/stencil for render operations and never for sampling, the `Target` can set up a limited `TargetBuffer` in place of a real `Texture`.
 
-#TODO: Finish
+Targets can output to particular slices of a 3D texture or faces of a cubemap texture. The texture attachment can also be "layered", meaning ALL slices/faces are available and the geometry shader can emit different primitives to different layers as it pleases.
+
+## Construction
+
+There are several ways to construct a `Target`. Whenever you provide settings rather than an explicit texture, the `Target` will create a texture for you, and will remember to destroy it when the `Target` is destroyed.
+
+* `Target(size::v2u, n_pretend_layes::Int)` creates an instance with no actual outputs, but which pretends to have the given number of outputs.
+* `Target(color::Union{TargetOutput, Vector{TargetOutput}}, depth::TargetOutput)` creates an instance with one or more color attachments, and the given depth/stencil attachment.
+* `Target(color::TargetOutput, depth_stencil::E_DepthStencilFormats, ds_no_sampling::Bool = true, ds_sampling_mode = DepthStencilSources.depth)` creates a target with one color output, and one depth/stencil output which by default is not sampleable. If it *is* marked sampleable, the fourth parameter controls what can be sampled from it.
+
+## Use
+
+* `target_activate(target_or_nothing, reset_viewport=true, reset_scissor=true)`
+  * Sets all future rendering to go into the given target, or to the screen if `nothing` is passed.
+* `target_clear(target, value, color_fragment_slot=1)` will clear one of the target's attachments.
+  * For color, pass a value of `vRGBAf` for float or normalized (u)int textures, `vRGBAu` for uint textures, and `vRGBAi` for int textures.
+    * When clearing color you must also specify the index. You can think of this as the color attachment index at first. However, if you call `target_configure_fragment_outputs()`, then note that the index here is really the fragment shader output index.
+  * For depth, pass any float value (`Float16` `Float32`, `Float64`).
+  * For stencil, pass a `UInt8`, or any other unsigned int which will get casted down.
+    * This operation is affected by the stencil write mask, and by default will try to catch unexpected behavior by throwing an error if any bits of the mask are turned off. This check can be disabled by passing `false`.
+  * For hybrid depth-stencil, pass a `Depth32fStencil8u`, *regardless* of the actual format used.
+* `target_configure_fragment_outputs(target, slots)` routes each fragment shader output when rendering to this target, to one of the color attachments (or `nothing` to discard that output). For example, passing `[5, nothing, 1]` means that the fragment shader's first output goes to color attachment 5, its second output is discarded, its third output goes to color attachment 1, and any subsequent outputs are also discarded.
+  * When the `Target` is first created, all attachments are active and in order (as if you passed `[1, 2, 3, ...]`).
+  * When clearing a Target's color attachments, you provide an index in terms of these fragment shader outputs, *not* in terms of color attachment. For example, after passing `[5, nothing, 1]`, then clearing slot 1 actually means clearing attachment 5.
