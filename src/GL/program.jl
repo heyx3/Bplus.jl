@@ -172,11 +172,19 @@ end
 #      ProgramCompiler      #
 #############################
 
-"A set of data to be compiled into an OpenGL shader program"
-mutable struct ProgramCompiler
+struct RenderProgramSource
     src_vertex::String
     src_fragment::String
     src_geometry::Optional{String}
+end
+
+struct ComputeProgramSource
+    src::String
+end
+
+"A set of data to be compiled into an OpenGL shader program"
+mutable struct ProgramCompiler
+    source::Union{RenderProgramSource, ComputeProgramSource}
 
     # A pre-compiled version of this shader which this compiler can attempt to use first.
     # The shader source code is still needed as a fallback,
@@ -188,10 +196,16 @@ end
 ProgramCompiler( src_vertex, src_fragment
                  ;
                  src_geometry = nothing,
-                 cached_binary = nothing
+                 cached_binary::Optional{PreCompiledProgram} = nothing
                ) = ProgramCompiler(
-    src_vertex, src_fragment,
-    src_geometry,
+    RenderProgramSource(src_vertex, src_fragment, src_geometry),
+    cached_binary
+)
+ProgramCompiler( src_compute
+                 ;
+                 cached_binary::Optional{PreCompiledProgram} = nothing
+               ) = ProgramCompiler(
+    ComputeProgramSource(src_compute),
     cached_binary
 )
 
@@ -221,20 +235,34 @@ function compile_program( p::ProgramCompiler,
 
     # Compile the individual shaders.
     compiled_handles::Vector{GLuint} = [ ]
-    for data in (("vertex", GL_VERTEX_SHADER, p.src_vertex),
-                 ("fragment", GL_FRAGMENT_SHADER, p.src_fragment),
-                 ("geometry", GL_GEOMETRY_SHADER, p.src_geometry))
-        if exists(data[3])
-            result = compile_stage(data...)
-            if result isa String
-                # Clean up the shaders/program, then return the error message.
-                map(glDeleteShader, compiled_handles)
-                glDeleteProgram(out_ptr)
-                return result
-            else
-                push!(compiled_handles, result)
+    if p.source isa RenderProgramSource
+        for data in (("vertex", GL_VERTEX_SHADER, p.source.src_vertex),
+                    ("fragment", GL_FRAGMENT_SHADER, p.source.src_fragment),
+                    ("geometry", GL_GEOMETRY_SHADER, p.source.src_geometry))
+            if exists(data[3])
+                result = compile_stage(data...)
+                if result isa String
+                    # Clean up the shaders/program, then return the error message.
+                    map(glDeleteShader, compiled_handles)
+                    glDeleteProgram(out_ptr)
+                    return result
+                else
+                    push!(compiled_handles, result)
+                end
             end
         end
+    elseif p.source isa ComputeProgramSource
+        result = compile_stage("compute", GL_COMPUTE_SHADER, p.source.src)
+        if result isa String
+            # Clean up the shaders/program, then return the error message.
+            map(glDeleteShader, compiled_handles)
+            glDeleteProgram(out_ptr)
+            return result
+        else
+            push!(compiled_handles, result)
+        end
+    else
+        error("Unhandled case: ", typeof(p.source))
     end
 
     # Link the shader program together.
@@ -251,7 +279,7 @@ function compile_program( p::ProgramCompiler,
         glGetProgramInfoLog(out_ptr, msg_len, Ref(Int32(msg_len)), Ref(msg_data, 1))
 
         glDeleteProgram(out_ptr)
-        return string("Error combining shaders: ", String(msg_data[1:msg_len]))
+        return string("Error linking shaders: ", String(msg_data[1:msg_len]))
     end
 
     # We need to "detach" the shader objects
@@ -293,6 +321,7 @@ export ProgramCompiler, compile_program
 "A compiled group of OpenGL shaders (vertex, fragment, etc.)"
 mutable struct Program <: AbstractResource
     handle::Ptr_Program
+    compute_work_group_size::Optional{v3u} # Only exists for compute shaders
     uniforms::Dict{String, UniformData}
     uniform_blocks::Dict{String, ShaderBlockData}
     storage_blocks::Dict{String, ShaderBlockData}
@@ -313,7 +342,20 @@ function Program(vert_shader::String, frag_shader::String
         error("Unhandled case: ", typeof(result), "\n\t: ", result)
     end
 end
-function Program(handle::Ptr_Program, flexible_mode::Bool = false)
+function Program(compute_shader::String
+                 ;
+                 flexible_mode::Bool = true)
+    compiler = ProgramCompiler(compute_shader)
+    result = compile_program(compiler)
+    if result isa Ptr_Program
+        return Program(result, flexible_mode; is_compute=true)
+    elseif result isa String
+        error(result)
+    else
+        error("Unhandled case: ", typeof(result), "\n\t: ", result)
+    end
+end
+function Program(handle::Ptr_Program, flexible_mode::Bool = false; is_compute::Bool = false)
     context = get_context()
     @bp_check(exists(context), "Creating a Program without a valid Context")
 
@@ -422,7 +464,15 @@ function Program(handle::Ptr_Program, flexible_mode::Bool = false)
     # Connect to the view-debugger service.
     service_ViewDebugging_add_program(handle)
 
-    return Program(handle, uniforms, uniform_blocks, storage_blocks, flexible_mode)
+    return Program(handle,
+                   is_compute ?
+                      v3u(get_from_ogl(NTuple{3, GLint}, glGetProgramiv,
+                                       handle, GL_COMPUTE_WORK_GROUP_SIZE)...) :
+                      nothing,
+                   uniforms,
+                   uniform_blocks,
+                   storage_blocks,
+                   flexible_mode)
 end
 
 function Base.close(p::Program)
@@ -790,14 +840,24 @@ macro bp_glsl_str(src::AbstractString)
     separators = Dict(
         :vert => ("#START_VERTEX", findfirst("#START_VERTEX", src)),
         :frag => ("#START_FRAGMENT", findfirst("#START_FRAGMENT", src)),
-        :geom => ("#START_GEOMETRY", findfirst("#START_GEOMETRY", src))
+        :geom => ("#START_GEOMETRY", findfirst("#START_GEOMETRY", src)),
+        :compute => ("#START_COMPUTE", findfirst("#START_COMPUTE", src))
     )
 
-    # Make sure enough shader stages were provided.
-    if isnothing(separators[:vert][2])
-        error("Must provide a vertex shader, with the header `", separators[:vert][1], "`")
-    elseif isnothing(separators[:frag][2])
-        error("Must provide a fragment shader, with the header `", separators[:frag][1], "`")
+    # Make sure the right shader stages were provided.
+    local is_compute::Bool
+    if exists(separators[:compute][2])
+        is_compute = true
+        @bp_check(all(isnothing.(getindex.(getindex.(separators, (:vert, :frag, :geom)),
+                                           Ref(2)))),
+                  "Can't provide compute shader with rendering shaders")
+    else
+        is_compute = false
+        if isnothing(separators[:vert][2])
+            error("Must provide a vertex shader, with the header `", separators[:vert][1], "`")
+        elseif isnothing(separators[:frag][2])
+            error("Must provide a fragment shader, with the header `", separators[:frag][1], "`")
+        end
     end
 
     # Find the end of the common section of code at the top.
@@ -826,6 +886,7 @@ macro bp_glsl_str(src::AbstractString)
     vert_range = try_find_range(:vert)
     frag_range = try_find_range(:frag)
     geom_range = try_find_range(:geom)
+    compute_range = try_find_range(:compute)
 
     # Generate the individual shaders.
     src_header = src[1:end_of_common_code]
@@ -835,23 +896,32 @@ macro bp_glsl_str(src::AbstractString)
         (1 + count(f -> f=='\n', src[1:section_start])),
         "\n"
     )
-    src_vertex = string("#define IN_VERTEX_SHADER\n", src_header,
-                        gen_line_command(first(vert_range)),
-                        src[vert_range])
-    src_fragment = string("#define IN_FRAGMENT_SHADER\n", src_header,
-                          gen_line_command(first(frag_range)),
-                          src[frag_range])
+    src_vertex = isnothing(vert_range) ?
+                     nothing :
+                     string("#define IN_VERTEX_SHADER\n", src_header,
+                            gen_line_command(first(vert_range)),
+                            src[vert_range])
+    src_fragment = isnothing(frag_range) ?
+                       nothing :
+                       string("#define IN_FRAGMENT_SHADER\n", src_header,
+                              gen_line_command(first(frag_range)),
+                              src[frag_range])
     src_geom = isnothing(geom_range) ?
                    nothing :
                    string("#define IN_GEOMETRY_SHADER\n", src_header,
                           gen_line_command(first(geom_range)),
                           src[geom_range])
+    src_compute = isnothing(compute_range) ?
+                      nothing :
+                      string("#define IN_COMPUTE_SHADER\n", src_header,
+                             gen_line_command(first(compute_range)),
+                             src[compute_range])
 
-    # Reference the Program type from anywhere this macro is invoked
     prog_type = Program
-
-    return :(
-        $prog_type($src_vertex, $src_fragment, geom_shader=$src_geom)
-    )
+    if is_compute
+        return :( $prog_type($src_compute) )
+    else
+        return :( $prog_type($src_vertex, $src_fragment, geom_shader=$src_geom) )
+    end
 end
 export @bp_glsl_str

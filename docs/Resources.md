@@ -8,7 +8,7 @@ All resource types implement the following interface (see doc-strings for more d
 
 # Program
 
-`Program` is a compiled shader.
+`Program` is a compiled shader, either for rendering or compute.
 
 ## Creation
 
@@ -17,14 +17,15 @@ All resource types implement the following interface (see doc-strings for more d
 You can compile a shader from a static string literal with Julia's macro string syntax: `bp_glsl" [multiline shader code here] "`. Within the string, you can define mutiple sections:
 
 * Code at the top of the string will be re-used for all shader stages.
-  * A specific token will be defined based on which shader stage you are in: `IN_VERTEX_SHADER`, `IN_FRAGMENT_SHADER`, or `IN_GEOMETRY_SHADER`.
+  * A specific token will be defined based on which shader stage you are in: `IN_VERTEX_SHADER`, `IN_FRAGMENT_SHADER`, `IN_GEOMETRY_SHADER`, `IN_COMPUTE_SHADER`.
 * Code following the token `#START_VERTEX` is used as the vertex shader.
 * Code following the token `#START_FRAGMENT` is used as the fragment shader.
 * Code following the token `#START_GEOMETRY` (optional) is used as the geometry shader.
+* Code following the token `#START_COMPUTE` makes this Program into a compute shader, forbidding all other shader types.
 
 ### From simple compilation
 
-For non-static shaders, loaded from a file or otherwise generated dynamically, the simplest way to compile them is to use the constructor `Program(vert_shader, frag_shader; geom_shader = nothing)`.
+For non-static shaders, loaded from a file or otherwise generated dynamically, the simplest way to compile them is to use the constructor `Program(vert_shader, frag_shader; geom_shader = nothing)`. For compute shaders, it's just `Program(shader)`.
     * It also takes an optional named parameter `flexible_mode::Bool` (defaulting to `true`), which indicates whether it should suppress errors when setting uniforms that have been optimized out.
 
 ### From advanced compilation

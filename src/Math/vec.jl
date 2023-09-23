@@ -246,6 +246,17 @@ end
 Base.minmax(p1::Vec{N, T1}, p2::T2) where {N, T1, T2} = minmax(p1, Vec{N, T2}(i->p2))
 Base.minmax(p1::Number, p2::Vec) = minmax(p2, p1)
 
+@inline function Base.divrem(x::Vec{N, T1}, y::Vec{N, T2}) where {N, T1, T2}
+    T3 = promote_type(T1, T2)
+    divrem_tuple = map(divrem, x, y)
+    return (
+        Vec{N, T3}(i->divrem_tuple[i][1]),
+        Vec{N, T3}(i->divrem_tuple[i][2])
+    )
+end
+Base.divrem(x::Vec{N, T1}, y::T2) where {N, T1, T2} = divrem(x, Vec{N, T2}(i->y))
+Base.divrem(x::T1, y::Vec{N, T2}) where {N, T1, T2} = divrem(Vec{N, T1}(i->x), y)
+
 @inline Base.abs(v::Vec) = Vec((abs(f) for f in v)...)
 
 @inline Base.round(v::Vec, a...; kw...) = map(f -> round(f, a...; kw...), v)

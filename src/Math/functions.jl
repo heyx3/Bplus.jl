@@ -89,11 +89,15 @@ export square
 
 "
 Rounds a value up to the nearest multiple of another value.
+Works with both integers and `Vec`s of integers (`Vec{<:Integer}`).
+
+Behavior with float inputs is not defined, because I haven't bothered to think about it
+    (feel free to do it yourself and update this comment!)
 
 Behavior with negative inputs is not defined, because I haven't bothered to think about it
     (feel free to do it yourself and update this comment!)
 "
-function round_up_to_multiple(value::Integer, multiple::Integer)
+function round_up_to_multiple(value, multiple)
     (quotient, remainder) = divrem(value, multiple)
     return iszero(remainder) ?
         value :

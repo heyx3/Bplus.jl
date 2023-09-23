@@ -245,3 +245,26 @@ function render_mesh( mesh::Mesh, program::Program
 end
 
 export DrawIndexed, render_mesh
+
+
+############################
+#     Compute Dispatch     #
+############################
+
+"Dispatches the given compute shader with enough work-groups for the given number of threads"
+function dispatch_compute_threads(program::Program, count::Vec3{<:Integer})
+    @bp_check(exists(program.compute_work_group_size),
+              "Program isn't a compute shaer: " + get_ogl_handle(program))
+    dispatch_compute_groups(program, round_up_to_multiple(count, program.compute_work_group_size))
+end
+
+"Dispatches the given commpute shader with the given number of work-groups"
+function dispatch_compute_groups(program::Program, count::Vec3{<:Integer})
+    # Activate the program.
+    glUseProgram(get_ogl_handle(program))
+    setfield!(context, :active_program, get_ogl_handle(program))
+
+    glDispatchCompute(convert(Vec{3, GLuint}, count)...)
+end
+
+export dispatch_compute_threads, dispatch_compute_groups

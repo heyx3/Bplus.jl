@@ -8,7 +8,7 @@ The module `Bplus.Math`.
 * `saturate(x)` is equal to `clamp(x, 0, 1)`.
 * `square(x)` is equal to `x*x`.
 * `typemin_finite(T)` and `typemax_finite(T)` are an alternative to Julia's `typemin(T)` and `typemax(T)` that returns finite values for float types.
-* `round_up_to_multiple(v, multiple)` rounds an integer value up to the next multiple of some other integer value. For example, `round_up_to_multiple(7, 5) == 10`.
+* `round_up_to_multiple(v, multiple)` rounds an integer (or `Vec{<:Integer}`) up to the next multiple of some other integer (or `Vec{<:Integer}`). For example, `round_up_to_multiple(7, 5) == 10`.
 * `solve_quadratic(a, b, c)` returns either `nothing` or the two solutions to the quadratic equation `ax^2 + bx + c = 0`.
 
 ## Vectors, Matrices, Quaternions

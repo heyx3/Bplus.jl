@@ -148,6 +148,10 @@ There are numerous named parameters to customize the draw call. **Important note
 
 *NOTE*: Indirect draw calls are not yet implemented. If you dispatch them yourself, remember to leave the OpenGL state unchanged, or else refresh the Context with `refresh(get_context())`.
 
+## Compute Dispatch
+
+Dispatch a compute shader with `dispatch_compute_threads()` or `dispatch_compute_groups()`.
+
 ## Debugging
 
 For now, B+ uses the older form of OpenGL error catching. Call `pull_gl_logs()` to get a list, in chronological order, of all messages/errors that have occurred since the last time you called `pull_gl_logs()`. This list may drop messages if it's not checked for too long, so it's recommended to call it at least once a frame in [debug builds](Utilities.md#Asserts) of your game.
