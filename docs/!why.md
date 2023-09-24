@@ -12,11 +12,11 @@ Julia manages to solve this problem very well IMHO, and it is just as useful for
 
 ## Syntax
 
-Code is extremely terse, simple to write, and simple to read, yet the resulting programs can be heavily-optimized (the benchmarks I read have found that it's approaching the speed of C, and it's still a young language). Thanks to an extremely clever JIT engine, combined with aggressive Whole-Code-Optimization using inlining, constant-folding, and type inference, you can write *very* complex abstractions which easily become zero-cost.
+Code is extremely terse, simple to write, and simple to read, yet the resulting programs can be heavily-optimized (the benchmarks I read have found that it's approaching the speed of C, and it's still a young language). Thanks to an extremely clever JIT engine, combined with aggressive Whole-Code-Optimization using inlining, constant-folding, and type inference, you can write complex abstractions which easily become zero-cost.
 
 Compare this to C++, which achieves zero-cost abstractions at the price of legendary verbosity and inscrutable error messages. Julia has been a wonderful breath of fresh air for me.
 
-Other high-performance scientific computing languages exist, like Matlab, but their syntax is very alien compared to more traditional languages. Julia's is very quirky, but still very readable.
+Other high-performance scientific computing languages exist, like Matlab, but their syntax is much weirder. Julia's is quirky, yet readable.
 
 It's also incredibly flexible. You can write extremely mathy code, like defining the cross product with `forward × up = [blah blah])`, or you can write that same code with plain imperative syntax:
 
