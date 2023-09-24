@@ -4,6 +4,8 @@ A game and 3D graphics framework for Julia, using OpenGL 4.6 + bindless textures
 
 Offers game math, a GL/windowing wrapper, a GLFW input wrapper, scene graph algorithms, and numerous other modules.
 
+If you're wondering why Julia, [read about it here](docs/!why.md)!
+
 ## Setup/Dependencies
 
 After downloading the repo, run *scripts/setup.jl*. The directory or Julia project you run from doesn't matter.
@@ -47,7 +49,7 @@ The code is organized into a number of modules, hierarchically. From lowest-leve
 -------------  -------  -----------
 ````
 
-Below is a quick overview. A thorough description will be written up elsewhere. You can also refer to the inline doc-strings, comments, and [sample projects](github.com/heyx3/BpExamples).
+Below is a quick overview. [A thorough description is available here](docs/!home.md). You can also refer to the inline doc-strings, comments, and [sample projects](github.com/heyx3/BpExamples).
 
 ### Utilities
 
