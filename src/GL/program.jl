@@ -373,7 +373,6 @@ function Program(handle::Ptr_Program, flexible_mode::Bool = false; is_compute::B
     # Get the shader storage blocks.
     n_storage_blocks = get_from_ogl(GLint, glGetProgramInterfaceiv,
                                     handle, GL_SHADER_STORAGE_BLOCK, GL_ACTIVE_RESOURCES)
-    println("N storage blocks: ", n_storage_blocks)
     storage_blocks = Dict{String, ShaderBlockData}()
     resize!(name_c_buffer,
             get_from_ogl(GLint, glGetProgramInterfaceiv,
@@ -382,21 +381,21 @@ function Program(handle::Ptr_Program, flexible_mode::Bool = false; is_compute::B
         block_name_length = Ref(zero(GLsizei))
         glGetProgramResourceiv(handle,
                                # The resource:
-                               GL_SHADER_STORAGE_BLOCK, block_idx,
+                               GL_SHADER_STORAGE_BLOCK, block_idx - 1,
                                # The desired data:
                                1, Ref(GL_NAME_LENGTH),
                                # The output buffer(s):
                                1, C_NULL, block_name_length)
 
         glGetProgramResourceName(handle,
-                                 GL_SHADER_STORAGE_BLOCK, block_idx,
+                                 GL_SHADER_STORAGE_BLOCK, block_idx - 1,
                                  block_name_length[], C_NULL, Ref(name_c_buffer, 1))
         block_name = String(@view name_c_buffer[1 : (block_name_length[] - 1)])
         storage_blocks[block_name] = ShaderBlockData(
-            Ptr_ShaderBuffer(block_idx),
+            Ptr_ShaderBuffer(block_idx - 1),
             get_from_ogl(GLint, glGetProgramResourceiv,
                          # The resource:
-                         handle, GL_SHADER_STORAGE_BLOCK, block_idx,
+                         handle, GL_SHADER_STORAGE_BLOCK, block_idx - 1,
                          # The desired data:
                          1, Ref(GL_BUFFER_DATA_SIZE),
                          # The output buffer(s):
@@ -416,7 +415,7 @@ function Program(handle::Ptr_Program, flexible_mode::Bool = false; is_compute::B
 
         block_name = String(@view name_c_buffer[1 : (block_name_length - 1)])
         uniform_blocks[block_name] = ShaderBlockData(
-            Ptr_ShaderBuffer(block_idx),
+            Ptr_ShaderBuffer(block_idx - 1),
             get_from_ogl(GLint, glGetActiveUniformBlockiv,
                          handle, block_idx, GL_UNIFORM_BLOCK_DATA_SIZE)
         )

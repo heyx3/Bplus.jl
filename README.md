@@ -49,7 +49,7 @@ The code is organized into a number of modules, hierarchically. From lowest-leve
 -------------  -------  -----------
 ````
 
-Below is a quick overview. [A thorough description is available here](docs/!home.md). You can also refer to the inline doc-strings, comments, and [sample projects](github.com/heyx3/BpExamples).
+Below is a quick overview. [A thorough description is available here](docs/!home.md). You can also refer to the inline doc-strings, comments, and [sample projects](https://github.com/heyx3/BpExamples).
 
 ### Utilities
 

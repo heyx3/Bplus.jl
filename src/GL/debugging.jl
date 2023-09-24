@@ -32,7 +32,7 @@ function debug_string(source::E_DebugEventSources)
     elseif source == DebugEventSources.other
         return "some unspecified context"
     else
-        error("Unhandled case: ", source)
+        return "INTERNAL_B+_ERROR(Unhandled source: $source)"
     end
 end
 export DebugEventSources, E_DebugEventSources
@@ -67,7 +67,7 @@ function debug_string(topic::E_DebugEventTopics)
     elseif topic == DebugEventTopics.other
         return "other"
     else
-        error("Unhandled case: ", topic)
+        return "INTERNAL_B+_ERROR(Unhandled topic: $topic)"
     end
 end
 export DebugEventTopics, E_DebugEventTopics
@@ -89,7 +89,7 @@ function debug_string(severity::E_DebugEventSeverities)
     elseif severity == DebugEventSeverities.high
         return "fatal"
     else
-        error("Unhandled case: ", severity)
+        return "INTERNAL_B+_ERROR(Unhandled severity: $severity)"
     end
 end
 export DebugEventSeverities, E_DebugEventSeverities
