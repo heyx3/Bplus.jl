@@ -94,6 +94,10 @@ Sets the given buffer to be used for one of the
 Sets a program's Uniform Block (a.k.a. "UBO")
     to use the given global slot, which can be assigned a Buffer with the other overload.
 
+`set_uniform_block(::Int)`
+
+Clears the binding for the given global UBO slot.
+
 **NOTE**: Indices and byte ranges are 1-based!
 """
 function set_uniform_block end
@@ -108,6 +112,10 @@ Sets the given buffer to be used for one of the
 
 Sets a program's Shader-Storage Block (a.k.a. "SSBO")
     to use the given global slot, which can be assigned a Buffer with the other overload.
+
+`set_storage_block(::Int)`
+
+Clears the binding for the given global SSBO slot.
 
 **NOTE**: Indices and byte ranges are 1-based!
 """
@@ -193,19 +201,20 @@ mutable struct ProgramCompiler
     cached_binary::Optional{PreCompiledProgram}
 end
 
-ProgramCompiler( src_vertex, src_fragment
+ProgramCompiler( src_vertex::AbstractString, src_fragment::AbstractString
                  ;
-                 src_geometry = nothing,
+                 src_geometry::Optional{AbstractString} = nothing,
                  cached_binary::Optional{PreCompiledProgram} = nothing
                ) = ProgramCompiler(
-    RenderProgramSource(src_vertex, src_fragment, src_geometry),
+    RenderProgramSource(string(src_vertex), string(src_fragment),
+                        isnothing(src_geometry) ? nothing : string(src_geometry)),
     cached_binary
 )
-ProgramCompiler( src_compute
+ProgramCompiler( src_compute::AbstractString
                  ;
                  cached_binary::Optional{PreCompiledProgram} = nothing
                ) = ProgramCompiler(
-    ComputeProgramSource(src_compute),
+    ComputeProgramSource(string(src_compute)),
     cached_binary
 )
 
@@ -364,6 +373,7 @@ function Program(handle::Ptr_Program, flexible_mode::Bool = false; is_compute::B
     # Get the shader storage blocks.
     n_storage_blocks = get_from_ogl(GLint, glGetProgramInterfaceiv,
                                     handle, GL_SHADER_STORAGE_BLOCK, GL_ACTIVE_RESOURCES)
+    println("N storage blocks: ", n_storage_blocks)
     storage_blocks = Dict{String, ShaderBlockData}()
     resize!(name_c_buffer,
             get_from_ogl(GLint, glGetProgramInterfaceiv,
@@ -380,7 +390,7 @@ function Program(handle::Ptr_Program, flexible_mode::Bool = false; is_compute::B
 
         glGetProgramResourceName(handle,
                                  GL_SHADER_STORAGE_BLOCK, block_idx,
-                                 block_name_length, C_NULL, Ref(name_c_buffer, 1))
+                                 block_name_length[], C_NULL, Ref(name_c_buffer, 1))
         block_name = String(@view name_c_buffer[1 : (block_name_length[] - 1)])
         storage_blocks[block_name] = ShaderBlockData(
             Ptr_ShaderBuffer(block_idx),
@@ -466,7 +476,7 @@ function Program(handle::Ptr_Program, flexible_mode::Bool = false; is_compute::B
 
     return Program(handle,
                    is_compute ?
-                      v3u(get_from_ogl(NTuple{3, GLint}, glGetProgramiv,
+                      v3u(get_from_ogl(GLint, 3, glGetProgramiv,
                                        handle, GL_COMPUTE_WORK_GROUP_SIZE)...) :
                       nothing,
                    uniforms,
@@ -776,8 +786,9 @@ function set_uniform_block(buf::Buffer, idx::Int;
                                max=buf.byte_size
                            ))
     handle = get_ogl_handle(buf)
-    if context.active_ubos[idx] != (handle, byte_range)
-        context.active_ubos[idx] = (handle, byte_range)
+    binding = (handle, convert(Interval{Int}, byte_range))
+    if context.active_ubos[idx] != binding
+        context.active_ubos[idx] = binding
         glBindBufferRange(GL_UNIFORM_BUFFER, idx - 1, handle,
                           min_inclusive(byte_range) - 1,
                           size(byte_range))
@@ -785,9 +796,24 @@ function set_uniform_block(buf::Buffer, idx::Int;
     return nothing
 end
 function set_uniform_block(program::Program, name::AbstractString, idx::Int)
-    glUniformBlockBinding(get_ogl_handle(buf),
+    if !haskey(program.uniform_blocks, name)
+        if program.flexible_mode
+            return nothing
+        else
+            error("Uniform block not found (was it optimized out?): '", name, "'")
+        end
+    end
+    glUniformBlockBinding(get_ogl_handle(program),
                           program.uniform_blocks[name].handle,
                           idx - 1)
+    return nothing
+end
+function set_uniform_block(idx::Int; context::Context = get_context())
+    cleared_binding = (Ptr_Buffer(), Interval{Int}(min=-1, max=-1))
+    if context.active_ubos[idx] != cleared_binding
+        context.active_ubos[idx] = cleared_binding
+        glBindBufferBase(GL_UNIFORM_BUFFER, idx - 1, Ptr_Buffer())
+    end
     return nothing
 end
 
@@ -799,8 +825,9 @@ function set_storage_block(buf::Buffer, idx::Int;
                                max=buf.byte_size
                            ))
     handle = get_ogl_handle(buf)
-    if context.active_ssbos[idx] != (handle, byte_range)
-        context.active_ssbos[idx] = (handle, byte_range)
+    binding = (handle, convert(Interval{Int}, byte_range))
+    if context.active_ssbos[idx] != binding
+        context.active_ssbos[idx] = binding
         glBindBufferRange(GL_SHADER_STORAGE_BUFFER, idx - 1, handle,
                           min_inclusive(byte_range) - 1,
                           size(byte_range))
@@ -808,9 +835,24 @@ function set_storage_block(buf::Buffer, idx::Int;
     return nothing
 end
 function set_storage_block(program::Program, name::AbstractString, idx::Int)
-    glShaderStorageBlockBinding(get_ogl_handle(buf),
-                                program.uniform_blocks[name].handle,
+    if !haskey(program.storage_blocks, name)
+        if program.flexible_mode
+            return nothing
+        else
+            error("Storage block not found (was it optimized out?): '", name, "'")
+        end
+    end
+    glShaderStorageBlockBinding(get_ogl_handle(program),
+                                program.storage_blocks[name].handle,
                                 idx - 1)
+    return nothing
+end
+function set_storage_block(idx::Int; context::Context = get_context())
+    cleared_binding = (Ptr_Buffer(), Interval{Int}(min=-1, max=-1))
+    if context.active_ssbos[idx] != cleared_binding
+        context.active_ssbos[idx] = cleared_binding
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, idx - 1, Ptr_Buffer())
+    end
     return nothing
 end
 
@@ -829,13 +871,23 @@ get_uniform_ogl_letter(::Type{UInt64}) = :ui64
 
 "
 Compiles an OpenGL Program from a string literal containing the various shader stages.
+To compile a non-literal string in the same way, call `bp_glsl_str(shader_string)`.
 
 The code at the top of the shader is shared between all shader stages.
 The Vertex Shader starts with the custom command `#START_VERTEX`.
 The Fragment Shader starts with the custom command `#START_FRAGMENT`.
 The *optional* Geometry Shader starts with the custom command `#START_GEOMETRY`.
+
+For a Compute Shader, use `#START_COMPUTE`.
 "
 macro bp_glsl_str(src::AbstractString)
+    return bp_glsl_str(src, Val(true))
+end
+"
+Compiles a string with special formatting into a `Program`.
+For info on how to format it, refer to the docs for the macro version, `@bp_glsl_str`.
+"
+function bp_glsl_str(src::AbstractString, ::Val{GenerateCode} = Val(false)) where {GenerateCode}
     # Define info about the different pieces of the shader.
     separators = Dict(
         :vert => ("#START_VERTEX", findfirst("#START_VERTEX", src)),
@@ -848,7 +900,7 @@ macro bp_glsl_str(src::AbstractString)
     local is_compute::Bool
     if exists(separators[:compute][2])
         is_compute = true
-        @bp_check(all(isnothing.(getindex.(getindex.(separators, (:vert, :frag, :geom)),
+        @bp_check(all(isnothing.(getindex.(getindex.(Ref(separators), (:vert, :frag, :geom)),
                                            Ref(2)))),
                   "Can't provide compute shader with rendering shaders")
     else
@@ -917,11 +969,19 @@ macro bp_glsl_str(src::AbstractString)
                              gen_line_command(first(compute_range)),
                              src[compute_range])
 
-    prog_type = Program
-    if is_compute
-        return :( $prog_type($src_compute) )
+    if GenerateCode
+        prog_type = Program
+        if is_compute
+            return :( $prog_type($src_compute) )
+        else
+            return :( $prog_type($src_vertex, $src_fragment, geom_shader=$src_geom) )
+        end
     else
-        return :( $prog_type($src_vertex, $src_fragment, geom_shader=$src_geom) )
+        if is_compute
+            return Program(src_compute)
+        else
+            return Program(src_vertex, src_fragment, geom_shader=src_geom)
+        end
     end
 end
 export @bp_glsl_str

@@ -38,6 +38,11 @@ struct Device
     # Texture/sampler anisotropy can be between 1.0 and this value.
     max_anisotropy::Float32
 
+    # Compute shader limitations:
+    max_work_group_size::v3u
+    max_threads_per_workgroup::UInt
+    max_work_groups_per_dispatch::v3u
+
     # The max number of individual float/int/bool uniform values
     #    that can exist in a shader.
     # Guaranteed by OpenGL to be at least 1024.
@@ -76,6 +81,13 @@ function Device(window::GLFW.Window)
                    GLFW.GetWindowAttrib(window, GLFW.CONTEXT_VERSION_MINOR)),
                   unsafe_string(glGetString(GL_RENDERER)),
                   get_from_ogl(GLfloat, glGetFloatv, GL_MAX_TEXTURE_MAX_ANISOTROPY),
+                  v3u(get_from_ogl(GLint, glGetIntegeri_v, GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0),
+                      get_from_ogl(GLint, glGetIntegeri_v, GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1),
+                      get_from_ogl(GLint, glGetIntegeri_v, GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2)),
+                  get_from_ogl(GLint, glGetIntegerv, GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS),
+                  v3u(get_from_ogl(GLint, glGetIntegeri_v, GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0),
+                      get_from_ogl(GLint, glGetIntegeri_v, GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1),
+                      get_from_ogl(GLint, glGetIntegeri_v, GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2)),
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_VERTEX_UNIFORM_COMPONENTS),
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_FRAGMENT_UNIFORM_COMPONENTS),
                   get_from_ogl(GLint, glGetIntegerv, GL_MAX_UNIFORM_BLOCK_SIZE),

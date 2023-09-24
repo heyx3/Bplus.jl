@@ -11,24 +11,21 @@ This is often more efficient than setting the buffer data the usual way,
 mutable struct Buffer <: AbstractResource
     handle::Ptr_Buffer
     byte_size::UInt64
-    is_mutable::Bool
+    is_mutable_from_cpu::Bool
 
-    # Creates a buffer of the given byte-size, optionally with
-    #    support for mapping its memory onto the CPU.
-    # The buffer will initially contain garbage.
-    function Buffer( byte_size::Integer, can_change_data::Bool,
+    function Buffer( byte_size::Integer, can_change_data_from_cpu::Bool,
                      recommend_storage_on_cpu::Bool = false
                    )::Buffer
         b = new(Ptr_Buffer(), 0, false)
         set_up_buffer(
-            byte_size, can_change_data,
+            byte_size, can_change_data_from_cpu,
             nothing,
             recommend_storage_on_cpu,
             b
         )
         return b
     end
-    function Buffer( can_change_data::Bool,
+    function Buffer( can_change_data_from_cpu::Bool,
                      initial_elements::Contiguous{T},
                      ::Type{T} = eltype(initial_elements)
                      ;
@@ -42,7 +39,7 @@ mutable struct Buffer <: AbstractResource
         b = new(Ptr_Buffer(), 0, false)
         set_up_buffer(
             size(contiguous_element_range) * sizeof(T),
-            can_change_data,
+            can_change_data_from_cpu,
             contiguous_ref(initial_elements, T,
                            min_inclusive(contiguous_element_range)),
             recommend_storage_on_cpu,
@@ -52,7 +49,7 @@ mutable struct Buffer <: AbstractResource
     end
 end
 
-@inline function set_up_buffer( byte_size::I, can_change_data::Bool,
+@inline function set_up_buffer( byte_size::I, can_change_data_from_cpu::Bool,
                                 initial_byte_data::Optional{Ref},
                                 recommend_storage_on_cpu::Bool,
                                 output::Buffer
@@ -64,13 +61,13 @@ end
     if recommend_storage_on_cpu
         flags |= GL_CLIENT_STORAGE_BIT
     end
-    if can_change_data
+    if can_change_data_from_cpu
         flags |= GL_DYNAMIC_STORAGE_BIT
     end
 
     setfield!(output, :handle, handle)
     setfield!(output, :byte_size, UInt64(byte_size))
-    setfield!(output, :is_mutable, can_change_data)
+    setfield!(output, :is_mutable_from_cpu, can_change_data_from_cpu)
 
     glNamedBufferStorage(handle, byte_size,
                          exists(initial_byte_data) ?
@@ -82,7 +79,7 @@ end
 Base.show(io::IO, b::Buffer) = print(io,
     "Buffer<",
     Base.format_bytes(b.byte_size),
-    (b.is_mutable ? " Mutable" : ""),
+    (b.is_mutable_from_cpu ? " Mutable" : ""),
     " ", b.handle,
     ">"
 )
@@ -102,7 +99,7 @@ export Buffer
 
 "Uploads the given data into the buffer"
 function set_buffer_data( b::Buffer,
-                          new_elements::Contiguous{T}
+                          new_elements::Contiguous,
                           T = eltype(new_elements)
                           ;
                           # Which part of the input array to read from
@@ -112,7 +109,7 @@ function set_buffer_data( b::Buffer,
                           # A byte offset, to be combined wth 'dest_element_offset'
                           dest_byte_offset::UInt = zero(UInt)
                         )
-    @bp_check(b.is_mutable, "Buffer is immutable")
+    @bp_check(b.is_mutable_from_cpu, "Buffer is immutable")
     @bp_check(max_inclusive(src_element_range) <= contiguous_length(new_elements, T),
               "Trying to upload a range of data beyond the input buffer")
 
@@ -200,7 +197,7 @@ function copy_buffer( src::Buffer, dest::Buffer
     @bp_check(dest_byte_offset + byte_size <= dest.byte_size,
               "Going outside the bounds of the 'dest' buffer in a copy:",
                 " from ", dest_byte_offset, " to ", dest_byte_offset + byte_size)
-    @bp_check(dest.is_mutable, "Destination buffer is immutable")
+    @bp_check(dest.is_mutable_from_cpu, "Destination buffer is immutable")
 
     glCopyNamedBufferSubData(src.handle, dest.handle,
                              src_byte_offset,
@@ -692,10 +689,10 @@ function block_struct_impl(struct_expr, mode::Symbol, invoking_module::Module)
     ARRAY_TYPES = ConstVector{<:NON_ARRAY_TYPES}
 
     # Parse the header.
-    (is_mutable::Bool, struct_name, body::Expr) = struct_expr.args
+    (is_mutable_from_cpu::Bool, struct_name, body::Expr) = struct_expr.args
     if !isa(struct_name, Symbol)
         error(mode, " struct has invalid name: '", struct_name, "'")
-    elseif is_mutable
+    elseif is_mutable_from_cpu
         error(mode, " struct '", struct_name, "' must not be mutable")
     end
 

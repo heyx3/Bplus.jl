@@ -220,7 +220,9 @@ export show_vec
 ###################################################
 
 @inline Base.zero(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}()
+@inline Base.zero(x::Vec) = zero(typeof(x))
 @inline Base.one(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(Val(one(T)))
+@inline Base.one(x::Vec) = one(typeof(x))
 
 Base.typemin(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(Val(typemin(T)))
 Base.typemax(::Type{Vec{N, T}}) where {N, T} = Vec{N, T}(Val(typemax(T)))
@@ -518,6 +520,17 @@ Base.:(:)(a::T, step::Vec, b::T) where {T<:Real} = typeof(step)(i->a) : step : t
     (v_ in range) for v_ in v
 )...)
 Base.eltype(::VecRange{N, T}) where {N, T} = T
+
+function Base.getindex(v::VecRange{N, T}, i::Integer) where {N, T}
+    # Copied and modified from the implementation for `AbstractRange`.
+    @inline
+    i isa Bool && throw(ArgumentError("invalid index: $i of type Bool"))
+    # Here's the modified part:
+    axis_count = (last(v) - first(v) + 1) ÷ step(v)
+    i_per_axis = Vec(Base._ind2sub(axis_count.data, i)...)
+    @boundscheck (all(i_per_axis > 0) & (i_per_axis <= axis_count)) || Base.throw_boundserror(v, i)
+    return first(v) + ((i_per_axis - 1) * step(v))
+end
 
 function Random.rand(rng::Random.AbstractRNG, range::VecRange{N, T}) where {N, T}
     rand_along_axis(i) = rand(rng, range.a[i]:range.step[i]:range.b[i])

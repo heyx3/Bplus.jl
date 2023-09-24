@@ -23,10 +23,13 @@ You can compile a shader from a static string literal with Julia's macro string 
 * Code following the token `#START_GEOMETRY` (optional) is used as the geometry shader.
 * Code following the token `#START_COMPUTE` makes this Program into a compute shader, forbidding all other shader types.
 
+For dynamic strings, you can call `bp_glsl_str(shader_string)` to get the same result.
+
 ### From simple compilation
 
-For non-static shaders, loaded from a file or otherwise generated dynamically, the simplest way to compile them is to use the constructor `Program(vert_shader, frag_shader; geom_shader = nothing)`. For compute shaders, it's just `Program(shader)`.
-    * It also takes an optional named parameter `flexible_mode::Bool` (defaulting to `true`), which indicates whether it should suppress errors when setting uniforms that have been optimized out.
+For a little more control, use the constructor `Program(vert_shader, frag_shader; geom_shader = nothing)`, or `Program(compute_shader)`.
+
+It also takes an optional named parameter `flexible_mode::Bool` (defaulting to `true`), which indicates whether it should suppress errors when setting uniforms that have been optimized out.
 
 ### From advanced compilation
 
@@ -80,6 +83,8 @@ Assign a buffer to a global uniform slot with `set_uniform_block(buffer, slot::I
 
 Point a shader's uniform block to that global slot with `set_uniform_block(program, block_name, slot::Int)`.
 
+Clear a Uniform Buffer global slot with `set_uniform_block(slot::Int)`.
+
 #### Storage Buffers
 
 Called "Shader Storage Buffer Objects" or "SSBO" in OpenGL. These are arbitrarily-large arrays which you can both read and write to. They are very important for compute shaders.
@@ -89,6 +94,8 @@ For small, read-only data, use [Uniform Buffers](#Uniform-Buffers) instead.
 Assign a buffer to a global storage slot with `set_storage_block(buffer, slot::Int[, byte_range])`. By default, the buffer's full set of bytes is used for the uniform block. You can pass a custom range if the shader data starts at a certain byte offset, or should be limited to a subset of the full range.
 
 Point a shader's storage block to that global slot with `set_storage_block(program, block_name, slot::Int)`.
+
+Clear a Storage Buffer global slot with `set_storage_block(slot::Int)`.
 
 # Buffer
 

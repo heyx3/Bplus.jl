@@ -299,6 +299,15 @@ end
 #@bp_test_no_allocations(f(), sum(1:30))
 @bp_check(f() == sum(1:30))
 
+# Test map!() on a range of coordinates, which invokes several helper functions that I had to overload.
+const MAP_RANGE = 1:v2i(2, 3)
+map_data::Vector{v2i} = fill(zero(v2i), prod(last(MAP_RANGE)))
+map!(v -> v*10, map_data, 1:v2i(2, 3))
+@bp_check(map_data == [ v2i(10, 10), v2i(20, 10),
+                        v2i(10, 20), v2i(20, 20),
+                        v2i(10, 30), v2i(20, 30) ],
+          "Actual: ", map_data)
+
 # Test random values inside vector ranges.
 @bp_test_no_allocations(typeof(rand(1:v3i(4, 5, 6))), v3i)
 for _ in 1:100

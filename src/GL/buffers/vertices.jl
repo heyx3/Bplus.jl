@@ -251,7 +251,7 @@ export VSInput_FVector_Plain, VSInput_FVector_FromInt, VSInput_FVector_Fixed,
 
 
 "Creates a 1D float- or int- or double-vector vertex input"
-function VSInput(T::Type{<:Scalar})
+function VSInput(T::Type{<:Union{Float32, Float64, Integer}})
     dims = VertexInputVectorDimensions.D1
     if T == Float64
         return VSInput_DoubleVector(dims)
