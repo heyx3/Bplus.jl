@@ -126,3 +126,13 @@ MyGame.run() # Run in debug mode!
 The JIT will invalidate and eventually recompile any functions that invoked `is_debug()`, causing the asserts to suddenly appear!
 
 My framework uses this technique to define a global up vector and coordinate handedness. If you prefer Dear ImGUI's coordinate system over OpenGL's, you can trivially recompile the engine for left-handed, Y-down coordinates, by adding two lines at the top of your own codebase.
+
+# The downsides
+
+Julia language devs will always prioritize scientific computing, so there are some things that it won't do much (or at all) that gamedev cares about.
+
+The biggest issue is mobile. Nobody is running climate simulations on their Android phone, so it's very unlikely that Julia ever gets support for running on mobile. It's also based entirely around dynamic code compilation, which could be an outright deal-breaker on AOT platforms like iOS. I'm not bothered by this as I'm coding with and for my RTX2070-powered desktop, but plenty of you will reasonably consider this a deal-breaker.
+
+Another issue is that compilation into a static executable was an after-thought. They've been working hard on *PackageCompiler.jl*, a package that deploys Julia code as a standalone executable binary, and it does work! But it's a weird process, and the binary is massive because you still need dynamic compilation during play and therefore you need the entire Julia runtime, which includes things like LLVM and Clang.
+
+Finally, the language uses 1-based indexing. This is not nearly as annoying as I feared when I started using the language, *but* once you interop with OpenGL which obviously uses 0-based indexing for buffer data, off-by-1 errors become more likely.
