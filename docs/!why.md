@@ -18,7 +18,7 @@ Compare this to C++, which achieves zero-cost abstractions at the price of legen
 
 Other high-performance scientific computing languages exist, like Matlab, but their syntax is much weirder. Julia's is quirky, yet readable.
 
-It's also incredibly flexible. You can write extremely mathy code, like defining the cross product with `forward × up = [blah blah])`, or you can write that same code with plain imperative syntax:
+It's also incredibly flexible. You can write extremely mathy code, like defining the cross product with `v₁ × v₂ = [blah blah])`, or you can write that same code with plain imperative syntax:
 
 ````
 function ×(forward, up)
