@@ -122,7 +122,7 @@ function set_buffer_data( b::Buffer,
                  ", when there's only ", b.byte_size, " bytes")
 
     if byte_size >= 1
-        ptr = contiguous_ref(new_elements, Int(min_inclusive(src_element_range)))
+        ptr = contiguous_ref(new_elements, T, Int(min_inclusive(src_element_range)))
         glNamedBufferSubData(b.handle, first_byte, byte_size, ptr)
     end
 end

@@ -110,12 +110,14 @@ function intersections( b::Box{N, F},
     min_face_ts, max_face_ts = minmax(min_face_ts, max_face_ts)
     ts::NTuple{2, F} = (max(min_face_ts), min(max_face_ts))
 
+    NULL_RESULT = if ShouldCalcNormal
+                      return (UpTo{2, F}(()), zero(Vec3{F}))
+                  else
+                      return UpTo{2, F}(())
+                  end
+
     if ts[1] > ts[2]
-        if ShouldCalcNormal
-            return (UpTo{2, F}(()), zero(Vec3{F}))
-        else
-            return UpTo{2, F}(())
-        end
+        return NULL_RESULT
     else
         hits = sanitize_hits(ts..., min_t, max_t, atol)
         if !ShouldCalcNormal
@@ -136,6 +138,9 @@ function intersections( b::Box{N, F},
                     closest_face = (axis=axis, dir=dir, dist=face_dist)
                 end
             end
+        end
+        if closest_face.axis == 0 #TODO: Some kind of degenerative case I keep hitting in the ray-tracer?
+            return NULL_RESULT
         end
 
         # Generate the closest face's normal.

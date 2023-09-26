@@ -39,19 +39,19 @@ The syntax looks like this:
     )
 
     SETUP = begin
-        # Julia code block that runs at the beginning of the loop.
-        # You can configure loop paramers by changing fields of the variable `LOOP::GameLoop`.
-        # You can also configure Dear ImGUI, add fonts to it, etc
-        #    (the library's font texture is automatically built after SETUP).
+        # Julia code block that runs just before the loop.
+        # Initialize your assets and game state, add custom fonts to CImGui, etc.
+        # You can configure loop parameters by changing certain fields
+        #    of the variable `LOOP::GameLoop`.
     end
     LOOP = begin
         # Julia code block that runs inside the loop.
         # Runs in a `for` loop in the same scope as `SETUP`.
-        # You should eventually kill the loop with `break`.
-        # If you use `return` or `throw`, then the `TEARDOWN` section won't run.
+        # You should end the loop with a `break` statement --
+        #   if you `return` or `throw`, then the `TEARDOWN` section won't run.
     end
     TEARDOWN = begin
-        # Julia code block that runs after the loop, when the game is ending.
+        # Julia code block that runs after the loop.
         # Runs in the same scope as `SETUP`.
     end
 end

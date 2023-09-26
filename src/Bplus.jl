@@ -6,6 +6,7 @@ macro submodule(name::Symbol)
                     string(name, ".jl"))
     return quote
         include($path)
+
         # Enforce the naming conventions.
         @assert(isdefined(@__MODULE__, Symbol($(string(name)))))
     end
