@@ -175,7 +175,7 @@ macro bp_service(service_name, service_definitions)
 
             if function_data.name == :INIT
                 # Define the service's constructor to implement the user's logic.
-                constructor_data = SplitDef(function_data)
+                constructor_data = SplitDef(function_data, false)
                 constructor_data.doc_string = nothing
                 constructor_data.name = expr_struct_name
                 expr_constructor = combinedef(constructor_data)
@@ -183,7 +183,7 @@ macro bp_service(service_name, service_definitions)
                 expr_invoke_constructor = combinecall(constructor_data)
 
                 # Define the interface function for creating the context.
-                init_function_data = SplitDef(function_data)
+                init_function_data = SplitDef(function_data, false)
                 init_function_data.name = expr_function_name_init
                 init_function_data.body = quote
                     context = $(@__MODULE__).get_context()
@@ -209,7 +209,7 @@ macro bp_service(service_name, service_definitions)
                 end
 
                 # Define an internal function that implements the user's logic.
-                impl_shutdown_func_data = SplitDef(function_data)
+                impl_shutdown_func_data = SplitDef(function_data, false)
                 impl_shutdown_func_data.doc_string = nothing
                 impl_shutdown_func_data.name = Symbol(function_prefix, :_shutdown_IMPL)
                 push!(expr_global_declarations, combinedef(impl_shutdown_func_data))
@@ -222,7 +222,7 @@ macro bp_service(service_name, service_definitions)
                 ))
 
                 # Define the interface for manually shutting down the service.
-                manual_shutdown_func_data = SplitDef(function_data)
+                manual_shutdown_func_data = SplitDef(function_data, false)
                 manual_shutdown_func_data.name = expr_function_name_shutdown
                 if service_is_unique # Is the 'service' argument implicit?
                     deleteat!(manual_shutdown_func_data.args, 1)
@@ -237,7 +237,7 @@ macro bp_service(service_name, service_definitions)
                 if length(function_data.args) != 1
                     error("REFRESH() should have one argument: the service")
                 end
-                refresh_func_data = SplitDef(function_data)
+                refresh_func_data = SplitDef(function_data, false)
                 refresh_func_data.name = :( $(@__MODULE__).service_internal_refresh)
                 push!(expr_global_declarations, combinedef(refresh_func_data))
             else
@@ -248,7 +248,7 @@ macro bp_service(service_name, service_definitions)
                 #    the user's literal written function.
 
                 # Define an internal function implementing the service's code.
-                impl_function_data = SplitDef(function_data)
+                impl_function_data = SplitDef(function_data, false)
                 impl_function_data.name = Symbol("IMPL: ", impl_function_data.name)
                 impl_function_data.doc_string = nothing
 
@@ -263,7 +263,7 @@ macro bp_service(service_name, service_definitions)
                 function_as_call.args[first_nonkw_param_idx] = expr_local_service_var
 
                 # Define the outer function that users will call.
-                custom_function_data = SplitDef(function_data)
+                custom_function_data = SplitDef(function_data, false)
                 if service_is_unique
                     deleteat!(custom_function_data.args, 1)
                 end
@@ -341,7 +341,6 @@ macro bp_service(service_name, service_definitions)
 
         $(expr_global_declarations...)
     end)
-    # (service_name == :ViewDebugging) && println(final_expr)
     return final_expr
 end
 

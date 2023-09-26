@@ -139,11 +139,13 @@ mutable struct SplitDef
             metadata.doc_string, metadata.inline, metadata.generated
         )
     end
-    SplitDef(s::SplitDef) = new(
+
+    # Deep-copying the function body could get crazy expensive, so avoid if if you don't need it.
+    SplitDef(s::SplitDef, copy_body::Bool = true) = new(
         expr_deepcopy(s.name),
         SplitArg.(s.args),
         SplitArg.(s.kw_args),
-        expr_deepcopy(s.body),
+        copy_body ? expr_deepcopy(s.body) : s.body,
         expr_deepcopy(s.return_type),
         expr_deepcopy.(s.where_params),
         expr_deepcopy(s.doc_string),
@@ -173,8 +175,10 @@ function combinecall(struct_representation::SplitDef)
     # Ordered and unordered parameters look identical in the AST.
     # For ordered parameters, we want to replace `a::T = v` with `a`.
     # For named parameters, we want to replace `a::T = v` with `a=a`.
-    args = map(a -> a.name, struct_representation.args)
-    kw_args = map(a -> Expr(:kw, a.name, a.name), struct_representation.kw_args)
+    args = map(a -> a.is_splat ? :( $(a.name)... ) : a.name,
+               struct_representation.args)
+    kw_args = map(a -> a.is_splat ? :( $(a.name)... ) : Expr(:kw, a.name, a.name),
+                  struct_representation.kw_args)
 
     return Expr(:call,
         struct_representation.name,
@@ -213,7 +217,7 @@ export ASSIGNMENT_INNER_OP, ASSIGNMENT_WITH_OP
 Computes one of the modifying assignments (`*=`, `&=`, etc) given it and its inputs.
 Also implements `=` for completeness.
 "
-@inline compute_op(s::Symbol, a, b) = dynamic_modify(Val(s), a, b)
+@inline compute_op(s::Symbol, a, b) = compute_op(Val(s), a, b)
 @inline compute_op(::Val{:(=)}, a, b) = b
 for (name, op) in ASSIGNMENT_INNER_OP
     @eval @inline compute_op(::Val{Symbol($(string(name)))}, a, b) = $op(a, b)

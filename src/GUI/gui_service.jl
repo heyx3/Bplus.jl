@@ -772,7 +772,7 @@ To use a `GL.Texture` or `GL.View` in CImGui, wrap it with `gui_tex_handle()`.
             next_handle = service.max_tex_handle + 1
             service.max_tex_handle += 1
             @bp_gui_assert(!haskey(service.user_textures_by_handle, next_handle))
-    
+
             service.user_textures_by_handle[next_handle] = tex
             return CImGui.ImTextureID(next_handle)
         end
