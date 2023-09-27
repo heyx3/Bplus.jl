@@ -261,6 +261,7 @@ Base.divrem(x::T1, y::Vec{N, T2}) where {N, T1, T2} = divrem(Vec{N, T1}(i->x), y
 
 @inline Base.abs(v::Vec) = Vec((abs(f) for f in v)...)
 
+@inline Base.round(T, v::Vec, a...; kw...) = map(f -> round(T, f, a...; kw...), v)
 @inline Base.round(v::Vec, a...; kw...) = map(f -> round(f, a...; kw...), v)
 
 "Finds the minimum component which passes a given predicate"

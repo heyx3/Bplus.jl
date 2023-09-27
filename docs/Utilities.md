@@ -74,6 +74,7 @@ For example, if you invoke `@make_toggleable_asserts(my_game_)`, then you'll get
   * Combine two bitflags with `a | b`.
   * Intersect two bitflags with `a & b`.
   * Remove bitflags with `a - b` (equivalent to `a & (~b)`).
+  * Check for subsets with `a <= b` ("a is a subset of b?") and supersets with `a >= b` ("a is a superset of b?").
   * `Base.contains` can be used to check if one bitflag is totally contained within another: `Base.contains(haystack::E_MyBitflag, needle::E_MyBitflag))`.
   * The special value `MyBitflag.ALL` contains all the bitfield elements combined together. Equivalent to `reduce(|, MyBitflag.instances())`.
   * Special aggregate values are defined with the `@` symbol. These do not show up in `instances()`, `to_index()`, or `from_index()`. For example:

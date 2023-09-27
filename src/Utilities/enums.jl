@@ -47,6 +47,7 @@ Along with the usual `@bp_enum` definitions, you also get:
 * `a | b` to combine two bitflags.
 * `a & b` to filter bitflags.
 * `a - b` to remove bitflags (equivalent to `a & (~b)`).
+* Subsets: `a <= b` means "a is a subset of b", and `>=` means vice-versa.
 * `Base.contains(haystack, needle)::Bool` as a short-hand for `(haystack & needle) == needle`
 * `ALL` as a value representing all elements of the bitfield enabled
 * Pretty printing of combination values.
@@ -163,6 +164,8 @@ function generate_enum(name, definitions, args, is_bitfield::Bool)
             $(!is_bitfield ? :() : quote
                 Base.:(-)(a::$inner_name, b::$inner_name) =
                     $inner_name($enum_type(a) & (~$enum_type(b)))
+                Base.:(>=)(a::$inner_name, b::$inner_name) = (b <= a)
+                Base.:(<=)(a::$inner_name, b::$inner_name) = (Int(a - b) == 0)
                 Base.contains(haystack::$inner_name, needle::$inner_name)::Bool =
                     ($enum_type(haystack) & $enum_type(needle)) == $enum_type(needle)
 

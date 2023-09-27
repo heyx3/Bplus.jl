@@ -46,7 +46,9 @@ export inv_lerp, inv_lerp_i
 
 "
 Gets the fractional part of f.
+
 Negative values wrap around; for example `fract(-0.1) == 0.9` (within floating-point error).
+This matches the behavior of GLSL's `fract()`, and I believe HLSL's `frac()` too.
 "
 @inline fract(f) = f - floor(f)
 

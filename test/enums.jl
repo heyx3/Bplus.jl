@@ -56,6 +56,11 @@ end
 @bp_check(!contains(D.a, D.c))
 @bp_check((D.a | D.b) - D.b == D.a)
 @bp_check(D.ALL == D.a | D.b | D.c)
+@bp_check(((D.a | D.b) & D.b) == D.b)
+@bp_check(D.a <= D.a)
+@bp_check(!(D.a <= D.b))
+@bp_check(D.a <= (D.a | D.c))
+@bp_check((D.a | D.c) >= D.c)
 # Test other bitflag features.
 @bp_bitflag E::UInt8 z=0 a b c
 @bp_check(Int.((E.z, E.a, E.b, E.c)) == (0, 1, 2, 4))
