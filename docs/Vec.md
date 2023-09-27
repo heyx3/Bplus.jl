@@ -78,7 +78,10 @@ You can construct a vector in the following ways. Julia's type system is a bit t
 * `Vec(data::NTuple)` : directly pass in the ntuple of data.
   * `Vec{T}(data::NTuple)` is a variant that will cast each element of the tuple to `T`.
   * `Vec{N, T}(data::NTuple)` is a variant that will cast each element, and throw an error if the tuple has the wrong number of elements.
-* `Vec{T}()` : constructs a 0-D vector of component type `T`
+* `Vec{T}()` and `Vec{N, T}()` : constructs a 0-D vector of component type `T`.
+  * Another variant `Vec{T}(::Tuple{})` and `Vec{N, T}(::Tuple{})` is also provided.
+  * These constructors are useful for recursive functions.
+
 
 `vappend()` lets you combine vectors and scalars into bigger vectors. For example, `vappend(Vec(1, 2), 3, Vec(4, 5, 6)) == Vec(1, 2, 3, 4, 5, 6)`.
 
@@ -100,13 +103,15 @@ Along with the usual components mentioned above, you can swizzle with some speci
 * `Δ` (typed as '\Delta' followed by a Tab) gets the largest finite value for the component type. For example, `vRGBu8(20, 255, 63).rgbΔ` Adds an alpha of 255 to an RGB color.
 * `∇` (typed as '\del' followed by a Tab) gets the smallest finite value for the component type. For example, `Vec2{Int8}(11, -23).xy∇` appends `-128` to the vector.
 
+You can get a range of components by feeding a range into the vector, like `v[2:4]`, **but** it will be type-unstable as the size isn't known at compile time. If the range is a constant, you can feed it in as a `Val` to get a type-stable result: `v[Val(2:4)]`.
+
 ## Math
 
 `Vec` implements many standard Julia functions for numbers:
 * `zero()` and `one()`
 * `typemin()` and `typemax()`
 * `min()`, `max()`, and `minmax()`
-* `abs()`, `round()`, `clamp()`
+* `abs()`, `round()`, `clamp()`, `floor()`, `ceil()`
 
 It implements all the standard math operators (including bitwise ops and comparisons), component-wise with two exceptions: `==` and `!=` are done for the whole `Vec`, producing a single boolean.
 
@@ -133,6 +138,8 @@ Vectors also interact nicely with Julia's multidimensional arrays:
 Some other general utilities:
 
 * `vselect(a, b, t)` lets you pick values component-wise using a `VecB`, sort of like a binary `lerp()`.
+* `vindex(p, size)` to convert a multidimensional coordinate into a flat index, for an array of some size.
+  `vindex(i::Int, size)` can convert in the opposite direction -- a flat index to a multidimensional one.
 * `Base.convert()` can convert the components of a `Vec`, for example `convert(v2f, Vec(3, 4))`. It can also convert a `StaticArrays.SVector` to a `Vec`.
 * `Base.reinterpret()` can reinterpret the bits of a `Vec`'s components, for example `reinterpret(v2f, v2u(0xabcdef01, 0x12345678))`.
 

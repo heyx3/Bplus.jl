@@ -67,6 +67,7 @@ end
 @bp_test_no_allocations(Vec(2, 3, 4, 5).a, 5)
 @bp_test_no_allocations(Vec(2, 3, 4, 5).data, (2, 3, 4, 5))
 @bp_test_no_allocations(Vec(2, 3, 4, 5)[2:4], Vec(3, 4, 5))
+@bp_test_no_allocations(Vec(2, 3, 4, 5)[Val(2:4)], Vec(3, 4, 5))
 
 # Test equality.
 @bp_test_no_allocations(Vec(1, 2, 3), Vec(1, 2, 3), true)
@@ -143,6 +144,12 @@ end
                         Vec(true, false, true))
 @bp_test_no_allocations(vselect(Vec(1, 2, 3), Vec(4, 5, 6), Vec(true, false, true)),
                         Vec(4, 2, 6))
+
+# Test vindex():
+@bp_test_no_allocations(vindex(Vec(2, 3, 4), Vec(5, 6, 7)),
+                        2 + (2*5) + (3*(5*6)))
+@bp_test_no_allocations(vindex(2 + (2*5) + (3*(5*6)), Vec(5, 6, 7)),
+                        Vec(2, 3, 4))
 
 # Test comparisons and all/any.
 @bp_test_no_allocations(Vec(1, 2, 3) < 2, Vec(true, false, false))

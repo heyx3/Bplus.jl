@@ -32,7 +32,11 @@ struct Vec{N, T} <: AbstractVector{T}
     end
 
     # Construct a "0-dimensional" vector.
+    # Useful for recursive functions that peel off one dimension at a time.
     Vec{T}() where {T} = new{0, T}(tuple())
+    Vec{T}(t::Tuple{}) where {T} = new{0, T}(t)
+    Vec{0, T}() where {T} = new{0, T}(tuple())
+    Vec{0, T}(t::Tuple{}) where {T} = new{0, T}(t)
 
     # Construct a constant vector with all components set to one value.
     @inline Vec(n::Int, ::Val{X}) where {X} = new{n, typeof(X)}(tuple(Iterators.repeated(X, n)...))
@@ -282,14 +286,13 @@ function Base.reinterpret(::Type{Vec{N, T2}}, v::Vec{N, T}) where {N, T, T2}
     return map(x -> reinterpret(T2, x), v)
 end
 
-"Gets the size of an array as a `Vec`, rather than an `NTuple`."
-vsize(arr::AbstractArray) = Vec(size(arr)...)
-export vsize
-
 Base.clamp(v::Vec{N, T}, a::T2, b::T3) where {N, T, T2, T3} = map(x -> convert(T, clamp(x, a, b)), v)
 Base.clamp(v::Vec{N, T}, a::Vec{N, T2}, b::Vec{N, T3}) where {N, T, T2, T3} = Vec{N, T}((
     clamp(x, aa, bb) for (x, aa, bb) in zip(v, a, b)
 )...)
+
+Base.floor(v::Vec) = map(floor, v)
+Base.ceil(v::Vec) = map(ceil, v)
 
 Random.rand(rng::Random.AbstractRNG, ::Type{Vec{N, F}}) where {N, F} = Vec{N, F}(i -> Random.rand(rng, F))
 
@@ -309,7 +312,6 @@ Base.getindex(a::StaticArray{N}, i::Vec{N, <:Integer}) where {N} = a[i...]
 Base.setindex!(a::StaticArray{N}, t, i::Vec{N, <:Integer}) where {N} = (a[i...] = t)
 
 @inline Base.getindex(v::Vec, i::Integer) = v.data[i]
-@inline Base.getindex(v::Vec, r::UnitRange) = Vec(v.data[r])
 Base.eltype(::Vec{N, T}) where {N, T} = T
 Base.length(::Vec{N, T}) where {N, T} = N
 Base.size(::Vec{N, T}) where {N, T} = (N, )
@@ -318,6 +320,10 @@ Base.IndexStyle(::Vec{N, T}) where {N, T} = IndexLinear()
 
 Base.length(::Type{Vec{N, T}}) where {N, T} = N
 Base.eltype(::Type{Vec{N, T}}) where {N, T} = T
+
+# Allow for lookups by ranges.
+@inline Base.getindex(v::Vec, r::UnitRange) = isempty(r) ? Vec{0, eltype(v)}() : Vec(v.data[r])
+Base.getindex(v::Vec, r::Val{URange}) where {URange} = isempty(URange) ? Vec{0, eltype(v)}() : Vec(v.data[URange])
 
 # Allow for swizzling by passing multiple indices for getindex().
 @inline Base.getindex(v::Vec, idcs::Integer...) = Vec((v[i] for i in idcs)...)
@@ -401,7 +407,32 @@ vselect(a::F, b::F, t::Bool) where {F} = (t ? b : a)
 vselect(a::Vec{N, T}, b::Vec{N, T}, t::Vec{N}) where {N, T} = Vec{N, T}((
     vselect(xA, xB, xT) for (xA, xB, xT) in zip(a, b, t)
 )...)
-export vselect
+
+"Converts a multidimensional array index to a flat one, assuming X is the innermost component"
+function vindex(p::Vec{N, <:Integer}, size::Vec{N, <:Integer}) where {N}
+    if N == 0 # Degenerative case, but technically possible
+        return 1
+    elseif N == 1
+        return p[1]
+    else
+        sub_range = Val(2:N)
+        return p[1] + (size[1] * (vindex(p[sub_range], size[sub_range]) - 1))
+    end
+end
+"Converts a flat array index to a multidimensional one, assuming X is the innermost component"
+function vindex(i::Integer, size::Vec{N, <:Integer}) where {N}
+    I = promote_type(typeof(i), eltype(size))
+    i1 = i - 1 # Zero-based math is easier here.
+    return 1 + Vec{N, I}(
+        d -> (i1 ÷ prod(size[1:(d-1)])) % size[d]
+    )
+end
+
+"Gets the size of an array as a `Vec`, rather than an `NTuple`."
+vsize(arr::AbstractArray) = Vec(size(arr)...)
+
+export vselect, vindex, vsize
+
 
 # I can't figure out how to make the general-case form of `isapprox()` work
 #   without heap allocations (I think it's related to the keyword arguments).
