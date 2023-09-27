@@ -106,6 +106,19 @@ For more info on each type of resource, see [this document](Resources.md). The t
 * [Target](Resources.md#Target) : A render target, or what OpenGL calls a "FrameBuffer Object".
 * [TargetBuffer](Resources.md#TargetBuffer) : Used internally when you don't need part of a Target to be sampleable (e.x. you need a depth buffer for depth-testing but not for custom effects).
 
+## Sync
+
+* To make sure that a specific future action can see the results of previous actions (for example, sampling from a texture after writing to it with a compute shader), call `gl_catch_up_before()`.
+  * This is only for "incoherent" actions, which OpenGL can't predict, as opposed to coherent actions like rendering into a target.
+  * The variant `gl_catch_up_renders_before()` is potentially more efficient when you are specifically considering actions taken in fragment shaders, concerning only a subset of the Target that you just rendered to.
+* To force all submitted OpenGL commands to finish right now, call `gl_execute_everything()`. This isn't very useful, except in a few scenarios:
+  * You are sharing resources with another context (not natively supported in B+ anyway),
+       to ensure the shared resources are done being written to by the source context.
+  * You are tracking down a driver bug, and want to call this after every draw call
+       to track down the one that crashes.
+* If you are ping-ponging within a single texture, by reading from and rendering to separate regions, you should call `gl_flush_texture_writes_in_place()` before reading from the region you just wrote to.
+* 
+
 ## Services
 
 Sometimes you want your own little singleton associated with a window or rendering context, providing easy access to utilities and resources. These singletons are called "Services". You can define a new service using the `@bp_service()` macro. Its doc-string describes how to make and use it.

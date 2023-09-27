@@ -7,7 +7,10 @@ macro bp_gl_enum(name, args...)
     expr = Utilities.generate_enum(name, :(begin using ModernGLbp end), args, false)
     return expr
 end
-
+"Short-hand for making bitfields based on OpenGL constants"
+macro bp_gl_bitfield(name, args...)
+  expr = Utilities.generate_enum(name, :(begin using ModernGLbp end), args, true)
+end
 
 "
 Helper function that calls OpenGL, reads N elements of data into a buffer,

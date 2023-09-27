@@ -39,6 +39,7 @@ bp_gl_context( v2i(800, 500), "Compute tests",
         }
     "; flexible_mode=false)
     check_gl_logs("After compiling compute1")
+    @bp_check(compute1.compute_work_group_size == v3i(8, 8, 1))
     #  2. Raise color to an exponent.
     POWERS = Float32.((1.2, 0.4, 1.5, 0.9))
     compute2 = Program("
@@ -56,7 +57,8 @@ bp_gl_context( v2i(800, 500), "Compute tests",
         }
     "; flexible_mode=false)
     check_gl_logs("After compiling compute2")
-    #  3. Add a "work group uv" value.
+    @bp_check(compute2.compute_work_group_size == v3i(8, 8, 1))
+    #  3. Multiply by a "work group uv" value.
     compute3 = Program("
         layout(local_size_x = 8, local_size_y = 8) in;
         layout(std430) buffer InOut {
@@ -73,6 +75,7 @@ bp_gl_context( v2i(800, 500), "Compute tests",
         }
     "; flexible_mode=false)
     check_gl_logs("After compiling compute3")
+    @bp_check(compute3.compute_work_group_size == v3i(8, 8, 1))
 
     # We're going to execute the above compute shaders, and a CPU equivalent,
     #    then check that they line up.
@@ -83,7 +86,7 @@ bp_gl_context( v2i(800, 500), "Compute tests",
     buf = Buffer(false, fill(-one(v2f), (prod(RESOLUTION), )))
     check_gl_logs("After creating compute Buffer")
     function run_tests(context_msg...)
-        glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT)
+        gl_catch_up_before(MemoryActions.texture_upload_or_download)
         expected::Vector{v2f} = reshape(array, (prod(RESOLUTION), ))
         actual::Vector{v2f} = get_buffer_data(buf, v2f)
         check_gl_logs("After reading compute buffer $(context_msg...)")
@@ -167,9 +170,9 @@ bp_gl_context( v2i(800, 500), "Compute tests",
         check_gl_logs("After pointing compute1 to SSBO slot 1")
     dispatch_compute_threads(compute1, vappend(vsize(array), 1))
         check_gl_logs("After running compute1")
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT)
-    #set_storage_block(1)
-    #    check_gl_logs("After clearing compute1 SSBO slot")
+    gl_catch_up_before(MemoryActions.buffer_storage)
+    set_storage_block(1)
+       check_gl_logs("After clearing compute1 SSBO slot")
     check_gl_logs("After running compute1")
     run_tests("After compute1")
 
@@ -182,7 +185,7 @@ bp_gl_context( v2i(800, 500), "Compute tests",
         set_storage_block(compute2, "InOut", 3)
         set_uniform(compute2, "Power", power)
         dispatch_compute_threads(compute2, vappend(vsize(array), 1))
-        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT)
+        gl_catch_up_before(MemoryActions.buffer_storage)
         set_storage_block(3)
         check_gl_logs("After running compute2 with $power")
         run_tests("After compute2($power)")
@@ -198,7 +201,7 @@ bp_gl_context( v2i(800, 500), "Compute tests",
     set_storage_block(buf, 2)
     set_storage_block(compute3, "InOut", 2)
     dispatch_compute_threads(compute3, vappend(vsize(array), 1))
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT)
+    gl_catch_up_before(MemoryActions.buffer_storage)
     set_storage_block(2)
     check_gl_logs("After running compute3")
     run_tests("After compute3")
