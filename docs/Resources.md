@@ -281,15 +281,16 @@ Texture formats have a very clear and unambiguous specification in B+. A `TexFor
 
 ## Views
 
+*NOTE*: To better understand this topic, refer to [outside resources on OpenGL bindless textures](https://www.khronos.org/opengl/wiki/Bindless_Texture).
+
 With the Bindless Textures extension to OpenGL, textures in shaders are accessed in a much simpler way from how they were in traditional OpenGL. A texture is now just a UInt64 handle representing the texture under a certain "View". This texture can be passed around like any other UInt64, for example inside a Uniform Block or Storage Block.
 
-*NOTE*: To better understand this topic, refer to outside resources on OpenGL bindless textures.
+A View on a texture is either associated with a sampler, allowing you to sample from the texture (what OpenGL calls a "Texture View"), or it is a "simple view" associated with a `SimpleViewParams`. Simple Views (what OpenGL calls an "Image View") only allow for reading and/or writing individual pixels of a specific mip level. It can also make a 3D or cubemap texture appear 2D by focusing on a single Z-slice or face, respectively.
 
-A View on a texture is usually associated with a sampler, but you can also make "Simple views" (what OpenGL calls an "Image View") associated with a `SimpleViewParams` which only allows for reading and potentially writing individual pixels. A "Simple View" can also select one layer of a 3D or cubemap texture to appear as a 2D texture.
+Views for a texture are retrieved with `get_view(tex, custom_sampler=nothing)` and `get_view(tex, p::SimpleViewParams)`. Most functions which accept a `View` will also accept a `Texture` and automatically call `get_view(tex)` as needed.
 
-Views for a texture are retrieved with `get_view(tex, custom_sampler=nothing)` and `get_view(tex, p::SimpleViewParams)`. Many functions which accept a `View` (such as `set_uniform()`) also accept a `Texture`, and implicitly get a View using the texture's default sampler (provided on construction).
-
-**Important Note**: The GPU driver cannot predict when bindless textures are used, since they can be hidden anywhere as a plain int64, so you must manually tell it to "activate" a view before you can use it, with `view_activate(tex)` or `view_activate(view)`. Then when you are done, you are encouraged to "deactivate" the view to make room for other textures with `view_deactivate(tex)` or `view_deactivate(view)`.
+**Important Note**: The GPU driver cannot predict when bindless textures are used, since they can be hidden anywhere as a plain int64, so you must manually tell it to "activate" a view before you can use it, with `view_activate()`. Then when you are done, you should "deactivate" the view to make room for other textures, with `view_deactivate()`.
+  * Simple views take an extra parameter, which is the access mode of the view. By default it is both read and write, but you can create a read-only or write-only view.
 
 ### 64-bit Integers in Shaders
 

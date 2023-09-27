@@ -52,7 +52,6 @@ struct ShaderBlockData
 end
 
 
-
 """
 `set_uniform(::Program, ::String, ::T[, array_index::Int])`
 
@@ -442,8 +441,9 @@ function Program(handle::Ptr_Program, flexible_mode::Bool = false; is_compute::B
         get_from_ogl(GLint, glGetProgramiv,
                      handle, GL_ACTIVE_UNIFORM_MAX_LENGTH)
     )
+    n_uniforms = get_from_ogl(GLint, glGetProgramiv, handle, GL_ACTIVE_UNIFORMS)
     glu_name_len = Ref{GLsizei}()
-    for i in 1:get_from_ogl(GLint, glGetProgramiv, handle, GL_ACTIVE_UNIFORMS)
+    for i in 1:n_uniforms
         if i in uniform_indices_to_skip
             continue
         end

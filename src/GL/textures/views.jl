@@ -25,8 +25,15 @@ mutable struct View
                       #   false if this is an 'Image' view.
 end
 
-"Tells the GPU to activate this handle so it can be used in a shader."
-function view_activate(view::View)
+"
+Tells the GPU to activate this handle so it can be used in a shader.
+Simple Views are activated with an access type (read, write, read_write).
+"
+function view_activate(view::View, simple_access::E_ImageAccessModes = ImageAccessModes.read_write)
+    # It's not clear at all in the standard what happens if you make an ImageView resident
+    #    more than once, with different access modes.
+    # So I just forbid duplicate activations altogether.
+    @bp_check(!view.is_active, "Can't activate a view twice!")
     @bp_check(get_ogl_handle(view.owner) != Ptr_Texture(),
               "This view's owning texture has been destroyed")
     if !view.is_active
@@ -34,7 +41,7 @@ function view_activate(view::View)
         if view.is_sampling
             glMakeTextureHandleResidentARB(view.handle)
         else
-            glMakeImageHandleResidentARB(view.handle, ImageAccessModes.read_write)
+            glMakeImageHandleResidentARB(view.handle, simple_access)
         end
     end
 end
@@ -66,20 +73,90 @@ export View, view_activate, view_deactivate
 
 "
 The parameters defining a 'simple' View.
+
 Note that mip levels start at 1, not 0, to reflect Julia's 1-based indexing convention.
+
 The 'layer' field allows you to pick a single layer of a 3D or cubemap texture,
     causing the view to act like a 2D texture.
+
+The 'apparent_format' field defaults to the texture's actual format.
 "
 Base.@kwdef struct SimpleViewParams
     mip_level::Int = 1
     layer::Optional{Int} = nothing
-    access::E_ImageAccessModes = ImageAccessModes.read_write
+    apparent_format::Optional{TexFormat} = nothing
+end
+
+"
+Maps every possible format for a simple texture view to its type-name in the shader.
+
+Comes from this reference: https://registry.khronos.org/OpenGL-Refpages/gl4/html/glBindImageTexture.xhtml#Description    
+"
+const LEGAL_APPARENT_SIMPLEVIEW_FORMATS = Dict{Union{SimpleFormat, E_SpecialFormats}, String}(
+    # Float/uint/int textures can be rgba/rg/r and 8/16/32 bits.
+    # With the exception of 8-bit floats.
+    begin
+        formats = [ FormatTypes.float => "f",
+                    FormatTypes.uint => "ui",
+                    FormatTypes.int => "i" ]
+        components = [ SimpleFormatComponents.RGBA => "rgba",
+                       SimpleFormatComponents.RG => "rg",
+                       SimpleFormatComponents.R => "r" ]
+        bit_depths = [ SimpleFormatBitDepths.B32 => "32",
+                       SimpleFormatBitDepths.B16 => "16",
+                       SimpleFormatBitDepths.B8 => "8" ]
+        everything = Iterators.product(formats, components, bit_depths)
+        filtered = Iterators.filter(everything) do ((format, format_str),
+                                                    (component, comp_str),
+                                                    (bit_depth, bit_str), )
+            (format != FormatTypes.float) || (bit_depths != SimpleFormatBitDepths.B8)
+        end
+        constructed = Iterators.map(filtered) do ((format, format_str),
+                                                  (component, comp_str),
+                                                  (bit_depth, bit_str), )
+            SimpleFormat(format, component, bit_depth) => string(comp_str, bit_str, format_str)
+        end
+        constructed
+    end...,
+
+    # Normalized uint/int textures can be rgba/rg/r and 8/16 bits.
+    begin
+        formats = [ FormatTypes.normalized_uint => "",
+                    FormatTypes.normalized_int => "_snorm" ]
+        components = [ SimpleFormatComponents.RGBA => "rgba",
+                       SimpleFormatComponents.RG => "rg",
+                       SimpleFormatComponents.R => "r" ]
+        bit_depths = [ SimpleFormatBitDepths.B16 => "16",
+                       SimpleFormatBitDepths.B8 => "8" ]
+        everything = Iterators.product(formats, components, bit_depths)
+        constructed = Iterators.map(everything) do ((format, format_str),
+                                                  (component, comp_str),
+                                                  (bit_depth, bit_str), )
+            SimpleFormat(format, component, bit_depth) => string(comp_str, bit_str, format_str)
+        end
+        constructed
+    end...,
+
+    # A few special formats are supported.
+    SpecialFormats.rgb_tiny_ufloats => "r11f_g11f_b10f",
+    SpecialFormats.rgb10_a2_uint => "rgb10_a2ui",
+    SpecialFormats.rgb10_a2 => "rgb10_a2",
+)
+
+"
+Gets whether a texture of format `src` can appear in a shader
+    as a 'simple view' texture of format `dest`
+"
+function is_format_compatible_in_tex_simpleview(src::TexFormat, dest::TexFormat)
+    return haskey(LEGAL_APPARENT_SIMPLEVIEW_FORMATS, dest) &&
+           get_pixel_bit_size(src) == get_pixel_bit_size(dest)
 end
 
 "The parameters that uniquely define a texture's view."
 const ViewParams = Union{Optional{TexSampler}, SimpleViewParams}
 
-export SimpleViewParams, ViewParams
+export SimpleViewParams, ViewParams,
+       LEGAL_APPARENT_SIMPLEVIEW_FORMATS, is_format_compatible_in_tex_simpleview
 
 
 #####################
@@ -112,20 +189,21 @@ end
 
 "
 Creates a new simple view on a texture.
-Note that mip levels start at 1, not 0, to reflect Julia's 1-based indexing convention.
-The 'layer' parameter allows you to view a single layer of a 3D or cubemap texture,
-    causing the view to act like a 2D texture.
 
 IMPORTANT: users shouldn't ever be creating these by hand;
     they should come from the Texture interface.
 "
-function View(owner::AbstractResource, params::SimpleViewParams)
+function View(owner::AbstractResource, owner_format::TexFormat, params::SimpleViewParams)
+    apparent_format = isnothing(params.apparent_format) ? owner_format : params.apparent_format
+    @bp_check(is_format_compatible_in_tex_simpleview(owner_format, apparent_format),
+              "Simple View with format ", apparent_format, " is not legal ",
+                "with a texture of true format ", owner_format)
     handle::gl_type(Ptr_View) = glGetImageHandleARB(
         get_ogl_handle(owner),
         params.mip_level - 1,
         exists(params.layer),
-        isnothing(params.layer) ? 0 : params.layer,
-        GL_RGBA32F #NOTE: a hack left in place until we fix image views
+        isnothing(params.layer) ? 0 : params.layer-1,
+        get_ogl_enum(apparent_format)
     )
 
     # Create the instance, and register it with the View-Debugger.

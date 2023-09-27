@@ -288,7 +288,7 @@ get_n_mips(length::Integer) = get_n_mips(Vec(length))
     return size
 end
 
-# When using this texture through an ImageView, these are the modes it is available in.
+# When using this texture through a Simple View, these are the modes it is available in.
 @bp_gl_enum(ImageAccessModes::GLenum,
     read = GL_READ_ONLY,
     write = GL_WRITE_ONLY,

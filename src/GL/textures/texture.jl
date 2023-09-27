@@ -436,7 +436,7 @@ Gets a view of this texture's pixels without sampling,
     which allows for other uses like writing to the pixels.
 "
 function get_view(t::Texture, view::SimpleViewParams)::View
-    return get!(() -> View(t, view),
+    return get!(() -> View(t, t.format, view),
                 t.known_views, view)
 end
 

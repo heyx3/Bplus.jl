@@ -57,8 +57,11 @@ export gl_flush_texture_writes_in_place
 Inserts a memory barrier in OpenGL so that the given operations
   definitely happen *after* all shader operations leading up to this call.
 
-For example, if you ran a compute shader to write to texture and are about to sample from it,
-  call `gl_catch_up_to(SyncTypes.texture_samples)`
+For example, if you ran a compute shader to modify a texture and are about to sample from it,
+  call `gl_catch_up_before(SyncTypes.texture_samples)`.
+
+This is only needed for incoherent operations.
+For example, you do not need a barrier after rendering into a Target.
 "
 function gl_catch_up_before(actions::E_MemoryActions)
     glMemoryBarrier(actions)

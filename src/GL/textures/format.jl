@@ -195,7 +195,7 @@ stores_channel(f::SimpleFormat, c::E_OtherChannels) = false
 
 get_n_channels(f::SimpleFormat) = Int(f.components)
 
-get_pixel_bit_size(f::SimpleFormat) = f.bit_size * Int(f.components)
+get_pixel_bit_size(f::SimpleFormat) = Int(f.bit_size) * Int(f.components)
 
 function get_ogl_enum(f::SimpleFormat)::Optional{GLenum}
     @inline check_components(if_r, if_rg, if_rgb, if_rgba) =
