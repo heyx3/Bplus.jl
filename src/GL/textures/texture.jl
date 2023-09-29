@@ -58,7 +58,7 @@ function Texture( format::TexFormat,
                   n_mips::Integer = get_n_mips(width isa Integer ? width : width.x),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
-                )
+                )::Texture
     width = (width isa Integer) ? width : width.x
     return generate_texture(
         TexTypes.oneD, format, v3u(width, 1, 1),
@@ -77,7 +77,7 @@ function Texture( format::TexFormat,
                   n_mips::Integer = get_n_mips(length(initial_data)),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
-                )
+                )::Texture
     return generate_texture(
         TexTypes.oneD, format, v3u(length(initial_data), 1, 1),
         convert(TexSampler{3}, sampler),
@@ -96,7 +96,7 @@ function Texture( format::TexFormat,
                   n_mips::Integer = get_n_mips(size),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
-                )
+                )::Texture
     return generate_texture(
         TexTypes.twoD, format, v3u(size..., 1),
         convert(TexSampler{3}, sampler),
@@ -114,7 +114,7 @@ function Texture( format::TexFormat,
                   n_mips::Integer = get_n_mips(Vec(size(initial_data))),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
-                )
+                )::Texture
     return generate_texture(
         TexTypes.twoD, format,
         v3u(size(initial_data)..., 1),
@@ -134,7 +134,7 @@ function Texture( format::TexFormat,
                   n_mips::Integer = get_n_mips(size),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
-                )
+                )::Texture
     return generate_texture(
         TexTypes.threeD, format, convert(v3u, size),
         sampler,
@@ -152,7 +152,7 @@ function Texture( format::TexFormat,
                   n_mips::Integer = get_n_mips(Vec(size(initial_data))),
                   depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                   swizzling::SwizzleRGBA = SwizzleRGBA()
-                )
+                )::Texture
     return generate_texture(
         TexTypes.threeD, format,
         v3u(size(initial_data)),
@@ -166,20 +166,47 @@ end
 
 "Creates a Cubemap texture"
 function Texture_cube( format::TexFormat,
-                       square_length::Integer
+                       square_length::Integer,
+                       initial_value = # Needed to get around an apparent driver bug
+                                       #   where non-layered images of a cubemap don't accept writes
+                                       #   until the pixels have been cleared.
+                           if format isa E_CompressedFormats
+                               # Nobody needs images of compressed textures anyway; let them go.
+                               nothing
+                           elseif is_color(format)
+                               if is_signed(format)
+                                   zero(vRGBAu)
+                               elseif is_integer(format)
+                                   zero(vRGBAi)
+                               else
+                                   zero(vRGBAf)
+                               end
+                           elseif is_depth_only(format)
+                               zero(Float32)
+                           elseif is_stencil_only(format)
+                               zero(UInt8)
+                           elseif is_depth_and_stencil(format)
+                               zero(Depth32fStencil8u)
+                           else
+                               error("Unexpected format: ", format)
+                           end
                        ;
                        sampler::TexSampler{1} = TexSampler{1}(),
                        n_mips::Integer = get_n_mips(square_length),
                        depth_stecil_sampling::Optional{E_DepthStencilSources} = nothing,
                        swizzling::SwizzleRGBA = SwizzleRGBA()
-                     )
-    return generate_texture(
+                     )::Texture
+    tex = generate_texture(
         TexTypes.cube_map, format,
         v3u(square_length, square_length, 1),
         convert(TexSampler{3}, sampler),
         n_mips, depth_stecil_sampling, swizzling,
         nothing
     )
+    if exists(initial_value)
+        clear_tex_pixels(tex, initial_value)
+    end
+    return tex
 end
 function Texture_cube( format::TexFormat,
                        initial_faces_data::PixelBufferD{3},
@@ -189,7 +216,7 @@ function Texture_cube( format::TexFormat,
                        n_mips::Integer = get_n_mips(Vec(size(initial_faces_data[1:2]))),
                        depth_stecil_sampling::Optional{E_DepthStencilSources} = nothing,
                        swizzling::SwizzleRGBA = SwizzleRGBA()
-                     )
+                     )::Texture
     return generate_texture(
         TexTypes.cube_map, format,
         v3u(size(initial_faces_data)[1:2]..., 1),
@@ -282,6 +309,13 @@ function generate_texture( type::E_TexTypes,
     return tex
 end
 
+function tex_array_dimensionality(t::E_TexTypes)::Int
+    (t == TexTypes.oneD) && return 1
+    (t == TexTypes.twoD) && return 2
+    (t in (TexTypes.threeD, TexTypes.cube_map)) && return 3
+    error("Unhandled: ", t)
+end
+tex_array_dimensionality(t::Texture) = tex_array_dimensionality(t.type)
 
 "Helper to generate the default 'subset' of a texture"
 default_tex_subset(tex::Texture) =
@@ -322,11 +356,15 @@ function texture_data( tex::Texture,
         error("Unimplemented: ", typeof(subset))
     end
 
-    full_size::v3u = get_mip_size(tex.size, subset.mip)
-    full_subset::TexSubset{3} = change_dimensions(subset, 3)
-
-    range::Box3D = get_subset_range(full_subset, full_size)
+    range::Box3D = get_subset_range(change_dimensions(subset, 3)::TexSubset{3},
+                                    get_mip_size(tex.size, subset.mip)::v3u)
     if (tex.type == TexTypes.cube_map)
+        @bp_check(min_inclusive(cube_face_range) >= 1,
+                  "Cubemap face range should be within 1:6, but starts at ", min_inclusive(cube_face_range))
+        @bp_check(max_inclusive(cube_face_range) <= 6,
+                  "Cubemap face range should be within 1:6, but ends at ", max_inclusive(cube_face_range), " (inclusive)")
+        @bp_check(size(cube_face_range) > 0,
+                  "Cubemap face range is empty")
         range = typeof(range)((min=v3u(min_inclusive(range).xy...,
                                        min_inclusive(cube_face_range)),
                                size=v3u(size(range).xy...,
@@ -335,6 +373,9 @@ function texture_data( tex::Texture,
 
     # Perform the requested operation.
     if mode isa Val{:Set}
+        @bp_check(length(check_input_size) == tex_array_dimensionality(tex.type),
+                  "Expected a ", tex_array_dimensionality(tex.type), "D array for ",
+                    "the ", tex.type, " texture; got ", length(check_input_size))
         if tex.type == TexTypes.oneD
             @bp_check(size(range).x == check_input_size.x,
                       "Trying to set ", size(range).x, " pixels",
@@ -354,9 +395,12 @@ function texture_data( tex::Texture,
                                 components, component_type,
                                 value)
         elseif (tex.type == TexTypes.threeD) || (tex.type == TexTypes.cube_map)
-            @bp_check(all(size(range).xyz == check_input_size.xyz),
+            full_check_size = (tex.type == TexTypes.cube_map) ?
+                                  vappend(check_input_size, size(cube_face_range)) :
+                                  check_input_size
+            @bp_check(all(size(range).xyz == full_check_size.xyz),
                       "Trying to set ", size(range).xyz, " pixels",
-                      " using an array with ", check_input_size.xyz, " elements")
+                      " using an array with ", full_check_size.xyz, " elements")
             glTextureSubImage3D(tex.handle, subset.mip - 1,
                                 (min_inclusive(range) - 1)...,
                                 size(range)...,
@@ -366,6 +410,9 @@ function texture_data( tex::Texture,
             error("Unhandled case: ", tex.type)
         end
     elseif mode isa Val{:Get}
+        @bp_check(length(check_input_size) == tex_array_dimensionality(tex),
+                  "Expected a ", tex_array_dimensionality(tex), "D array for ",
+                    "the ", tex.type, " texture; got ", length(check_input_size))
         @bp_gl_assert(get_buf_pixel_byte_size > 0,
                       "Internal field 'get_buf_pixel_byte_size' not passed for getting texture data")
         @bp_gl_assert(!recompute_mips,
@@ -382,9 +429,17 @@ function texture_data( tex::Texture,
                       "Trying to read ", size(range).x, " pixels",
                         " into an array with ", check_input_size.x, " elements")
         elseif get_component_count(typeof(check_input_size)) == 2
-            @bp_check(all(size(range).xy <= check_input_size.xy),
-                    "Trying to read ", size(range).xy, " pixels",
-                        " into an array with ", check_input_size.xy, " elements")
+            local full_check_size, full_range
+            if tex.type == TexTypes.cube_map
+                full_check_size = vappend(check_input_size, size(cube_face_range))
+                full_range = vappend(size(range).xy, size(cube_face_range))
+            else
+                full_check_size = check_input_size
+                full_range = size(range).xy
+            end
+            @bp_check(all(full_range <= full_check_size),
+                    "Trying to read ", full_range, " pixels",
+                        " into an array with ", full_check_size, " elements")
         elseif get_component_count(typeof(check_input_size)) == 3
             @bp_check(all(size(range) <= check_input_size),
                     "Trying to read ", size(range), " pixels",
@@ -476,6 +531,20 @@ function get_gpu_byte_size(t::Texture)
 end
 
 
+"Clears a texture to a given value, without knowing yet what kind of texture it is"
+function clear_tex_pixels(t::Texture, values...; kw...)
+    if is_color(t.format)
+        clear_tex_color(t, values...; kw...)
+    elseif is_depth_only(t.format)
+        clear_tex_depth(t, values...; kw...)
+    elseif is_stencil_only(t.format)
+        clear_tex_stencil(t, values...; kw...)
+    elseif is_depth_and_stencil(t.format)
+        clear_tex_depthstencil(t, values...; kw...)
+    else
+        error("Unexpected format: ", t.format)
+    end
+end
 "Clears a color texture to a given value"
 function clear_tex_color( t::Texture,
                           color::PixelIOValue
@@ -586,8 +655,11 @@ end
 
 
 "
-Sets a texture's pixels.
-For specific overloads based on texture format, see `set_tex_color()`, `set_tex_depth()`, etc.
+Sets a texture's pixels, figuring out dynamically whether they're color, depth, etc.
+For specific overloads based on texture format, see `set_tex_color()`, `set_tex_depth()`, etc respectively.
+
+The dimensionality of the input must match the dimensionality of the texture.
+Cubemaps textures are 3D, where Z spans the 6 faces.
 "
 function set_tex_pixels( t::Texture,
                          pixels::PixelBuffer
@@ -622,9 +694,13 @@ function set_tex_pixels( t::Texture,
         end
     end
 end
-"Sets the data for a color texture"
+"
+Sets the data for a color texture.
+The dimensionality of the input must match the dimensionality of the texture.
+Cubemaps textures are 3D, where Z spans the 6 faces.
+"
 function set_tex_color( t::Texture,
-                        pixels::TBuf
+                        pixels::TBuf,
                         ;
                         subset::TexSubset = default_tex_subset(t),
                         bgr_ordering::Bool = false,
@@ -653,10 +729,15 @@ function set_tex_color( t::Texture,
                  cube_face_range = cube_face_range,
                  check_input_size = vsize(pixels))
 end
-"Sets the data for a depth texture"
+"
+Sets the data for a depth texture.
+The dimensionality of the input must match the dimensionality of the texture.
+Cubemaps textures are 3D, where Z spans the 6 faces.
+"
 function set_tex_depth( t::Texture,
                         pixels::PixelBuffer{T}
                         ;
+                        input_dimensions::v3u = convert(v3u, vsize(pixels)),
                         subset::TexSubset = default_tex_subset(t),
                         cube_face_range::IntervalU = IntervalU(min=1, max=6),
                         recompute_mips::Bool = true
@@ -670,7 +751,11 @@ function set_tex_depth( t::Texture,
                  cube_face_range = cube_face_range,
                  check_input_size = vsize(pixels))
 end
-"Sets the data for a stencil texture"
+"
+Sets the data for a stencil texture.
+The dimensionality of the input must match the dimensionality of the texture.
+Cubemaps textures are 3D, where Z spans the 6 faces.
+"
 function set_tex_stencil( t::Texture,
                           pixels::@unionspec(PixelBuffer{_}, UInt8, Vec{1, UInt8})
                           ;
@@ -689,7 +774,11 @@ function set_tex_stencil( t::Texture,
                  cube_face_range = cube_face_range,
                  check_input_size = vsize(pixels))
 end
-"Sets the data for a depth/stencil hybrid texture"
+"
+Sets the data for a depth/stencil hybrid texture.
+The dimensionality of the input must match the dimensionality of the texture.
+Cubemaps textures are 3D, where Z spans the 6 faces.
+"
 function set_tex_depthstencil( t::Texture,
                                pixels::PixelBuffer{T}
                                ;
@@ -718,7 +807,51 @@ function set_tex_depthstencil( t::Texture,
                  check_input_size = vsize(pixels))
 end
 
-"Gets the pixel data for a color texture"
+"
+Gets a texture's pixels, figuring out dynamically whether they're color, depth, etc.
+For specific overloads based on texture format, see `get_tex_color()`, `get_tex_depth()`, etc respectively.
+
+The dimensionality of the input must match the dimensionality of the texture.
+Cubemaps textures are 3D, where Z spans the 6 faces.
+"
+function get_tex_pixels( t::Texture,
+                         out_pixels::PixelBuffer
+                         ;
+                         subset::TexSubset = default_tex_subset(t),
+                         color_bgr_ordering::Bool = false,
+                         cube_face_range::IntervalU = IntervalU(min=1, max=6),
+                         recompute_mips::Bool = true
+                       )
+    if is_color(t.format)
+        get_tex_color(t, out_pixels; subset=subset,
+                                     bgr_ordering=color_bgr_ordering,
+                                     recompute_mips=recompute_mips,
+                                     cube_face_range=cube_face_range)
+    else
+        @bp_check(!color_bgr_ordering,
+                  "Supplied the 'color_bgr_ordering' parameter for a non-color texture")
+        if is_depth_only(t.format)
+            get_tex_depth(t, out_pixels; subset=subset,
+                                         recompute_mips=recompute_mips,
+                                         cube_face_range=cube_face_range)
+        elseif is_stencil_only(t.format)
+            get_tex_stencil(t, out_pixels; subset=subset,
+                                           recompute_mips=recompute_mips,
+                                           cube_face_range=cube_face_range)
+        elseif is_depth_and_stencil(t.format)
+            get_tex_depthstencil(t, out_pixels; subset=subset,
+                                                recompute_mips=recompute_mips,
+                                                cube_face_range=cube_face_range)
+        else
+            error("Unhandled case: ", t.format)
+        end
+    end
+end
+"
+Gets the data for a color texture and writes them into the given array.
+The dimensionality of the input must match the dimensionality of the texture.
+Cubemaps textures are 3D, where Z spans the 6 faces.
+"
 function get_tex_color( t::Texture,
                         out_pixels::TBuf
                         ;
@@ -749,7 +882,11 @@ function get_tex_color( t::Texture,
                  get_buf_pixel_byte_size = N * sizeof(T),
                  check_input_size = vsize(out_pixels))
 end
-"Gets the pixel data for a depth texture"
+"
+Gets the data for a depth texture and writes them into the given array.
+The dimensionality of the input must match the dimensionality of the texture.
+Cubemaps textures are 3D, where Z spans the 6 faces.
+"
 function get_tex_depth( t::Texture,
                         out_pixels::PixelBuffer{T}
                         ;
@@ -765,7 +902,11 @@ function get_tex_depth( t::Texture,
                  get_buf_pixel_byte_size = sizeof(T),
                  check_input_size = vsize(out_pixels))
 end
-"Gets the pixel data for a stencil texture"
+"
+Gets the data for a stencil texture and writes them into the given array.
+The dimensionality of the input must match the dimensionality of the texture.
+Cubemaps textures are 3D, where Z spans the 6 faces.
+"
 function get_tex_stencil( t::Texture,
                           out_pixels::PixelBuffer{<:Union{UInt8, Vec{1, UInt8}}}
                           ;
@@ -781,7 +922,11 @@ function get_tex_stencil( t::Texture,
                  get_buf_pixel_byte_size = sizeof(UInt8),
                  check_input_size = vsize(out_pixels))
 end
-"Get the data for a depth/stencil hybrid texture"
+"
+Gets the data for a depth-stencil hybrid texture and writes them into the given array.
+The dimensionality of the input must match the dimensionality of the texture.
+Cubemaps textures are 3D, where Z spans the 6 faces.
+"
 function get_tex_depthstencil( t::Texture,
                                out_pixels::PixelBuffer{T}
                                ;
@@ -813,6 +958,6 @@ end
 export get_view,
        set_tex_swizzling, set_tex_depthstencil_source,
        get_mip_byte_size, get_gpu_byte_size,
-       clear_tex_color, clear_tex_depth, clear_tex_stencil, clear_tex_depthstencil,
+       clear_tex_pixels, clear_tex_color, clear_tex_depth, clear_tex_stencil, clear_tex_depthstencil,
        set_tex_pixels, set_tex_color, set_tex_depth, set_tex_stencil,
-       get_tex_color, get_tex_depth, get_tex_stencil, get_tex_depthstencil
+       get_tex_pixels, get_tex_color, get_tex_depth, get_tex_stencil, get_tex_depthstencil

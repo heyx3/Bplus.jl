@@ -172,6 +172,8 @@ For hybrid depth-stencil textures, you can use the special packed pixel types `D
 
 ### Clearing
 
+To generically clear a texture without knowing the format type, use `clear_tex_pixels(tex, value; args...)` and it will be inferred from the texture format and provided pixel value.
+
 Clear a texture with one of the following functions based on its format:
   * `clear_tex_color(tex, color::PixelIOValue; args...)`
   * `clear_tex_depth(tex, depth::PixelIOComponent; args...)`
@@ -189,6 +191,8 @@ These functions have the following optional named arguments:
   * `recompute_mips::Bool = true` if true, automatically computes mips after clearing.
 
 ### Setting pixels
+
+When setting a texture's pixels, you must provide an array of the same dimensionality as the texture you're setting. Cubemap textures are considered 3D, with Z spanning the 6 faces.
 
 To generically set a texture's pixels without knowing the format type, use `set_tex_pixels(tex, pixels::PixelBuffer; args...)` and Julia will infer it from the texture format and provided pixel format.
 
@@ -211,6 +215,8 @@ These functions have the following optional named arguments:
 For cubemaps, the number of pixels in the buffer should be `[pixels in subset] * [number of faces to set]`. See the optional arguments above.
 
 ### Getting pixels
+
+When getting a texture's pixels, you must provide an output array of the same dimensionality as the texture you're setting. Cubemap textures are considered 3D, with Z spanning the 6 faces.
 
 To read pixels into an array, use one of these functions based on the format:
   * `get_tex_color(tex, out_colors::PixelBuffer; args...)`

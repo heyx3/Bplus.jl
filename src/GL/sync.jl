@@ -47,10 +47,21 @@ export gl_flush_texture_writes_in_place
     texture_async_download_or_upload = GL_PIXEL_BUFFER_BARRIER_BIT,
     buffer_map_usage = GL_CLIENT_MAPPED_BUFFER_BARRIER_BIT,
     buffer_atomics = GL_ATOMIC_COUNTER_BARRIER_BIT,
-    queries = GL_QUERY_BUFFER_BARRIER_BIT,
 
-    @USE_IN_FRAGMENT_SHADERS(texture_samples | texture_simple_views | target_attachments |
-                             buffer_uniforms | buffer_storage | buffer_atomics)
+    # This bit generates an OpenGL error if used. Already logged as a B+ ticket.
+    # queries = GL_QUERY_BUFFER_BARRIER_BIT,
+
+    # All data reads/writes that are possible in fragment shaders:
+    @USE_FRAGMENT_SHADERS(texture_samples | texture_simple_views | target_attachments |
+                          buffer_uniforms | buffer_storage | buffer_atomics),
+    # All data reads/writes related to Vertex Array Objects:
+    @USE_MESH(mesh_vertex_data | mesh_index_data),
+    # All data reads/writes related to Buffers:
+    @USE_BUFFER(USE_MESH | buffer_atomics | buffer_uniforms | buffer_storage |
+                buffer_download_or_upload | buffer_map_usage),
+    # All data reads/writes related to Textures:
+    @USE_TEXTURES(texture_samples | texture_simple_views | texture_upload_or_download |
+                  texture_async_download_or_upload)
 )
 
 "
@@ -74,6 +85,9 @@ Inserts a memory barrier in OpenGL, like `gl_catch_up_before()`,
 The actions you pass in must be a subset of `MemoryActions.USE_IN_FRAGMENT_SHADERS`.
 "
 function gl_catch_up_renders_before(actions::E_MemoryActions)
+    @bp_check(actions <= MemoryActions.USE_FRAGMENT_SHADERS,
+              "Some provided actions aren't relevant to fragment shaders: ",
+                actions - MemoryActions.USE_FRAGMENT_SHADERS)
     glMemoryBarrierByRegion(actions)
 end
 

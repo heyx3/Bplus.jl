@@ -6,9 +6,9 @@
 const TESTS_DEPENDENCIES = quote
     # External dependencies:
     using Random, TupleTools, MacroTools, Setfield, InteractiveUtils,
-        StaticArrays, StructTypes, JSON3,
-        DataStructures, Suppressor,
-        ModernGL, GLFW, CImGui
+          StaticArrays, StructTypes, JSON3,
+          DataStructures, Suppressor, CSyntax,
+          ModernGL, GLFW, CImGui
 
     # The main codebase:
     using Bplus

@@ -618,6 +618,7 @@ function Depth24uStencil8u(depth01::AbstractFloat, stencil::UInt8)
         stencil
     )
 end
+Base.zero(::Type{Depth24uStencil8u}) = Depth24uStencil8u(0x000000, 0x0)
 export Depth24uStencil8u
 
 primitive type Depth32fStencil8u 64 end
@@ -627,6 +628,7 @@ Depth32fStencil8u(depth::Float32, stencil::UInt8) = Depth32fStencil8u(
     (UInt64(reinterpret(UInt32, depth)) << 32) |
     stencil
 )
+Base.zero(::Type{Depth32fStencil8u}) = Depth32fStencil8u(Float32(0), 0x0)
 export Depth32fStencil8u
 
 "Pulls the depth and stencil values out of a packed texture pixel"

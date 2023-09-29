@@ -102,7 +102,7 @@ bp_gl_context( v2i(800, 500), "Cam3D demo";
     ])
     mesh_skybox = Mesh(PrimitiveTypes.triangle,
                        [ VertexDataSource(buf_skybox_poses, sizeof(Vec3{Int8})) ],
-                       [ VertexAttribute(1, 0x0, VSInput_FloatVector(Vec3{Int8}, false)) ],
+                       [ VertexAttribute(1, 0x0, VSInput_FVector(Vec3{Int8}, false)) ],
                        MeshIndexData(buf_skybox_indices, UInt8))
     # Set up a shader to render the skybox.
     draw_skybox::Program = bp_glsl"""
@@ -203,7 +203,7 @@ bp_gl_context( v2i(800, 500), "Cam3D demo";
         forward = vnorm(v3f(1, 1, -1)),
         up = v3f(0, 0, 1),
 
-        clip_range = Box(min=0.01, max-10.0)
+        clip_range = IntervalF(min=0.01, max=10.0)
     )
     cam_settings = Cam3D_Settings{Float32}(
         move_speed = 5
@@ -254,7 +254,7 @@ bp_gl_context( v2i(800, 500), "Cam3D demo";
         mat_projection::fmat4x4 = cam_projection_mat(cam)
 
         # Clear the screen.
-        set_viewport(context, zero(v2i), window_size)
+        set_viewport(context, Box(min=one(v2i), size=window_size))
         clear_col = vRGBAf(0.2, 0.2, 0.5, 0.0)
         GL.clear_screen(vRGBAf(0.2, 0.2, 0.5, 0.0))
         GL.clear_screen(@f32 1.0)
@@ -268,11 +268,10 @@ bp_gl_context( v2i(800, 500), "Cam3D demo";
         set_uniform(draw_triangles, "u_mat_projection", mat_projection)
         view_activate(get_view(tex))
         GL.render_mesh(mesh_triangles, draw_triangles,
-                       elements = IntervalU(1, 4))
+                       elements = IntervalU(min=1, size=4))
         view_deactivate(get_view(tex))
 
         # Draw the skybox.
-        #TODO: Move to be after the triangles to test depth-testing.
         set_uniform(draw_skybox, "u_camPos", cam.pos)
         set_uniform(draw_skybox, "u_mat_view", mat_view)
         set_uniform(draw_skybox, "u_mat_projection", mat_projection)

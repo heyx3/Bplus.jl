@@ -201,7 +201,7 @@ function View(owner::AbstractResource, owner_format::TexFormat, params::SimpleVi
     handle::gl_type(Ptr_View) = glGetImageHandleARB(
         get_ogl_handle(owner),
         params.mip_level - 1,
-        exists(params.layer),
+        exists(params.layer) ? GL_FALSE : GL_TRUE,
         isnothing(params.layer) ? 0 : params.layer-1,
         get_ogl_enum(apparent_format)
     )
