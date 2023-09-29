@@ -53,6 +53,16 @@ do_append() = append(UpTo{2, Int}((1, )),
 @bp_test_no_allocations(reduce_some(*, b->(b%2==0), 1:10; init=1),
                         reduce(*, 2:2:10))
 
+# Test drop_last()
+@bp_check(collect(drop_last(1:0)) == [ ])
+@bp_check(collect(drop_last(1:1)) == [ ])
+@bp_check(collect(drop_last(1:10)) == collect(1:9))
+
+# Test iter_join()
+@bp_check(collect(iter_join(1:5, ',')) ==
+            [ 1, ',', 2, ',', 3, ',', 4, ',', 5],
+          collect(iter_join(1:5, ',')))
+
 # Test @unionspec
 @bp_check(@unionspec(Vector{_}, Int, Float64) ==
             Union{Vector{Int}, Vector{Float64}},

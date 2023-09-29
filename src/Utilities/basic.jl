@@ -102,6 +102,45 @@ If the number of zipped iterators can't be deduced statically,
 end
 export unzip
 
+"Drops the last element from an iteration"
+struct drop_last{Iter}
+    iter::Iter
+end
+function Base.iterate(d::drop_last)
+    i1 = iterate(d.iter)
+    if isnothing(i1)
+        return nothing
+    end
+    (element1, state1) = i1
+
+    i2 = iterate(d.iter, state1)
+    if isnothing(i2)
+        return nothing
+    end
+    (element2, state2) = iterate(d.iter, state1)
+
+    return (element1, (element2, state2))
+end
+function Base.iterate(d::drop_last, (next_element, next_state))
+    next_iter = iterate(d.iter, next_state)
+    if isnothing(next_iter)
+        return nothing
+    end
+    return (next_element, next_iter)
+end
+Base.IteratorSize(d::drop_last) = Base.IteratorSize(d.iter)
+Base.IteratorEltype(d::drop_last) = Base.IteratorEltype(d.iter)
+Base.eltype(d::drop_last) = Base.eltype(d.iter)
+Base.length(d::drop_last) = Base.length(d.iter) - 1
+Base.size(d::drop_last, dim...) = let s = Base.size(d.iter, dim...)
+    (s isa Tuple) ? (s .- 1) : (s - 1)
+end
+export drop_last
+
+"Inserts a delimiter between each element of an iteration"
+iter_join(iterable, delimiter) = drop_last(Iterators.flatten(zip(iterable, Iterators.repeated(delimiter))))
+export iter_join
+
 "A variant of 'reduce()' which skips elements that fail a certain predicate"
 @inline function reduce_some(f::Func, pred::Pred, iter; init=0) where {Func, Pred}
     result = init

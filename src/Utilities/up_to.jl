@@ -44,6 +44,13 @@ function Base.convert( ::Type{UpTo{N, T}},
     return UpTo{N, T}(t; undef_init=undef_init)
 end
 
+# By defalt, show() will make it look like an array, which confused the hell out of me
+Base.show(io::IO, u::UpTo) = print(io,
+    typeof(u), "(tuple(",
+    iter_join(Iterators.take(u.buffer, u.count), ", ")...,
+    "))"
+)
+
 # Equality with raw tuples and single elements.
 @inline Base.:(==)(a::UpTo, t::Tuple) = (length(t) == length(a)) && (all(i -> a[i]==t[i], 1:length(a)))
 @inline Base.:(==)(a::UpTo{N, T}, t::T) where {N, T} = (length(a) == 1) && (a[1] == t)
