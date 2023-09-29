@@ -52,6 +52,8 @@ For example, if you invoke `@make_toggleable_asserts(my_game_)`, then you'll get
 * `find_matching(element, collection, comparison=Base.:(==))` gets the index/key of the first element matching a desired one. Returns `nothing` if none matches. Optionally uses a comparison other than `==`.
 * `iter(x)` provides a facade for iterators that don't work on functions like `map()`. For example, while you can't do  `map(f, my_dictionary)`, you *can* do `map(f, iter(my_dictionary))`.
 * `map_unordered(f, iters...)` uses `iter()` to run `map()` on unordered collections that don't normally support `map()`.
+* `drop_last(iter)` removes the last element of an iteration.
+* `iter_join(iter, delimiter)` inserts `delimiter` in-between elements `iter`, like `join()`.
 
 ## Enums
 

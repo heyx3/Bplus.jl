@@ -165,7 +165,7 @@ function generate_enum(name, definitions, args, is_bitfield::Bool)
                 Base.:(-)(a::$inner_name, b::$inner_name) =
                     $inner_name($enum_type(a) & (~$enum_type(b)))
                 Base.:(>=)(a::$inner_name, b::$inner_name) = (b <= a)
-                Base.:(<=)(a::$inner_name, b::$inner_name) = (Int(a - b) == 0)
+                Base.:(<=)(a::$inner_name, b::$inner_name) = (Int(a) & ~Int(b)) == 0
                 Base.contains(haystack::$inner_name, needle::$inner_name)::Bool =
                     ($enum_type(haystack) & $enum_type(needle)) == $enum_type(needle)
 

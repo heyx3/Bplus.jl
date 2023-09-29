@@ -50,27 +50,27 @@ end
 # Test bitflags.
 @bp_bitflag D a b c
 @test_enum D 1 2 4
-@bp_check(Int(D.a | D.b) == 3)
-@bp_check(contains(D.a, D.a))
-@bp_check(!contains(D.a, D.b))
-@bp_check(!contains(D.a, D.c))
-@bp_check((D.a | D.b) - D.b == D.a)
-@bp_check(D.ALL == D.a | D.b | D.c)
-@bp_check(((D.a | D.b) & D.b) == D.b)
-@bp_check(D.a <= D.a)
-@bp_check(!(D.a <= D.b))
-@bp_check(D.a <= (D.a | D.c))
-@bp_check((D.a | D.c) >= D.c)
+@bp_test_no_allocations(Int(D.a | D.b), 3)
+@bp_test_no_allocations(contains(D.a, D.a), true)
+@bp_test_no_allocations(contains(D.a, D.b), false)
+@bp_test_no_allocations(contains(D.a, D.c), false)
+@bp_test_no_allocations((D.a | D.b) - D.b, D.a)
+@bp_test_no_allocations(D.ALL, D.a | D.b | D.c)
+@bp_test_no_allocations(((D.a | D.b) & D.b), D.b)
+@bp_test_no_allocations(D.a <= D.a, true)
+@bp_test_no_allocations(D.a <= D.b, false)
+@bp_test_no_allocations(D.a <= (D.a | D.c), true)
+@bp_test_no_allocations((D.a | D.c) >= D.c, true)
 # Test other bitflag features.
 @bp_bitflag E::UInt8 z=0 a b c
-@bp_check(Int.((E.z, E.a, E.b, E.c)) == (0, 1, 2, 4))
-@bp_check(E.ALL == E.a | E.b | E.c)
+@bp_test_no_allocations(Int.((E.z, E.a, E.b, E.c)), (0, 1, 2, 4))
+@bp_test_no_allocations(E.ALL, E.a | E.b | E.c)
 # Test aggregates.
 @bp_bitflag F a b c @ab(a|b) @ac(a|c) @bc(b|c) @abc(ab|c)
-@bp_check(F.ab == F.a | F.b)
-@bp_check(F.ac == F.a | F.c)
-@bp_check(F.bc == F.b | F.c)
-@bp_check(F.abc == F.ALL)
+@bp_test_no_allocations(F.ab, F.a | F.b)
+@bp_test_no_allocations(F.ac, F.a | F.c)
+@bp_test_no_allocations(F.bc, F.b | F.c)
+@bp_test_no_allocations(F.abc, F.ALL)
 
 # Test the ability of enums to reference dependencies:
 module M
