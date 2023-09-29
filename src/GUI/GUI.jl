@@ -5,6 +5,9 @@ module GUI
     using CImGui, GLFW, CSyntax, StructTypes
     using ..Utilities, ..Math, ..GL
 
+    # Needed for 'clipboard()' :(
+    using InteractiveUtils
+
     # Define @bp_gui_assert and related stuff.
     @make_toggleable_asserts bp_gui_
 
