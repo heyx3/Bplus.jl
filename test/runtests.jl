@@ -64,7 +64,7 @@ function impl_bp_test_no_allocations(expr, expected_value, msg, startup)
     expected_value = esc(expected_value)
     msg = map(esc, msg)
     startup = esc(startup)
-    return quote
+    expr = quote
         # Hide the expressions in a function to avoid global scope.
         @noinline function run_test()
             $startup
@@ -98,6 +98,8 @@ function impl_bp_test_no_allocations(expr, expected_value, msg, startup)
         end
         run_test()
     end
+    # println("Expression: ", prettify(expr))
+    return expr
 end
 
 const ALL_SIGNED = (Int8, Int16, Int32, Int64, Int128)
