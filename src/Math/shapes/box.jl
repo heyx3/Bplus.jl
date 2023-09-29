@@ -111,9 +111,9 @@ function intersections( b::Box{N, F},
     ts::NTuple{2, F} = (max(min_face_ts), min(max_face_ts))
 
     NULL_RESULT = if ShouldCalcNormal
-                      return (UpTo{2, F}(()), zero(Vec3{F}))
+                      (UpTo{2, F}(()), zero(Vec3{F}))
                   else
-                      return UpTo{2, F}(())
+                      UpTo{2, F}(())
                   end
 
     if ts[1] > ts[2]
