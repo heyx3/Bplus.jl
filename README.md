@@ -1,8 +1,16 @@
 # B+
 
-A game and 3D graphics framework for Julia, using OpenGL 4.6 + bindless textures.
 
-Offers game math, a GL/windowing wrapper, a GLFW input wrapper, scene graph algorithms, and numerous other modules.
+A game and 3D graphics framework for Julia, using OpenGL 4.6 + bindless textures.
+Offers game math, wrappers for OpenGL/GLFW/Dear ImGUI, scene graph algorithms, and numerous other modules.
+
+A number of example projects are provided in [the *BpExamples* repo](https://github.com/heyx3/BpExamples):
+
+[![Example Projects](https://img.youtube.com/vi/Po3zGQRSRgE/hqdefault.jpg)](https://www.youtube.com/embed/Po3zGQRSRgE)
+
+A [voxel toy project](https://github.com/heyx3/BpWorld) using B+ is ongoing:
+
+[![Voxel Toy Project](https://img.youtube.com/vi/fGxGdNAPTSY/hqdefault.jpg)](https://www.youtube.com/embed/fGxGdNAPTSY)
 
 If you're wondering why Julia, [read about it here](docs/!why.md)!
 
