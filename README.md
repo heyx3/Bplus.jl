@@ -55,7 +55,7 @@ Below is a quick overview. [A thorough description is available here](docs/!home
 
 A dumping ground for all sorts of convenience functions and macros.
 
-Detailed info can be found [in this document](docs/Utilities.md). Here are some of the most interesting parts:
+Detailed info can be found [in this document](docs/Utilities.md), but here are the highlights:
 
 * `PRNG`: An alternative to Julia's various `AbstractRNG`'s which is more suitable for aesthetic, short-term use-cases such as procedural generation.
 * `@bp_check(condition, error_msg...)`, a run-time test that raises `error()` if the expression is false.
@@ -69,7 +69,7 @@ Detailed info can be found [in this document](docs/Utilities.md). Here are some 
 
 Typical game math stuff, but using Julia's full expressive power.
 
-Detailed info can be found [in this document](docs/Math.md). Here are some of the most interesting parts:
+Detailed info can be found [in this document](docs/Math.md), but here is a high-level overview:
 
 * Vectors are represented with `Vec{N, T}`.
 * Quaternions are `Quaternion{F}`.
@@ -80,6 +80,71 @@ Detailed info can be found [in this document](docs/Math.md). Here are some of th
 * Noise functions:
   * `perlin(pos)`
 * `Contiguous{T}` is an alias for a wide variety of storage for some sequence of `T`. For example, `NTuple{10, Vec{3, Float32}}` is both a `Contiguous{Float32}` and a `Contiguous{Vec{3, Float32}}`.
+
+### GL
+
+Wraps OpenGL constructs, and provides a centralized place for a graphics context and its accompanying window. This is the big central module of B+ along with `Math`.
+
+Detailed information can be found [in this document](docs/GL.md), but here is a high-level overview:
+
+* `Context` represents the global OpenGL context, uniquely associated with a specific thread and GLFW window.
+* Services are singletons attached to the `Context`. Some are built into B+, but you can also define your own using the `@bp_service` macro.
+* `AbstractResource` is the type hierarchy for OpenGL objects, like `Texture`, `Buffer`, or `Mesh`.
+* Clear the screen with `clear_screen()`. Draw something with `render_mesh()`.
+
+### Input
+
+Provided through a context service (see **GL**>*Services* above). This module greatly simplifies the use of the GLFW package for reading input, and defines bindings in a data-driven way that you could easily serialize/deserialize. Make sure to update this service every frame with `service_Input_update()` (already done for you if you build your game logic within `@game_loop`).
+
+#### Buttons
+
+Buttons are binary inputs. A single button can come from more than one source, in which case they're OR-ed together (e.x. you could bind "fire" to right-click, Enter, and Joystick1->Button4).
+
+Create a button with `create_button(name::AbstractString, inputs::ButtonInput...)`. Refer to the `ButtonInput` class for more info on how to configure your buttons. A button can come from keyboard keys, mouse buttons, or joystick buttons.
+
+Get the current value of a button with `get_button(name::AbstractString)::Bool`.
+
+#### Axes
+
+Axes are continuous inputs, represented with `Float32`. Unlike buttons, they can only come from one source.
+
+Create an axis with `create_axis(name::AbstractString, input::AxisInput)`. Refer to the `AxisInput` class for more info on how to configure your axis. An axis can come from mouse position, scroll wheel, joystick axes, or a list of `ButtonAsAxis`.
+
+Get the current value of an axis with `get_axis(name::AbstractString)::Float32`.
+
+### GUI
+
+Helps you integrate B+ projects with the Dear ImGUI library, exposed in Julia through the *CImGui.jl* package.
+
+Detailed information can be found in [this document](docs/GUI.md), but here is how you use it at a basic level:
+
+1. Initialize the service with `service_GUI_init()`.
+2. Start the frame with `service_GUI_start_frame()`.
+3. After starting the frame, use *CImGui* as normal.
+4. End the frame with `service_GUI_end_frame()`
+
+If you use [`@game_loop`](docs/Helpers.md#Game-Loop), then this is all handled for you and you can use *CImGui* freely.
+
+To send a texture (or texture View) to the GUI system, you must wrap it with `gui_tex_handle(tex_or_view)`
+
+### Helpers
+
+A dumping ground for useful stuff. Like *Utilities*, but more focused on B+ than on Julia in general.
+
+Detailed information can be found in [this document](docs/Helpers.md), but here is a high-level overview:
+
+* `@game_loop`: A macro that makes it easy to run a B+ game. Refer to its doc-string for usage.
+* `@using_bplus`: A macro that automatically loads all B+ modules with `using` statements.
+* *Cam3D*: A basic customizable 3D camera.
+  * State is stored in `Cam3D{F}`
+  * Settings are stored in `Cam3D_Settings{F}`
+  * Frame inputs are stored in `Cam3D_Input{F}`
+  * Update the camera with `(state, settings) = cam_update(state, settings, input, delta_seconds)`.
+  * Get view/projection matrices with `cam_view_mat()` and `cam_projection_mat()`.
+* *Service_BasicGraphics*: a context service (see **GL**>*Services* above) which provides important, basic stuff. Automatically included for games built with `@game_loop`. ProvidesWE:
+  * Triangle and quad meshes which cover the whole screen
+  * A blit shader (used with `simple_blit()`)
+  * An empty mesh, for dispatching draw calls with entirely procedural geometry.
 
 ### SceneTree
 
@@ -154,67 +219,6 @@ A data representation of scalar or vector fields, i.e. functions of some `Vec{N1
 This is the first of a series of planned modules that will help you play with procedural content generation. For example, you can use a Field to easily fill a texture with interesting noise.
 
 I'm not going to write more about this module for now, but check out the unit tests for examples.
-
-### GL
-
-Wraps OpenGL constructs, and provides a centralized place for a graphics context and its accompanying window. This is the big central module of B+ along with `Math`.
-
-Detailed information can be found [in this document](docs/GL.md). Here is a high-level overview:
-
-* `Context` represents the global OpenGL context, uniquely associated with a specific thread and GLFW window.
-* Services are singletons attached to the `Context`. Some are built into B+, but you can also define your own using the `@bp_service` macro.
-* `AbstractResource` is the type hierarchy for OpenGL objects, like `Texture`, `Buffer`, or `Mesh`.
-* Clear the screen with `clear_screen()`. Draw something with `render_mesh()`.
-
-### Input
-
-Provided through a context service (see **GL**>*Services* above). This module greatly simplifies the use of the GLFW package for reading input, and defines bindings in a data-driven way that you could easily serialize/deserialize. Make sure to update this service every frame with `service_Input_update()` (already done for you if you build your game logic within `@game_loop`).
-
-#### Buttons
-
-Buttons are binary inputs. A single button can come from more than one source, in which case they're OR-ed together (e.x. you could bind "fire" to right-click, Enter, and Joystick1->Button4).
-
-Create a button with `create_button(name::AbstractString, inputs::ButtonInput...)`. Refer to the `ButtonInput` class for more info on how to configure your buttons. A button can come from keyboard keys, mouse buttons, or joystick buttons.
-
-Get the current value of a button with `get_button(name::AbstractString)::Bool`.
-
-#### Axes
-
-Axes are continuous inputs, represented with `Float32`. Unlike buttons, they can only come from one source.
-
-Create an axis with `create_axis(name::AbstractString, input::AxisInput)`. Refer to the `AxisInput` class for more info on how to configure your axis. An axis can come from mouse position, scroll wheel, joystick axes, or a list of `ButtonAsAxis`.
-
-Get the current value of an axis with `get_axis(name::AbstractString)::Float32`.
-
-### GUI
-
-Helps you integrate B+ projects with the Dear ImGUI library, exposed in Julia through the *CImGui.jl* package.
-
-1. Initialize the service with `service_GUI_init()`.
-2. Start the frame with `service_GUI_start_frame()`.
-3. After starting the frame, use *CImGui* as normal.
-4. End the frame with `service_GUI_end_frame()`
-
-If you use [`@game_loop`](docs/Helpers.md#Game-Loop), then this is all handled for you and you can use *CImGui* freely.
-
-To send a texture (or texture View) to the GUI system, you must wrap it with `gui_tex_handle(tex_or_view)`
-
-### Helpers
-
-A dumping ground for useful stuff. Like *Utilities*, but more focused on B+ than on Julia in general.
-
-* `@game_loop`: A macro that makes it easy to run a B+ game. Refer to its doc-string for usage.
-* `@using_bplus`: A macro that automatically loads all B+ modules with `using` statements.
-* *Cam3D*: A basic customizable 3D camera.
-  * State is stored in `Cam3D{F}`
-  * Settings are stored in `Cam3D_Settings{F}`
-  * Frame inputs are stored in `Cam3D_Input{F}`
-  * Update the camera with `(state, settings) = cam_update(state, settings, input, delta_seconds)`.
-  * Get view/projection matrices with `cam_view_mat()` and `cam_projection_mat()`.
-* *Service_BasicGraphics*: a context service (see **GL**>*Services* above) which provides important, basic stuff. Automatically included for games built with `@game_loop`. ProvidesWE:
-  * Triangle and quad meshes which cover the whole screen
-  * A blit shader (used with `simple_blit()`)
-  * An empty mesh, for dispatching draw calls with entirely procedural geometry.
 
 # License
  
