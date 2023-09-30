@@ -188,11 +188,16 @@ Get the current value of an axis with `get_axis(name::AbstractString)::Float32`.
 
 ### GUI
 
-This module provides a context service (see **GL**>*Services* above) that manages the Dear ImGUI library through the C package `CImGui`.
+Helps you integrate B+ projects with the Dear ImGUI library, exposed in Julia through the *CImGui.jl* package.
 
-Start every frame with `service_GUI_start_frame()`. End a frame with `service_GUI_end_frame()`, which immediately draws the frame's GUI (presumably to the screen, although you could activate a `Target` before calling it if you wanted). In between the "start frame" and "end frame" calls, you can use Dear ImGUI as normal.
+1. Initialize the service with `service_GUI_init()`.
+2. Start the frame with `service_GUI_start_frame()`.
+3. After starting the frame, use *CImGui* as normal.
+4. End the frame with `service_GUI_end_frame()`
 
-If you build your game logic within `@game_loop`, then "start frame" and "end frame" are automatically called before and after your `LOOP` logic respectively.
+If you use [`@game_loop`](docs/Helpers.md#Game-Loop), then this is all handled for you and you can use *CImGui* freely.
+
+To send a texture (or texture View) to the GUI system, you must wrap it with `gui_tex_handle(tex_or_view)`
 
 ### Helpers
 

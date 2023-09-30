@@ -8,3 +8,4 @@ Base.convert(::Type{gColor}, v::Vec4) = gColor(v.data...)
 
 Base.convert(::Type{Vec{2, F}}, v::gVec2) where {F} = Vec{2, F}(v.x, v.y)
 Base.convert(::Type{Vec{4, F}}, v::gVec4) where {F} = Vec{4, F}(v.x, v.y, v.z, v.w)
+Base.convert(::Type{Vec{4, F}}, v::gColor) where {F} = Vec{4, F}(v.Value.x, v.Value.y, v.Value.z, v.Value.w)
