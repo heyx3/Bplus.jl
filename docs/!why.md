@@ -47,6 +47,8 @@ Therefore, the only time you run into weakly-typed data is when you create it wi
 
 On the rare occasion you have to write something that might be called "boilerplate", you can automate the task with metaprogramming features. Julia has syntactical macros (think Scheme, not C), with a built-in concept of code represented as data. Yet another breath of fresh air for C++ developers, whose choice for metaprogramming is between text-pasting macros and inscrutable, verbose templates.
 
+For example, in order to upload data structures to the GPU, you must follow one of two onerous padding and alignment rules: `std140` or `std430`. In B+, this is completely automated by simply wrapping your struct in `@std140` or `@std430`! The bit pattern of your struct will then precisely match the bit pattern expected by the GPU. You can even query how many padding bytes were needed, helping you attempt to minimize its size.
+
 But it's not just about macros. For example, let's say I'm implementing a vector type for game math (because I *am* doing that):
 
 ````

@@ -19,6 +19,7 @@ end
                         "Struct 'A' in std430 layout should be 32 bytes but it's ",
                           sizeof(A))
 @bp_test_no_allocations(propertynames(A), (:f, :b, :v))
+@bp_test_no_allocations(Bplus.GL.property_types(A), (Float32, Bool, v4f))
 @bp_test_no_allocations(typeof(A(1.4f0, true, v4f(4.4, 5.5, 6.6, 7.7))),
                         A)
 @bp_test_no_allocations(getproperty.(Ref(A(1.4f0, true, v4f(4.4, 5.5, 6.6, 7.7))),
@@ -83,6 +84,7 @@ end
 @bp_test_no_allocations(sizeof(B), 512)
 @bp_test_no_allocations(propertynames(B), (:a, :m, :i, :d, :bs, :backup_as),
                         propertynames(B))
+@bp_test_no_allocations(Bplus.GL.property_types(B), (A, fmat4, Int32, dmat3x2, NTuple{6, Bool}, NTuple{10, A}))
 Random.rand(::Type{A})::A = A(rand(Float32), rand(Bool), rand(v4f))
 Random.seed!(0x57483829)
 let in_data = (
@@ -158,6 +160,7 @@ end
 # Test struct C:
 @bp_test_no_allocations(sizeof(C), 736)
 @bp_test_no_allocations(propertynames(C), (:bool_vec, :b, :f1, :array1, :array2))
+@bp_test_no_allocations(Bplus.GL.property_types(C), (Vec{2, Bool}, B, Float32, NTuple{10, Vec{2, Bool}}, NTuple{5, fmat3x2}))
 Random.rand(::Type{B})::B = B(
     rand(A),
     rand(fmat4),

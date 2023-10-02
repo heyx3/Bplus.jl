@@ -4,7 +4,7 @@ function check_gl_logs(context::String)
     for log in logs
         msg = sprint(show, log)
         if log.severity in (DebugEventSeverities.high, DebugEventSeverities.medium)
-            @error "$context. $msg"
+            @warn "$context. $msg"
             println("Stacktrace:\n--------------------")
             display(stacktrace())
             println("-------------------\n\n")

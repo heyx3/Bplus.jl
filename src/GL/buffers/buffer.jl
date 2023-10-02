@@ -3,6 +3,8 @@ A contiguous block of memory on the GPU,
    for storing any kind of data.
 Most commonly used to store mesh vertices/indices, or other arrays of things.
 
+For help with uploading a whole data structure to a buffer, see `@std140` and `@std430`.
+
 UNIMPLEMENTED: Instances can be "mapped" to the CPU, allowing you to write/read them directly
    as if they were a plain C array.
 This is often more efficient than setting the buffer data the usual way,
@@ -235,10 +237,51 @@ raw_bytes(b::AbstractOglBlock)::ConstVector{UInt8} = getfield(b, Symbol("raw byt
 @inline property_type(T::Type{<:AbstractOglBlock}, name::Symbol) = property_type(T, Val(name))
 @inline property_type(T::Type{<:AbstractOglBlock}, Name::Val) = error(T, " has no property '", val_type(Name))
 
+property_types(b::AbstractOglBlock) = property_types(typeof(b))
+property_types(T::Type{<:AbstractOglBlock}) = error(T, " didn't implement ", property_types)
+
 "Returns the byte offset to a property"
 @inline property_offset(b::AbstractOglBlock, name::Symbol) = property_offset(typeof(b), name)
 @inline property_offset(T::Type{<:AbstractOglBlock}, name::Symbol) = property_offset(T, Val(name))
 @inline property_offset(T::Type{<:AbstractOglBlock}, Name::Val) = error(T, " has no property '", val_type(Name), "'")
+
+"Parameters for a declaration of an OpenGL block"
+@kwdef struct GLSLBlockDecl
+    # Optional name that the block's fields will be nested within.
+    glsl_name::Optional{AbstractString} = nothing
+    # The official name of the block outside of pure GLSL code.
+    open_gl_name::AbstractString
+
+    # The type of block. Usually "uniform" or "buffer".
+    type::AbstractString
+
+    # Extra arguments to the "layout(...)" section.
+    layout_qualifiers::AbstractString = ""
+    # Optional final block element representing a dynamically-sized array
+    final_array_field::Optional{AbstractString} = nothing
+
+    # Maps nested structs to their corresponding name in GLSL.
+    # If a type isn't in this lookup, its Julia name is carried into GLSL.
+    type_names::Dict{Type, String} = Dict{Type, String}()
+end
+"Gets a GLSL string declaring the given block type"
+glsl_decl(b::AbstractOglBlock, params::GLSLBlockDecl = GLSLBlockDecl()) = glsl_decl(typeof(b), params)
+function glsl_decl(T::Type{<:AbstractOglBlock}, params::GLSLBlockDecl = GLSLBlockDecl())
+    layout_std = if T <: OglBlock_std140
+                     "std140"
+                 elseif T <: OglBlock_std430
+                     "std430"
+                 else
+                     error(T)
+                 end
+    return "layout($layout_std, $(params.layout_qualifiers)) $(params.type) $(params.open_gl_name)
+    {
+        $((
+            "$(glsl_type_decl(property_type(T, f), string(f), params.type_names)) $f;"
+                for f in propertynames(T)
+        )...)
+    } $(exists(params.glsl_name) ? params.glsl_name : "") ;"
+end
 
 
 #  Implementations:  #
@@ -246,6 +289,23 @@ raw_bytes(b::AbstractOglBlock)::ConstVector{UInt8} = getfield(b, Symbol("raw byt
 @inline Base.propertynames(a::AbstractOglBlock) = propertynames(typeof(a))
 @inline Base.getproperty(a::AbstractOglBlock, name::Symbol) = getproperty(a, Val(name))
 @inline Base.setproperty!(r::Ref{<:AbstractOglBlock}, name::Symbol, value) = setproperty!(r, Val(name), value)
+
+glsl_type_decl(::Type{Bool}, name::String, struct_lookup::Dict{Type, String}) = "bool $name;"
+glsl_type_decl(::Type{Int32}, name::String, struct_lookup::Dict{Type, String}) = "int $name;"
+glsl_type_decl(::Type{Int64}, name::String, struct_lookup::Dict{Type, String}) = "int64 $name;"
+glsl_type_decl(::Type{UInt32}, name::String, struct_lookup::Dict{Type, String}) = "uint $name;"
+glsl_type_decl(::Type{UInt64}, name::String, struct_lookup::Dict{Type, String}) = "uint64 $name;"
+glsl_type_decl(::Type{Float32}, name::String, struct_lookup::Dict{Type, String}) = "float $name;"
+glsl_type_decl(::Type{Float64}, name::String, struct_lookup::Dict{Type, String}) = "double $name;"
+glsl_type_decl(::Type{Vec{N, Bool}}, name::String, struct_lookup::Dict{Type, String}) where {N} = "bvec$N $name;"
+glsl_type_decl(::Type{Vec{N, Int32}}, name::String, struct_lookup::Dict{Type, String}) where {N} = "ivec$N $name;"
+glsl_type_decl(::Type{Vec{N, UInt32}}, name::String, struct_lookup::Dict{Type, String}) where {N} = "uvec$N $name;"
+glsl_type_decl(::Type{Vec{N, Float32}}, name::String, struct_lookup::Dict{Type, String}) where {N} = "vec$N $name;"
+glsl_type_decl(::Type{Vec{N, Float64}}, name::String, struct_lookup::Dict{Type, String}) where {N} = "dvec$N $name;"
+glsl_type_decl(::Type{<:Mat{C, R, Float32}}, name::String, struct_lookup::Dict{Type, String}) where {C, R} = "mat$Cx$R $name;"
+glsl_type_decl(::Type{<:Mat{C, R, Float64}}, name::String, struct_lookup::Dict{Type, String}) where {C, R} = "dmat$Cx$R $name;"
+glsl_type_decl(T::Type{<:AbstractOglBlock}, name::String, struct_lookup::Dict{Type, String}) = get(struct_lookup, T, string(T))
+glsl_type_decl(::Type{NTuple{N, T}}, name::String, struct_lookup::Dict{Type, String}) where {N, T} = "$(glsl_type_decl(T, struct_lookup)) $name[$N]"
 
 
 #NOTE: I'm pretty sure getproperty and setproperty could be implemented as normal, generic functions.
@@ -879,7 +939,7 @@ function block_struct_impl(struct_expr, mode::Symbol, invoking_module::Module)
     # Generate the final code.
     struct_name_str = string(struct_name)
     struct_name = esc(struct_name)
-    property_names = Tuple(n for (n, t) in field_definitions)
+    (property_names, property_types) = unzip(field_definitions, 2)
     property_functions = map(zip(field_definitions, property_offsets)) do ((name, type), offset)
         compile_time_name = :( Val{$(QuoteNode(name))} )
         return quote
@@ -901,6 +961,7 @@ function block_struct_impl(struct_expr, mode::Symbol, invoking_module::Module)
                     " bytes but it was changed by Julia to ", sizeof($struct_name))
 
         Base.propertynames(::Type{$struct_name}) = tuple($(QuoteNode.(property_names)...))
+        $(@__MODULE__).property_types(::Type{$struct_name}) = tuple($(property_types...))
         $(property_functions...)
 
         $(@__MODULE__).padding_size(::Type{$struct_name}) = $total_padding_bytes
@@ -911,4 +972,5 @@ function block_struct_impl(struct_expr, mode::Symbol, invoking_module::Module)
 end
 
 export @std140, @std430
-       padding_size, raw_bytes
+       padding_size, raw_bytes,
+       glsl_decl, GLSLBlockDecl
