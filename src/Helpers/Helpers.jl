@@ -1,8 +1,8 @@
 module Helpers
 
-using Setfield
+using Setfield, Dates
 
-using GLFW
+using GLFW, DataStructures
 
 using ..Utilities, ..Math, ..GL, ..Input, ..GUI
 
@@ -14,5 +14,6 @@ using ..Utilities, ..Math, ..GL, ..Input, ..GUI
 include("cam3D.jl")
 include("basic_graphics_service.jl")
 include("game_loop.jl")
+include("file_cacher.jl")
 
 end # module
