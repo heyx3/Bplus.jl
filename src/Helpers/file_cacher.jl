@@ -5,6 +5,8 @@
 "
 For a variety of objects, this checks all their known files' last-modified timestamp,
     and returns whether any of them have changed.
+
+If given a list of file names, it will output the names of all changed files.
 "
 function check_disk_modifications! end
 
@@ -13,7 +15,7 @@ function check_disk_modifications! end
 
 "A set of files, and their last-known values for 'last time modified'"
 const FileAssociations = Dict{AbstractString, DateTime}
-function check_disk_modifications!(fa::FileAssociations)
+function check_disk_modifications!(fa::FileAssociations, output::Optional = nothing)
     any_changes::Bool = false
     for file_path in keys(fa)
         last_changed_time = unix2datetime(isfile(file_path) ?
@@ -22,6 +24,9 @@ function check_disk_modifications!(fa::FileAssociations)
         if last_changed_time > fa[file_path]
             #TODO: Are we sure it's officially legal to change values while iterating over the keys?
             fa[file_path] = last_changed_time
+            if exist(output)
+                push!(output, file_path)
+            end
             any_changes = true
         end
     end
@@ -108,6 +113,15 @@ You can configure the cacher in a few ways:
      to prevent them from all checking the disk at once.
 * 'relative_path' is the path that all files are relative to (except for ones that are given as an absolute path).
   * By default, it's the process's current location.
+
+Finally, utilize it with the following:
+
+* `check_disk_modifications!()` to update it, looking for modified files.
+  * Ideally, call this every frame.
+  * It can optionally write into a list of the files that were modified.
+* `get_cached_data!()` to get a given file.
+* `get_cached_path()` to get the canonical representation of a file path within the cacher.
+  * The paths provided in `check_disk_modifications!()` are written in this format, so it's important to know.
 "
 mutable struct FileCacher{TCached}
     error_response::Base.Callable
@@ -183,7 +197,9 @@ function make_data_cache( fc::FileCacher{TCached},
     end
 end
 
-function check_disk_modifications!(fc::FileCacher{TCached})::Bool where {TCached}
+function check_disk_modifications!( fc::FileCacher{TCached},
+                                    output::Optional = nothing
+                                  )::Bool where {TCached}
     any_changes::Bool = false
 
     empty!(fc.buffer)
@@ -194,6 +210,10 @@ function check_disk_modifications!(fc::FileCacher{TCached})::Bool where {TCached
         data = fc.files[path]
         if check_disk_modifications!(data)
             any_changes = true
+            if exists(output)
+                push!(output, path)
+            end
+
             pooled_resources = close_cached_data(data)
             new_cache = make_data_cache(fc, path, pooled_resources)
             if exists(new_cache)

@@ -12,6 +12,7 @@ export none
 export specify
 
 @inline tuple_length(T::Type{<:Tuple})::Int = length(T.parameters)
+tuple_length(::Type{<:Pair}) = 2
 export tuple_length
 
 """
