@@ -81,7 +81,7 @@ bounds(b::Box) = b
 center(b::BoxT{F}) where {F} = b.min + (b.size / convert(F, 2))
 center(b::BoxT{I}) where {I<:Integer} = b.min + (b.size ÷ convert(F, 2))
 is_touching(box::Box{N, F1}, point::Vec{N, F2}) where {N, F1, F2} = all(
-    (point >= box.min) &
+    (point >= min_inclusive(box)) &
     (point < max_exclusive(box))
 )
 closest_point(b::Box{N, F1}, p::Vec{N, F2}) where {N, F1, F2} = convert(Vec{N, F1}, clamp(p, b.min, max_inclusive(b)))
@@ -291,16 +291,23 @@ By default, new dimensions are given the size 1 (both for integer and float boxe
 "
 @inline function Base.reshape( b::Box{OldN, T},
                                NewN::Integer;
-                               new_dims_size = one(T),
-                               new_dims_min = zero(T)
+                               new_dims_size::T = one(T),
+                               new_dims_min::T = zero(T)
                              ) where {OldN, T}
     if (NewN > OldN)
-        return Box(min=vappend(min_inclusive(b), Vec{Int(NewN - OldN), T}(i -> convert(T, new_dims_min))),
-                   size=vappend(size(b), Vec{Int(NewN - OldN), T}(i -> convert(T, new_dims_size))))
+        return Box(min=vappend(min_inclusive(b), Vec{Int(NewN - OldN), T}(i -> new_dims_min)),
+                   size=vappend(size(b), Vec{Int(NewN - OldN), T}(i -> new_dims_size)))
     else
         return Box(min=min_inclusive(b)[1:NewN], size=size(b)[1:NewN])
     end
 end
+
+"Gets whether the first box contains the second"
+Base.contains(outer::Box{N}, inner::Box{N}) where {N} = all(
+    (min_inclusive(outer) <= min_inclusive(inner)) &
+    (max_exclusive(outer) >= max_exclusive(inner))
+)
+
 
 ###########################
 #        Intervals        #
@@ -344,8 +351,9 @@ Base.convert(::Type{Box{1, F1}}, i::Interval{F2}) where {F1, F2} = Box(min=Vec{1
                                                                        max=Vec{1, F1}(max_inclusive(i)))
 Base.convert(::Type{Interval{F1}}, b::Box{1, F2}) where {F1, F2} = Interval{F1}(convert(Box{1, F1}, b))
 Base.convert(::Type{Interval{F1}}, i::Interval{F2}) where {F1, F2} = Interval{F1}(convert(Box{1, F1}, i.box))
+Base.convert(::Type{Interval{F1}}, r::UnitRange{F2}) where {F1, F2} = Interval{F1}(min=first(r), max=last(r))
 # Functions that should pass through the return value unchanged:
-for name in [ :volume, :bounds, :boundary, :is_empty, :is_inside ]
+for name in [ :volume, :bounds, :boundary, :is_empty, :is_inside, :(Base.contains) ]
     @eval @inline $name(i::Interval, rest...) = $name(i.box, rest...)
 end
 # Functions that should turn their Vec1 return value into a scalar:

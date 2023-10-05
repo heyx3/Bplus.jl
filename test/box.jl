@@ -59,6 +59,52 @@
 @bp_test_no_allocations(is_inside(Box(Vec(3):20), Vec(21)), false)
 @bp_test_no_allocations(is_inside(Box(Vec(3):20), Vec(-9999)), false)
 
+@bp_test_no_allocations(contains(Box(min=v3u(0, 1, 2), max=v3u(30, 40, 50)),
+                                 Box(min=v3u(2, 3, 4), max=v3u(3, 4, 5))),
+                        true)
+@bp_test_no_allocations(contains(Box(min=v3u(1, 2, 3), max=v3u(3, 4, 5)),
+                                 Box(min=v3u(2, 3, 4), max=v3u(3, 4, 5))),
+                        true)
+@bp_test_no_allocations(contains(Box(min=v3u(1, 2, 3), max=v3u(3, 4, 5)),
+                                 Box(min=v3u(2, 3, 4), max=v3u(3, 4, 6))),
+                        false)
+@bp_test_no_allocations(contains(Box(min=v3u(1, 2, 3), max=v3u(3, 4, 5)),
+                                 Box(min=v3u(2, 3, 4), max=v3u(3, 5, 5))),
+                        false)
+@bp_test_no_allocations(contains(Box(min=v3u(1, 2, 3), max=v3u(3, 4, 5)),
+                                 Box(min=v3u(2, 3, 4), max=v3u(4, 4, 5))),
+                        false)
+@bp_test_no_allocations(contains(Box(min=v3u(1, 2, 3), max=v3u(3, 4, 5)),
+                                 Box(min=v3u(2, 3, 2), max=v3u(3, 4, 5))),
+                        false)
+@bp_test_no_allocations(contains(Box(min=v3u(1, 2, 3), max=v3u(3, 4, 5)),
+                                 Box(min=v3u(2, 1, 4), max=v3u(3, 4, 5))),
+                        false)
+@bp_test_no_allocations(contains(Box(min=v3u(1, 2, 3), max=v3u(3, 4, 5)),
+                                 Box(min=v3u(0, 3, 4), max=v3u(3, 4, 5))),
+                        false)
+@bp_test_no_allocations(contains(Box(min=v3u(3, 2, 3), max=v3u(3, 4, 5)),
+                                 Box(min=v3u(2, 3, 4), max=v3u(3, 4, 5))),
+                        false)
+@bp_test_no_allocations(contains(Box(min=v3u(1, 4, 3), max=v3u(3, 4, 5)),
+                                 Box(min=v3u(2, 3, 4), max=v3u(3, 4, 5))),
+                        false)
+@bp_test_no_allocations(contains(Box(min=v3u(1, 2, 5), max=v3u(3, 4, 5)),
+                                 Box(min=v3u(2, 3, 4), max=v3u(3, 4, 5))),
+                        false)
+@bp_test_no_allocations(contains(Box(min=v3u(1, 2, 3), max=v3u(2, 4, 5)),
+                                 Box(min=v3u(2, 3, 4), max=v3u(3, 4, 5))),
+                        false)
+@bp_test_no_allocations(contains(Box(min=v3u(1, 2, 3), max=v3u(3, 3, 5)),
+                                 Box(min=v3u(2, 3, 4), max=v3u(3, 4, 5))),
+                        false)
+@bp_test_no_allocations(contains(Box(min=v3u(1, 2, 3), max=v3u(3, 4, 4)),
+                                 Box(min=v3u(2, 3, 4), max=v3u(3, 4, 5))),
+                        false)
+@bp_test_no_allocations(contains(Box(min=v3u(2, 3, 4), max=v3u(3, 4, 5)),
+                                 Box(min=v3u(1, 2, 3), max=v3u(3, 4, 5))),
+                        false)
+
 @bp_test_no_allocations(intersect(Box(Vec(1, 1):Vec(40, 40)),
                                   Box(Vec(10, -5):Vec(23, 100))),
                         Box(Vec(10, 1):Vec(23, 40)))
@@ -67,6 +113,7 @@
 
 # Interval tests.
 @bp_test_no_allocations(typeof(Interval(1:10)), Interval{Int})
+@bp_test_no_allocations(convert(IntervalU, 2:20), IntervalU(min=2, max=20))
 # It's important to make sure their constructors don't allocate, as they're pretty messy.
 @bp_test_no_allocations(Interval(min=5, max=10),
                         Interval(min=5, size=6))

@@ -53,6 +53,7 @@ You can get the properties of a box with the following getters:
 Some other box/interval functions (again, not including the `AbstractShape` interface) are:
   * `is_empty(box)::Bool` returns whether the box's volume is <= 0
   * `is_inside(box, point)::Bool` returns whether the point is inside the box, not touching its edges. This is only really useful for integer-type boxes.
+  * `contains(outer_box, inner_box)::Bool` checks whether the first box totally contains the second.
   * `Base.intersect(boxes::Box...)::Box` gets the intersection of one or more boxes. You can call `is_empty(result)` to check if there is no intersection.
   * `Base.reshape(box, new_dimensionality::Integer; ...)` removes or adds dimensions to the box. Added dimensions have a specific min and size (specified in named parameters).
 
