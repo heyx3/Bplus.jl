@@ -20,12 +20,12 @@ function StructTypes.construct(::Type{Box{N, F}}, d::Dict{AbstractString, Vec{N,
     return Box{N, F}(namedtuple(keys, values))
 end
 
-Base.print(io::IO, b::Box) = print(io, box_typestr(typeof(b)), "(", b.min, ",", b.size, ")")
+Base.print(io::IO, b::Box) = print(io, box_typestr(typeof(b)), "(min=", b.min, ", size=", b.size, ")")
 Base.show(io::IO, b::Box) = print(io,
     box_typestr(typeof(b)),
     "(min=", b.min,
     " size=", b.size,
-    " inMax=", max_inclusive(b),
+    " max=", max_inclusive(b),
     ")"
 )
 
@@ -53,6 +53,13 @@ const BoxU{N} = Box{N, UInt32}
 const BoxF{N} = Box{N, Float32}
 const BoxD{N} = Box{N, Float64}
 
+# It's recommended to use Interval over Box1D, but it's still here for completeness.
+const Box1D{T} = Box{1, T}
+const Box1Di = Box1D{Int32}
+const Box1Du = Box1D{UInt32}
+const Box1Df = Box1D{Float32}
+const Box1Dd = Box1D{Float64}
+
 const Box2D{T} = Box{2, T}
 const Box2Di = Box2D{Int32}
 const Box2Du = Box2D{UInt32}
@@ -65,7 +72,8 @@ const Box3Du = Box3D{UInt32}
 const Box3Df = Box3D{Float32}
 const Box3Dd = Box3D{Float64}
 
-export BoxT, Box2D, Box3D,
+export BoxT, Box1D, Box2D, Box3D,
+       Box1Di, Box1Du, Box1Df, Box1Dd,
        Box2Di, Box2Du, Box2Df, Box2Dd,
        Box3Di, Box3Du, Box3Df, Box3Dd,
        BoxI, BoxU, BoxF, BoxD

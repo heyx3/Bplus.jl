@@ -98,29 +98,35 @@ StructTypes.construct(T::Type{<:Vec}, components::Vector) = T(components...)
 # Especially when talking about float data on the GPU --
 #    commercial gaming GPU's can have pretty terrible float64 performance.
 
+const Vec1{T} = Vec{1, T}
 const Vec2{T} = Vec{2, T}
 const Vec3{T} = Vec{3, T}
 const Vec4{T} = Vec{4, T}
 
 const VecF{N} = Vec{N, Float32}
+const v1f = VecF{1}
 const v2f = VecF{2}
 const v3f = VecF{3}
 const v4f = VecF{4}
 const VecD{N} = Vec{N, Float64}
+const v1d = VecD{1}
 const v2d = VecD{2}
 const v3d = VecD{3}
 const v4d = VecD{4}
 
 const VecU{N} = Vec{N, UInt32}
+const v1u = VecU{1}
 const v2u = VecU{2}
 const v3u = VecU{3}
 const v4u = VecU{4}
 const VecI{N} = Vec{N, Int32}
+const v1i = VecI{1}
 const v2i = VecI{2}
 const v3i = VecI{3}
 const v4i = VecI{4}
 
 const VecB{N} = Vec{N, Bool}
+const v1b = VecB{1}
 const v2b = VecB{2}
 const v3b = VecB{3}
 const v4b = VecB{4}
@@ -143,16 +149,16 @@ const vRGBAu = vRGBA{UInt32}
 const vRGBAi = vRGBA{Int32}
 
 
-export Vec2, Vec3, Vec4,
+export Vec1, Vec2, Vec3, Vec4,
        vRGB, vRGBA,
        vRGBu8, vRGBi8, vRGBf, vRGBu, vRGBi,
        vRGBAu8, vRGBAi8, vRGBAf, vRGBAu, vRGBAi,
        VecF, VecI, VecU, VecB, VecD,
-       v2f, v3f, v4f,
-       v2i, v3i, v4i,
-       v2u, v3u, v4u,
-       v2b, v3b, v4b,
-       v2d, v3d, v4d,
+       v1f, v2f, v3f, v4f,
+       v1i, v2i, v3i, v4i,
+       v1u, v2u, v3u, v4u,
+       v1b, v2b, v3b, v4b,
+       v1d, v2d, v3d, v4d,
        VecT
 #
 
@@ -636,16 +642,16 @@ Setfield.get(v::Vec, f::Setfield.DynamicIndexLens) = Setfield.get(v.data, f)
 Setfield.get(v::Vec, f::Setfield.FunctionLens) = Setfield.get(v.data, f)
 
 Setfield.set(v::Vec, ::Union{Val{:x}, Val{:r}}, val) = let d = v.data
-    Vec(@set d[1] = val)
+    typeof(v)(@set(d[1] = val)...)
 end
 Setfield.set(v::Vec, ::Union{Val{:y}, Val{:g}}, val) = let d = v.data
-    Vec(@set d[2] = val)
+    typeof(v)(@set(d[2] = val)...)
 end
 Setfield.set(v::Vec, ::Union{Val{:z}, Val{:b}}, val) = let d = v.data
-    Vec(@set d[3] = val)
+    typeof(v)(@set(d[3] = val)...)
 end
 Setfield.set(v::Vec, ::Union{Val{:w}, Val{:a}}, val) = let d = v.data
-    Vec(@set d[4] = val)
+    typeof(v)(@set(d[4] = val)...)
 end
 
 Setfield.set(v::Vec, ::Val{:data}, val) = return typeof(v)(val...)

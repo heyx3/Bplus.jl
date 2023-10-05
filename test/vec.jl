@@ -178,6 +178,13 @@ end
                         Vec(4, 5, 6))
 # @bp_test_no_allocations(@set(Vec(1, 2, 3).data = (4, 5, 6.0)),
 #                         Vec(4, 5, 6))
+V::v3u = v3u(3, 4, 5)
+@bp_test_no_allocations(begin
+                            global V
+                            @set! V.z = 7
+                            V
+                        end,
+                        v3u(3, 4, 7))
 
 # Test number stuff.
 @bp_test_no_allocations(typemin(Vec{3, UInt8}),
