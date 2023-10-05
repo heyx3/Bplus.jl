@@ -218,15 +218,23 @@ struct TexSubset{N}
     TexSubset(area::Box{N}, mip = 1) where {N} = new{N}(convert(BoxU{N}, area), mip)
 end
 
+get_subset_dims(::TexSubset{N}) where {N} = N
+get_subset_dims(::Type{TexSubset{N}}) where {N} = N
+
 "
 Calculates the subset of a texture to use.
-The 'full_size' should match the dimensionality of the texture.
+The `full_size` parameter should have the same dimensionality as the subset;
+    for convenience it can have more and those extra dimensions will be ignored.
 "
-get_subset_range(subset::TexSubset{N}, full_size::Vec{N, <:Integer}) where {N} =
-    isnothing(subset.area) ?
-        convert(Box{N, eltype(full_size)},
-                Box(min=Vec(i -> 1, Val(N)), max=full_size)) :
+get_subset_range(subset::TexSubset{N}, full_size::VecT{I}) where {N, I<:Integer} =
+    if isnothing(subset.area)
+        Box(
+            min=one(Vec{N, I}),
+            size=Vec{N, eltype(full_size)}(i -> full_size[i])
+        )
+    else
         subset.area
+    end
 @inline get_subset_range(subset::TexSubset{1}, full_size::Integer) =
     get_subset_range(subset, Vec(full_size))
 

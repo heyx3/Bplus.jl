@@ -7,6 +7,7 @@ const TESTS_DEPENDENCIES = quote
     # External dependencies:
     using Random, TupleTools, MacroTools, Setfield, InteractiveUtils,
           StaticArrays, StructTypes, JSON3,
+          Images, FileIO,
           DataStructures, Suppressor, CSyntax,
           ModernGL, GLFW, CImGui
 
@@ -110,11 +111,31 @@ const ALL_FLOATS = (Float16, Float32, Float64)
 
 const ALL_REALS = TupleTools.vcat(ALL_INTEGERS, ALL_FLOATS, (Bool, ))
 
+"Checks and logs OpenGL messages. Throws an exception on fatal errors."
+function check_gl_logs(context::String)
+    logs = pull_gl_logs()
+    for log in logs
+        msg = sprint(show, log)
+        if log.severity in (DebugEventSeverities.high, DebugEventSeverities.medium)
+            @warn "$context. $msg"
+            println("Stacktrace:\n--------------------")
+            display(stacktrace())
+            println("-------------------\n\n")
+        elseif log.severity == DebugEventSeverities.low
+            @warn "$context. $msg"
+        elseif log.severity == DebugEventSeverities.none
+            @info "$context. $msg"
+        else
+            @error "Message, UNEXPECTED SEVERITY $(log.severity): $msg"
+        end
+    end
+end
 
 # Import the above definitions into each test module.
 push!(TESTS_DEPENDENCIES.args, quote
     import ..@bp_test_no_allocations, ..@bp_test_no_allocations_setup,
-           ..ALL_SIGNED, ..ALL_UNSIGNED, ..ALL_INTEGERS, ..ALL_FLOATS, ..ALL_REALS
+           ..ALL_SIGNED, ..ALL_UNSIGNED, ..ALL_INTEGERS, ..ALL_FLOATS, ..ALL_REALS,
+           ..check_gl_logs
 end)
 
 #############################

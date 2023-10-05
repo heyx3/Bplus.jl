@@ -4,16 +4,6 @@ if !@isdefined GL_TEST_FULL
     println("#TODO: Make the full test deterministic and plainly laid-out; not nested deeply in loops")
 end
 
-# Check some basic facts.
-@bp_check(GL.gl_type(GL.Ptr_Uniform) === GLint,
-          "GL.Ptr_Uniform's original type is not GLint, but ",
-             GL.gl_type(GL.Ptr_Uniform))
-@bp_check(GL.gl_type(GL.Ptr_Buffer) === GLuint)
-
-using ModernGL, GLFW, Images, FileIO
-using Bplus.GL
-
-
 # Runs a test on buffers.
 function test_buffers()
     # Initialize one with some data.
@@ -161,21 +151,6 @@ function test_textures()
             end
         end
     end 
-end
-
-function check_gl_logs(context::String)
-    logs = pull_gl_logs()
-    for log in logs
-        if log.severity in (DebugEventSeverities.high, DebugEventSeverities.medium)
-            @error "While $context. $(sprint(show, log))"
-        elseif log.severity == DebugEventSeverities.low
-            @warn "While $context. $(sprint(show, log))"
-        elseif log.severity == DebugEventSeverities.none
-            @info "While $context. $(sprint(show, log))"
-        else
-            error("Unhandled case: ", log.severity)
-        end
-    end
 end
 
 # Create a GL Context and window, and put the GL library through its paces.

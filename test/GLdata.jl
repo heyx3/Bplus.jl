@@ -1,5 +1,11 @@
 using Bplus.GL
 
+# Test OpenGL handle types.
+@bp_check(GL.gl_type(GL.Ptr_Uniform) === GLint,
+          "GL.Ptr_Uniform's original type is not GLint, but ",
+             GL.gl_type(GL.Ptr_Uniform))
+@bp_check(GL.gl_type(GL.Ptr_Buffer) === GLuint)
+
 # Test get_mip_size()
 @bp_test_no_allocations(get_mip_size(32, 1), 32)
 @bp_test_no_allocations(get_mip_size(32, 1), 32)
@@ -40,4 +46,4 @@ using Bplus.GL
 @bp_check(JSON3.read("{ \"pixel_filter\":\"rough\" }", TexSampler{2}) ==
              TexSampler{2}(pixel_filter = PixelFilters.rough))
 
-println("#TODO: Test packed depth/stencil primitive types.")
+#TODO: Test packed depth/stencil primitive types.

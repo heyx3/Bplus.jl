@@ -168,72 +168,67 @@ You can use almost any kind of basic scalar/vector data to upload or download a 
 
 For hybrid depth-stencil textures, you can use the special packed pixel types `Depth24uStencil8u` or `Depth32fStencil8u` depending on the specific format. These can be directly uploaded into their corresponding textures.
 
+Cubemap textures are treated as 3D, where the Z coordinate represents the 6 faces.
+
 ## Operations
 
 ### Clearing
 
-To generically clear a texture without knowing the format type, use `clear_tex_pixels(tex, value; args...)` and it will be inferred from the texture format and provided pixel value.
+To generically clear a texture without knowing the format type, use `clear_tex_pixels(tex, value, ...)` and it will be inferred from the texture format and provided pixel value.
 
-Clear a texture with one of the following functions based on its format:
-  * `clear_tex_color(tex, color::PixelIOValue; args...)`
-  * `clear_tex_depth(tex, depth::PixelIOComponent; args...)`
+It's recommended to use one of the more specific functions when you know the format:
+  * `clear_tex_color(tex, color::PixelIOValue, ...)`
+  * `clear_tex_depth(tex, depth::PixelIOComponent, ...)`
     * Can't be used for hybrid depth-stencil textures
-  * `clear_tex_stencil(tex, stencil::UInt8; args...)`
+  * `clear_tex_stencil(tex, stencil::UInt8, ...)`
     * Can't be used for hybrid depth-stencil textures
-  * `clear_tex_depthstencil(tex, depth::Float32, stencil::UInt8; args...)`
-  * `clear_tex_depthstencil(tex, value::Union{Depth24uStencil8u, Depth32fStencil8u}; args...)`
-    * The pixel format must match the texture format.
+  * `clear_tex_depthstencil(tex, depth::Float32, stencil::UInt8, ...)`
+  * `clear_tex_depthstencil(tex, value::Union{Depth24uStencil8u, Depth32fStencil8u}, ...)`
+    * The pixel format must precisely match the texture format.
 
-These functions have the following optional named arguments:
-  * `subset::TexSubset = [entire texture]`. For cubemap textures, this subset is cleared on each desired face.
+These functions have the following optional arguments:
+  * `subset::TexSubset = [entire texture]`. For cubemap textures, this subset is 2D, and cleared on each desired face.
   * `bgr_ordering::Bool = false` (only for 3- and 4-channel color) should be true if data is specified as BGR instead of RGB (faster for upload in many circumstances).
-  * `cube_face_range::IntervalU = IntervalU(min=1, max=6)` specifies which faces of the cubemap are being cleared.
   * `recompute_mips::Bool = true` if true, automatically computes mips after clearing.
 
 ### Setting pixels
 
-When setting a texture's pixels, you must provide an array of the same dimensionality as the texture you're setting. Cubemap textures are considered 3D, with Z spanning the 6 faces.
+When setting a texture's pixels, you must provide an array of the same dimensionality as the texture you're setting.
 
 To generically set a texture's pixels without knowing the format type, use `set_tex_pixels(tex, pixels::PixelBuffer; args...)` and Julia will infer it from the texture format and provided pixel format.
 
-It's recommended to use one of the more specific functions when you know the general format:
-  * `set_tex_color(tex, color::PixelBuffer; args...)`
-  * `set_tex_depth(tex, depth::PixelBuffer; args...)`
+It's recommended to use one of the more specific functions when you know the format:
+  * `set_tex_color(tex, color::PixelBuffer, ...)`
+  * `set_tex_depth(tex, depth::PixelBuffer, ...)`
     * Can't be used for hybrid depth-stencil textures
-  * `set_tex_stencil(tex, stencil::PixelBuffer{UInt8}; args...)`
+  * `set_tex_stencil(tex, stencil::PixelBuffer{UInt8}, ...)`
     * Can't be used for hybrid depth-stencil textures
     * Also accepts a `Vector{Vec{1, UInt8}}`
-  * `set_tex_depthstencil(tex, value::PixelBuffer{<:Union{Depth24uStencil8u, Depth32fStencil8u}}; args...)`
-    * The pixel format must match the texture format.
+  * `set_tex_depthstencil(tex, value::PixelBuffer{<:Union{Depth24uStencil8u, Depth32fStencil8u}}, ...)`
+    * The pixel format must precisely match the texture format.
 
-These functions have the following optional named arguments:
+These functions have the following optional arguments:
   * `subset::TexSubset = [entire texture]`. For cubemap textures, this subset is set on each desired face.
   * `bgr_ordering::Bool = false` (only for 3- and 4-channel color) should be true if data is specified as BGR instead of RGB (faster for upload in many circumstances).
-  * `cube_face_range::IntervalU = IntervalU(min=1, max=6)` specifies which faces of the cubemap are being set.
   * `recompute_mips::Bool = true` if true, automatically computes mips afterwards.
-
-For cubemaps, the number of pixels in the buffer should be `[pixels in subset] * [number of faces to set]`. See the optional arguments above.
 
 ### Getting pixels
 
 When getting a texture's pixels, you must provide an output array of the same dimensionality as the texture you're setting. Cubemap textures are considered 3D, with Z spanning the 6 faces.
 
-To read pixels into an array, use one of these functions based on the format:
-  * `get_tex_color(tex, out_colors::PixelBuffer; args...)`
-  * `get_tex_depth(tex, out_depth::PixelBuffer; args...)`
+It's recommended to use one of the more specific functions when you know the format:
+  * `get_tex_color(tex, out_colors::PixelBuffer, ...)`
+  * `get_tex_depth(tex, out_depth::PixelBuffer, ...)`
     * Can't be used for hybrid depth-stencil textures
-  * `get_tex_stencil(tex, out_stencil::PixelBuffer{UInt8}; args...)`
+  * `get_tex_stencil(tex, out_stencil::PixelBuffer{UInt8}, ...)`
     * Can't be used for hybrid depth-stencil textures
     * Also accepts a `Vector{Vec{1, UInt8}}`
-  * `get_tex_depthstencil(tex, out_hybrid::PixelBuffer{<:Union{Depth24uStencil8u, Depth32fStencil8u}}; args...)`
+  * `get_tex_depthstencil(tex, out_hybrid::PixelBuffer{<:Union{Depth24uStencil8u, Depth32fStencil8u}}, ...)`
     * The pixel format must match the texture format.
 
 These functions have the following optional named arguments:
   * `subset::TexSubset = [entire texture]`. For cubemap textures, this subset is set on each desired face.
   * `bgr_ordering::Bool = false` (only for 3- and 4-channel color) should be true if data is specified as BGR instead of RGB (faster for download in many circumstances).
-  * `cube_face_range::IntervalU = IntervalU(min=1, max=6)` specifies which faces of the cubemap are being cleared.
-
-For cubemaps, the number of pixels in the buffer should be at least `[pixels in subset] * [number of faces to set]`. See the optional arguments above.
 
 ### Other
 
