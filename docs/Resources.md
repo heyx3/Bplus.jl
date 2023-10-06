@@ -166,6 +166,12 @@ The optional arguments to the constructor are as follows:
 
 You can use almost any kind of basic scalar/vector data to upload or download a texture's pixels. The set of allowed pixel array types is captured by the type alias `PixelBuffer`, which is a Julia array of `N` dimensions and `T` elements. `N` is the texture dimensionality and `T` is the pixel data type. `T` must come from the type alias `PixelIOValue`, which is either a scalar `PixelIOComponent` or a vector of 1 to 4 such components.
 
+For color textures, the components to work with are usually deduced from the type of the pixel data.
+For example, an array of `v2f` is assumed to be working with the RG components.
+If uploading/downloading a single channel from the texture, it defaults to the Red channel.
+  * Change deduced channels from *RGB* to *BGR* by passing `bgr_ordering=true` into texture operations.
+  * Change the single-channel from *Red* to *Green* or *Blue* by passing e.x. `single_component=PixelIOChannels.green` into texture operations.
+
 For hybrid depth-stencil textures, you can use the special packed pixel types `Depth24uStencil8u` or `Depth32fStencil8u` depending on the specific format. These can be directly uploaded into their corresponding textures.
 
 Cubemap textures are treated as 3D, where the Z coordinate represents the 6 faces.
@@ -189,11 +195,14 @@ It's recommended to use one of the more specific functions when you know the for
 These functions have the following optional arguments:
   * `subset::TexSubset = [entire texture]`. For cubemap textures, this subset is 2D, and cleared on each desired face.
   * `bgr_ordering::Bool = false` (only for 3- and 4-channel color) should be true if data is specified as BGR instead of RGB (faster for upload in many circumstances).
+  * `single_component::E_PixelIOChannels` (only for 1-component color) controls which color channel is being set, if only one channel is provided. Must be `red`, `green`, or `blue`, not any of the multi-channel enum values.
   * `recompute_mips::Bool = true` if true, automatically computes mips after clearing.
 
 ### Setting pixels
 
 When setting a texture's pixels, you must provide an array of the same dimensionality as the texture you're setting.
+
+For more info on pixel data formats, see [*Upload/Download Format* above](#UploadDownload-Format).
 
 To generically set a texture's pixels without knowing the format type, use `set_tex_pixels(tex, pixels::PixelBuffer; args...)` and Julia will infer it from the texture format and provided pixel format.
 
@@ -215,6 +224,8 @@ These functions have the following optional arguments:
 ### Getting pixels
 
 When getting a texture's pixels, you must provide an output array of the same dimensionality as the texture you're setting. Cubemap textures are considered 3D, with Z spanning the 6 faces.
+
+For more info on pixel data formats, see [*Upload/Download Format* above](#UploadDownload-Format).
 
 It's recommended to use one of the more specific functions when you know the format:
   * `get_tex_color(tex, out_colors::PixelBuffer, ...)`

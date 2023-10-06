@@ -65,6 +65,8 @@ function get_pixel_io_channels( ::Val{N},
                                 use_bgr_ordering::Bool,
                                 color_for_1D::E_PixelIOChannels = PixelIOChannels.red
                               )::E_PixelIOChannels where {N}
+    @bp_check(color_for_1D in (PixelIOChannels.red, PixelIOChannels.green, PixelIOChannels.blue),
+              "Single-channel color enum isn't actually single-channel: ", color_for_1D)
     if N == 1
         return color_for_1D
     elseif N == 2

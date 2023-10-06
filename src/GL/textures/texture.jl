@@ -193,14 +193,14 @@ function Texture_cube( format::TexFormat,
                        ;
                        sampler::TexSampler{1} = TexSampler{1}(),
                        n_mips::Integer = get_n_mips(square_length),
-                       depth_stecil_sampling::Optional{E_DepthStencilSources} = nothing,
+                       depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                        swizzling::SwizzleRGBA = SwizzleRGBA()
                      )::Texture
     tex = generate_texture(
         TexTypes.cube_map, format,
         v3u(square_length, square_length, 1),
         convert(TexSampler{3}, sampler),
-        n_mips, depth_stecil_sampling, swizzling,
+        n_mips, depth_stencil_sampling, swizzling,
         nothing
     )
     if exists(initial_value)
@@ -214,14 +214,14 @@ function Texture_cube( format::TexFormat,
                        ;
                        sampler::TexSampler{1} = TexSampler{1}(),
                        n_mips::Integer = get_n_mips(Vec(size(initial_faces_data[1:2]))),
-                       depth_stecil_sampling::Optional{E_DepthStencilSources} = nothing,
+                       depth_stencil_sampling::Optional{E_DepthStencilSources} = nothing,
                        swizzling::SwizzleRGBA = SwizzleRGBA()
                      )::Texture
     return generate_texture(
         TexTypes.cube_map, format,
         v3u(size(initial_faces_data)[1:2]..., 1),
         convert(TexSampler{3}, sampler),
-        n_mips, depth_stecil_sampling, swizzling,
+        n_mips, depth_stencil_sampling, swizzling,
         (initial_faces_data, data_bgr_ordering)
     )
 end
@@ -279,12 +279,15 @@ function process_tex_subset(tex::Texture, subset::TexSubset)::Tuple{Box3Du, UInt
     elseif tex.type == TexTypes.twoD
         @set! tex_size.z = 1
     elseif tex.type == TexTypes.cube_map
-        @set! tex.size.z = 6
+        @set! tex_size.z = 6
     end
 
     # Make sure the subset is fully inside the texture.
     tex_pixel_range = Box3Du(min=one(v3u), size=tex_size)
-    subset_pixel_range::Box3Du = get_subset_range(subset, tex_size)
+    subset_pixel_range::Box3Du = reshape(get_subset_range(subset, tex_size),
+                                         3,
+                                         new_dims_size=UInt32(1),
+                                         new_dims_min=UInt32(1))
     @bp_check(contains(tex_pixel_range, subset_pixel_range),
               "Texture at mip level ", subset.mip, " is size ", tex_size,
                 ", and your subset is out of those bounds: ", subset_pixel_range)
@@ -362,9 +365,9 @@ end
 default_tex_subset(tex::Texture)::@unionspec(TexSubset{_}, 1, 2, 3) =
     if tex.type == TexTypes.oneD
         TexSubset{1}()
-    elseif (tex.type == TexTypes.twoD) || (tex.type == TexTypes.cube_map)
+    elseif tex.type == TexTypes.twoD
         TexSubset{2}()
-    elseif (tex.type == TexTypes.threeD)
+    elseif tex.type in (TexTypes.cube_map, TexTypes.threeD)
         TexSubset{3}()
     else
         error("Unhandled case: ", tex.type)
@@ -535,6 +538,7 @@ function clear_tex_color( t::Texture,
                           subset::TexSubset = default_tex_subset(t)
                           ;
                           bgr_ordering::Bool = false,
+                          single_component::E_PixelIOChannels = PixelIOChannels.red,
                           recompute_mips::Bool = true
                         )
     T = get_component_type(typeof(color))
@@ -551,7 +555,7 @@ function clear_tex_color( t::Texture,
     texture_op_impl(
         t,
         GLenum(get_pixel_io_type(T)),
-        get_ogl_enum(get_pixel_io_channels(Val(N), bgr_ordering),
+        get_ogl_enum(get_pixel_io_channels(Val(N), bgr_ordering, single_component),
                     is_integer(t.format)),
         subset,
         contiguous_ref(color, T),
@@ -672,29 +676,16 @@ The dimensionality of the input array and `subset` parameter
     must match the dimensionality of the texture.
 Cubemaps textures are 3D, where Z spans the 6 faces.
 "
-function set_tex_pixels( t::Texture,
-                         pixels::PixelBuffer,
-                         subset::TexSubset = default_tex_subset(t)
-                         ;
-                         color_bgr_ordering::Bool = false,
-                         recompute_mips::Bool = true
-                       )
+function set_tex_pixels(t::Texture, args...; kw_args...)
     if is_color(t.format)
-        set_tex_color(t, pixels, subset;
-                      bgr_ordering=color_bgr_ordering,
-                      recompute_mips=recompute_mips)
+        set_tex_color(t, args...; kw_args...)
     else
-        @bp_check(!color_bgr_ordering,
-                  "Supplied the 'color_bgr_ordering' parameter for a non-color texture")
         if is_depth_only(t.format)
-            set_tex_depth(t, pixels, subset;
-                          recompute_mips=recompute_mips)
+            set_tex_depth(t, args...; kw_args...)
         elseif is_stencil_only(t.format)
-            set_tex_stencil(t, pixels, subset;
-                            recompute_mips=recompute_mips)
+            set_tex_stencil(t, args...; kw_args...)
         elseif is_depth_and_stencil(t.format)
-            set_tex_depthstencil(t, pixels, subset;
-                                 recompute_mips=recompute_mips)
+            set_tex_depthstencil(t, args...; kw_args...)
         else
             error("Unhandled case: ", t.format)
         end
@@ -711,6 +702,7 @@ function set_tex_color( t::Texture,
                         subset::TexSubset = default_tex_subset(t)
                         ;
                         bgr_ordering::Bool = false,
+                        single_component::E_PixelIOChannels = PixelIOChannels.red,
                         recompute_mips::Bool = true
                       ) where {TBuf <: PixelBuffer}
     T = get_component_type(TBuf)
@@ -728,8 +720,8 @@ function set_tex_color( t::Texture,
     texture_op_impl(
         t,
         GLenum(get_pixel_io_type(T)),
-        get_ogl_enum(get_pixel_io_channels(Val(N), bgr_ordering),
-                    is_integer(t.format)),
+        get_ogl_enum(get_pixel_io_channels(Val(N), bgr_ordering, single_component),
+                     is_integer(t.format)),
         subset,
         Ref(pixels, 1),
         recompute_mips,
@@ -831,24 +823,16 @@ The dimensionality of the array and `subset` parameter
     must match the dimensionality of the texture.
 Cubemaps textures are 3D, where Z spans the 6 faces.
 "
-function get_tex_pixels( t::Texture,
-                         out_pixels::PixelBuffer,
-                         subset::TexSubset = default_tex_subset(t)
-                         ;
-                         color_bgr_ordering::Bool = false
-                       )
+function get_tex_pixels(t::Texture, args...; kw_args...)
     if is_color(t.format)
-        get_tex_color(t, out_pixels, subset;
-                      bgr_ordering=color_bgr_ordering)
+        get_tex_color(t, args...; kw_args...)
     else
-        @bp_check(!color_bgr_ordering,
-                  "Supplied the 'color_bgr_ordering' parameter for a non-color texture")
         if is_depth_only(t.format)
-            get_tex_depth(t, out_pixels, subset)
+            get_tex_depth(t, args...; kw_args...)
         elseif is_stencil_only(t.format)
-            get_tex_stencil(t, out_pixels, subset)
+            get_tex_stencil(t, args...; kw_args...)
         elseif is_depth_and_stencil(t.format)
-            get_tex_depthstencil(t, out_pixels, subset)
+            get_tex_depthstencil(t, args...; kw_args...)
         else
             error("Unhandled case: ", t.format)
         end
@@ -864,7 +848,8 @@ function get_tex_color( t::Texture,
                         out_pixels::TBuf,
                         subset::TexSubset = default_tex_subset(t)
                         ;
-                        bgr_ordering::Bool = false
+                        bgr_ordering::Bool = false,
+                        single_component::E_PixelIOChannels = PixelIOChannels.red
                       ) where {TBuf <: PixelBuffer}
     T = get_component_type(TBuf)
     N = get_component_count(TBuf)
@@ -881,7 +866,7 @@ function get_tex_color( t::Texture,
     texture_op_impl(
         t,
         GLenum(get_pixel_io_type(T)),
-        get_ogl_enum(get_pixel_io_channels(Val(N), bgr_ordering),
+        get_ogl_enum(get_pixel_io_channels(Val(N), bgr_ordering, single_component),
                     is_integer(t.format)),
         subset,
         Ref(out_pixels, 1),
