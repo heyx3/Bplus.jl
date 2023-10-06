@@ -300,6 +300,16 @@ Base.clamp(v::Vec{N, T}, a::Vec{N, T2}, b::Vec{N, T3}) where {N, T, T2, T3} = Ve
 Base.floor(v::Vec) = map(floor, v)
 Base.ceil(v::Vec) = map(ceil, v)
 
+function Base.isapprox( a::Vec{N}, b::Vec{N};
+                        atol::Real=0,
+                        rtol::Real=Base.rtoldefault(eltype(a), eltype(b), atol),
+                        nans::Bool = false,
+                        norm::Function = abs
+                      )::Bool where {N}
+    component_wise(i) = isapprox(a[i], b[i]; atol=atol, rtol=rtol, nans=nans, norm=norm)
+    return all(Vec{N, Bool}(component_wise))
+end
+
 Random.rand(rng::Random.AbstractRNG, ::Type{Vec{N, F}}) where {N, F} = Vec{N, F}(i -> Random.rand(rng, F))
 
 Base.convert(::Type{Vec{N, T2}}, v::Vec{N, T}) where {N, T, T2} = map(x -> convert(T2, x), v)
@@ -375,6 +385,51 @@ end
 # end
 #TODO: Revisit vmap() sometime
 
+# Because Vec is an AbstractVector, it expands into its individual components in vcat/hcat/hvcat expressions.
+# For example, [ v2f(0, 0); v2f(1, 1) ] turns into a 2x2 matrix of Float32.
+# The below code overrides this behavior to leave the Vec instances intact.
+Base.hcat(vs::Vec...) = typeof(vs[1])[ vs[j] for i=1:1, j=1:length(vs) ]
+function Base.hvcat(row_lengths::Tuple{Vararg{Int}}, elements::Vec...)
+    n_rows = length(row_lengths)
+    n_columns = row_lengths[1]
+    @bp_check(all(rl -> rl == n_columns, row_lengths),
+              "Not all rows have the same number of columns: ", row_lengths)
+
+    output = Matrix{typeof(elements[1])}(undef, n_rows, n_columns)
+    for row in 1:n_rows
+        for col in 1:n_columns
+            output[row, col] = elements[col + ((row-1) * n_columns)]
+        end
+    end
+
+    return output
+end
+function Base.hvncat(shape::Tuple, row_first::Bool, elements::Vec...)
+    n_rows = shape[1]
+    n_columns = shape[2]
+    n_higher_ds::Tuple = shape[3:end]
+
+    output = Array{typeof(elements[1])}(undef, (n_rows, n_columns, n_higher_ds...))
+    for row in 1:n_rows
+        for col in 1:n_columns
+            element_idx_offset = if row_first
+                col + ((row-1) * n_columns)
+            else
+                row + ((col-1) * n_rows)
+            end
+            for higher_d_idx in CartesianIndices(Base.OneTo.(n_higher_ds))
+                higher_d_idcs = Tuple(higher_d_idx)
+                array_idx = (row, col, higher_d_idcs...)
+                element_idx = element_idx_offset +
+                              ((vindex(Vec(higher_d_idcs...), Vec(n_higher_ds...)) - 1) *
+                                 (n_rows * n_columns))
+                output[array_idx...] = elements[element_idx]
+            end
+        end
+    end
+    return output
+end
+
 
 function Base.foldl(func::F, v::Vec{N, T}) where {F, N, T}
     f::T = v[1]
@@ -404,52 +459,6 @@ function Base.foldr(func::F, v::Vec{N, T}, init::T2)::T2 where {F, N, T, T2}
     end
     return f
 end
-
-"
-Like a binary version of lerp, or like `step()`.
-Returns components of `a` when `t` is false, or `b` when `t` is true.
-"
-vselect(a::F, b::F, t::Bool) where {F} = (t ? b : a)
-vselect(a::Vec{N, T}, b::Vec{N, T}, t::Vec{N}) where {N, T} = Vec{N, T}((
-    vselect(xA, xB, xT) for (xA, xB, xT) in zip(a, b, t)
-)...)
-
-"Converts a multidimensional array index to a flat one, assuming X is the innermost component"
-function vindex(p::Vec{N, <:Integer}, size::Vec{N, <:Integer}) where {N}
-    if N == 0 # Degenerative case, but technically possible
-        return 1
-    elseif N == 1
-        return p[1]
-    else
-        sub_range = Val(2:N)
-        return p[1] + (size[1] * (vindex(p[sub_range], size[sub_range]) - 1))
-    end
-end
-"Converts a flat array index to a multidimensional one, assuming X is the innermost component"
-function vindex(i::Integer, size::Vec{N, <:Integer}) where {N}
-    I = promote_type(typeof(i), eltype(size))
-    i1 = i - 1 # Zero-based math is easier here.
-    return 1 + Vec{N, I}(
-        d -> (i1 ÷ prod(size[1:(d-1)])) % size[d]
-    )
-end
-
-"Gets the size of an array as a `Vec`, rather than an `NTuple`."
-vsize(arr::AbstractArray) = Vec(size(arr)...)
-
-export vselect, vindex, vsize
-
-
-# I can't figure out how to make the general-case form of `isapprox()` work
-#   without heap allocations (I think it's related to the keyword arguments).
-# I tried all sorts of stuff, including @generate.
-# So here are two simple, common cases.
-# Note that I've done the same thing for Quaternions.
-Base.isapprox(a::Vec{N, T1}, b::Vec{N, T2}) where {N, T1, T2} =
-    all(t -> isapprox(t[1], t[2]), zip(a, b))
-Base.isapprox(a::Vec{N, T1}, b::Vec{N, T2}, atol) where {N, T1, T2} =
-    all(t -> isapprox(t[1], t[2]; atol=atol), zip(a, b))
-
 
 @inline Base.getproperty(v::Vec, n::Symbol) = getproperty(v, Val(n))
 # getproperty() for individual components:
@@ -700,6 +709,18 @@ end
 @inline vdot(v1::Vec, v2::Vec) = +(((t[1] * t[2]) for t in zip(v1, v2))...)
 export vdot
 
+"Computes the 3D cross product."
+function vcross( a::Vec3{T1},
+                 b::Vec3{T2}
+               )::Vec3{promote_type(T1, T2)} where {T1, T2}
+    return Vec3{promote_type(T1, T2)}(
+        foldl(-, a.yz * b.zy),
+        foldl(-, a.zx * b.xz),
+        foldl(-, a.xy * b.yx)
+    )
+end
+export vcross
+
 "Computes the square distance between two vectors"
 function vdist_sqr(v1::Vec{N, T1}, v2::Vec{N, T2})::promote_type(T1, T2) where {N, T1, T2}
     delta::Vec{N, promote_type(T1, T2)} = v1 - v2
@@ -802,17 +823,39 @@ v_is_normalized(v::Vec{N, T}, atol::T2 = 0.0) where {N, T, T2} =
     isapprox(vlength_sqr(v), one(T); atol=atol*atol)
 export v_is_normalized
 
-"Computes the 3D cross product."
-function vcross( a::Vec3{T1},
-                 b::Vec3{T2}
-               )::Vec3{promote_type(T1, T2)} where {T1, T2}
-    return Vec3{promote_type(T1, T2)}(
-        foldl(-, a.yz * b.zy),
-        foldl(-, a.zx * b.xz),
-        foldl(-, a.xy * b.yx)
+"
+Like a binary version of lerp, or like `step()`.
+Returns components of `a` when `t` is false, or `b` when `t` is true.
+"
+vselect(a::F, b::F, t::Bool) where {F} = (t ? b : a)
+vselect(a::Vec{N, T}, b::Vec{N, T}, t::Vec{N}) where {N, T} = Vec{N, T}((
+    vselect(xA, xB, xT) for (xA, xB, xT) in zip(a, b, t)
+)...)
+
+"Converts a multidimensional array index to a flat one, assuming X is the innermost component"
+function vindex(p::Vec{N, <:Integer}, size::Vec{N, <:Integer}) where {N}
+    if N == 0 # Degenerative case, but technically possible
+        return 1
+    elseif N == 1
+        return p[1]
+    else
+        sub_range = Val(2:N)
+        return p[1] + (size[1] * (vindex(p[sub_range], size[sub_range]) - 1))
+    end
+end
+"Converts a flat array index to a multidimensional one, assuming X is the innermost component"
+function vindex(i::Integer, size::Vec{N, <:Integer}) where {N}
+    I = promote_type(typeof(i), eltype(size))
+    i1 = i - 1 # Zero-based math is easier here.
+    return 1 + Vec{N, I}(
+        d -> (i1 ÷ prod(size[1:(d-1)])) % size[d]
     )
 end
-export vcross
+
+"Gets the size of an array as a `Vec`, rather than an `NTuple`."
+vsize(arr::AbstractArray) = Vec(size(arr)...)
+
+export vselect, vindex, vsize
 
 
 ##########################

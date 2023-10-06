@@ -259,12 +259,15 @@ end
 
 @inline Base.:(==)(q1::Quaternion, q2::Quaternion)::Bool = (q1.data == q2.data)
 
-# See my notes about isapprox() for Vec
-Base.isapprox(a::Quaternion{F}, b::Quaternion{F2}) where {F, F2} =
-    all(t -> isapprox(t[1], t[2]), zip(a.data, b.data))
-Base.isapprox(a::Quaternion{F}, b::Quaternion{F2}, atol) where {F, F2} =
-    all(t -> isapprox(t[1], t[2]; atol=atol), zip(a.data, b.data))
-#
+function Base.isapprox( a::Quaternion{A}, b::Quaternion{B};
+                        atol::Real=0,
+                        rtol::Real=Base.rtoldefault(A, B, atol),
+                        nans::Bool = false,
+                        norm::Function = abs
+                      )::Bool where {A, B}
+    return isapprox(getfield(a, :data), getfield(b, :data);
+                    atol=atol, rtol=rtol, nans=nans, norm=norm)
+end
 
 
 ######################

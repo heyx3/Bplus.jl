@@ -177,6 +177,8 @@ However, in many cases array-processing functions return an actual array (`Vecto
 
 Unfortunately, one awesome Julia feature that `Vec` doesn't support well is broadcasting.  Broadcasting operators will treat `Vec` as a 1D array, which is good, but the output will be an actual array (`Vector`), which is bad. This can hopefully be improved in the future.
 
+An interesting note about Julia's multidimensional array literals: normally they would notice that `Vec` is an `AbstractVector` and treat it as an extra dimension. For example, a literal matrix of `v3f` would become a 3D array of Float32, with 3 Z-slices. However, the relevant functions (`hcat`, `vcat`, and `hvncat`) are overloaded to prevent this, so that a matrix literal of `Vec` stays a matrix of `Vec`.
+
 ## Ranges
 
 Julia lets you specify number ranges with the colon syntax: `all_one_digit_numbers = 0:9`. You can do the same with `Vec` to create multidimensional ranges.

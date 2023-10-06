@@ -30,11 +30,11 @@
                         false)
 @bp_test_no_allocations(isapprox(Quaternion(1.0, 2.0, 3.0, 4.0),
                                  Quaternion(1.4, 2.4, 2.6, 4.15),
-                                 0.5),
+                                 atol=0.5),
                         true)
 @bp_test_no_allocations(isapprox(Quaternion(1.0, 2.0, 3.0, 4.0),
                                  Quaternion(1.0, 2.0, 3.0, 4.4),
-                                 0.15),
+                                 atol=0.15),
                         false)
 
 # Test arithmetic.
@@ -52,7 +52,7 @@
 @bp_test_no_allocations(isapprox(q_apply(fquat(Vec(0, 1, 0), π/2),
                                          Vec(1, 1, 1)),
                                  Vec(1, 1, -1),
-                                 0.00001),
+                                 atol=0.00001),
                         true)
 
 # Test conversions.
