@@ -385,31 +385,37 @@ end
 # end
 #TODO: Revisit vmap() sometime
 
-# Because Vec is an AbstractVector, it expands into its individual components in vcat/hcat/hvcat expressions.
+# Because Vec is an AbstractVector, it expands into its individual components
+#    in multidimensional array literals.
 # For example, [ v2f(0, 0); v2f(1, 1) ] turns into a 2x2 matrix of Float32.
 # The below code overrides this behavior to leave the Vec instances intact.
-Base.hcat(vs::Vec...) = typeof(vs[1])[ vs[j] for i=1:1, j=1:length(vs) ]
-function Base.hvcat(row_lengths::Tuple{Vararg{Int}}, elements::Vec...)
+Base.hcat(vs::Vec...) = Base.typed_hcat(typeof(vs[1]), vs...)
+Base.hvcat(row_lengths::Tuple{Vararg{Int}}, elements::Vec...) = Base.typed_hvcat(typeof(elements[1]), row_lengths, elements...)
+Base.hvncat(shape::Tuple, row_first::Bool, elements::Vec...) = Base.typed_hvncat(typeof(elements[1]), shape, row_first, elements...)
+function Base.typed_hcat(::Type{T}, vs::Vec...) where {T<:Vec}
+    return T[ convert(T, vs[j]) for i=1:1, j=1:length(vs) ]
+end
+function Base.typed_hvcat(::Type{T}, row_lengths::Tuple{Vararg{Int}}, elements::Vec...) where {T<:Vec}
     n_rows = length(row_lengths)
     n_columns = row_lengths[1]
     @bp_check(all(rl -> rl == n_columns, row_lengths),
               "Not all rows have the same number of columns: ", row_lengths)
 
-    output = Matrix{typeof(elements[1])}(undef, n_rows, n_columns)
+    output = Matrix{T}(undef, n_rows, n_columns)
     for row in 1:n_rows
         for col in 1:n_columns
-            output[row, col] = elements[col + ((row-1) * n_columns)]
+            output[row, col] = convert(T, elements[col + ((row-1) * n_columns)])
         end
     end
 
     return output
 end
-function Base.hvncat(shape::Tuple, row_first::Bool, elements::Vec...)
+function Base.typed_hvncat(::Type{T}, shape::Tuple, row_first::Bool, elements::Vec...) where {T<:Vec}
     n_rows = shape[1]
     n_columns = shape[2]
     n_higher_ds::Tuple = shape[3:end]
 
-    output = Array{typeof(elements[1])}(undef, (n_rows, n_columns, n_higher_ds...))
+    output = Array{T}(undef, (n_rows, n_columns, n_higher_ds...))
     for row in 1:n_rows
         for col in 1:n_columns
             element_idx_offset = if row_first
@@ -423,7 +429,7 @@ function Base.hvncat(shape::Tuple, row_first::Bool, elements::Vec...)
                 element_idx = element_idx_offset +
                               ((vindex(Vec(higher_d_idcs...), Vec(n_higher_ds...)) - 1) *
                                  (n_rows * n_columns))
-                output[array_idx...] = elements[element_idx]
+                output[array_idx...] = convert(T, elements[element_idx])
             end
         end
     end
