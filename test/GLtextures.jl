@@ -27,10 +27,12 @@ bp_gl_context(v2i(800, 500), "Test: GLtextures") do context::Context
         get_tex_pixels(tex, pixels_buffer, subset, single_component=single_component)
 
         actual_flattened = reshape(pixels_buffer, (length(pixels_buffer), ))
+        has_failed::Bool = false
         for (idx, expected, actual) in zip(1:typemax(Int), expected_flattened, actual_flattened)
             if !isapprox(expected, actual, atol=atol, rtol=0, nans=true)
                 pixel = min_inclusive(subset_area) + vindex(idx, size(subset_area)) - 1
-                error("Pixel mismatch when reading texture!\n",
+                has_failed = true
+                println("ERROR: Pixel mismatch when reading texture!\n",
                         "\tTexture:\n",
                           "\t\tFormat: ", tex.format, "\n",
                           "\t\tType: ", tex.type, "\n",
@@ -45,6 +47,9 @@ bp_gl_context(v2i(800, 500), "Test: GLtextures") do context::Context
                         "\tActual  : ", actual, "\n",
                         "\tDelta to Expected: ", expected-actual)
             end
+        end
+        if has_failed
+            error("See above test failures.")
         end
     end
     function try_setting_texture(tex::Texture, subset::TexSubset,
@@ -202,6 +207,9 @@ bp_gl_context(v2i(800, 500), "Test: GLtextures") do context::Context
     #IMPORTANT NOTE: IN Julia multidimensional array literals, the X and Y axes are flipped.
     # So the array [ 1 2 3 (line break) 4 5 6 ] has two elements along X and 3 along Y.
     # Z slices are separated with `;;;`.
+
+    #IMPORTANT NOTE: When setting a subset of a color texture's channels,
+    #    the missing color channels are set to 0 and the missing alpha channel is set to 1.
 
     # R32F textures:
     #  1D:
@@ -441,69 +449,68 @@ bp_gl_context(v2i(800, 500), "Test: GLtextures") do context::Context
     )
     #  3D:
     #    Write and read as v2f:
-    # try_setting_texture(
-    #     tex_3D_rg16in,
-    #     TexSubset(Box(
-    #         min=v3u(1, 2, 3),
-    #         max=v3u(2, 3, 4),
-    #     )),
-    #     let raws = [
-    #                    v2f(1.111, 2.111) v2f(1.121, 2.121)
-    #                    v2f(1.211, 2.211) v2f(1.221, 2.221)
-    #                    ;;;
-    #                    v2f(1.112, 2.112) v2f(1.122, 2.122)
-    #                    v2f(1.212, 2.212) v2f(1.222, 2.222)
-    #                ]
-    #         (raws, raws)
-    #     end...,
-    #     atol=0.00005
-    # )
-    # #  Cubemap:
-    # #    Write and read as v2f:
-    # try_setting_texture(
-    #     tex_cube_rg16in,
-    #     TexSubset(Box(
-    #         min=v3u(1, 2, 3),
-    #         max=v3u(2, 3, 4),
-    #     )),
-    #     let raws = [
-    #                    v2f(1.111, 2.111) v2f(1.121, 2.121)
-    #                    v2f(1.211, 2.211) v2f(1.221, 2.221)
-    #                    ;;;
-    #                    v2f(1.112, 2.112) v2f(1.122, 2.122)
-    #                    v2f(1.212, 2.212) v2f(1.222, 2.222)
-    #                ]
-    #         (raws, raws)
-    #     end...,
-    #     atol=0.00005
-    # )
-    # #    Write Green as Float32, then read RG values as v2f:
-    # try_setting_texture(
-    #     tex_cube_rg16in,
-    #     TexSubset(Box(
-    #         min=v3u(1, 2, 3),
-    #         max=v3u(2, 3, 4)
-    #     )),
-    #     Float32[
-    #         1 2
-    #         3 4
-    #         ;;;
-    #         5 6
-    #         7 8
-    #     ],
-    #     v2f[
-    #         v2f(1.111, 1) v2f(1.121, 2)
-    #         v2f(1.211, 3) v2f(1.221, 4)
-    #         ;;;
-    #         v2f(1.112, 5) v2f(1.122, 6)
-    #         v2f(1.212, 7) v2f(1.222, 8)
-    #     ],
-    #     atol=0.00005,
-    #     single_component=PixelIOChannels.green
-    # )
-    #TODO: Try setting Green in RG[BA] textures
-    #TODO: Try setting Blue in RGB[A] textures
-    #TODO: Try setting other mip levels
+    try_setting_texture(
+        tex_3D_rg16in,
+        TexSubset(Box(
+            min=v3u(1, 2, 3),
+            max=v3u(2, 3, 4),
+        )),
+        let raws = [
+                       v2f(0.5111, 0.6111) v2f(0.5121, 0.6121)
+                       v2f(0.5211, 0.6211) v2f(0.5221, 0.6221)
+                       ;;;
+                       v2f(0.5112, 0.6112) v2f(0.5122, 0.6122)
+                       v2f(0.5212, 0.6212) v2f(0.5222, 0.6222)
+                   ]
+            (raws, raws)
+        end...,
+        atol=0.00005
+    )
+    #  Cubemap:
+    #    Write and read as v2f:
+    try_setting_texture(
+        tex_cube_rg16in,
+        TexSubset(Box(
+            min=v3u(1, 2, 3),
+            max=v3u(2, 3, 4),
+        )),
+        let raws = [
+                       v2f(0.5111, 0.6111) v2f(0.5121, 0.6121)
+                       v2f(0.5211, 0.6211) v2f(0.5221, 0.6221)
+                       ;;;
+                       v2f(0.5112, 0.6112) v2f(0.5122, 0.6122)
+                       v2f(0.5212, 0.6212) v2f(0.5222, 0.6222)
+                   ]
+            (raws, raws)
+        end...,
+        atol=0.00005
+    )
+    #    Write Green as Float32, then read RG values as v2f:
+    try_setting_texture(
+        tex_cube_rg16in,
+        TexSubset(Box(
+            min=v3u(1, 2, 3),
+            max=v3u(2, 3, 4)
+        )),
+        Float32[
+            0.01 0.02
+            0.03 0.04
+            ;;;
+            0.05 0.06
+            0.07 0.08
+        ],
+        v2f[
+            v2f(0, 0.01) v2f(0, 0.02)
+            v2f(0, 0.03) v2f(0, 0.04)
+            ;;;
+            v2f(0, 0.05) v2f(0, 0.06)
+            v2f(0, 0.07) v2f(0, 0.08)
+        ],
+        atol=0.00005,
+        single_component=PixelIOChannels.green
+    )
+    #TODO: Try setting Green and Blue in RGBA textures
+    #TODO: Try setting other mip levels (check the top mip level is unchanged)
     #TODO: Finish with the other textures
 
     #TODO: Do Clear tests with `try_clearing_texture()`

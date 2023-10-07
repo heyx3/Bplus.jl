@@ -172,6 +172,8 @@ If uploading/downloading a single channel from the texture, it defaults to the R
   * Change deduced channels from *RGB* to *BGR* by passing `bgr_ordering=true` into texture operations.
   * Change the single-channel from *Red* to *Green* or *Blue* by passing e.x. `single_component=PixelIOChannels.green` into texture operations.
 
+**Important Note**: when setting fewer channels than actually exist in a color texture (e.x. only Green in an RG texture, or only RG in an RGBA texture), OpenGL sets missing color channels to 0 and the missing Alpha channel to 1. They are not left unchanged as you might expect.
+
 For hybrid depth-stencil textures, you can use the special packed pixel types `Depth24uStencil8u` or `Depth32fStencil8u` depending on the specific format. These can be directly uploaded into their corresponding textures.
 
 Cubemap textures are treated as 3D, where the Z coordinate represents the 6 faces.
@@ -206,20 +208,25 @@ For more info on pixel data formats, see [*Upload/Download Format* above](#Uploa
 
 To generically set a texture's pixels without knowing the format type, use `set_tex_pixels(tex, pixels::PixelBuffer; args...)` and Julia will infer it from the texture format and provided pixel format.
 
+**Important Note**: when setting fewer channels than actually exist in a color texture (e.x. only Green in an RG texture, or only RG in an RGBA texture), OpenGL sets missing color channels to 0 and the missing Alpha channel to 1. They are not left unchanged as you might expect.
+
 It's recommended to use one of the more specific functions when you know the format:
-  * `set_tex_color(tex, color::PixelBuffer, ...)`
-  * `set_tex_depth(tex, depth::PixelBuffer, ...)`
-    * Can't be used for hybrid depth-stencil textures
-  * `set_tex_stencil(tex, stencil::PixelBuffer{UInt8}, ...)`
-    * Can't be used for hybrid depth-stencil textures
-    * Also accepts a `Vector{Vec{1, UInt8}}`
-  * `set_tex_depthstencil(tex, value::PixelBuffer{<:Union{Depth24uStencil8u, Depth32fStencil8u}}, ...)`
-    * The pixel format must precisely match the texture format.
+
+* `set_tex_color(tex, color::PixelBuffer, ...)`
+* `set_tex_depth(tex, depth::PixelBuffer, ...)`
+  * Can't be used for hybrid depth-stencil textures
+* `set_tex_stencil(tex, stencil::PixelBuffer{UInt8}, ...)`
+  * Can't be used for hybrid depth-stencil textures
+  * Also accepts a `Vector{Vec{1, UInt8}}`
+* `set_tex_depthstencil(tex, value::PixelBuffer{<:Union{Depth24uStencil8u, Depth32fStencil8u}}, ...)`
+  * The pixel format must precisely match the texture format.
 
 These functions have the following optional arguments:
-  * `subset::TexSubset = [entire texture]`. For cubemap textures, this subset is set on each desired face.
-  * `bgr_ordering::Bool = false` (only for 3- and 4-channel color) should be true if data is specified as BGR instead of RGB (faster for upload in many circumstances).
-  * `recompute_mips::Bool = true` if true, automatically computes mips afterwards.
+
+* `subset::TexSubset = [entire texture]`. For cubemap textures, this subset is set on each desired face.
+* `bgr_ordering::Bool = false` (only for 3- and 4-channel color) should be true if data is specified as BGR instead of RGB (faster for upload in many circumstances).
+* `recompute_mips::Bool = true` if true, automatically computes mips afterwards.
+* `single_component::E_PixelIOChannels = PixelIOChannels.red` : which color channel is getting set. Only relevant if you are passing scalar values to a color texture.
 
 ### Getting pixels
 
@@ -228,18 +235,20 @@ When getting a texture's pixels, you must provide an output array of the same di
 For more info on pixel data formats, see [*Upload/Download Format* above](#UploadDownload-Format).
 
 It's recommended to use one of the more specific functions when you know the format:
-  * `get_tex_color(tex, out_colors::PixelBuffer, ...)`
-  * `get_tex_depth(tex, out_depth::PixelBuffer, ...)`
-    * Can't be used for hybrid depth-stencil textures
-  * `get_tex_stencil(tex, out_stencil::PixelBuffer{UInt8}, ...)`
-    * Can't be used for hybrid depth-stencil textures
-    * Also accepts a `Vector{Vec{1, UInt8}}`
-  * `get_tex_depthstencil(tex, out_hybrid::PixelBuffer{<:Union{Depth24uStencil8u, Depth32fStencil8u}}, ...)`
-    * The pixel format must match the texture format.
+
+* `get_tex_color(tex, out_colors::PixelBuffer, ...)`
+* `get_tex_depth(tex, out_depth::PixelBuffer, ...)`
+  * Can't be used for hybrid depth-stencil textures
+* `get_tex_stencil(tex, out_stencil::PixelBuffer{UInt8}, ...)`
+  * Can't be used for hybrid depth-stencil textures
+  * Also accepts a `Vector{Vec{1, UInt8}}`
+* `get_tex_depthstencil(tex, out_hybrid::PixelBuffer{<:Union{Depth24uStencil8u, Depth32fStencil8u}}, ...)`
+  * The pixel format must match the texture format.
 
 These functions have the following optional named arguments:
-  * `subset::TexSubset = [entire texture]`. For cubemap textures, this subset is set on each desired face.
-  * `bgr_ordering::Bool = false` (only for 3- and 4-channel color) should be true if data is specified as BGR instead of RGB (faster for download in many circumstances).
+
+* `subset::TexSubset = [entire texture]`. For cubemap textures, this subset is set on each desired face.
+* `bgr_ordering::Bool = false` (only for 3- and 4-channel color) should be true if data is specified as BGR instead of RGB (faster for download in many circumstances).
 
 ### Other
 
