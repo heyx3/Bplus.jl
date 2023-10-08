@@ -509,7 +509,63 @@ bp_gl_context(v2i(800, 500), "Test: GLtextures") do context::Context
         atol=0.00005,
         single_component=PixelIOChannels.green
     )
-    #TODO: Try setting Green and Blue in RGBA textures
+    # RGBA8uint textures:
+    #  1D:
+    try_setting_texture(
+        tex_1D_rgba8u,
+        TexSubset(Box(
+            min=v1u(2),
+            max=v1u(2)
+        )),
+        Vec{4, UInt8}[ Vec(2, 3, 4, 5) ]
+    )
+    try_setting_texture(
+        tex_1D_rgba8u,
+        TexSubset(Box(
+            min=v1u(2),
+            max=v1u(3)
+        )),
+        Vec{4, UInt8}[ Vec(255, 8, 1, 2), Vec(38, 19, 20, 18) ]
+    )
+    try_setting_texture(
+        tex_1D_rgba8u,
+        TexSubset(Box(
+            min=v1u(2),
+            max=v1u(3)
+        )),
+        Vec{2, UInt8}[ Vec(1, 2), Vec(20, 18) ],
+        Vec{4, UInt8}[ Vec(1, 2, 0, 1), Vec(20, 18, 0, 1) ]
+    )
+    try_setting_texture(
+        tex_1D_rgba8u,
+        TexSubset(Box(
+            min=v1u(1),
+            max=v1u(3)
+        )),
+        UInt8[ 5, 17, 56 ],
+        Vec{4, UInt8}[ Vec(5, 0, 0, 1), Vec(17, 0, 0, 1), Vec(56, 0, 0, 1) ]
+    )
+    try_setting_texture(
+        tex_1D_rgba8u,
+        TexSubset(Box(
+            min=v1u(1),
+            max=v1u(3)
+        )),
+        UInt8[ 5, 17, 56 ],
+        Vec{4, UInt8}[ Vec(0, 5, 0, 1), Vec(0, 17, 0, 1), Vec(0, 56, 0, 1) ],
+        single_component=PixelIOChannels.green
+    )
+    try_setting_texture(
+        tex_1D_rgba8u,
+        TexSubset(Box(
+            min=v1u(1),
+            max=v1u(3)
+        )),
+        UInt8[ 5, 17, 56 ],
+        Vec{4, UInt8}[ Vec(0, 0, 5, 1), Vec(0, 0, 17, 1), Vec(0, 0, 56, 1) ],
+        single_component=PixelIOChannels.blue
+    )
+    #   3D:
     #TODO: Try setting other mip levels (check the top mip level is unchanged)
     #TODO: Finish with the other textures
 

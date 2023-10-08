@@ -3,8 +3,8 @@
 #    to make the GUI code more understandable to new readers.
 
 cd(joinpath(@__DIR__, ".."))
-insert!(LOAD_PATH, 1, ".")
 insert!(LOAD_PATH, 1, "test")
+insert!(LOAD_PATH, 1, ".")
 
 using Dates, Setfield
 using ModernGL, GLFW, CImGui, CSyntax
