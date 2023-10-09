@@ -5,8 +5,6 @@
 "
 For a variety of objects, this checks all their known files' last-modified timestamp,
     and returns whether any of them have changed.
-
-If given a list of file names, it will output the names of all changed files.
 "
 function check_disk_modifications! end
 
@@ -15,18 +13,15 @@ function check_disk_modifications! end
 
 "A set of files, and their last-known values for 'last time modified'"
 const FileAssociations = Dict{AbstractString, DateTime}
-function check_disk_modifications!(fa::FileAssociations, output::Optional = nothing)
+function check_disk_modifications!(fa::FileAssociations)
     any_changes::Bool = false
     for file_path in keys(fa)
         last_changed_time = unix2datetime(isfile(file_path) ?
                                             stat(file_path).mtime :
-                                            zero(Float64))
+                                            typemax(UInt32)) # Larger values create a negative time
         if last_changed_time > fa[file_path]
             #TODO: Are we sure it's officially legal to change values while iterating over the keys?
             fa[file_path] = last_changed_time
-            if exist(output)
-                push!(output, file_path)
-            end
             any_changes = true
         end
     end
@@ -52,7 +47,7 @@ function check_disk_modifications!(cd::CachedData)::Bool
     current_datetime = now()
     if (current_datetime - cd.last_check_time) >= cd.disk_check_interval
         cd.last_check_time = current_datetime
-        return check_disk_modifications!(c.files)
+        return check_disk_modifications!(cd.files)
     else
         return false
     end
@@ -117,11 +112,13 @@ function make_data_cache( fc::FileCacher{TCached},
     return CachedData(
         data,
         # Get the "last-modified" time for each dependent file, plus the main one.
-        let paths = tuple((get_cached_path(fc, p) for p in (data_path, dependent_files...)...)),
-            file_modified_time(p) = unix2datetime(state(p).mtime)
-            Dict(p=>file_modified_time(p) for p in paths)
+        let paths = tuple((get_cached_path(fc, p) for p in (data_path, dependent_files...))...),
+            file_modified_time(p) = unix2datetime(stat(p).mtime)
+            Dict{AbstractString, DateTime}(p=>file_modified_time(p) for p in paths)
         end,
-        full_path, now(), rand(fc.check_interval_ms)
+        get_cached_path(fc, data_path),
+        now(),
+        Millisecond(rand(fc.check_interval_ms))
     )
 end
 
@@ -129,24 +126,21 @@ function check_disk_modifications!(fc::FileCacher{TCached})::Bool where {TCached
     any_changes::Bool = false
 
     empty!(fc.buffer)
-    keys = fc.buffer
-    append!(keys, keys(fc.files))
+    current_keys = fc.buffer
+    append!(current_keys, keys(fc.files))
 
-    for path in keys
+    for path in current_keys
         data = fc.files[path]
         if check_disk_modifications!(data)
             any_changes = true
-            if exists(output)
-                push!(output, path)
-            end
 
             delete!(fc.files, path)
 
             # Load the new data (or a fallback if it throws).
             result = try
-                fc.reload_response(path, data)
+                fc.reload_response(path, data.instance)
             catch e
-                fc.error_response(path, e, catch_backtrace(), data)
+                fc.error_response(path, e, catch_backtrace(), data.instance)
             end
             (new_data, new_dependent_files) = if result isa Tuple{TCached, Any}
                 result
@@ -173,11 +167,11 @@ function get_cached_data!(fc::FileCacher{TCached}, path::AbstractString)::Option
     full_path = get_cached_path(fc, path)
 
     if haskey(fc.files, full_path)
-        return fc.files[full_path]
+        return fc.files[full_path].instance
     else
         # Load the file data (or a fallback if it throws).
         result = try
-            fc.reload_response(path, data)
+            fc.reload_response(path)
         catch e
             fc.error_response(path, e, catch_backtrace(), data)
         end
@@ -201,5 +195,3 @@ end
 export FileCacher,
        load_uncached_data, close_cached_data, close_pooled_data,
        get_cached_data!, check_disk_modifications!
-
-println("#TODO: Unit tests for file_cacher.jl")
