@@ -316,6 +316,18 @@ Base.contains(outer::Box{N}, inner::Box{N}) where {N} = all(
     (max_exclusive(outer) >= max_exclusive(inner))
 )
 
+Base.rand(rng::Random.AbstractRNG, box::BoxT{<:Integer}) = let a = min_inclusive(box),
+                                                               b = max_inclusive(box)
+    return typeof(a)(i -> rand(rng, a[i]:b[i]))
+end
+Base.rand(rng::Random.AbstractRNG, box::Box) = let a = min_inclusive(box),
+                                                   b = max_inclusive(box)
+    return typeof(a)() do i
+        t = rand(rng, typeof(a[i]))
+        lerp(a[i], b[i], t)
+    end
+end
+
 
 ###########################
 #        Intervals        #
@@ -380,6 +392,7 @@ end
     return result
 end
 @inline Base.intersect(i::Interval, rest::Interval...) = Interval(intersect(i.box, (i2.box for i2 in rest)...))
+@inline Base.rand(rng::Random.AbstractRNG, range::Interval) = rand(rng, range.box).x
 
 
 ##########################################

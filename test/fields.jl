@@ -314,7 +314,7 @@ for (field, tests) in TEXTURE_FIELD_TESTS
         matches::Bool = if texture_field_sampling(field) == SampleModes.nearest
                             expected_output == actual_output
                         elseif texture_field_sampling(field) in (SampleModes.linear, )
-                            isapprox(expected_output, actual_output, 0.0001)
+                            isapprox(expected_output, actual_output, atol=0.0001)
                         else
                             error("Unhandled case: ", texture_field_sampling(field))
                         end
@@ -480,7 +480,7 @@ for (macro_expr, expected_type, expected_value) in FIELD_MACRO_TESTS
                  macro_expr, "\"\n  But got: ", typeof(evaluated_field))
 
     actual_value = get_field(evaluated_field, FIELD_DSL_POS)
-    @bp_check(isapprox(actual_value, expected_value, 0.0001),
+    @bp_check(isapprox(actual_value, expected_value, atol=0.0001),
               "Expected the value ", expected_value, " from \"", macro_expr,
                 "\"\n  But got: ", actual_value)
 end

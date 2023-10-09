@@ -354,7 +354,7 @@ function generate_texture( type::E_TexTypes,
     # Upload the initial data, if given.
     if exists(initial_data)
         set_tex_pixels(tex, initial_data[1];
-                       color_bgr_ordering = initial_data[2],
+                       bgr_ordering = initial_data[2],
                        recompute_mips=true)
     end
 

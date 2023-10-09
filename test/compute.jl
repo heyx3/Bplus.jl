@@ -526,9 +526,9 @@ bp_gl_context( v2i(800, 500), "Compute tests: 3D non-layered Image View",
         gl_catch_up_before(MemoryActions.texture_upload_or_download)
         expected::Array{v4f} = array
         actual::Array{v4f} = fill(v4f(i->NaN32), RESOLUTION_2D..., 1)
-        get_tex_color(tex, actual, subset = TexSubset(Box3Du(
+        get_tex_color(tex, actual, TexSubset(Box(
             min = v3u(1, 1, Z_SLICE),
-            max = v3u(tex.size.xy..., Z_SLICE)
+            size = v3u(tex.size.xy..., 1)
         )))
         check_gl_logs("After reading image $(context_msg...)")
         axis_difference::Array{v4f} = abs.(expected .- actual)
@@ -934,7 +934,10 @@ bp_gl_context( v2i(800, 500), "Compute tests: Cubemap non-layered Image View",
         gl_catch_up_before(MemoryActions.texture_upload_or_download)
         expected = array
         actual = fill(v4f(i->NaN32), RESOLUTION_2D..., 1)
-        get_tex_color(tex, actual, cube_face_range = IntervalU(min=CUBE_FACE, size=1))
+        get_tex_color(tex, actual, TexSubset(Box(
+            min=v3u(1, 1, CUBE_FACE),
+            size=v3u(RESOLUTION_2D..., 1)
+        )))
         check_gl_logs("After reading image $(context_msg...)")
         axis_difference::Array{v4f} = abs.(expected .- actual)
         total_difference::Array{Float32} = max.(axis_difference)
