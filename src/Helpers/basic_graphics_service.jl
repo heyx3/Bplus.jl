@@ -6,7 +6,7 @@ A Context service which defines a bunch of useful GL resources:
                           making it easy to spin up post-processing effects.
                        The UV coordinates can be calculated from the XY positions
                           (or from gl_FragCoord).
- * `quad` : A 2-triangle mesh describing a square, with 2D coordinates
+ * `screen_quad` : A 2-triangle mesh describing a square, with 2D coordinates
                 in the range (-1, -1) to (+1, +1).
             This _can_ be used for post-processing effects, but it's less efficient
                 than `screen_triangle`, for technical reasons.
@@ -17,7 +17,7 @@ A Context service which defines a bunch of useful GL resources:
 "
 @bp_service BasicGraphics(force_unique) begin
     screen_triangle::Mesh
-    quad::Mesh
+    screen_quad::Mesh
     blit::Program
     empty_mesh::Mesh
 
@@ -41,9 +41,9 @@ A Context service which defines a bunch of useful GL resources:
             (-1, 1),
             (1, 1)
         ]))
-        quad = Mesh(PrimitiveTypes.triangle_strip,
-                    [ VertexDataSource(quad_poses, sizeof(Vec{2, Int8})) ],
-                    [ VertexAttribute(1, 0x0, VSInput_FVector(Vec2{Int8}, false)) ])
+        screen_quad = Mesh(PrimitiveTypes.triangle_strip,
+                           [ VertexDataSource(quad_poses, sizeof(Vec{2, Int8})) ],
+                           [ VertexAttribute(1, 0x0, VSInput_FVector(Vec2{Int8}, false)) ])
 
         #TODO: Bool uniforms to avoid the extra math
         blit = bp_glsl"""
@@ -81,10 +81,10 @@ A Context service which defines a bunch of useful GL resources:
                              GL.VertexAttribute[ ])
 
         return new(
-            screen_tri, quad, blit, empty_mesh,
+            screen_tri, screen_quad, blit, empty_mesh,
             Set(AbstractResource[
                 screen_tri_poses, screen_tri,
-                quad_poses, quad,
+                quad_poses, screen_quad,
                 blit,
                 empty_mesh
             ])
@@ -97,7 +97,7 @@ A Context service which defines a bunch of useful GL resources:
     end
 
     "
-    Renders the given texure, using the given screen-quad transform
+    Renders the given texure, using the given screen-screen_quad transform
         and the given color transform on the texture's pixels.
     "
     function simple_blit(service,
@@ -128,10 +128,10 @@ A Context service which defines a bunch of useful GL resources:
         end
 
         # If drawing full-screen, use the more efficient triangle.
-        # If transforming it, use the more precise, intuitive quad.
+        # If transforming it, use the more precise, intuitive screen_quad.
         render_mesh((quad_transform == m_identityf(3, 3)) ?
                         service.screen_triangle :
-                        service.quad,
+                        service.screen_quad,
                     service.blit)
 
         if manage_tex_view && !was_active

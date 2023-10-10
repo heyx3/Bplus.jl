@@ -286,7 +286,7 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
 
     resources::Service_BasicGraphics = service_BasicGraphics_init()
     @assert(GL.count_mesh_vertices(resources.screen_triangle) == 3)
-    @assert(GL.count_mesh_vertices(resources.quad) == 4)
+    @assert(GL.count_mesh_vertices(resources.screen_quad) == 4)
 
     # Draw the skybox as a full-screen triangle with some in-shader projection math.
     # Set up a shader for the "skybox",

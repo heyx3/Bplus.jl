@@ -59,6 +59,8 @@ The code is organized into a number of modules, hierarchically. From lowest-leve
 
 Below is a quick overview. [A thorough description is available here](docs/!home.md). You can also refer to the inline doc-strings, comments, and [sample projects](https://github.com/heyx3/BpExamples).
 
+To import all B+ sub-modules into your project, you can use this snippet: `using Bplus; @using_bplus`.
+
 ### Utilities
 
 A dumping ground for all sorts of convenience functions and macros.
@@ -141,18 +143,9 @@ A dumping ground for useful stuff. Like *Utilities*, but more focused on B+ than
 
 Detailed information can be found in [this document](docs/Helpers.md), but here is a high-level overview:
 
-* `@game_loop`: A macro that makes it easy to run a B+ game. Refer to its doc-string for usage.
-* `@using_bplus`: A macro that automatically loads all B+ modules with `using` statements.
-* *Cam3D*: A basic customizable 3D camera.
-  * State is stored in `Cam3D{F}`
-  * Settings are stored in `Cam3D_Settings{F}`
-  * Frame inputs are stored in `Cam3D_Input{F}`
-  * Update the camera with `(state, settings) = cam_update(state, settings, input, delta_seconds)`.
-  * Get view/projection matrices with `cam_view_mat()` and `cam_projection_mat()`.
-* *Service_BasicGraphics*: a context service (see **GL**>*Services* above) which provides important, basic stuff. Automatically included for games built with `@game_loop`. ProvidesWE:
-  * Triangle and quad meshes which cover the whole screen
-  * A blit shader (used with `simple_blit()`)
-  * An empty mesh, for dispatching draw calls with entirely procedural geometry.
+* `@game_loop`: A macro that makes it easy to run a B+ game.
+* *Service_BasicGraphics*: a Context Service which provides basic assets like a quad and a blit shader.
+* `FileCacher{T}`: manages assets that can be dynamically reloaded from disk when they are changed.
 
 ### SceneTree
 
