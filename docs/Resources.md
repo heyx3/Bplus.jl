@@ -250,6 +250,20 @@ These functions have the following optional named arguments:
 * `subset::TexSubset = [entire texture]`. For cubemap textures, this subset is set on each desired face.
 * `bgr_ordering::Bool = false` (only for 3- and 4-channel color) should be true if data is specified as BGR instead of RGB (faster for download in many circumstances).
 
+### Copying
+
+You can directly copy the bits of one texture's pixels to another texture with `copy_tex_pixels(src, dest, args...)`.
+This is comparable to a `memcpy()`, meaning that the data is copied over without translation.
+It is allowed if and only if the source and destination texture have the same bit size per-pixel.
+
+When copying between a compressed and uncompressed texture, the requirement is a bit different: the bit size of one pixel of the uncompressed texture should match the bit size of one *block* of the compressed texture.
+
+Optional arguments are as follows:
+
+* `src_subset::TexSubset` : picks a subset of the source texture.
+* `dest_min = 1` : picks a min corner of the destination texture to copy to.
+* `dest_mip = 1` : picks a mip level of the destination texture to copy to.
+
 ### Other
 
 Query a texture's metadata with:

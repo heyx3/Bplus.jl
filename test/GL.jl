@@ -61,98 +61,6 @@ function test_buffers()
               "Buffer 2's handle isn't zeroed out after closing")
 end
 
-# Runs a test on textures.
-function test_textures()
-    # Manipulate the texture using different sizes and different TexTypes.
-    for type::E_TexTypes in (TexTypes.oneD, TexTypes.twoD, TexTypes.threeD)
-        for size in (1, 5, 13) # Larger sizes make the test crazy slow for 3D textures
-            local D::Int
-            if type == TexTypes.oneD
-                D = 1
-            elseif type == TexTypes.twoD
-                D = 2
-            elseif type == TexTypes.threeD
-                D = 3
-            else
-                error("Unhandled case: ", D)
-            end
-
-            sizeD::VecI{D} = Vec(i->size, D)
-
-            # Try some different texture formats.
-            formats::Vector{Tuple{Type, TexFormat}} = vcat(
-                # Generate a bunch of normal formats.
-                filter(((I, f), ) -> exists(get_ogl_enum(f)),
-                  map(Iterators.product((SimpleFormatComponents.R,
-                                         SimpleFormatComponents.RG,
-                                         SimpleFormatComponents.RGB,
-                                         SimpleFormatComponents.RGBA),
-                                        ((UInt8, SimpleFormatBitDepths.B8),
-                                         (UInt16, SimpleFormatBitDepths.B16),
-                                         (UInt32, SimpleFormatBitDepths.B32)))) do (components, (I, depth))
-                      return (I, SimpleFormat(FormatTypes.normalized_uint, components, depth))
-                  end
-                )
-                #TODO: Incorporate other formats, e.x. depth/stencil
-            )
-            for (I, format) in formats
-                components = GL.get_n_channels(format)
-                for n_mips::Int in 1:get_n_mips(sizeD)
-                    #TODO: Another loop for which set of components to set/get
-                    tex = Texture(format, sizeD; n_mips=n_mips)
-                    #TODO: Do the below tests for each mip level. Also check that mips are different after recomputation
-
-                    # Clear the texture, then check the pixels.
-                    val = Vec{Int(components), I}(i -> rand(I))
-                    clear_tex_color(tex, val)
-                    out_buf = Array{Vec{Int(components), I}, D}(undef, reverse(sizeD).data)
-                    get_tex_color(tex, out_buf)
-                    @bp_check(all(p -> p == val, out_buf),
-                              "Cleared pixels to ", val, " but got: ", out_buf)
-                    # Clear a subset, then check the pixels again.
-                      if all(sizeD >= 3)
-                        val2 = Vec{Int(components), I}(i -> rand(I))
-                        clear_range = Box(min=Vec(i->2, D), size=max(sizeD - 3, 1))
-                        clear_tex_color(tex, val2; subset=TexSubset(clear_range))
-                        uncleared_range = union(collect(1:(min_inclusive(clear_range) - 1)),
-                                                collect(max_exclusive(clear_range):sizeD))
-                        get_tex_color(tex, out_buf)
-                        @bp_check(all(i -> out_buf[i]==val, uncleared_range),
-                                  "Pixels that weren't affected by clear_tex_color()",
-                                    " are still different: ", uncleared_range, " of\n\t", out_buf)
-                        @bp_check(all(i -> out_buf[i]==val2,
-                                      min_inclusive(clear_range) : max_inclusive(clear_range)),
-                                  "Pixels that were in the cleared subset aren't",
-                                    " the expected values: ", cleared_range, " of\n\t", out_buf)
-                    end
-
-                    # Try getting and setting individual pixels.
-                    for pixel::VecI in 1:sizeD
-                        val = Vec{Int(components), I}(i -> rand(I))
-                        in_buf = Array{typeof(val)}(undef, ntuple(i->1, D))
-                        in_buf[1] = val
-                        set_tex_color(tex, in_buf;
-                                      subset=TexSubset(Box(min=pixel, size=Vec(i->1, D))))
-                        out_buf = Array{Vec{Int(components), I}, D}(undef, ntuple(i->1, D))
-                        get_tex_color(tex, out_buf;
-                                      subset=TexSubset(Box(min=pixel, size=Vec(i->1, D))))
-                        @bp_check(out_buf[1] == val,
-                                  "Set pixel of texture ", type, "_", format, "_", sizeD, "_", n_mips,
-                                      " at ", pixel, " to ", val, ". Got ", out_buf[1])
-                    end
-                    #TODO: Set as UInt[N], get as float, and test
-
-                    # Clean up.
-                    close(tex)
-                    @bp_check(get_ogl_handle(tex) == GL.Ptr_Texture(),
-                              "Texture was close()-d yet it still has a handle: ",
-                                type, " ", format, " ", size)
-                end
-            end
-        end
-    end 
-end
-
 # Create a GL Context and window, and put the GL library through its paces.
 bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once rendering starts";
                vsync=VsyncModes.on,
@@ -171,7 +79,6 @@ bp_gl_context( v2i(800, 500), "Running tests...press Enter to finish once render
         Random.seed!(seed)
 
         test_buffers()
-        test_textures()
         check_gl_logs("running test battery")
     end
 

@@ -1,22 +1,4 @@
 bp_gl_context(v2i(800, 500), "Test: GLtextures") do context::Context
-    function try_clearing_texture(tex::Texture,
-                                  clear_value, clear_subset::TexSubset,
-                                  read_subset::TexSubset)
-        clear_tex_pixels(tex, clear_value, clear_subset)
-
-        read_subset_area::Box = get_subset_range(read_subset, tex.size)
-        pixels_buffer = Array{typeof(clear_value)}(undef, size(read_subset_area)...)
-        get_tex_pixels(tex, pixels_buffer, read_subset)
-
-        for idx in 1:vsize(pixels_buffer)
-            pixel = idx + min_inclusive(read_subset_area)
-            actual = pixels_buffer[idx]
-            if clear_value != actual
-                error("Cleared texture to ", clear_value, " (in subset ", read_subset_area, "), ",
-                        "but pixel ", pixel, " (array element ", idx, "), is ", actual)
-            end
-        end
-    end
     function try_getting_texture(tex::Texture, subset::TexSubset,
                                  expected_flattened::AbstractVector
                                  ;
@@ -65,6 +47,67 @@ bp_gl_context(v2i(800, 500), "Test: GLtextures") do context::Context
             reshape(expected_data, prod(size(expected_data))),
             atol=atol,
             single_component=single_component
+        )
+    end
+    function try_clearing_texture(tex::Texture,
+                                  initial_value::TClear,
+                                  clear_ops::Vector{<:Pair{<:Box, TClear}},
+                                  expected_result::AbstractArray{TResult},
+                                  mip_level::Int = 1
+                                  ;
+                                  atol=0
+                                 ) where {TClear, TResult}
+        initial_clear_subset = Bplus.GL.default_tex_subset(tex)
+        initial_clear_subset = typeof(initial_clear_subset)( # @set! breaks for some reason :(
+            initial_clear_subset.area,
+            mip_level
+        )
+        clear_tex_pixels(tex, initial_value, initial_clear_subset)
+
+        for (pixel_range, clear_value) in clear_ops
+            clear_subset = typeof(initial_clear_subset)(
+                pixel_range,
+                mip_level
+            )
+            clear_tex_pixels(tex, clear_value, clear_subset)
+        end
+
+        try_getting_texture(
+            tex,
+            typeof(initial_clear_subset)(
+                nothing,
+                mip_level
+            ),
+            reshape(expected_result, prod(size(expected_result))),
+            atol=atol
+        )
+    end
+    function try_copying_texture(src::Texture, dest::Texture,
+                                 src_subset, dest_min, dest_mip,
+                                 src_foreground_value, dest_background_value)
+        dest_subset = TexSubset(
+            Box(
+                min=dest_min,
+                size=size(src_subset.area)
+            ),
+            dest_mip
+        )
+        dest_full_subset = TexSubset{Bplus.GL.get_subset_dims(dest_subset)}(nothing, dest_mip)
+
+        clear_tex_color(dest, dest_background_value)
+
+        clear_tex_color(src, src_foreground_value)
+        copy_tex_pixels(src, dest, src_subset, dest_min, dest_mip)
+
+        try_getting_texture(
+            dest, dest_full_subset,
+            let expected = Array{typeof(dest_background_value)}(undef, tex_size(dest)...)
+                expected .= dest_background_value
+                for i in min_inclusive(dest_subset.area):max_inclusive(dest_subset.area)
+                    expected[i] = reinterpret(typeof(dest_background_value), src_foreground_value)
+                end
+                reshape(expected, (prod(size(expected)), ))
+            end
         )
     end
 
@@ -511,6 +554,7 @@ bp_gl_context(v2i(800, 500), "Test: GLtextures") do context::Context
     )
     # RGBA8uint textures:
     #  1D:
+    #    Get and set RGBAu8
     try_setting_texture(
         tex_1D_rgba8u,
         TexSubset(Box(
@@ -519,6 +563,7 @@ bp_gl_context(v2i(800, 500), "Test: GLtextures") do context::Context
         )),
         Vec{4, UInt8}[ Vec(2, 3, 4, 5) ]
     )
+    #    Get and set RGBAu8
     try_setting_texture(
         tex_1D_rgba8u,
         TexSubset(Box(
@@ -527,6 +572,7 @@ bp_gl_context(v2i(800, 500), "Test: GLtextures") do context::Context
         )),
         Vec{4, UInt8}[ Vec(255, 8, 1, 2), Vec(38, 19, 20, 18) ]
     )
+    #    Set RGu8 and get RGBAu8
     try_setting_texture(
         tex_1D_rgba8u,
         TexSubset(Box(
@@ -536,6 +582,7 @@ bp_gl_context(v2i(800, 500), "Test: GLtextures") do context::Context
         Vec{2, UInt8}[ Vec(1, 2), Vec(20, 18) ],
         Vec{4, UInt8}[ Vec(1, 2, 0, 1), Vec(20, 18, 0, 1) ]
     )
+    #    Set Ru8 and get RGBAu8
     try_setting_texture(
         tex_1D_rgba8u,
         TexSubset(Box(
@@ -545,6 +592,7 @@ bp_gl_context(v2i(800, 500), "Test: GLtextures") do context::Context
         UInt8[ 5, 17, 56 ],
         Vec{4, UInt8}[ Vec(5, 0, 0, 1), Vec(17, 0, 0, 1), Vec(56, 0, 0, 1) ]
     )
+    #    Set Gu8 and get RGBAu8
     try_setting_texture(
         tex_1D_rgba8u,
         TexSubset(Box(
@@ -555,6 +603,7 @@ bp_gl_context(v2i(800, 500), "Test: GLtextures") do context::Context
         Vec{4, UInt8}[ Vec(0, 5, 0, 1), Vec(0, 17, 0, 1), Vec(0, 56, 0, 1) ],
         single_component=PixelIOChannels.green
     )
+    #    Set Bu8 and get RGBAu8
     try_setting_texture(
         tex_1D_rgba8u,
         TexSubset(Box(
@@ -566,12 +615,111 @@ bp_gl_context(v2i(800, 500), "Test: GLtextures") do context::Context
         single_component=PixelIOChannels.blue
     )
     #   3D:
+    #    Set RGBu8 and get RGBAu8
+    try_setting_texture(
+        tex_3D_rgba8u,
+        TexSubset(Box(
+            min=v3u(2, 1, 5),
+            max=v3u(3, 3, 5)
+        )),
+        Vec{3, UInt8}[
+            Vec(8, 9, 1)    Vec(5, 6, 7)
+            Vec(20, 30, 40) Vec(50, 100, 0)
+            Vec(111, 112, 114) Vec(115, 116, 118)
+            ;;;
+        ],
+        Vec{4, UInt8}[
+            Vec(8, 9, 1, 1)    Vec(5, 6, 7, 1)
+            Vec(20, 30, 40, 1) Vec(50, 100, 0, 1)
+            Vec(111, 112, 114, 1) Vec(115, 116, 118, 1)
+            ;;;
+        ]
+    )
+    #   Cube:
+    #    Set RGBu8 and get RGBAu8
+    try_setting_texture(
+        tex_cube_rgba8u,
+        TexSubset(Box(
+            min=v3u(2, 1, 1),
+            max=v3u(3, 3, 1)
+        )),
+        Vec{3, UInt8}[
+            Vec(8, 9, 1)    Vec(5, 6, 7)
+            Vec(20, 30, 40) Vec(50, 100, 0)
+            Vec(111, 112, 114) Vec(115, 116, 118)
+            ;;;
+        ],
+        Vec{4, UInt8}[
+            Vec(8, 9, 1, 1)    Vec(5, 6, 7, 1)
+            Vec(20, 30, 40, 1) Vec(50, 100, 0, 1)
+            Vec(111, 112, 114, 1) Vec(115, 116, 118, 1)
+            ;;;
+        ]
+    )
+    #TODO: Test the depth/stencil textures
     #TODO: Try setting other mip levels (check the top mip level is unchanged)
-    #TODO: Finish with the other textures
 
-    #TODO: Do Clear tests with `try_clearing_texture()`
-
-    #TODO: After several clears to different subsets, get and check a texture's full pixels.
+    # Test texture-clearing.
+    try_clearing_texture(
+        tex_3D_r32f,
+        Float32(-4.5),
+        [
+            Box(
+                min=v3u(1, 1, 1),
+                max=v3u(3, 3, 3)
+            ) => Float32(1.0),
+            Box(
+                min=v3u(3, 2, 3),
+                max=v3u(3, 4, 4)
+            ) => Float32(2.4),
+            Box(
+                min=v3u(2, 3, 1),
+                max=v3u(2, 3, 5)
+            ) => Float32(-999)
+        ],
+        let output = Array{Float32, 3}(undef, TEX_SIZE_3D...)
+            output .= -4.5
+            for i in one(v3u):3
+                output[i] = 1.0
+            end
+            for i in v3u(3, 2, 3):v3u(3, 4, 4)
+                output[i] = 2.4
+            end
+            for i in v3u(2, 3, 1):v3u(2, 3, 5)
+                output[i] = -999
+            end
+            output
+        end
+    )
+    #TODO: Test that clearing subsets of the full 4 color components works as expected.
 
     #TODO: Test recalculation of mips after setting the top mip (OpenGL mip calc always happens using the top mip's data)
+
+    # Set an R32u texture, copy_tex_pixels() to R32f, then check the pixels of the R32f texture.
+    tex_3D_r32u = Texture(
+        SimpleFormat(
+            FormatTypes.uint,
+            SimpleFormatComponents.R,
+            SimpleFormatBitDepths.B32
+        ),
+        TEX_SIZE_3D
+    )
+    try_copying_texture(
+        tex_3D_r32u, tex_3D_r32f,
+        TexSubset(
+            Box(
+                min=v3u(2, 4, 5),
+                max=v3u(3, 4, 5)
+            ),
+            1
+        ),
+        v3u(2, 1, 3), 1,
+        let foreground_src_value = reinterpret(UInt32, @f32(9.251854)),
+            background_src_value = ~foreground_src_value,
+            background_dest_value = reinterpret(Float32, background_src_value)
+            (foreground_src_value, background_dest_value)
+        end...
+    )
+    #TODO: Try copying depth and/or stencil into a color texture
+    #TODO: Try copying at different mip levels
 end
