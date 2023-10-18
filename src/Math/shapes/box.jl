@@ -316,6 +316,15 @@ Base.contains(outer::Box{N}, inner::Box{N}) where {N} = all(
     (max_exclusive(outer) >= max_exclusive(inner))
 )
 
+"Gets the corners of the box"
+function corners(b::Box{N, T})::NTuple{2^N, Vec{N, T}} where {N, T}
+    b_min = min_inclusive(b)
+    b_max = max_inclusive(b)
+    corner_flags = Iterators.product(Iterators.repeated((false, true), N)...)
+    return Tuple(vselect(b_min, b_max, Vec(t...)) for t in corner_flags)
+end
+export corners
+
 Base.rand(rng::Random.AbstractRNG, box::BoxT{<:Integer}) = let a = min_inclusive(box),
                                                                b = max_inclusive(box)
     return typeof(a)(i -> rand(rng, a[i]:b[i]))

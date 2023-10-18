@@ -49,6 +49,7 @@ You can get the properties of a box with the following getters:
   * `min_exclusive(box)` (only really useful for integer-type boxes)
   * `size(box)` (a new overload of the built-in function `Base.size()`)
   * `center(box)`
+  * `corners(box)` calculates a tuple of all `2^N` corner points.
 
 Some other box/interval functions (again, not including the `AbstractShape` interface) are:
   * `is_empty(box)::Bool` returns whether the box's volume is <= 0
