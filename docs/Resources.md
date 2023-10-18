@@ -467,8 +467,11 @@ Targets can output to particular slices of a 3D texture or faces of a cubemap te
 
 There are several ways to construct a `Target`. Whenever you provide settings rather than an explicit texture, the `Target` will create a texture for you, and will remember to destroy it when the `Target` is destroyed.
 
+Existing textures that you want to attach should be wrapped in the `TargetOutput` struct, which allows you to easily bind more exotic things to act like 2D attachments, such as slices of a 3D texture or faces of a cubemap texture. You can also bind an entire 3D texture or cubemap, and decide which slice/face to output to in the geometry shader. OpenGL refers to this as "layered" rendering.
+
 * `Target(size::v2u, n_pretend_layes::Int)` creates an instance with no actual outputs, but which pretends to have the given number of outputs.
-* `Target(color::Union{TargetOutput, Vector{TargetOutput}}, depth::TargetOutput)` creates an instance with one or more color attachments, and the given depth/stencil attachment.
+* `Target(color::Union{TargetOutput, Vector{TargetOutput}}, depth_stencil::TargetOutput)` creates an instance with zero or more color attachments, and the given depth/stencil attachment.
+* `Target(depth_stencil::TargetOutput)` creates an instance with no color attachments, only a depth and/or stencil attachment.
 * `Target(color::TargetOutput, depth_stencil::E_DepthStencilFormats, ds_no_sampling::Bool = true, ds_sampling_mode = DepthStencilSources.depth)` creates a target with one color output, and one depth/stencil output which by default is not sampleable. If it *is* marked sampleable, the fourth parameter controls what can be sampled from it.
 
 ## Use

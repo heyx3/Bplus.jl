@@ -12,7 +12,7 @@ By default, tries to access the `handle` property.
 "
 get_ogl_handle(r::AbstractResource) = r.handle
 "
-Gets whether a resource as already been destroyed.
+Gets whether a resource has already been destroyed.
 By default, checks if its OpenGL handle is null.
 "
 is_destroyed(r::AbstractResource) = (r.handle == typeof(r.handle)())
