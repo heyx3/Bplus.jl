@@ -250,6 +250,20 @@ These functions have the following optional named arguments:
 * `subset::TexSubset = [entire texture]`. For cubemap textures, this subset is set on each desired face.
 * `bgr_ordering::Bool = false` (only for 3- and 4-channel color) should be true if data is specified as BGR instead of RGB (faster for download in many circumstances).
 
+### Copying
+
+You can directly copy the bits of one texture's pixels to another texture with `copy_tex_pixels(src, dest, args...)`.
+This is comparable to a `memcpy()`, meaning that the data is copied over without translation.
+It is allowed if and only if the source and destination texture have the same bit size per-pixel.
+
+When copying between a compressed and uncompressed texture, the requirement is a bit different: the bit size of one pixel of the uncompressed texture should match the bit size of one *block* of the compressed texture.
+
+Optional arguments are as follows:
+
+* `src_subset::TexSubset` : picks a subset of the source texture.
+* `dest_min = 1` : picks a min corner of the destination texture to copy to.
+* `dest_mip = 1` : picks a mip level of the destination texture to copy to.
+
 ### Other
 
 Query a texture's metadata with:
@@ -453,8 +467,11 @@ Targets can output to particular slices of a 3D texture or faces of a cubemap te
 
 There are several ways to construct a `Target`. Whenever you provide settings rather than an explicit texture, the `Target` will create a texture for you, and will remember to destroy it when the `Target` is destroyed.
 
+Existing textures that you want to attach should be wrapped in the `TargetOutput` struct, which allows you to easily bind more exotic things to act like 2D attachments, such as slices of a 3D texture or faces of a cubemap texture. You can also bind an entire 3D texture or cubemap, and decide which slice/face to output to in the geometry shader. OpenGL refers to this as "layered" rendering.
+
 * `Target(size::v2u, n_pretend_layes::Int)` creates an instance with no actual outputs, but which pretends to have the given number of outputs.
-* `Target(color::Union{TargetOutput, Vector{TargetOutput}}, depth::TargetOutput)` creates an instance with one or more color attachments, and the given depth/stencil attachment.
+* `Target(color::Union{TargetOutput, Vector{TargetOutput}}, depth_stencil::TargetOutput)` creates an instance with zero or more color attachments, and the given depth/stencil attachment.
+* `Target(depth_stencil::TargetOutput)` creates an instance with no color attachments, only a depth and/or stencil attachment.
 * `Target(color::TargetOutput, depth_stencil::E_DepthStencilFormats, ds_no_sampling::Bool = true, ds_sampling_mode = DepthStencilSources.depth)` creates a target with one color output, and one depth/stencil output which by default is not sampleable. If it *is* marked sampleable, the fourth parameter controls what can be sampled from it.
 
 ## Use

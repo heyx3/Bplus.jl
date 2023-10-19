@@ -141,6 +141,11 @@ function Target(color::Union{TargetOutput, Vector{TargetOutput}}, depth::TargetO
         color_array, depth, Texture[ ]
     )
 end
+"
+Creates a depth-/stencil-only target, with no color attachments.
+The target is *not* responsible for cleaning them up.
+"
+Target(depth::TargetOutput) = Target(Vector{TargetOutput}(), depth)
 
 "
 Creates a target with the given color output, and generates a corresponding depth/stencil buffer.

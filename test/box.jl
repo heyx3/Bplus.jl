@@ -109,6 +109,23 @@
                                   Box(Vec(10, -5):Vec(23, 100))),
                         Box(Vec(10, 1):Vec(23, 40)))
 
+# Test corners().
+@bp_test_no_allocations(corners(Box(min=Vec(2, 3, 4), max=Vec(6, 7, 8))),
+                        tuple(
+                            Vec(2, 3, 4),
+                            Vec(6, 3, 4),
+
+                            Vec(2, 7, 4),
+                            Vec(6, 7, 4),
+
+
+                            Vec(2, 3, 8),
+                            Vec(6, 3, 8),
+
+                            Vec(2, 7, 8),
+                            Vec(6, 7, 8),
+                        ))
+
 #TODO: closest_point, reshape
 
 # Interval tests.

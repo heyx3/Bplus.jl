@@ -477,6 +477,26 @@ end
 view_activate(tex::Texture) = view_activate(get_view(tex))
 view_deactivate(tex::Texture) = view_deactivate(get_view(tex))
 
+"
+Gets a type-unstable texture size based on its type.
+
+Cube-maps are treated as 3D with a Z-size of 6.
+
+1D textures are returned as 1D vectors for consistency.
+"
+function tex_size(tex::Texture)::Union{v1u, v2u, v3u}
+    if tex.type == TexTypes.oneD
+        return v1u(tex.size.x)
+    elseif tex.type == TexTypes.twoD
+        return tex.size.xy
+    elseif tex.type == TexTypes.threeD
+        return tex.size
+    elseif tex.type == TexTypes.cube_map
+        return v3u(tex.size.xy..., 6)
+    else
+        error("Unhandled: ", tex.type)
+    end
+end
 
 "Changes how a texture's pixels are mixed when it's sampled on the GPU"
 function set_tex_swizzling(t::Texture, new::SwizzleRGBA)
@@ -960,12 +980,60 @@ function get_tex_depthstencil( t::Texture,
         get_buf_pixel_byte_size = sizeof(T)
     )
 end
+#TODO: Texture getters can also return an array rather than writing into an existing one.
 
-println("#TODO: support glCopyImageSubData()")
+"
+Copies between two textures.
 
-export get_view,
+The operation is comparable to `memcpy()`, in that the bit data is directly transferred over
+    without casting or normalizing.
+The only format requirement is that the bit size of a pixel is the same for each texture.
+
+When copying between a compressed and uncompressed texture, the requirement is slightly different:
+    the bit size of a *block* of the compressed texture must match
+    the bit size of a *pixel* from the uncompressed texture.
+
+For simplicity, the `dest_min` parameter can have more dimensions than the texture itself;
+    extra dimensions are ignored.
+As with other texture operations, cubemaps are treated as 3D with 6 Z-slices.
+"
+function copy_tex_pixels(src::Texture, dest::Texture,
+                         src_subset::TexSubset = default_tex_subset(src),
+                         dest_min::VecU = one(v3u),
+                         dest_mip::Int = 1
+                        )::Nothing
+    @bp_check(get_pixel_bit_size(src.format) == get_pixel_bit_size(dest.format),
+              "Trying to copy a texture with ", get_pixel_bit_size(src.format), "-bit pixels ",
+                "to a texture with ", get_pixel_bit_size(dest.format), "-bit pixels. ",
+                "The bit sizes must match!")
+
+    (src_range, src_mip) = process_tex_subset(src, src_subset)
+    (dest_range, dest_mip) = process_tex_subset(dest, TexSubset(
+        Box(
+            min=dest_min,
+            size=size(src_range)
+        ),
+        dest_mip
+    ))
+
+    #TODO: For compressed<=>uncompressed copies, the compressed texture should have its pixel range multiplied by the block size.
+    glCopyImageSubData(
+        get_ogl_handle(src), GLenum(src.type),
+        src_mip - 1,
+        (min_inclusive(src_range) - 1)...,
+
+        get_ogl_handle(dest), GLenum(dest.type),
+        dest_mip - 1,
+        (min_inclusive(dest_range) - 1)...,
+
+        size(src_range)...
+    )
+end
+
+export get_view, tex_size,
        set_tex_swizzling, set_tex_depthstencil_source,
        get_mip_byte_size, get_gpu_byte_size,
        clear_tex_pixels, clear_tex_color, clear_tex_depth, clear_tex_stencil, clear_tex_depthstencil,
        set_tex_pixels, set_tex_color, set_tex_depth, set_tex_stencil,
-       get_tex_pixels, get_tex_color, get_tex_depth, get_tex_stencil, get_tex_depthstencil
+       get_tex_pixels, get_tex_color, get_tex_depth, get_tex_stencil, get_tex_depthstencil,
+       copy_tex_pixels
