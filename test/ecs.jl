@@ -3,7 +3,7 @@ mutable struct Component1 <: AbstractComponent
     i::Int
     Component1(i = -1) = new(i)
 end
-ECS.allow_multiple(::Type{Component1}) = true
+ECS.is_entitysingleton_component(::Type{Component1}) = false
 ECS.require_components(::Type{Component1}) = (Component2, )
 
 # Component2 is a singleton and has no requirements.
@@ -11,25 +11,27 @@ mutable struct Component2 <: AbstractComponent
     s::String
     Component2(s = "") = new(s)
 end
-ECS.allow_multiple(::Type{Component2}) = false
+ECS.is_entitysingleton_component(::Type{Component2}) = true
 ECS.require_components(::Type{Component2}) = ()
 
 # Component3 is a singleton, and requires a Component4.
 mutable struct Component3 <: AbstractComponent end
-ECS.allow_multiple(::Type{Component3}) = false
+ECS.is_entitysingleton_component(::Type{Component3}) = true
 ECS.require_components(::Type{Component3}) = (Component2, Component4)
 
 # Component4 is not a singleton, and requires a Component3.
 mutable struct Component4 <: AbstractComponent end
-ECS.allow_multiple(::Type{Component4}) = true
+ECS.is_entitysingleton_component(::Type{Component4}) = false
 ECS.require_components(::Type{Component4}) = (Component3, )
 
 # Component5 and Component6 are subtypes of an abstract component type.
 abstract type Component_5_or_6 <: AbstractComponent end
 mutable struct Component5 <: Component_5_or_6 end
 mutable struct Component6 <: Component_5_or_6 end
-ECS.allow_multiple(::Type{Component5}) = true
-ECS.allow_multiple(::Type{Component6}) = true
+ECS.is_entitysingleton_component(::Type{Component5}) = false
+ECS.is_entitysingleton_component(::Type{Component6}) = false
+
+#TODO: Test world singletons as well.
 
 # Define references to all the testable data.
 world = World()

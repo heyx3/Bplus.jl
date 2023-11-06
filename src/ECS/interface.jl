@@ -4,7 +4,15 @@ Gets whether an entity can hold more than one of the given type of component.
 If your components inherit from another abstract component type,
     it's illegal for the abstract type to return a different value than the concrete child types.
 "
-allow_multiple(::Type{<:AbstractComponent})::Bool = true #TODO: Default to false, it's more common
+is_entitysingleton_component(::Type{<:AbstractComponent})::Bool = false #TODO: Default to false, it's more common
+"
+Gets whether a world can have more than one of the given type of component.
+
+If your components inherit from another abstract component type,
+    it's illegal for the abstract type to return a different value than the concrete child types.
+"
+is_worldsingleton_component(::Type{<:AbstractComponent})::Bool = false
+
 #TODO: Generalize to a blacklist of sibling component types
 
 #TODO: Allow support singleton components, 1 per world
@@ -45,6 +53,6 @@ Note that the entity reference is only given for convenience;
 "
 tick_component(::AbstractComponent, ::Entity) = nothing
 
-export allow_multiple, require_components,
+export is_entitysingleton_component, require_components,
        create_component, destroy_component,
        tick_component

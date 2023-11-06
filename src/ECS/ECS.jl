@@ -1,6 +1,7 @@
 "A simple ECS modeled after Unity3D' "
 module ECS
 
+using MacroTools
 using ..Utilities, ..Math
 
 @make_toggleable_asserts bp_ecs_

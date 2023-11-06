@@ -80,7 +80,9 @@ function add_component(::Type{T}, e::Entity,
     # Check that this operation is valid.
     @bp_ecs_assert(isstructtype(T) && ismutabletype(T),
                    "Component type should be a mutable struct: ", T)
-    if !allow_multiple(T)
+    if is_worldsingleton_component(T)
+        @bp_check(!has_component(world, T), "World alread has a ", T, " component")
+    elseif is_entitysingleton_component(T)
         @bp_check(!has_component(e, T), "Entity already has a ", T, " attached to it")
     end
 
@@ -176,6 +178,9 @@ const EMPTY_ENTITY_SET = Set{Entity}()
 function has_component(e::Entity, T::Type{<:AbstractComponent})::Bool
     relevant_entities = get(e.world.entity_lookup, T, EMPTY_ENTITY_SET)
     return e in relevant_entities
+end
+function has_component(w::World, T::Type{<:AbstractComponent})::Bool
+    return !haskey(w.component_counts, T)
 end
 
 "Throws an error if there is more than one of the given type of component for the given entity"
