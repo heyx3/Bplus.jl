@@ -13,15 +13,16 @@ macro submodule(name::Symbol)
 end
 
 @submodule Utilities
-
 @submodule Math
+
 @submodule GL
+@submodule SceneTree
+@submodule ECS
+@submodule Fields
 
 @submodule Input
 @submodule GUI
 
-@submodule SceneTree
-@submodule Fields
 @submodule Helpers
 
 
@@ -38,7 +39,7 @@ macro using_bplus()
         using Bplus.Utilities,
               Bplus.Math, Bplus.GL, Bplus.SceneTree,
               Bplus.Input, Bplus.GUI, Bplus.Helpers,
-              Bplus.Fields
+              Bplus.Fields, Bplus.ECS
     )
 end
 export @using_bplus

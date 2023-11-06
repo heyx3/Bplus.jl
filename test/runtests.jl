@@ -13,7 +13,7 @@ const TESTS_DEPENDENCIES = quote
 
     # The main codebase:
     using Bplus
-    using Bplus.Utilities, Bplus.Math, Bplus.GL,
+    using Bplus.Utilities, Bplus.Math, Bplus.GL, Bplus.ECS,
         Bplus.Helpers, Bplus.Fields, Bplus.SceneTree, Bplus.Input, Bplus.GUI
 
     # Unambiguate the ⋅ operator, between Images and Bplus.Math.
@@ -24,6 +24,7 @@ eval(TESTS_DEPENDENCIES)
 # Enable all asserts for the codebase.
 @inline Bplus.Utilities.bp_utils_asserts_enabled() = true
 @inline Bplus.Math.bp_math_asserts_enabled() = true
+@inline Bplus.ECS.bp_ecs_asserts_enabled() = true
 @inline Bplus.GL.bp_gl_asserts_enabled() = true
 @inline Bplus.Fields.bp_fields_asserts_enabled() = true
 @inline Bplus.Input.bp_input_asserts_enabled() = true
