@@ -67,7 +67,60 @@ Checks whether an expression contains valid function metadata
 function_wrapping_is_valid(expr)::Bool = exists(FunctionMetadata(expr))
 export function_wrapping_is_valid
 
-#TODO: is_function_declaration(expr)
+
+"Checks that an expression is a Symbol, possibly nested within `.` operators (for example, `Base.empty`)"
+function is_scopable_name(expr)::Bool
+    return (expr isa Symbol) || (isexpr(expr, :.) && (expr.args[2] isa QuoteNode))
+end
+
+"
+Checks if an expression is a short-form function declaration (like `f() = 5`).
+Note that MacroTools' version of this function accepts things that are not actually functions.
+
+If `check_components` is true, then the checks become a little stricter,
+    such as checking that the function name is a valid expression.
+"
+function is_short_function_decl(expr, check_components::Bool = true)::Bool
+    # Peel off the metadata.
+    metadata = FunctionMetadata(expr)
+    if isnothing(metadata)
+        return false
+    end
+    expr = metadata.core_expr
+
+    # Check that the grammar is correct.
+    #TODO: Support operator-style declarations, such as (a::T + b::T) = T(a.i + b.i)
+    if !@capture(expr, (f_(i__) = B_) |
+                       (f_(i__; j__) = B_) |
+                       (f_(i__)::R_ = B_) |
+                       (f_(i__; j__)::R_ = B_) |
+                       (f_(i__) where {T__} = B_) |
+                       (f_(i__; j__) where {T__} = B_) |
+                       (f_(i__)::R_ where {T__} = B_) |
+                       (f_(i__; j__)::R_ where {T__} = B_))
+        return false
+    end
+
+    # Check that the components are well-formed.
+    if check_components
+        return is_scopable_name(f)
+    else
+        return true
+    end
+end
+
+"
+Checks if an expression is a valid function declaration.
+Note that MacroTools' version of this function is overly permissive.
+
+If `check_components` is true, then the checks become a little stricter,
+    such as checking that the function name is a valid expression.
+"
+is_function_decl(expr, check_components::Bool = true)::Bool =
+    is_short_function_decl(shortdef(expr), check_components)
+
+export is_scopable_name, is_short_function_decl, is_function_decl
+
 
 "Deep-copies an expression AST, except for things that should not be copied like literal modules"
 expr_deepcopy(ast) = MacroTools.postwalk(ast) do e
