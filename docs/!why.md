@@ -93,9 +93,7 @@ const IS_DEBUG = false # Change to 'true' locally when debugging
 macro assert(condition, messsage)
     # I'm skipping over a few details, but this is basically how you make a macro
     return quote
-        if IS_DEBUG
-            $condition
-        else
+        if IS_DEBUG && $condition
             error($message)
         end
     end
