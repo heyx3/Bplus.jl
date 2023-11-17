@@ -10,11 +10,13 @@ include("types.jl")
 include("interface.jl")
 include("operations.jl")
 include("execution.jl")
+include("macros.jl")
 
 export World, Entity, AbstractComponent,
        add_entity, remove_entity,
        add_component, remove_component,
        has_component, get_component, get_components,
-       tick_world
+       tick_world,
+       @component
 
 end # module

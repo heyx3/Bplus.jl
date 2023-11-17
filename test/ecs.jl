@@ -1,28 +1,26 @@
 # Component1 is not a singleton, and requires a Component2.
-mutable struct Component1 <: AbstractComponent
+@component Component1 {require: Component2} begin
     i::Int
-    Component1(i = -1) = new(i)
+    function CONSTRUCT(i = -1)
+        this.i = i
+    end
 end
-ECS.is_entitysingleton_component(::Type{Component1}) = false
-ECS.require_components(::Type{Component1}) = (Component2, )
 
 # Component2 is a singleton and has no requirements.
-mutable struct Component2 <: AbstractComponent
+@component Component2 {entitySingleton} begin
     s::String
-    Component2(s = "") = new(s)
+    function CONSTRUCT(s = "")
+        this.s = s
+    end
 end
-ECS.is_entitysingleton_component(::Type{Component2}) = true
-ECS.require_components(::Type{Component2}) = ()
 
 # Component3 is a singleton, and requires a Component4.
-mutable struct Component3 <: AbstractComponent end
+@component Component3 {entitySingleton} {require: Component2, Component4} begin end
 ECS.is_entitysingleton_component(::Type{Component3}) = true
 ECS.require_components(::Type{Component3}) = (Component2, Component4)
 
 # Component4 is not a singleton, and requires a Component3.
-mutable struct Component4 <: AbstractComponent end
-ECS.is_entitysingleton_component(::Type{Component4}) = false
-ECS.require_components(::Type{Component4}) = (Component3, )
+@component Component4 {require: Component3} begin end
 
 # Component5 and Component6 are subtypes of an abstract component type.
 abstract type Component_5_or_6 <: AbstractComponent end

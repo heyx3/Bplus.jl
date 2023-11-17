@@ -13,9 +13,7 @@ If your components inherit from another abstract component type,
 "
 is_worldsingleton_component(::Type{<:AbstractComponent})::Bool = false
 
-#TODO: Generalize to a blacklist of sibling component types
-
-#TODO: Allow support singleton components, 1 per world
+#TODO: Generalize to a blacklist of sibling component types (entitySingleton means the type itself is added to the blacklist)
 
 "
 Gets the types of components required by the given component.

@@ -63,6 +63,12 @@ for (input, expected) in [ (
                                    "ABCdef",
                                    true
                                )
+                           ),
+                           (
+                               :( abc(def, ghi::Int)::Float32 ),
+                               (:abc, SplitArg.([ :def, :( ghi::Int ) ]), [ ],
+                                nothing, :Float32,
+                                (), nothing, false)
                            )
                          ]
     input = rmlines(input)
@@ -77,10 +83,23 @@ for (input, expected) in [ (
             f_expected = map(e -> getfield.(Ref(e), fieldnames(SplitArg)), f_expected)
         end
         @bp_check(f_actual == f_expected,
-                  "SplitDef.", name, " should be ", f_expected, ", but was ", f_actual,
+                  "SplitDef.", name, " should be (", typeof(f_expected), ") ", f_expected, ", but was (",
+                  typeof(f_actual), ") ", f_actual,
                   "; in function:\n", input, "\n\n")
     end
 end
+
+# Test SplitMacro:
+@bp_check(isnothing(SplitMacro(:( f() = 5 ))))
+let sm = SplitMacro(:( @a(b, c) ))
+    @bp_check(exists(sm))
+    @bp_check(sm.name == Symbol("@a"), sm)
+    @bp_check(sm.args == [ :b, :c ], sm)
+    @bp_check(string(combinemacro(sm)) ==
+                "$(sm.source) @a b c",
+              "Got: ", string(combinemacro(sm)))
+end
+
 
 # Test combinecall():
 for (input, expected) in [ (:( f(a) ), :( f(a) )),

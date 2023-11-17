@@ -16,8 +16,10 @@ end
 "
 Returns `nothing` if the expression doesn't look like a valid function definition
     (i.e. it's wrapped by an unexpected macro, or not even a function in the first place).
+
+Pass false for `check_function_grammar` to ignore the actual function inside the macros.
 "
-function FunctionMetadata(expr)::Optional{FunctionMetadata}
+function FunctionMetadata(expr, check_function_grammar::Bool = true)::Optional{FunctionMetadata}
     if @capture expr (@name_ args__)
         if name == GlobalRef(Core, Symbol("@doc"))
             doc_string = args[1]
@@ -33,7 +35,7 @@ function FunctionMetadata(expr)::Optional{FunctionMetadata}
             return nothing
         end
     #NOTE: this snippet comes from MacroTools source; unfortunately it isn't provided explicitly
-    elseif @capture(longdef(expr), function (fcall_ | fcall_) body_ end)
+    elseif !check_function_grammar || @capture(longdef(expr), function (fcall_ | fcall_) body_ end)
         return FunctionMetadata(nothing, false, false, expr)
     else
         return nothing
@@ -124,7 +126,7 @@ export is_scopable_name, is_short_function_decl, is_function_decl
 
 "Deep-copies an expression AST, except for things that should not be copied like literal modules"
 expr_deepcopy(ast) = MacroTools.postwalk(ast) do e
-    if e isa Module
+    if e isa Union{Module, GlobalRef, String, UnionAll, Type}
         e
     elseif e isa Expr
         Expr(e.head, expr_deepcopy.(e.args)...)
@@ -161,7 +163,11 @@ export SplitArg
 
 "
 A data representation of the output of `splitdef()`,
-    plus the ability to recognize doc-strings and `@inline`.
+    plus the ability to recognize meta-data like doc-strings and `@inline`.
+
+For convenience, it can also represent function signatures (i.e. calls),
+    and the body will be set to `nothing`.
+See `combinecall()` for the opposite.
 "
 mutable struct SplitDef
     name
@@ -175,11 +181,16 @@ mutable struct SplitDef
     generated::Bool
 
     function SplitDef(expr)
-        metadata = FunctionMetadata(expr)
+        metadata = FunctionMetadata(expr, false)
         if isnothing(metadata)
             error("Invalid function declaration syntax: ", expr)
         end
         expr = metadata.core_expr
+
+        # If it's just a function call, give it a Nothing body.
+        if !MacroTools.isshortdef(shortdef(expr))
+            expr = :( $expr = $nothing )
+        end
 
         dict = splitdef(expr)
         return new(
@@ -241,6 +252,52 @@ function combinecall(struct_representation::SplitDef)
 end
 
 export SplitDef, combinecall
+
+
+##  SplitMacro  ##
+
+"
+A data representation of a macro invocation.
+The constructor returns `nothing` if the expression isn't a macro invocation.
+
+Turn this struct back into a macro call with `combinemacro()`.
+"
+mutable struct SplitMacro
+    name::Symbol
+    source::LineNumberNode
+    args::Vector
+
+    function SplitMacro(expr)
+        if isexpr(expr, :macrocall)
+            return new(
+                expr.args[1],
+                expr.args[2],
+                expr.args[3:end]
+            )
+        else
+            return nothing
+        end
+    end
+    SplitMacro(src::SplitMacro, deepcopy_args::Bool = true) = new(
+        expr_deepcopy(src.name),
+        expr_deepcopy(src.source),
+        map(a -> deepcopy_args ? expr_deepcopy(a) : a,
+            src.args)
+    )
+end
+
+"Turns the data representaton of a macro call into an AST"
+function combinemacro(m::SplitMacro)
+    return Expr(:macrocall,
+        m.name,
+        m.source,
+        m.args...
+    )
+end
+
+is_macro_invocation(expr) = isexpr(expr, :macrocall)
+
+export SplitMacro, combinemacro, is_macro_invocation
 
 
 ##  Assignment operators  ##
