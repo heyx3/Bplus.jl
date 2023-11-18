@@ -312,8 +312,6 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
                     kw_args=copy(func_data.kw_args),
                     body=func_data.body
                 )
-            #TODO: CONSTRUCT_DEFAULT, generates a constructor with one argument for each field.
-            #TODO: CONSTRUCT_MANUAL(), has to manually invoke BASE() to get base-class construction behavior
             elseif func_data.name == :DESTRUCT
                 if exists(destructor)
                     error("More than one DESTRUCT() provided!")
@@ -378,9 +376,6 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
             if fieldName in (:entity, :world)
                 error("Can't name a component field 'entity', or 'world'")
             end
-            if exists(doc_string)
-                #TODO: Append field doc-strings into the component's somehow. Include parent fields' doc-strings.
-            end
             push!(field_data, fieldName => (isnothing(fieldType) ? Any : fieldType))
         elseif is_macro_invocation(statement)
             macro_data = SplitMacro(statement)
@@ -422,7 +417,6 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
             end
         elseif statement isa LineNumberNode
             # Ignore it.
-            #TODO: Is every statement preceded by a LineNumberNode? If so, pass them through (e.x. to implemented_promises/configurables)
         else
             error("Unexpected syntax in body of component '$component_name': \"$statement\"")
         end
@@ -442,7 +436,6 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
             body=nothing
         )
     end
-    #TODO: Check that the implemented promises and configurations kept the same signature.
 
     # Process promise data for code generation.
     all_promises::Vector{Symbol} = [
@@ -458,7 +451,6 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
     end
 
     # Process configurable data for code generation.
-    #TODO: Allow for marking configurables as "final", meaning they can't be overridden by child components.
     all_configurables::Vector{Symbol} = [
         component_macro_overridable_configurables(supertype_t)...,
         (tup[2].name for tup in new_configurables)...
@@ -504,7 +496,6 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
         # Calculate named arguments.
         # Any arguments named by the child are left out of the parents.
         # This means if the child is slurping all kw-args, *nothing* passes on to the parents.
-        #TODO: Allow annotating a kw-arg to also pass through to the parents.
         if any(ka -> ka.is_splat, constructor_arg_data.kw_args)
             for i in 1:length(parent_kwargs)
                 parent_kwargs[i] = Set{Symbol}()
@@ -838,7 +829,6 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
     end)
 
     # Add some other useful stuff.
-    #TODO: Make this a bit more configurable (e.x. whether to space it out with line breaks and tabs)
     !is_abstract && push!(global_decls, :(
         function $Base.print(io::IO, c::$(esc(component_name)))
             print(io, $(string(component_name)), "(<entity>, <world>" )

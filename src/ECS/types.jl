@@ -20,12 +20,9 @@ mutable struct World
     elapsed_seconds::Float32
     time_scale::Float32
 
-    #TODO: Delayed functions to call, associated with an Entity or Component
-
     # For each Entity, for each Component type, lists all instances.
     component_lookup::Dict{_Entity{World},
                            Dict{Type{<:AbstractComponent},
-                                #TODO: I think it's probably more efficient for each set to hold the specific componen type
                                 Set{AbstractComponent}}}
     # For each component type, lists all entities with that component.
     entity_lookup::Dict{Type{<:AbstractComponent},

@@ -4,7 +4,7 @@ Gets whether an entity can hold more than one of the given type of component.
 If your components inherit from another abstract component type,
     it's illegal for the abstract type to return a different value than the concrete child types.
 "
-is_entitysingleton_component(::Type{<:AbstractComponent})::Bool = false #TODO: Default to false, it's more common
+is_entitysingleton_component(::Type{<:AbstractComponent})::Bool = false
 "
 Gets whether a world can have more than one of the given type of component.
 
@@ -12,8 +12,6 @@ If your components inherit from another abstract component type,
     it's illegal for the abstract type to return a different value than the concrete child types.
 "
 is_worldsingleton_component(::Type{<:AbstractComponent})::Bool = false
-
-#TODO: Generalize to a blacklist of sibling component types (entitySingleton means the type itself is added to the blacklist)
 
 "
 Gets the types of components required by the given component.
