@@ -138,6 +138,24 @@ Base.size(d::drop_last, dim...) = let s = Base.size(d.iter, dim...)
 end
 export drop_last
 
+"
+Wraps an iterator so that it can be unwrapped by calling `pairs()`.
+Each element's key in the pair is an index, using `enumerate()`.
+
+This is needed to use iterators/generators in functions like `findfirst()`.
+"
+struct EnumeratedPairing{Iter}
+    elements::Iter
+end
+Base.pairs(e::EnumeratedPairing) = enumerate(e.elements)
+"
+Wraps an iterator so that it can be unwrapped by calling `pairs()`.
+Each element's key in the pair is an index, using `enumerate()`.
+This is needed to use iterators/generators in functions like `findfirst()`.
+"
+enumerate_as_pair(it) = EnumeratedPairing(it)
+export enumerate_as_pair
+
 "Inserts a delimiter between each element of an iteration"
 iter_join(iterable, delimiter) = drop_last(Iterators.flatten(zip(iterable, Iterators.repeated(delimiter))))
 export iter_join

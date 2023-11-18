@@ -63,6 +63,12 @@ for (input, expected) in [ (
                                    "ABCdef",
                                    true
                                )
+                           ),
+                           (
+                               :( abc(def, ghi::Int)::Float32 ),
+                               (:abc, SplitArg.([ :def, :( ghi::Int ) ]), [ ],
+                                nothing, :Float32,
+                                (), nothing, false)
                            )
                          ]
     input = rmlines(input)
@@ -77,10 +83,23 @@ for (input, expected) in [ (
             f_expected = map(e -> getfield.(Ref(e), fieldnames(SplitArg)), f_expected)
         end
         @bp_check(f_actual == f_expected,
-                  "SplitDef.", name, " should be ", f_expected, ", but was ", f_actual,
+                  "SplitDef.", name, " should be (", typeof(f_expected), ") ", f_expected, ", but was (",
+                  typeof(f_actual), ") ", f_actual,
                   "; in function:\n", input, "\n\n")
     end
 end
+
+# Test SplitMacro:
+@bp_check(isnothing(SplitMacro(:( f() = 5 ))))
+let sm = SplitMacro(:( @a(b, c) ))
+    @bp_check(exists(sm))
+    @bp_check(sm.name == Symbol("@a"), sm)
+    @bp_check(sm.args == [ :b, :c ], sm)
+    @bp_check(string(combinemacro(sm)) ==
+                "$(sm.source) @a b c",
+              "Got: ", string(combinemacro(sm)))
+end
+
 
 # Test combinecall():
 for (input, expected) in [ (:( f(a) ), :( f(a) )),
@@ -106,3 +125,52 @@ for (input, expected) in [ (:( f(a) ), :( f(a) )),
               "Expected ", input, " to convert to ",
                 string(expected), ", but got ", string(actual))
 end
+
+# Test is_function_decl():
+run_test(expr, expected=true) = @bp_check(is_function_decl(expr) == expected,
+                                          expected ? "Valid" : "Invalid",
+                                            " function declaration not caught by is_function_decl(): ",
+                                            expr)
+run_tests_1(header, valid_header=true) = begin # Test function call and then function definition
+    run_test(header, false)
+    run_test(:( $header = nothing ), valid_header)
+end
+run_tests_2(signature, valid_signature=true) = begin # Test with/without return values and type params
+    run_tests_1(:( $signature ), valid_signature)
+    run_tests_1(:( $signature::Int ), valid_signature)
+    run_tests_1(:( $signature::T where {T} ), valid_signature)
+    run_tests_1(:( $signature::T where {T<:AbstractArmAndALeg} ), valid_signature)
+    run_tests_1(:( $signature where {T} ), valid_signature)
+    run_tests_1(:( $signature where {T<:HelloWorld} ), valid_signature)
+end
+run_tests_3(name, valid_name=true) = begin # Test with various parameter combinations
+    run_tests_2(:( $name() ), valid_name)
+    run_tests_2(:( $name(i) ), valid_name)
+    run_tests_2(:( $name(i=6) ), valid_name)
+    run_tests_2(:( $name(i::Int = 6) ), valid_name)
+    run_tests_2(:( $name(; j) ), valid_name)
+    run_tests_2(:( $name(; j=7) ), valid_name)
+    run_tests_2(:( $name(; j::Int) ), valid_name)
+    run_tests_2(:( $name(; j::Int = 7) ), valid_name)
+    run_tests_2(:( $name(i; j) ), valid_name)
+    run_tests_2(:( $name(i; j=7) ), valid_name)
+    run_tests_2(:( $name(i; j::Int) ), valid_name)
+    run_tests_2(:( $name(i; j::Int = 7) ), valid_name)
+    run_tests_2(:( $name(i=6; j) ), valid_name)
+    run_tests_2(:( $name(i=6; j=7) ), valid_name)
+    run_tests_2(:( $name(i=6; j::Int) ), valid_name)
+    run_tests_2(:( $name(i=6; j::Int = 7) ), valid_name)
+    run_tests_2(:( $name(i::Int; j) ), valid_name)
+    run_tests_2(:( $name(i::Int; j=7) ), valid_name)
+    run_tests_2(:( $name(i::Int; j::Int) ), valid_name)
+    run_tests_2(:( $name(i::Int; j::Int = 7) ), valid_name)
+    run_tests_2(:( $name(i::Int = 6; j) ), valid_name)
+    run_tests_2(:( $name(i::Int = 6; j=7) ), valid_name)
+    run_tests_2(:( $name(i::Int = 6; j::Int) ), valid_name)
+    run_tests_2(:( $name(i::Int = 6; j::Int = 7) ), valid_name)
+end
+run_tests_3(:f)
+run_tests_3(:(Base.f))
+run_tests_3(:(Base.f))
+run_tests_3(:(a + b), false)
+run_tests_3(:(a()), false)

@@ -6,7 +6,9 @@ macro bp_check(expr, msg...)
     msg = map(esc, msg)
     return quote
         if !($(esc(expr)))
-            error($(msg...), ".\n  @bp_check(", $(string(expr)), ") failed.")
+            error($(msg...),
+                  $((isempty(msg) ? "" : ".\n  ")),
+                    "@bp_check(", $(string(expr)), ") failed.")
         end
     end
 end

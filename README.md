@@ -33,15 +33,16 @@ The tests are divided into many individual files. There are also some sample tes
 The code is organized into a number of modules, hierarchically. From lowest-level to highest:
 
 ````
----------------
-|  Utilities  |
----------------
-         |
-         |
-         |
-  ----------------------
-  |        Math        |
-  ----------------------
+--------------------------------
+|          Utilities           |
+--------------------------------
+         |               \
+         |                \
+         |                 \
+         |                  \
+  ----------------------   ----------------------
+  |        Math        |   |        ECS         |
+  ----------------------   ----------------------
     |            |     \
     |            |      \
     |            |       \
@@ -136,6 +137,20 @@ Detailed information can be found in [this document](docs/GUI.md), but here is h
 If you use [`@game_loop`](docs/Helpers.md#Game-Loop), then this is all handled for you and you can use *CImGui* freely.
 
 To send a texture (or texture View) to the GUI system, you must wrap it with `gui_tex_handle(tex_or_view)`
+
+### ECS
+
+A very simple and friendly entity-component system, loosely based on Unity3D's model. If you want high-performance, use an external Julia ECS package instead.
+
+Detailed information can be found in [this document](docs/ECS.md), but here is a high-level overview:
+
+* A `World` is a list of `Entity` (plus accelerated lookup structures)
+* An `Entity` is a list of `AbstractComponent`
+* You can add, remove, and query entities for components.
+  * You can also query the components across an entire `World`.
+* You can define component types with the `@component` macro. Components have a OOP structure to them; abstract parent components can add fields, "promises" (a.k.a. abstract functions) and "configurables" (a.k.a. virtual functions).
+  * Refer to the `@component` doc-string for a very detailed explanation of the features and syntax.
+* You can update an entire world with `tick_world(world, delta_seconds::Float32)`.
 
 ### Helpers
 
