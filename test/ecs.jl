@@ -23,13 +23,28 @@ ECS.require_components(::Type{Component3}) = (Component2, Component4)
 @component Component4 {require: Component3} begin end
 
 # Component5 and Component6 are subtypes of an abstract component type.
-abstract type Component_5_or_6 <: AbstractComponent end
-mutable struct Component5 <: Component_5_or_6 end
-mutable struct Component6 <: Component_5_or_6 end
-ECS.is_entitysingleton_component(::Type{Component5}) = false
-ECS.is_entitysingleton_component(::Type{Component6}) = false
+@component Component_5_or_6 {abstract} begin
+    f::Float32
+    is_dead::Bool
+    CONSTRUCT(f) = begin
+        this.f = convert(Float32, f)
+        this.is_dead = false
+    end
+    function DESTRUCT()
+        @bp_check(!this.is_dead, "It's already dead??")
+        this.is_dead = true
+    end
+end
+@component Component5 <: Component_5_or_6 begin
+    i5::Int
+    CONSTRUCT() = (this.i5 = -5)
+end
+@component Component6 <: Component_5_or_6 begin
+    DESTRUCT() = nothing
+end
 
-#TODO: Test world singletons as well.
+#TODO: Test worldSingleton.
+
 
 # Define references to all the testable data.
 world = World()
@@ -180,7 +195,10 @@ c2_2[] = get_component(entities[2], Component2)
         )
 
 # Add Component5 and check that it's also registered under its abstract parent type.
-push!(c5s, add_component(Component5, entities[1]))
+push!(c5s, add_component(Component5, entities[1], 5.5))
+@bp_check c5s[end].f == @f32(5.5)
+@bp_check c5s[end].i5 == -5
+@bp_check c5s[end].is_dead == false
 @bp_check count(x->true, get_components(entities[1], Component5)) == 1
 @bp_check count(x->true, get_components(entities[1], Component_5_or_6)) == 1
 @bp_check count(x->true, get_components(world, Component5)) == 1
@@ -223,7 +241,9 @@ push!(c5s, add_component(Component5, entities[1]))
 
 # Add Component6 and check that it's also registered under its abstract parent type,
 #    shared with the Component5 added in the previous test.
-push!(c6s, add_component(Component6, entities[1]))
+push!(c6s, add_component(Component6, entities[1], 70))
+@bp_check(c6s[end].f == 70)
+@bp_check(c6s[end].is_dead == false)
 @bp_check count(x->true, get_components(entities[1], Component6)) == 1
 @bp_check count(x->true, get_components(entities[1], Component_5_or_6)) == 2
 @bp_check count(x->true, get_components(world, Component6)) == 1
@@ -266,3 +286,9 @@ push!(c6s, add_component(Component6, entities[1]))
         Component6 => 1,
         Component_5_or_6 => 2,
     )
+
+# Remove component 5 and check that it updates its "is_dead" field.
+remove_component(c5s[end], entities[1])
+@bp_check(c5s[end].is_dead)
+@bp_check(!c6s[end].is_dead)
+deleteat!(c5s, length(c5s))

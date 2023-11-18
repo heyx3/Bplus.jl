@@ -71,14 +71,14 @@ function add_component(::Type{T}, e::Entity,
                        # Ignores certain elements of `require_components()`
                        #    that are currently in the process of being added already,
                        #    to prevent an infinite loop from components requiring each other.
-                       ignore_requirements::Optional{Set{Type{<:AbstractComponent}}} = nothing,
+                       var"INTERNAL: ignore_requirements"::Optional{Set{Type{<:AbstractComponent}}} = nothing,
 
                        kw_args...
                       )::T where {T<:AbstractComponent}
     world::World = e.world
 
     # Check that this operation is valid.
-    @bp_ecs_assert(isstructtype(T) && ismutabletype(T),
+    @bp_ecs_assert(isabstracttype(T) || (isstructtype(T) && ismutabletype(T)),
                    "Component type should be a mutable struct: ", T)
     if is_worldsingleton_component(T)
         @bp_check(!has_component(world, T), "World alread has a ", T, " component")
@@ -89,8 +89,8 @@ function add_component(::Type{T}, e::Entity,
     # Add any required components that are missing.
     # Ignore ones that are already being initialized,
     #    in the case where we're inside one of these dependent 'add_component()' calls.
-    new_ignore_requirements = if exists(ignore_requirements)
-        ignore_requirements
+    new_ignore_requirements = if exists(var"INTERNAL: ignore_requirements")
+        var"INTERNAL: ignore_requirements"
     else
         empty!(world.buffer_ignore_requirements)
         world.buffer_ignore_requirements
@@ -98,15 +98,16 @@ function add_component(::Type{T}, e::Entity,
     push!(new_ignore_requirements, T)
     for required_T in require_components(T)
         if !in(required_T, new_ignore_requirements) && !has_component(e, required_T)
-            add_component(required_T, e; ignore_requirements = new_ignore_requirements)
+            add_component(required_T, e; var"INTERNAL: ignore_requirements" = new_ignore_requirements)
             # required_T will have been added to 'new_ignore_requirements' by the recursive call
         end
     end
 
     # Finally, construct the desired component and add it to all the lookups.
     component::T = create_component(T, e, args...; kw_args...)
+    TReal = typeof(component) # T may be abstract
     push!(e.components, component)
-    for super_T in get_component_types(T)
+    for super_T in get_component_types(TReal)
         push!(get!(() -> Set{AbstractComponent}(),
                    world.component_lookup[e], super_T),
               component)

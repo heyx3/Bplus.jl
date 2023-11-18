@@ -1,26 +1,165 @@
 # An internal interface is used to reference inherited behavior from parent components.
 #    Metadata:
-component_macro_fields(  T::Type{<:AbstractComponent}) = [f=>fieldtype(f, T) for f in fieldnames(T)]
+component_macro_fields(         T::Type{<:AbstractComponent}) = error() # iteration of Pair{name, typeExpr}
 component_macro_init_parent_args(::Type{<:AbstractComponent}) = (args = [], kw_args=[]) # Both elements are vecotrs of SplitDef
 #    Standard events:
-component_macro_init(       ::Type{<:AbstractComponent}, ::AbstractComponent, args...; kw_args...) = error()
+component_macro_init(      T::Type{<:AbstractComponent}, ::AbstractComponent, args...; kw_args...) = error(
+    "Arguments do not match in call: ", T, ".CONSTRUCT(",
+        join(("::$(typeof(a))" for a in args), ", "),
+        " ; ", join(("$n=::$(typeof(v))" for (n, v) in kw_args), ", "),
+    ")"
+)
 component_macro_cleanup(    ::Type{<:AbstractComponent}, ::AbstractComponent, ::Bool) = error()
 component_macro_tick(       ::Type{<:AbstractComponent}, ::AbstractComponent        ) = error()
 component_macro_finish_tick(::Type{<:AbstractComponent}, ::AbstractComponent        ) = error()
 #    Promises:
 component_macro_all_promises(::Type{<:AbstractComponent}) = () # Symbols
 component_macro_unimplemented_promises(::Type{<:AbstractComponent}) = () # Symbols
-component_macro_implements_promise(::Type{<:AbstractComponent}, ::Val)::Bool = error()
+component_macro_implements_promise(::Type{<:AbstractComponent}, ::Val)::Bool = false
 component_macro_promise_data(::Type{<:AbstractComponent}, ::Val)::SplitDef = error()
-component_macro_promise_execute(::Type{<:AbstractComponent}, ::AbstractComponent, ::Val,
-                                args...; kw_args...) = error()
+component_macro_promise_execute(T::Type{<:AbstractComponent}, ::AbstractComponent, v::Val,
+                                args...; kw_args...) = error(
+    "Arguments do not match promise: ", T, ".", val_type(v), "(",
+        join(("::$(typeof(a))" for a in args), ", "),
+        " ; ", join(("$n=::$(typeof(v))" for (n, v) in kw_args), ", "),
+    ")"
+)
 #    Configurables:
 component_macro_overridable_configurables(::Type{<:AbstractComponent}) = () # Symbols
-component_macro_overrides_configurable(::Type{<:AbstractComponent}, ::Val)::Bool = error()
+component_macro_overrides_configurable(::Type{<:AbstractComponent}, ::Val)::Bool = false
 component_macro_configurable_data(::Type{<:AbstractComponent}, ::Val)::SplitDef = error()
-component_macro_configurable_execute(::Type{<:AbstractComponent},::AbstractComponent, ::Val,
-                                     args...; kw_args...) = error()
+component_macro_configurable_execute(::Type{<:AbstractComponent},::AbstractComponent, v::Val,
+                                     args...; kw_args...) = error(
+    "Arguments do not match configurable: ", T, ".", val_type(v), "(",
+        join(("::$(typeof(a))" for a in args), ", "),
+        " ; ", join(("$n=::$(typeof(v))" for (n, v) in kw_args), ", "),
+    ")"
+)
+#    Utilities:
+component_field_print(component, field_name::Val, field_value                   , io) = print(io, field_value)
+component_field_print(component, field_name::Val, field_value::AbstractComponent, io) = print(io, "<", typeof(field_value), ">")
 
+"Set to 'true' to see the printout of new defined components"
+PRINT_COMPONENT_CODE::Bool = false
+
+"""
+A very covenient way to define a component.
+
+The basic syntax is this:
+
+````
+@component Name [<: Parent] [attributes...] begin
+    field1::Float32
+    field2
+    function CONSTRUCT(f)
+        # All component functions can reference "this", "entity", and "world".
+        this.field1 = Float32(f)
+        this.field2 = length(world.entities)
+    end
+    function DESTRUCT() # Optionally take a Bool for whether the owning entity is being destroyed
+        println("Delta entities: ", length(world.entities) - this.field2)
+    end
+
+    function TICK()
+        this.field1 += world.delta_seconds
+    end
+    # FINISH_TICK() exists, but is only useful for abstract components (see below).
+````
+
+Attributes are enclosed in braces. Here are the supported ones:
+  * `{abstract}`: this component is an abstract type (see below).
+  * `{entitySingleton}`: only one of this component can exist on an entity.
+  * `{worldSingleton}`: only one of this component can exist in the entire world.
+  * `{require: a, b, c}`: other components must exist on this entity, and will be added if they aren't already
+
+This macro also provides an Object-Oriented architecture, where abstract components can add
+    fields, behavior, "Promises" (abstract functions) and "Configurables" (virtual functions)
+    to their concrete children.
+Here is a detailed example of an abstract component:
+
+````
+"Some kind of animated motion. Only one maneuver can run at a time."
+@component Maneuver {abstract} {entitySingleton} {require: Position} begin
+    pos_component::Position
+    duration::Float32
+    progress_normalized::Float32
+
+    function CONSTRUCT(duration_seconds::Float32) # The first argument to add_component() is passed here;
+                                                  #    the rest are given to the child type's constructor
+        this.progress_normalized = 0
+        this.duration = duration_seconds
+        this.pos_component = get_component(entity, Position)
+    end
+
+    # If you want to provide a default instance of this component,
+    #    for when it's required but not already existing on an entity,
+    #    you can implement this (pretend a child maneuver exists called 'TurningManeuver'):
+    DEFAULT() = TurningManeuver(3.5, has_component(entity, PreferLeft) ? -90 : 90)
+
+    # Non-abstract child components must implement this.
+    # Abstract child components may choose to implement this for their children.
+    # In the latter case, the concrete children can further override the behavior,
+    #    and invoke `BASE()` to get the original parent implementation.
+    @promise finish_maneuver(last_time_step::Float32)
+
+    # Child components may choose to override this.
+    # It must return a bool.
+    # It indicates whether to cut off the maneuver early.
+    # When overriding this, you can invoke BASE() to get the implementation of your parent.
+    @conigurable should_stop()::Bool = false
+
+    # This abstract component handles the timing for its children.
+    function TICK()
+        this.progress_normalized += world.delta_seconds / this.duration
+    end
+    # After all tick logic is done (including children), check whether the animation is finished.
+    function FINISH_TICK()
+        if this.should_stop()
+            remove_component(this, entity)
+        elseif this.progress_normalized >= 1
+            # Handle any overshoot of the target, then destroy self:
+            overshoot_seconds = (@f32(1) - this.progress_normalized) * this.duration
+            this.finish_maneuver(-overshoot_seconds)
+            remove_component(this, entity)
+        end
+    end
+end
+````
+
+Finally, here is an example of `StrafingManeuver`, a child of `Maneuver`:
+
+````
+@component StrafingManeuver <: Maneuver {require: MovementSpeed} begin
+    speed_component::MovementSpeed
+    dir::v3f
+    function CONSTRUCT(dir::v3f)
+        # Note that the parent's CONSTRUCT() has already run.
+        this.speed_component = get_component(entity, MovementSpeed)
+        this.dir = dir
+    end
+
+    # Implement the maneuver's interface.
+    finish_maneuver(last_time_step::Float32) =
+        strafe(this, last_time_step) # Uses a helper function defined below
+    should_stop() =
+        do_collision_checking(entity) # Some function that checks for this entity colliding with geometry
+
+    TICK() = strafe(this) # Uses a helper function defined below
+end
+
+# Helper function for applying the maneuver.
+function strafe(s::StrafingManeuver, time_step)
+    # In a normal Julia function, things are a bit less convenient.
+    entity = s.entity
+    world = s.world
+
+    if isnothing(time_step)
+        time_step = world.delta_seconds
+    end
+    s.pos_component.value += s.speed_component.value * time_step * s.dir
+end
+````
+"""
 macro component(title, elements...)
     # Parse the component's name and parent type.
     title_is_valid = @capture(title, name_Symbol)
@@ -56,7 +195,6 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
     if exists(supertype_t) && !(supertype_t <: AbstractComponent)
         error("Component '", component_name, "'s parent type '", supertype_t, "' is not a component itself!")
     end
-    component_name_quote = QuoteNode(component_name)
 
     # Parse the attributes.
     is_abstract::Bool = false
@@ -89,7 +227,7 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
                 is_world_singleton = true
             end
         elseif @capture(attribute, {require:a_, b__})
-            requirements = [a, b...]
+            requirements = Any[a, b...]
         else
             error("Unexpected attribute: ", attribute)
         end
@@ -118,9 +256,8 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
 
         # Append the parent requirements after the child's
         #    (because the child's requirements are probably more specific, to satisfy the parent).
-        append!(requirements, :( $(@__MODULE__).require_components($supertype_t)... ))
-    end
-    if isnothing(supertype_t)
+        push!(requirements, :( $(@__MODULE__).require_components($supertype_t)... ))
+    else
         supertype_t = AbstractComponent
     end
 
@@ -132,7 +269,7 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
     end
 
     # Take fields from the parent.
-    field_data = Vector{Tuple{Symbol, Any}}()
+    field_data = Vector{Pair{Symbol, Any}}()
     if supertype_t != AbstractComponent
         append!(field_data, component_macro_fields(supertype_t))
     end
@@ -140,7 +277,7 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
     # Parse the declarations.
     constructor::Optional{@NamedTuple{args::Vector{SplitArg}, kw_args::Vector{SplitArg}, body}} = nothing
     destructor::Optional{@NamedTuple{b_name::Symbol, body}} = nothing
-    defaultor = nothing # Just the body
+    defaultor::Optional{Tuple{Any, Any, Any}} = nothing # Concrete component type and its constructor args/kw-args
     tick = nothing # Just the body
     finish_tick = nothing # Just the body
     new_promises = Vector{Tuple{LineNumberNode, SplitDef}}() # Expected to have no body
@@ -175,6 +312,7 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
                     kw_args=copy(func_data.kw_args),
                     body=func_data.body
                 )
+            #TODO: CONSTRUCT_DEFAULT, generates a constructor with one argument for each field.
             #TODO: CONSTRUCT_MANUAL(), has to manually invoke BASE() to get base-class construction behavior
             elseif func_data.name == :DESTRUCT
                 if exists(destructor)
@@ -206,7 +344,11 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
                 elseif !isempty(func_data.where_params) || func_data.generated
                     error("DEFAULT() should be a simple function, no type params or @generated")
                 end
-                defaultor = Some(func_data.body)
+                if @capture(func_data.body, (concreteName_(args__; kw_args__)) | (concreteName_(args__)))
+                    defaultor = (concreteName, args, isnothing(kw_args) ? [ ] : kw_args)
+                else
+                    error("DEFAULT() clause should be of the form 'ChildComponent(args...; kw_args...)'")
+                end
             elseif func_data.name == :TICK
                 if exists(tick)
                     error("TICK() provided more than once")
@@ -229,22 +371,25 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
                 push!(implemented_promises, func_data)
             elseif func_data.name in component_macro_overridable_configurables(supertype_t)
                 push!(implemented_configurables, func_data)
+            else
+                error("Unexpected function in component: '", func_data.name, "'")
             end
         elseif @capture(statement, fieldName_Symbol) || @capture(statement, fieldName_::fieldType_)
             if fieldName in (:entity, :world)
-                error("Can't name a component field 'this', 'entity', or 'world'")
+                error("Can't name a component field 'entity', or 'world'")
             end
             if exists(doc_string)
                 #TODO: Append field doc-strings into the component's somehow. Include parent fields' doc-strings.
             end
-            push!(field_data, (fieldName, isnothing(fieldType) ? Any : fieldType))
+            push!(field_data, fieldName => (isnothing(fieldType) ? Any : fieldType))
         elseif is_macro_invocation(statement)
             macro_data = SplitMacro(statement)
-            if macro_data.name == :promise
+            if macro_data.name == Symbol("@promise")
                 if !is_abstract
                     error("Only {abstract} components can @promise things")
-                elseif (length(macro_data.args) != 1) || !is_function_decl(macro_data.args[1])
-                    error("A @promise should include a single function signature")
+                elseif (length(macro_data.args) != 1) || !isexpr(macro_data.args[1], :call)
+                    error("A @promise should include a single function signature. Got: ",
+                              macro_data.args)
                 end
 
                 func_data = SplitDef(:( $(macro_data.args[1]) = nothing ))
@@ -257,7 +402,7 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
                     macro_data.source,
                     func_data
                 ))
-            elseif macro_data.name == :configurable
+            elseif macro_data.name == Symbol("@configurable")
                 if (length(macro_data.args) != 1) || !is_function_decl(macro_data.args[1])
                     error("A @configurable should include a single function definition")
                 end
@@ -270,7 +415,7 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
 
                 push!(new_configurables, (
                     macro_data.source,
-                    SplitDef(:( $(macro_data.args[1]) = nothing ))
+                    func_data
                 ))
             else
                 error("Unexpected macro in component '$component_name': $statement")
@@ -406,39 +551,32 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
         ))
     end
 
-    final_decls = [ ]
 
     # Generate the type definition.
-    push!(final_decls, if is_abstract
-        :( Core.@__doc__ abstract type $(esc(component_name)) <: $supertype_t end )
+    type_decl = if is_abstract
+        :( Core.@__doc__(abstract type $(esc(component_name)) <: $supertype_t end) )
     else
-        :(
-            Core.@__doc__ mutable struct $(esc(component_name)) <: $supertype_t
+        :( Core.@__doc__(mutable struct $(esc(component_name)) <: $supertype_t
                 entity::Entity
                 world::World
 
-                $(( :( $f::$t ) for (f, t) in field_data )...)
+                $(( esc(:( $f::$t )) for (f, t) in field_data )...)
 
                 $component_name(entity, world) = let this = new()
                     this.entity = entity
                     this.world = world
                     this
                 end
-            end
-        )
-    end)
+        end) )
+    end
+
+    global_decls = [ ]
 
     # Implement the internal macro interface.
-    push!(final_decls, quote
-        $(@__MODULE__).component_macro_fields(::Type{$(esc(component_name))}) = $(tuple(
-            n => T for (n, T) in field_data
-        ))
+    push!(global_decls, quote
+        $(@__MODULE__).component_macro_fields(::Type{$(esc(component_name))}) = $(Tuple(field_data))
         $(@__MODULE__).component_macro_init_parent_args(::Type{$(esc(component_name))}) = (
-            n_args = $(if any(a -> a.is_splat, constructor.args)
-                           -1
-                       else
-                           length(constructor.args)
-                       end),
+            args = $(Tuple(constructor.args)),
             kw_args = $(Tuple(constructor.kw_args))
         )
         $(@__MODULE__).component_macro_init(::Type{$(esc(component_name))}, $(esc(:this))::$(esc(component_name)),
@@ -467,7 +605,10 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
 
         # Promises
         $(@__MODULE__).component_macro_all_promises(::Type{$(esc(component_name))}) = tuple($(QuoteNode.(all_promises)...))
-        $(@__MODULE__).component_macro_unimplemented_promises(::Type{$(esc(component_name))}) = $(Tuple(missing_promises))
+        $(@__MODULE__).component_macro_unimplemented_promises(::Type{$(esc(component_name))}) = $(tuple(
+            missing_promises...,
+            (p[2].name for p in new_promises)...
+        ))
         $(map(implemented_promises) do p; :(
             $(@__MODULE__).component_macro_implements_promise(::Type{<:$(esc(component_name))}, ::Val{$(QuoteNode(p.name))}) = true
         ) end...)
@@ -481,15 +622,15 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
             # The implementation actually goes into one of our internal macro interface functions.
             def = SplitDef(def)
             def.name = :( $(@__MODULE__).component_macro_promise_execute )
-            def.args = vcat(SplitArg.([ :( ::Type{<:$(esc(component_name))}),
-                                        :( this::$(esc(component_name)) ),
+            def.args = vcat(SplitArg.([ :( ::Type{<:$((component_name))}),
+                                        :( $((:this))::$((component_name)) ),
                                         :( ::Val{$name_quote} ) ]),
                             def.args)
 
             # Provide access to SUPER(), which invokes the supertype's implementation.
             first_implementing_parent_idx = findfirst(
                 t -> component_macro_implements_promise(t, Val(promise_name)),
-                Iterators.drop(all_supertypes_youngest_first, 1)
+                enumerate_as_pair(Iterators.drop(all_supertypes_youngest_first, 1))
             )
             def.body = :(
                 let SUPER = if $(exists(first_implementing_parent_idx))
@@ -513,7 +654,11 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
             )
 
             # If the original promise specified a return type, explicitly check for that.
-            promised_return_type = component_macro_promise_data(supertype_t, promise_name).return_type
+            promised_return_type = if supertype_t == AbstractComponent
+                nothing
+            else
+                component_macro_promise_data(supertype_t, Val(promise_name)).return_type
+            end
             if exists(promised_return_type)
                 def.body = :( let result = $(def.body)
                     if !isa(result, $promised_return_type)
@@ -531,8 +676,8 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
                             $(def.body)
                         end )
 
-            def.body = esc(def.body)
-            return combinedef(def)
+            def.body = def.body
+            return esc(combinedef(def))
         end...)
 
         # Configurables
@@ -550,15 +695,15 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
             # The implementation actually goes into one of our internal macro interface functions.
             def = SplitDef(def)
             def.name = :( $(@__MODULE__).component_macro_configurable_execute )
-            def.args = vcat(SplitArg.([ :( ::Type{<:$(esc(component_name))}),
-                                        :( this::$(esc(component_name)) ),
-                                        :( ::Va{$name_quote} ) ]),
+            def.args = vcat(SplitArg.([ :( ::Type{<:$((component_name))}),
+                                        :( $((:this))::$((component_name)) ),
+                                        :( ::Val{$name_quote} ) ]),
                             def.args)
 
             # Provide access to SUPER(), which invokes the supertype's implementation.
             first_implementing_parent_idx = findfirst(
-                t -> component_macro_implements_promise(t, Val(promise_name)),
-                Iterators.drop(all_supertypes_youngest_first, 1)
+                t -> component_macro_overrides_configurable(t, Val(configurable_name)),
+                enumerate_as_pair(Iterators.drop(all_supertypes_youngest_first, 1))
             )
             def.body = :(
                 let SUPER = if $(exists(first_implementing_parent_idx))
@@ -582,7 +727,11 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
             )
 
             # If the original specified a return type, explicitly check for that.
-            configured_return_type = component_macro_configurable_data(supertype_t, configurable_name).return_type
+            configured_return_type = if supertype_t == AbstractComponent
+                nothing
+            else
+                component_macro_configurable_data(supertype_t, Val(configurable_name)).return_type
+            end
             if exists(configured_return_type)
                 def.body = :( let result = $(def.body)
                     if !isa(result, $configured_return_type)
@@ -600,19 +749,19 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
                             $(def.body)
                         end )
 
-            def.body = esc(def.body)
-            return combinedef(def)
+            def.body = (def.body)
+            return esc(combinedef(def))
         end...)
     end)
 
     # Implement promises and configurables as properties.
-    push!(final_decls, quote
+    push!(global_decls, quote
         @inline $Base.getproperty(c::$(esc(component_name)), name::Symbol) = getproperty(c, Val(name))
         @inline $Base.getproperty(c::$(esc(component_name)), ::Val{Name}) where {Name} = getfield(c, Name)
         @inline $Base.propertynames(c::$(esc(component_name))) = tuple(
-            $((QuoteNode(f) for (f, _) in field_data)...),
-            $((QuoteNode(p.name) for p in all_promises)...),
-            $((QuoteNode(c.name) for c in all_configurables)...)
+            $((QuoteNode(n) for (n, T) in field_data)...),
+            $((QuoteNode(p) for p in all_promises)...),
+            $((QuoteNode(c) for c in all_configurables)...)
         )
 
         $(map(implemented_promises) do promise
@@ -643,18 +792,22 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
     end)
 
     # Implement the external interface.
-    push!(final_decls, quote
+    push!(global_decls, quote
         $(@__MODULE__).is_entitysingleton_component(::Type{$(esc(component_name))})::Bool = $is_entity_singleton
         $(@__MODULE__).is_worldsingleton_component(::Type{$(esc(component_name))})::Bool = $is_world_singleton
         $(@__MODULE__).require_components(::Type{$(esc(component_name))}) = tuple($(esc.(requirements)...))
         $(@__MODULE__).create_component(::Type{$(esc(component_name))}, entity::$Entity, args...; kw_args...) = begin
             if $is_abstract
-                if $(isnothing(defaultor))
-                    error("Can't create a '", $(string(component_name)), "'; it's abstract")
-                else
-                    world = entity.world
-                    return $defaultor
-                end
+                $(if isnothing(defaultor)
+                      :( error("Can't create a '", $(string(component_name)),
+                                 "'; it's abstract and no DEFAULT() was provided") )
+                  else
+                      :( return $(@__MODULE__).create_component(
+                        $(esc(defaultor[1])), entity,
+                        $(esc.(defaultor[2])...)
+                        ; $(esc.(defaultor[3])...)
+                      ) )
+                  end)
             else
                 this = $(esc(component_name))(entity, entity.world)
                 $(constructor_calls...)
@@ -673,18 +826,40 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
         $(@__MODULE__).tick_component(c::$(esc(component_name)), e::$Entity) = begin
             @bp_ecs_assert(c.entity == e, "Given the wrong entity")
             $((
-                :( $(@__MODULE__).component_macro_tick($parent_t, c) )
+                :( $(@__MODULE__).component_macro_tick($(esc(parent_t)), c) )
                   for parent_t in all_supertypes_youngest_first
             )...)
             $((
-                :( $(@__MODULE__).component_macro_finish_tick($parent_t, c) )
+                :( $(@__MODULE__).component_macro_finish_tick($(esc(parent_t)), c) )
                   for parent_t in all_supertypes_oldest_first
             )...)
             return nothing
         end
     end)
 
-    final_expr = quote $(final_decls...) end
-    @info "\n$(MacroTools.prettify(final_expr))\n\nCOMPONENT $component_name\n"
+    # Add some other useful stuff.
+    #TODO: Make this a bit more configurable (e.x. whether to space it out with line breaks and tabs)
+    !is_abstract && push!(global_decls, :(
+        function $Base.print(io::IO, c::$(esc(component_name)))
+            print(io, $(string(component_name)), "(<entity>, <world>" )
+            $(map(field_data) do (name, declared_type); quote
+                print(io, ", ")
+                $(@__MODULE__).component_field_print(
+                    c,
+                    Val($(QuoteNode(name))), getfield(c, $(QuoteNode(name))),
+                    io
+                )
+            end end...)
+            print(io, ")")
+        end
+    ))
+
+    final_expr = quote
+        $type_decl
+        $(global_decls...)
+    end
+    if PRINT_COMPONENT_CODE
+        @info "\n$(MacroTools.prettify(final_expr))\n\nCOMPONENT $component_name\n"
+    end
     return final_expr
 end

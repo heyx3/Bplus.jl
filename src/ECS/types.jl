@@ -46,5 +46,5 @@ export World, Entity, AbstractComponent
 
 
 Base.show(io::IO, e::Entity) = print(io,
-    "Entity(world, ", e.components, ")"
+    "Entity(<world>, ", e.components, ")"
 )
