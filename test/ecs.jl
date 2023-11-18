@@ -83,7 +83,7 @@ Dict(e=>EMPTY_ENTITY_COMPONENT_LOOKUP for e in entities)
 @bp_check collect(get_component_types(Component_5_or_6)) == [ Component_5_or_6 ]
 
 # Add a C2 to E1.
-c2[] = add_component(Component2, entities[1], "hi world")
+c2[] = add_component(entities[1], Component2, "hi world")
 @bp_check c2[].s == "hi world"
 @bp_check entities[1].components == [ c2[] ]
 @bp_check world.component_lookup == Dict(
@@ -96,9 +96,9 @@ c2[] = add_component(Component2, entities[1], "hi world")
 @bp_check world.component_counts == Dict(Component2 => 1)
 
 # Add multiple C1's to E1.
-push!(c1s, add_component(Component1, entities[1]))
-push!(c1s, add_component(Component1, entities[1]))
-push!(c1s, add_component(Component1, entities[1]))
+push!(c1s, add_component(entities[1], Component1))
+push!(c1s, add_component(entities[1], Component1))
+push!(c1s, add_component(entities[1], Component1))
 @bp_check entities[1].components == [ c2[], c1s... ]
 @bp_check world.component_lookup == Dict(
             entities[1] => Dict(
@@ -117,7 +117,7 @@ push!(c1s, add_component(Component1, entities[1]))
         )
 
 # Remove the second of the three C1's.
-remove_component(c1s[2], entities[1])
+remove_component(entities[1], c1s[2])
 deleteat!(c1s, 2)
 
 @bp_check entities[1].components == [ c2[], c1s... ]
@@ -142,8 +142,12 @@ deleteat!(c1s, 2)
 # Do some component queries.
 @bp_check has_component(entities[1], Component1)
 @bp_check has_component(entities[1], Component2)
+@bp_check has_component(world, Component1)
+@bp_check has_component(world, Component2)
 @bp_check !has_component(entities[1], Component3)
 @bp_check !has_component(entities[1], Component4)
+@bp_check !has_component(world, Component3)
+@bp_check !has_component(world, Component4)
 @bp_check !has_component(entities[2], Component1)
 @bp_check !has_component(entities[2], Component2)
 @bp_check !has_component(entities[2], Component3)
@@ -156,7 +160,7 @@ deleteat!(c1s, 2)
                 Set(zip(c1s, Iterators.repeated(entities[1])))
 
 # Test the use of recursive component requirements.
-push!(c4s, add_component(Component4, entities[2]))
+push!(c4s, add_component(entities[2], Component4))
 @bp_check count(x->true, get_components(world, Component4)) === 1
 @bp_check count(x->true, get_components(entities[2], Component4)) === 1
 # Adding Component4 should have added Component3 to the same entity.
@@ -195,7 +199,7 @@ c2_2[] = get_component(entities[2], Component2)
         )
 
 # Add Component5 and check that it's also registered under its abstract parent type.
-push!(c5s, add_component(Component5, entities[1], 5.5))
+push!(c5s, add_component(entities[1], Component5, 5.5))
 @bp_check c5s[end].f == @f32(5.5)
 @bp_check c5s[end].i5 == -5
 @bp_check c5s[end].is_dead == false
@@ -241,7 +245,7 @@ push!(c5s, add_component(Component5, entities[1], 5.5))
 
 # Add Component6 and check that it's also registered under its abstract parent type,
 #    shared with the Component5 added in the previous test.
-push!(c6s, add_component(Component6, entities[1], 70))
+push!(c6s, add_component(entities[1], Component6, 70))
 @bp_check(c6s[end].f == 70)
 @bp_check(c6s[end].is_dead == false)
 @bp_check count(x->true, get_components(entities[1], Component6)) == 1
@@ -255,40 +259,40 @@ push!(c6s, add_component(Component6, entities[1], 70))
 @bp_check Set(get_components(world, Component_5_or_6)) ==
             Set([ (c5s[1], entities[1]), (c6s[1], entities[1]) ])
 @bp_check world.component_lookup == Dict(
-        entities[1] => Dict(
-            Component2 => Set([ c2[] ]),
-            Component1 => Set(c1s),
-            Component5 => Set(c5s),
-            Component6 => Set(c6s),
-            Component_5_or_6 => Set([ c5s..., c6s... ])
-        ),
-        entities[2] => Dict(
-            Component3 => Set([ c3[] ]),
-            Component4 => Set(c4s),
-            Component2 => Set([ c2_2[] ])
-        )
+    entities[1] => Dict(
+        Component2 => Set([ c2[] ]),
+        Component1 => Set(c1s),
+        Component5 => Set(c5s),
+        Component6 => Set(c6s),
+        Component_5_or_6 => Set([ c5s..., c6s... ])
+    ),
+    entities[2] => Dict(
+        Component3 => Set([ c3[] ]),
+        Component4 => Set(c4s),
+        Component2 => Set([ c2_2[] ])
     )
+)
 @bp_check world.entity_lookup == Dict(
-        Component2 => Set([ entities[1], entities[2] ]),
-        Component1 => Set([ entities[1] ]),
-        Component3 => Set([ entities[2] ]),
-        Component4 => Set([ entities[2] ]),
-        Component5 => Set([ entities[1] ]),
-        Component6 => Set([ entities[1] ]),
-        Component_5_or_6 => Set([ entities[1] ])
-    )
+    Component2 => Set([ entities[1], entities[2] ]),
+    Component1 => Set([ entities[1] ]),
+    Component3 => Set([ entities[2] ]),
+    Component4 => Set([ entities[2] ]),
+    Component5 => Set([ entities[1] ]),
+    Component6 => Set([ entities[1] ]),
+    Component_5_or_6 => Set([ entities[1] ])
+)
 @bp_check world.component_counts == Dict(
-        Component1 => 2,
-        Component2 => 2,
-        Component3 => 1,
-        Component4 => 1,
-        Component5 => 1,
-        Component6 => 1,
-        Component_5_or_6 => 2,
-    )
+    Component1 => 2,
+    Component2 => 2,
+    Component3 => 1,
+    Component4 => 1,
+    Component5 => 1,
+    Component6 => 1,
+    Component_5_or_6 => 2,
+)
 
 # Remove component 5 and check that it updates its "is_dead" field.
-remove_component(c5s[end], entities[1])
+remove_component(entities[1], c5s[end])
 @bp_check(c5s[end].is_dead)
 @bp_check(!c6s[end].is_dead)
 deleteat!(c5s, length(c5s))

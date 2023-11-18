@@ -17,6 +17,6 @@ export World, Entity, AbstractComponent,
        add_component, remove_component,
        has_component, get_component, get_components,
        tick_world,
-       @component
+       @component, get_component_types
 
 end # module

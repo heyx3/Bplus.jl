@@ -10,8 +10,6 @@ World() = World(
     Set{Type{<:AbstractComponent}}()
 )
 
-export World
-
 
 ##   Managing Entities   ##
 
@@ -30,7 +28,7 @@ function remove_entity(world::World, e::Entity)
     empty!(world.buffer_entity_components)
     append!(world.buffer_entity_components, e.components)
     for i in length(world.buffer_entity_components):-1:1
-        remove_component(e.components[i], e,
+        remove_component(e, e.components[i],
                          component_idx=i,
                          entity_is_dying=true)
     end
@@ -40,8 +38,6 @@ function remove_entity(world::World, e::Entity)
               findfirst(e2 -> e2==e, world.entities))
     delete!(world.component_lookup, e)
 end
-
-export add_entity, remove_entity
 
 
 ##   Managing components   ##
@@ -64,7 +60,7 @@ end
 Any other components that are required by the new component will be added first,
     if not in the entity already.
 "
-function add_component(::Type{T}, e::Entity,
+function add_component(e::Entity, ::Type{T},
                        args...
                        ;
                        # Internal parameter -- do not use.
@@ -98,7 +94,7 @@ function add_component(::Type{T}, e::Entity,
     push!(new_ignore_requirements, T)
     for required_T in require_components(T)
         if !in(required_T, new_ignore_requirements) && !has_component(e, required_T)
-            add_component(required_T, e; var"INTERNAL: ignore_requirements" = new_ignore_requirements)
+            add_component(e, required_T; var"INTERNAL: ignore_requirements" = new_ignore_requirements)
             # required_T will have been added to 'new_ignore_requirements' by the recursive call
         end
     end
@@ -125,7 +121,7 @@ It's up to you to make sure your components either handle that or avoid that!
 
 NOTE: the named keywords are for internal use; do not use them.
 "
-function remove_component(c::AbstractComponent, e::Entity
+function remove_component(e::Entity, c::AbstractComponent
                           ;
                           # Internal optimization hints. Do not use.
                           component_idx::Int = 0,
@@ -167,8 +163,6 @@ function remove_component(c::AbstractComponent, e::Entity
     return nothing
 end
 
-export get_component_types, add_component, remove_component
-
 
 ##   Querying components   ##
 
@@ -181,7 +175,7 @@ function has_component(e::Entity, T::Type{<:AbstractComponent})::Bool
     return e in relevant_entities
 end
 function has_component(w::World, T::Type{<:AbstractComponent})::Bool
-    return !haskey(w.component_counts, T)
+    return haskey(w.component_counts, T)
 end
 
 "Throws an error if there is more than one of the given type of component for the given entity"
@@ -201,15 +195,17 @@ function get_component(e::Entity, T::Type{<:AbstractComponent})::Optional{T}
     end
 end
 "Gets an iterator of all instances of the given component attached to the given entity"
-function get_components(e::Entity, T::Type{<:AbstractComponent})
-    @bp_ecs_assert(isempty(EMPTY_ENTITY_COMPONENT_LOOKUP),
-                   "Somebody modified the return value of 'get_components()'!")
+@inline function get_components(e::Entity, T::Type{<:AbstractComponent})
+    @bp_ecs_assert(isempty(EMPTY_ENTITY_COMPONENT_LOOKUP), "Somebody modified 'EMPTY_ENTITY_COMPONENT_LOOKUP'")
     per_component_lookup = get(e.world.component_lookup, e,
                                EMPTY_ENTITY_COMPONENT_LOOKUP)
-
-    @bp_ecs_assert(isempty(EMPTY_COMPONENT_SET),
-                   "Somebody modified the return value of 'get_components()'!")
-    return get(per_component_lookup, T, EMPTY_COMPONENT_SET)::Set{AbstractComponent}
+    return (c::T for c in get(per_component_lookup, T, EMPTY_COMPONENT_SET)::Set{AbstractComponent})
+end
+function count_components(e::Entity, T::Type{<:AbstractComponent})
+    @bp_ecs_assert(isempty(EMPTY_ENTITY_COMPONENT_LOOKUP), "Somebody modified 'EMPTY_ENTITY_COMPONENT_LOOKUP'")
+    per_component_lookup = get(e.world.component_lookup, e,
+                               EMPTY_ENTITY_COMPONENT_LOOKUP)
+    return length(get(per_component_lookup, T, EMPTY_COMPONENT_SET)::Set{AbstractComponent})
 end
 
 "
@@ -238,14 +234,15 @@ end
 Gets an iterator of all instances of the given component in the entire world.
 Each element is a `Tuple{T, Entity}`.
 "
-function get_components(w::World, T::Type{<:AbstractComponent})
-    #TODO: Instead of an iterator that could break after entity modification, use an array of pooled memory. Wrap the user code in a 'do' block to enforce that the array is temporary
+@inline function get_components(w::World, T::Type{<:AbstractComponent})
     @bp_ecs_assert(isempty(EMPTY_ENTITY_SET), "Somebody modified 'EMPTY_ENTITY_SET'")
 
     relevant_entities = get(w.entity_lookup, T, EMPTY_ENTITY_SET)
     relevant_type_lookups = ((e, w.component_lookup[e]) for e in relevant_entities)
     instances_per_entity = ((e, get(lookup, T, EMPTY_COMPONENT_SET)) for (e, lookup) in relevant_type_lookups)
-    return Iterators.flatten(zip(instances, Iterators.repeated(e)) for (e, instances) in instances_per_entity)
+    all_instances = Iterators.flatten(zip(instances, Iterators.repeated(e)) for (e, instances) in instances_per_entity)
+    return ((c::T, e) for (c, e) in all_instances)
 end
-
-export has_component, get_component, get_components
+function count_components(w::World, T::Type{<:AbstractComponent})
+    return get(w.component_counts, T, 0)
+end

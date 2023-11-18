@@ -34,11 +34,11 @@ end
     end
     function FINISH_TICK()
         if this.should_stop()
-            remove_component(this, entity)
+            remove_component(entity, this)
         elseif this.progress_normalized >= 1
             overshoot_seconds = (this.progress_normalized - @f32(1)) * this.duration
             this.finish_maneuver(-overshoot_seconds)
-            remove_component(this, entity)
+            remove_component(entity, this)
         end
     end
 end
@@ -77,12 +77,12 @@ end
 world = World()
 entity = add_entity(world)
 
-pos = add_component(Position, entity, v3f(2, 3, 4))
-speed = add_component(MaxSpeed, entity, 8)
+pos = add_component(entity, Position, v3f(2, 3, 4))
+speed = add_component(entity, MaxSpeed, 8)
 @bp_check(pos.value === v3f(2, 3, 4))
 @bp_check(speed.value == 8)
 
-maneuver = add_component(Maneuver, entity)
+maneuver = add_component(entity, Maneuver)
 @bp_check(maneuver isa StrafingManeuver, maneuver,
           world.component_lookup, "\n\n",
             world.entity_lookup, "\n\n",
@@ -109,7 +109,7 @@ tick_world(world, @f32(5))
           pos.value, " vs ", v3f(2, 3, 4) + (@f32(6) * @f32(8) * vnorm(v3f(1, -2, 4))))
 
 # Check the ability to use a @configurable to quit the maneuver early.
-maneuver = add_component(Maneuver, entity)
+maneuver = add_component(entity, Maneuver)
 tick_world(world, @f32(2))
 @bp_check(has_component(entity, StrafingManeuver))
 maneuver.force_stop = true

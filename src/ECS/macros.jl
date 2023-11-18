@@ -84,7 +84,7 @@ Here is a detailed example of an abstract component:
     duration::Float32
     progress_normalized::Float32
 
-    function CONSTRUCT(duration_seconds::Float32) # The first argument to add_component() is passed here;
+    function CONSTRUCT(duration_seconds::Float32) # The first extra argument to add_component() is passed here;
                                                   #    the rest are given to the child type's constructor
         this.progress_normalized = 0
         this.duration = duration_seconds
@@ -115,12 +115,12 @@ Here is a detailed example of an abstract component:
     # After all tick logic is done (including children), check whether the animation is finished.
     function FINISH_TICK()
         if this.should_stop()
-            remove_component(this, entity)
+            remove_component(entity, this)
         elseif this.progress_normalized >= 1
             # Handle any overshoot of the target, then destroy self:
             overshoot_seconds = (@f32(1) - this.progress_normalized) * this.duration
             this.finish_maneuver(-overshoot_seconds)
-            remove_component(this, entity)
+            remove_component(entity, this)
         end
     end
 end

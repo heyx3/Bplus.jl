@@ -28,5 +28,6 @@ Detailed info on the B+ codebase. For high-level info, see [the root README.md f
   * [Debugging](GL.md#Debugging)
 * [Input](Input.md):
 * [GUI](GUI.md):
+* [ECS](ECS.md)
 * [Helpers](Helpers.md):
   * [Game Loop](Helpers.md#Game-Loop)
