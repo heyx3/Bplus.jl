@@ -189,6 +189,12 @@ Much of this section requires some familiarity with Julia macros and metaprogram
   * You can use `MacroTools.combinedef(s::SplitDef)` to get the AST for the function.
   * You can use the new function `combinecall()` to get the function as just a call rather than a definition. For example, `combinecall(SplitDef(:( f(a, b=5; c) = a*b+c ))` returns `:( f(a, b; c=c) )`.
   * You can create a deep copy of a `SplitDef` with the constructor: `SplitDef(src)`. Do not use `deepcopy()`, as that fails for some AST's.
+* `SplitMacro(expr)` works like `SplitDef` but for macro calls rather than function deinitions, breaking the macro call into its name, line number node, and arguments.
+  * You can use `combinemacro(m::SplitMacro)` to put it back to gether into an expression.
+* Various helper functions for checking the syntax of an expression:
+  * `is_scopable_name(expr)::Bool` checks for a name symbol, possibly prefixed by one or more dot operators (e.x. `:( Base.iszero )`)
+  * `is_function_call(expr)::Bool` checks for a function call/signature, like `MyGame.run(i::Int; j=5)`.
+  * `is_function_decl(expr)::Bool` checks for a function definition, like `f() = 5`.
 * `expr_deepcopy()` works like `deepcopy()`, but without copying certain things that may show up in an AST and which aren't supposed to be copied. For example, literal references to modules.
 * `ASSIGNMENT_INNER_OP` maps modifying assignment operators to the plain operator. For example, `ASSIGNMENT_INNER_OP[:+=]` maps to `:+`.
   * `ASSIGNMENT_WITH_OP` is a map in the opposite direction: `ASSIGNMENT_WITH_OP[:+]` maps to `:+=`.

@@ -37,9 +37,13 @@ ECS.require_components(::Type{Component3}) = (Component2, Component4)
 end
 @component Component5 <: Component_5_or_6 begin
     i5::Int
-    CONSTRUCT() = (this.i5 = -5)
+    CONSTRUCT(f) = begin
+        this.i5 = -5
+        SUPER(f)
+    end
 end
 @component Component6 <: Component_5_or_6 begin
+    CONSTRUCT(f) = SUPER(f)
     DESTRUCT() = nothing
 end
 

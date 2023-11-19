@@ -12,6 +12,8 @@ If you prefer high-performance over simplicity, use an external Julia ECS packag
 
 You can update an entire world with `tick_world(world, delta_seconds::Float32)`.
 
+A world stores timing data for easy access: `delta_seconds`, `elapsed_seconds`, and `time_scale`. You may set `time_scale` to change the speed of your world.
+
 To enable extra error-checking around your use of the ECS, enable the module's [debug asserts flag](Utilities.md#asserts) by executing `Bplus.ECS.bp_ecs_asserts_enabled() = true` while loading your game's code.
 
 ## Entity/component management
@@ -41,13 +43,16 @@ You can query the components on an `Entity` or entire `World`:
 
 ## `@component`
 
-You can define component types with the `@component` macro. Components have a OOP structure to them; abstract parent components can add fields, "promises" (a.k.a. abstract functions) and "configurables" (a.k.a. virtual functions).
+You can define component types with the `@component` macro. Components have a OOP structure to them; abstract parent components can add fields, "promises" (a.k.a. abstract functions) and "configurables" (a.k.a. virtual functions) to their children. Components have a default constructor where each field is provided in order (parent fields before child ones), but you can override this behavior.
 
-Refer to the `@component` doc-string for a very detailed explanation of the features and syntax.
+Refer to the `@component` doc-string for a very detailed explanation, with code samples, of the full features and syntax.
 
 ### Internal interface
 
-If you wish, you can go around `@component` and manually implement a component. Simply define a mutable struct inheriting from`AbstractComponent` (or a child of it), and implement the interface described in *ECS/interface.jl*.
+If you wish, you can entirely ignore `@component` and manually implement your own component type through standard Julia syntax.
+Simply define a mutable struct inheriting from`AbstractComponent` (or a child of it), and implement the interface described in *ECS/interface.jl*.
+
+Note that your custom type could never be a parent of another `@component` (unless you implement all the interface functions at the top of *ECS/macros.jl*, but at that point just use the macro).
 
 ## Component printing
 

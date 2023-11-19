@@ -1,7 +1,7 @@
 # An internal interface is used to reference inherited behavior from parent components.
 #    Metadata:
-component_macro_fields(         T::Type{<:AbstractComponent}) = error() # iteration of Pair{name, typeExpr}
-component_macro_init_parent_args(::Type{<:AbstractComponent}) = (args = [], kw_args=[]) # Both elements are vecotrs of SplitDef
+component_macro_fields(T::Type{<:AbstractComponent}) = error() # iteration of Pair{name, typeExpr}
+component_macro_has_custom_constructor(::Type{<:AbstractComponent})::Bool = error()
 #    Standard events:
 component_macro_init(      T::Type{<:AbstractComponent}, ::AbstractComponent, args...; kw_args...) = error(
     "Arguments do not match in call: ", T, ".CONSTRUCT(",
@@ -51,8 +51,11 @@ The basic syntax is this:
 @component Name [<: Parent] [attributes...] begin
     field1::Float32
     field2
+
+    # By default, a component is constructed by providing each of its fields, in order.
+    # However, you can override this like so:
     function CONSTRUCT(f)
-        # All component functions can reference "this", "entity", and "world".
+        # All functions within a @component can reference "this", "entity", and "world".
         this.field1 = Float32(f)
         this.field2 = length(world.entities)
     end
@@ -84,8 +87,9 @@ Here is a detailed example of an abstract component:
     duration::Float32
     progress_normalized::Float32
 
-    function CONSTRUCT(duration_seconds::Float32) # The first extra argument to add_component() is passed here;
-                                                  #    the rest are given to the child type's constructor
+    # Because this type has a custom constructor, all child types must have one too.
+    # They also must invoke SUPER(...) exactly once, with these arguments.
+    function CONSTRUCT(duration_seconds::Float32)
         this.progress_normalized = 0
         this.duration = duration_seconds
         this.pos_component = get_component(entity, Position)
@@ -132,8 +136,8 @@ Finally, here is an example of `StrafingManeuver`, a child of `Maneuver`:
 @component StrafingManeuver <: Maneuver {require: MovementSpeed} begin
     speed_component::MovementSpeed
     dir::v3f
-    function CONSTRUCT(dir::v3f)
-        # Note that the parent's CONSTRUCT() has already run.
+    function CONSTRUCT(duration::Float32, dir::v3f)
+        SUPER(duration)
         this.speed_component = get_component(entity, MovementSpeed)
         this.dir = dir
     end
@@ -268,14 +272,14 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
         error("You may only inherit from abstract components due to Julia's type system")
     end
 
-    # Take fields from the parent.
+    # Take fields from the parent before adding our own.
     field_data = Vector{Pair{Symbol, Any}}()
     if supertype_t != AbstractComponent
         append!(field_data, component_macro_fields(supertype_t))
     end
 
     # Parse the declarations.
-    constructor::Optional{@NamedTuple{args::Vector{SplitArg}, kw_args::Vector{SplitArg}, body}} = nothing
+    constructor::Optional{SplitDef} = nothing
     destructor::Optional{@NamedTuple{b_name::Symbol, body}} = nothing
     defaultor::Optional{Tuple{Any, Any, Any}} = nothing # Concrete component type and its constructor args/kw-args
     tick = nothing # Just the body
@@ -307,11 +311,7 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
                         error("CONSTRUCT() has invalid arguments; splat ('a...') must come at the end",
                               " of the ordered parameters")
                 end
-                constructor = (
-                    args=copy(func_data.args),
-                    kw_args=copy(func_data.kw_args),
-                    body=func_data.body
-                )
+                constructor = func_data
             elseif func_data.name == :DESTRUCT
                 if exists(destructor)
                     error("More than one DESTRUCT() provided!")
@@ -331,7 +331,7 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
                 destructor = (
                     b_name=isempty(func_data.args) ?
                              Symbol("IGNORED:entity_is_dying") :
-                             func_data.args[1],
+                             func_data.args[1].name,
                     body=func_data.body
                 )
             elseif func_data.name == :DEFAULT
@@ -382,9 +382,12 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
             if macro_data.name == Symbol("@promise")
                 if !is_abstract
                     error("Only {abstract} components can @promise things")
-                elseif (length(macro_data.args) != 1) || !isexpr(macro_data.args[1], :call)
-                    error("A @promise should include a single function signature. Got: ",
-                              macro_data.args)
+                elseif length(macro_data.args) != 1
+                    error("A @promise should include a single function signature. ",
+                            "Got ", length(macro_data.args), " expressions instead")
+                elseif !is_function_call(macro_data.args[1])
+                    error("A @promise should be a function signature. Got: ",
+                              macro_data.args[1])
                 end
 
                 func_data = SplitDef(:( $(macro_data.args[1]) = nothing ))
@@ -398,8 +401,12 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
                     func_data
                 ))
             elseif macro_data.name == Symbol("@configurable")
-                if (length(macro_data.args) != 1) || !is_function_decl(macro_data.args[1])
-                    error("A @configurable should include a single function definition")
+                if length(macro_data.args) != 1
+                    error("A @configurable should include a single function definition. ",
+                            "Got ", length(macro_data.args), " expressions instead")
+                elseif !is_function_decl(macro_data.args[1])
+                    error("A @configurable should be a function declaration. Got: ",
+                            macro_data.args[1])
                 end
 
                 func_data = SplitDef(macro_data.args[1])
@@ -412,6 +419,7 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
                     macro_data.source,
                     func_data
                 ))
+                push!(implemented_configurables, func_data)
             else
                 error("Unexpected macro in component '$component_name': $statement")
             end
@@ -423,19 +431,13 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
     end
 
     # Post-process the statement data.
-    if isnothing(constructor)
-        constructor = (
-            args = [ ],
-            kw_args = [ ],
-            body = nothing
-        )
-    end
     if isnothing(destructor)
         destructor = (
             b_name=Symbol("UNUSED: entity is dying?"),
             body=nothing
         )
     end
+
 
     # Process promise data for code generation.
     all_promises::Vector{Symbol} = [
@@ -456,92 +458,21 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
         (tup[2].name for tup in new_configurables)...
     ]
 
-    # In the constructor, each successive parent type takes some of the first ordered arguments,
-    #    and each successive child type takes some of the named arguments.
-    # Figure out what is taken of each argument type.
-    parent_arg_ranges = Vector{UnitRange{Int}}() # Range end of -1 means "slurp"
-    parent_kwargs = Vector{Optional{Set{Symbol}}}() # Nothing means "slurp"
-    for parent_t in all_supertypes_oldest_first
-        local constructor_arg_data
-        if parent_t == component_name
-            constructor_arg_data = (
-                args = constructor.args,
-                kw_args = constructor.kw_args
-            )
-        else
-            constructor_arg_data = component_macro_init_parent_args(parent_t)
-            if !isempty(constructor.args) &&
-               any(a::SplitArg -> exists(a.default_value), constructor_arg_data.args)
-            #begin
-                error("Parent '", parent_t, "' of component '", component_name, "' has optional arguments, ",
-                      "so '", component_name, "' can't have any arguments ",
-                      "(otherwise how do we decide where to route them?)")
-            end
+    # Look for duplicate property names: fields, promises, and configurables.
+    property_name_counts = Dict{Symbol, Int}()
+    for name in Iterators.flatten(((name for (name, _) in field_data),
+                                   all_configurables,
+                                   all_promises))
+        if !haskey(property_name_counts, name)
+            property_name_counts[name] = 0
         end
-        take_all_args::Bool = (!isempty(constructor_arg_data.args) &&
-                                constructor_arg_data.args[end].is_splat) ||
-                              any(a -> exists(a.default_value), constructor_arg_data.args)
-
-        # Calculate ordered arguments.
-        arg_start = isempty(parent_arg_ranges) ? 1 : (last(parent_arg_ranges[end]) + 1)
-        arg_size = length(constructor_arg_data.args)
-        arg_end = take_all_args ? -1 : (arg_start + arg_size - 1)
-        arg_range = arg_start:arg_end
-        if !isempty(arg_range) && any(r -> last(r) < first(r), parent_arg_ranges)
-            error("A parent type of component $component_name slurps ordered arguments in the constructor,",
-                  " so no child type can have any ordered arguments in *its* constructor")
-        end
-        push!(parent_arg_ranges, arg_range)
-
-        # Calculate named arguments.
-        # Any arguments named by the child are left out of the parents.
-        # This means if the child is slurping all kw-args, *nothing* passes on to the parents.
-        if any(ka -> ka.is_splat, constructor_arg_data.kw_args)
-            for i in 1:length(parent_kwargs)
-                parent_kwargs[i] = Set{Symbol}()
-            end
-            push!(parent_kwargs, nothing)
-        else
-            new_kw_args = Set{Symbol}()
-            for kw_data::SplitArg in constructor_arg_data.kw_args
-                push!(new_kw_args, kw_data.name)
-                # Remove the keyword param from any parent constructor calls.
-                for parent_kwarg in parent_kwargs
-                    if exists(parent_kwarg)
-                        delete!(parent_kwarg, kw_name)
-                        if parent_t == component_name
-                            @info "Component $component_name's constructor parameter '$kw_name' will not pass on to a parent who could have taken it"
-                        end
-                    end
-                end
-            end
-            push!(parent_kwargs, new_kw_args)
-        end
+        property_name_counts[name] += 1
     end
-    # Generate calls to each supertype's constructor, from oldest to newest.
-    constructor_calls = [ ]
-    for (parent_t, arg_range, kw_set) in zip(all_supertypes_oldest_first,
-                                             parent_arg_ranges,
-                                             parent_kwargs)
-
-        range_start = first(arg_range)
-        range_end = (last(arg_range) < first(arg_range)) ? :end : last(arg_range)
-        keyword_gets = [ ]
-        for kw_name in kw_set
-            push!(keyword_gets, :(
-                (haskey(kw_args, $(QuoteNode(kw_name))) ?
-                     ($kw_name=kw_args[kw_name], ) :
-                     ()
-                )...
-            ))
-        end
-        push!(constructor_calls, :(
-            $(@__MODULE__).component_macro_init($(esc(parent_t)), this,
-                                                args[$range_start : $range_end]...
-                                                ; $(keyword_gets...))
-        ))
+    duplicate_property_names = [name for (name, count) in property_name_counts if (count > 2)]
+    if !isempty(duplicate_property_names)
+        error("Name collisions between fields, promises, and configurables: ",
+                join(duplicate_property_names, ", "))
     end
-
 
     # Generate the type definition.
     type_decl = if is_abstract
@@ -566,17 +497,53 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
     # Implement the internal macro interface.
     push!(global_decls, quote
         $(@__MODULE__).component_macro_fields(::Type{$(esc(component_name))}) = $(Tuple(field_data))
-        $(@__MODULE__).component_macro_init_parent_args(::Type{$(esc(component_name))}) = (
-            args = $(Tuple(constructor.args)),
-            kw_args = $(Tuple(constructor.kw_args))
-        )
-        $(@__MODULE__).component_macro_init(::Type{$(esc(component_name))}, $(esc(:this))::$(esc(component_name)),
-                                            $((esc(combinearg(a)) for a in constructor.args)...)
-                                            ; $((esc(combinearg(a)) for a in constructor.kw_args)...)) = begin
-            $(esc(:entity))::Entity = $(esc(:this)).entity
-            $(esc(:world))::World = $(esc(:this)).world
-            $(esc(constructor.body))
-        end
+        $(@__MODULE__).component_macro_has_custom_constructor(::Type{$(esc(component_name))}) = $(exists(constructor))
+        $(if isnothing(constructor)
+          @bp_check((supertype_t == AbstractComponent) ||
+                      !component_macro_has_custom_constructor(supertype_t),
+                    "Parent type '", supertype_t, "' has a custom CONSTRUCT, so you need one too")
+          :( @inline $(@__MODULE__).component_macro_init(::Type{$(esc(component_name))}, $(esc(:this))::$(esc(component_name)),
+                                                         $(esc.(name for (name, type) in field_data)...)
+                                                        ) = begin
+                # "entity" and "world" aren't needed right now,
+                #    but once we have kwdef-style field declarations we'll want them.
+                $(esc(:entity))::Entity = $(esc(:this)).entity
+                $(esc(:world))::World = $(esc(:this)).world
+
+                $(map(field_data) do (name, type); :(
+                    $(esc(:( this.$name = convert($type, $name) )))
+                ) end...)
+
+                # Note that all fields, including inherited ones, are handled by the above loop.
+                # No need to call into a parent constructor.
+            end
+        ) else :(
+            @inline $(@__MODULE__).component_macro_init(::Type{$(esc(component_name))}, $(esc(:this))::$(esc(component_name)),
+                                                        $((esc(combinearg(a)) for a in constructor.args)...)
+                                                        ; $((esc(combinearg(a)) for a in constructor.kw_args)...)) = begin
+                $(esc(:entity))::Entity = $(esc(:this)).entity
+                $(esc(:world))::World = $(esc(:this)).world
+
+                # If there is a parent component type, offer SUPER() and count how many times it's invoked.
+                if $(supertype_t != AbstractComponent)
+                    n_super_calls::Int = 0
+                    @inline $(esc(:SUPER))(args...; kw_args...) = begin
+                        n_super_calls += 1
+                        $(@__MODULE__).component_macro_init($supertype_t, $(esc(:this)),
+                                                            args...; kw_args...)
+                    end
+                end
+
+                $(esc(constructor.body))
+
+                # Make sure SUPER was called exactly once, if it was available.
+                if $(supertype_t != AbstractComponent) && (n_super_calls != 1)
+                    error("Your custom constructor for '", $(string(component_name)),
+                            "' should call SUPER exactly once, but it called it ",
+                            n_super_calls, " times")
+                end
+            end
+        ) end )
         $(@__MODULE__).component_macro_cleanup(::Type{$(esc(component_name))}, $(esc(:this))::$(esc(component_name)),
                                                $(destructor.b_name)::Bool) = begin
             $(esc(:entity))::Entity = $(esc(:this)).entity
@@ -653,8 +620,10 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
             if exists(promised_return_type)
                 def.body = :( let result = $(def.body)
                     if !isa(result, $promised_return_type)
-                        error("$component_name.$promise_name doesn't return a $promised_return_type!",
-                              " It returned a ", typeof(result))
+                        error($(string(component_name)), ".",
+                                $(string(promise_name)), " doesn't return a ",
+                                $(string(promised_return_type)),
+                              "! It returned a ", typeof(result))
                     else
                         result
                     end
@@ -679,7 +648,7 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
         $(map(new_configurables) do (source, def); :(
             $(@__MODULE__).component_macro_configurable_data(::Type{$(esc(component_name))}, ::Val{$(QuoteNode(def.name))}) = $def
         ) end...)
-        $(map([implemented_configurables..., (tup[2] for tup in new_configurables)...]) do def
+        $(map([implemented_configurables...]) do def
             configurable_name = def.name
             name_quote = QuoteNode(configurable_name)
 
@@ -726,8 +695,9 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
             if exists(configured_return_type)
                 def.body = :( let result = $(def.body)
                     if !isa(result, $configured_return_type)
-                        error("$component_name.$configurable_name() doesn't return a $configured_return_type",
-                              ". It returned a ", typeof(result))
+                        error($(string(component_name)), ".", $(string(configurable_name)),
+                                " doesn't return a ", $(string(configured_return_type)),
+                                "! It returned a ", typeof(result))
                     else
                         result
                     end
@@ -747,13 +717,21 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
 
     # Implement promises and configurables as properties.
     push!(global_decls, quote
-        @inline $Base.getproperty(c::$(esc(component_name)), name::Symbol) = getproperty(c, Val(name))
-        @inline $Base.getproperty(c::$(esc(component_name)), ::Val{Name}) where {Name} = getfield(c, Name)
         @inline $Base.propertynames(c::$(esc(component_name))) = tuple(
+            :world, :entity,
             $((QuoteNode(n) for (n, T) in field_data)...),
             $((QuoteNode(p) for p in all_promises)...),
             $((QuoteNode(c) for c in all_configurables)...)
         )
+
+        @inline $Base.getproperty(c::$(esc(component_name)), name::Symbol) = getproperty(c, Val(name))
+        @inline $Base.getproperty(c::$(esc(component_name)), ::Val{:entity}) = getfield(c, :entity)
+        @inline $Base.getproperty(c::$(esc(component_name)), ::Val{:world}) = getfield(c, :world)
+
+        $(map(field_data) do (name, type)
+            :( @inline $Base.getproperty(c::$(esc(component_name)), ::Val{$(QuoteNode(name))}) =
+                   getfield(c, $(QuoteNode(name))) )
+        end...)
 
         $(map(implemented_promises) do promise
             quoted = QuoteNode(promise.name)
@@ -801,7 +779,7 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
                   end)
             else
                 this = $(esc(component_name))(entity, entity.world)
-                $(constructor_calls...)
+                $(@__MODULE__).component_macro_init($(esc(component_name)), this, args...; kw_args...)
                 return this
             end
         end

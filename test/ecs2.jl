@@ -5,11 +5,9 @@
 
 @component Position begin
     value::v3f
-    CONSTRUCT(value) = (this.value = value)
 end
 @component MaxSpeed begin
     value::Float32
-    CONSTRUCT(value) = (this.value = value)
 end
 
 
@@ -52,7 +50,8 @@ const DUMMY = 4
     speed_component::MaxSpeed
     dir::v3f
     force_stop::Bool
-    function CONSTRUCT(dir)
+    function CONSTRUCT(duration_seconds, dir)
+        SUPER(duration_seconds)
         this.speed_component = get_component(entity, MaxSpeed)
         this.dir = vnorm(convert(v3f, dir))
         this.force_stop = false
