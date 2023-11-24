@@ -545,7 +545,7 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
             end
         ) end )
         $(@__MODULE__).component_macro_cleanup(::Type{$(esc(component_name))}, $(esc(:this))::$(esc(component_name)),
-                                               $(destructor.b_name)::Bool) = begin
+                                               $(esc(destructor.b_name))::Bool) = begin
             $(esc(:entity))::Entity = $(esc(:this)).entity
             $(esc(:world))::World = $(esc(:this)).world
             $(esc(destructor.body))
