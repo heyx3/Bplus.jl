@@ -10,7 +10,7 @@ If you prefer high-performance over simplicity, use an external Julia ECS packag
 * An `Entity` is a list of `AbstractComponent`.
 * A component has its own data and behavior, mostly in the form of a "TICK()" event that is invoked by the world.
 
-You can update an entire world with `tick_world(world, delta_seconds::Float32)`.
+You can update an entire world with `tick_world(world, delta_seconds::Float32)`. You can destroy all entities in a world with `reset_world(world)`.
 
 A world stores timing data for easy access: `delta_seconds`, `elapsed_seconds`, and `time_scale`. You may set `time_scale` to change the speed of your world.
 

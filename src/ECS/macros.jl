@@ -3,7 +3,9 @@
 component_macro_fields(T::Type{<:AbstractComponent}) = error() # iteration of Pair{name, typeExpr}
 component_macro_has_custom_constructor(::Type{<:AbstractComponent})::Bool = error()
 #    Standard events:
-component_macro_init(      T::Type{<:AbstractComponent}, ::AbstractComponent, args...; kw_args...) = error(
+component_macro_init(T::Type{<:AbstractComponent}, ::AbstractComponent,
+                     entity::Entity, world::World,
+                     args...; kw_args...) = error(
     "Arguments do not match in call: ", T, ".CONSTRUCT(",
         join(("::$(typeof(a))" for a in args), ", "),
         " ; ", join(("$n=::$(typeof(v))" for (n, v) in kw_args), ", "),
@@ -53,6 +55,7 @@ The basic syntax is this:
     field2
 
     # By default, a component is constructed by providing each of its fields, in order.
+    # Parent-type's fields come before child-type's fields.
     # However, you can override this like so:
     function CONSTRUCT(f)
         # All functions within a @component can reference "this", "entity", and "world".
@@ -503,13 +506,12 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
                       !component_macro_has_custom_constructor(supertype_t),
                     "Parent type '", supertype_t, "' has a custom CONSTRUCT, so you need one too")
           :( @inline $(@__MODULE__).component_macro_init(::Type{$(esc(component_name))}, $(esc(:this))::$(esc(component_name)),
+                                                         # 'entity' and 'world' are needed here
+                                                         #    so that the user's parameters can reference them
+                                                         #    as part of the default values.
+                                                         $(esc(:entity))::$Entity, $(esc(:world))::$World,
                                                          $(esc.(name for (name, type) in field_data)...)
                                                         ) = begin
-                # "entity" and "world" aren't needed right now,
-                #    but once we have kwdef-style field declarations we'll want them.
-                $(esc(:entity))::Entity = $(esc(:this)).entity
-                $(esc(:world))::World = $(esc(:this)).world
-
                 $(map(field_data) do (name, type); :(
                     $(esc(:( this.$name = convert($type, $name) )))
                 ) end...)
@@ -519,17 +521,20 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
             end
         ) else :(
             @inline $(@__MODULE__).component_macro_init(::Type{$(esc(component_name))}, $(esc(:this))::$(esc(component_name)),
+                                                        # 'entity' and 'world' are needed here
+                                                        #    so that the user's parameters can reference them
+                                                        #    as part of the default values.
+                                                        $(esc(:entity))::$Entity, $(esc(:world))::$World,
                                                         $((esc(combinearg(a)) for a in constructor.args)...)
                                                         ; $((esc(combinearg(a)) for a in constructor.kw_args)...)) = begin
-                $(esc(:entity))::Entity = $(esc(:this)).entity
-                $(esc(:world))::World = $(esc(:this)).world
 
                 # If there is a parent component type, offer SUPER() and count how many times it's invoked.
                 if $(supertype_t != AbstractComponent)
                     n_super_calls::Int = 0
                     @inline $(esc(:SUPER))(args...; kw_args...) = begin
                         n_super_calls += 1
-                        $(@__MODULE__).component_macro_init($supertype_t, $(esc(:this)),
+                        $(@__MODULE__).component_macro_init($supertype_t,
+                                                            $(esc(:this)), $(esc(:entity)), $(esc(:world)),
                                                             args...; kw_args...)
                     end
                 end
@@ -779,7 +784,9 @@ function macro_impl_component(component_name::Symbol, supertype_t::Optional{Type
                   end)
             else
                 this = $(esc(component_name))(entity, entity.world)
-                $(@__MODULE__).component_macro_init($(esc(component_name)), this, args...; kw_args...)
+                $(@__MODULE__).component_macro_init($(esc(component_name)),
+                                                    this, entity, entity.world,
+                                                    args...; kw_args...)
                 return this
             end
         end

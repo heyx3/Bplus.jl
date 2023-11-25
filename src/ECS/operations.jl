@@ -10,6 +10,15 @@ World() = World(
     Set{Type{<:AbstractComponent}}()
 )
 
+function reset_world(w::World)
+    while !isempty(w.entities)
+        remove_entity(w.entities[end])
+    end
+    
+    w.elapsed_seconds = 0
+    w.time_scale = 1
+end
+
 
 ##   Managing Entities   ##
 
@@ -34,8 +43,10 @@ function remove_entity(world::World, e::Entity)
     end
 
     # Next remove the entity itself.
+    # Most often, newer entities are destroyed first,
+    #    so search from the end of the entity list.
     deleteat!(world.entities,
-              findfirst(e2 -> e2==e, world.entities))
+              findlast(e2 -> e2==e, world.entities))
     delete!(world.component_lookup, e)
 end
 

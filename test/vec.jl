@@ -565,6 +565,17 @@ swizzle_test()
 @bp_test_no_allocations(reduce(-, Vec(2, 4, 6)), 2-4-6)
 @bp_test_no_allocations(foldl(-, Vec(1, 2, 3)), 1-2-3)
 @bp_test_no_allocations(foldr(-, Vec(6, 7, 8)), 8-7-6)
+@bp_test_no_allocations_setup(a = [ 10 11 12
+                                    13 14 15
+                                    16 17 18
+                                  ],
+                              a[v2i(2, 1)],
+                              13)
+@bp_test_no_allocations(@SMatrix[ 10 11 12
+                                  13 14 15
+                                  16 17 18
+                        ][v2i(2, 1)],
+                        13)
 
 # Test vsize().
 @bp_test_no_allocations_setup(

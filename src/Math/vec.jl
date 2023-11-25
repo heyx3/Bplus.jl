@@ -320,12 +320,8 @@ Base.convert(::Type{Vec{N, T2}}, a::SVector{N, T}) where {N, T, T2} = Vec(T2.(a)
 
 Base.reverse(v::Vec) = Vec(reverse(v.data))
 
-Base.getindex(a::Array, i::VecT{<:Integer}) = a[i...]
-Base.setindex!(a::Array, t, i::VecT{<:Integer}) = (a[i...] = t)
-
-# StaticArrays tries to interpret Vec as an array of indices rather than a multidimensional index.
-Base.getindex(a::StaticArray{N}, i::Vec{N, <:Integer}) where {N} = a[i...]
-Base.setindex!(a::StaticArray{N}, t, i::Vec{N, <:Integer}) where {N} = (a[i...] = t)
+Base.getindex(a::AbstractArray, i::VecT{<:Integer}) = a[i...]
+Base.setindex!(a::AbstractArray, t, i::VecT{<:Integer}) = (a[i...] = t)
 
 @inline Base.getindex(v::Vec, i::Integer) = v.data[i]
 Base.eltype(::Vec{N, T}) where {N, T} = T
