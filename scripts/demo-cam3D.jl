@@ -203,7 +203,9 @@ bp_gl_context( v2i(800, 500), "Cam3D demo";
         forward = vnorm(v3f(1, 1, -1)),
         up = v3f(0, 0, 1),
 
-        clip_range = IntervalF(min=0.01, max=10.0)
+        projection = PerspectiveProjection{Float32}(
+            clip_range = IntervalF(min=0.01, max=10.0)
+        )
     )
     cam_settings = Cam3D_Settings{Float32}(
         move_speed = 5
@@ -221,9 +223,9 @@ bp_gl_context( v2i(800, 500), "Cam3D demo";
         window_size::v2i = get_window_size(context)
 
         # Update the camera.
-        @set! cam.fov_degrees = @f32 lerp(70, 110,
-                                          0.5 + (0.5 * sin((new_time - start_time).value / 2000)))
-        @set! cam.aspect_width_over_height = @f32 window_size.x / window_size.y
+        @set! cam.projection.fov_degrees = @f32 lerp(70, 110,
+                                                     0.5 + (0.5 * sin((new_time - start_time).value / 2000)))
+        @set! cam.projection.aspect_width_over_height = @f32 window_size.x / window_size.y
         cam_input = Cam3D_Input{Float32}(
             # Enable rotation:
             GLFW.GetKey(context.window, GLFW.KEY_ENTER),
@@ -262,8 +264,8 @@ bp_gl_context( v2i(800, 500), "Cam3D demo";
         # Draw the triangles.
         set_uniform(draw_triangles, "u_pixelSize", convert(v2f, window_size))
         set_uniform(draw_triangles, "u_clipPlanes",
-                    v2f(min_inclusive(cam.clip_range),
-                        max_exclusive(cam.clip_range)))
+                    v2f(min_inclusive(cam.projection.clip_range),
+                        max_exclusive(cam.projection.clip_range)))
         set_uniform(draw_triangles, "u_mat_worldview", mat_view)
         set_uniform(draw_triangles, "u_mat_projection", mat_projection)
         view_activate(get_view(tex))

@@ -125,7 +125,7 @@ end
     )
 end
 
-"Builds the view matrix for a camera looking at the given position."
+"Builds the view matrix for a camera looking at a target position"
 @inline function m4_look_at( cam_pos::Vec3{F},
                              target_pos::Vec3{F},
                              up::Vec3{F}
@@ -150,6 +150,7 @@ end
         zero(F), zero(F), zero(F), one(F)
     ))
 end
+"Builds the view matrix for a camera at the origin, looking in a given direction"
 @inline function m3_look_at(forward::Vec3{F},
                             up::Vec3{F},
                             right::Vec3{F} = v_rightward(forward, up)
@@ -186,9 +187,12 @@ end
 end
 @inline m3_look_at(basis::VBasis; kw...) = m3_look_at(basis.forward, basis.up, basis.right; kw...)
 
-"Gets the relative rotation from one vector basis to another"
+"Gets a matrix for the relative rotation from one vector basis to another"
 function m3_look_at(from::VBasis{F}, to::VBasis{F})::Mat{3, 3, F} where {F}
     # Source: ChatGPT, trust me bro
+
+    #NOTE: the ordering of forward/up/right doesn't matter
+    #    as long as it's the same in both matrices.
     m_from = Mat{3, 3, F}(
         from.forward...,
         from.up...,
@@ -199,18 +203,21 @@ function m3_look_at(from::VBasis{F}, to::VBasis{F})::Mat{3, 3, F} where {F}
         to.up...,
         to.right...
     )
-    #NOTE: the ordering of forward/up/right doesn't matter
-    #    as long as it's the same in both matrices.
+
     #NOTE: The rightward vector is implicit given forward and up vectors.
     #      That means it might be possible to slightly optimize this formula
-    #        by working out all the individual multiplication/addition ops,
-    #        replacing the components of 'right' with the cross product math that derived them,
-    #        and then simplifying the ops further.
+    #        by 1) working out all the individual multiplications/additions for this matrix mul,
+    #        2) replacing the components of 'right' with the cross product math that derived them,
+    #        and 3) simplifying the math further.
     #     However, I don't think the effort and damage to readability would be worth it.
     return m_to * m_transpose(m_from)
 end
 
-"Generates the standard OpenGL perspective matrix"
+"
+Generates the standard OpenGL perspective matrix.
+This maps a view-space coordinate (X is screen horizontal, Y is screen vertical, Z is negative depth)
+   to the standard 'NDC' range [-1, +1].
+"
 @inline function m4_projection( near_clip::F, far_clip::F,
                                 aspect_width_over_height::F,
                                 field_of_view_degrees::F #TODO: What is this angle measuring exactly?
@@ -225,7 +232,10 @@ end
     )
 end
 
-"Generates an orthographic projection matrix"
+"
+Generates a matrix mapping the given X, Y, and Z range to the range [-1, +1].
+You can use this for an orthographic camera's projection matrix.
+"
 @inline function m4_ortho(area::Box3D{F})::@Mat(4, 4, F) where {F}
     # A good reference for the derivation of this:
     #    https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/orthographic-projection-matrix
