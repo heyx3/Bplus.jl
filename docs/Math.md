@@ -1,4 +1,4 @@
-The module `Bplus.Math`.
+A wide variety of game math.
 
 ## Functions
 

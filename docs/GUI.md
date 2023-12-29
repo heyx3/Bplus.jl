@@ -1,4 +1,4 @@
-The module `Bplus.GUI`. Provides a wrapper around the wonderful Dear ImGUI library (exposed in Julia as *CImGui.jl), plus many related helpers.
+Provides a wrapper around the wonderful Dear ImGUI library (exposed in Julia as *CImGui.jl), plus many related helpers.
 
 Note that you can freely convert between B+ vectors (`Vec{N, T}`) and CImGui vectors (`ImVec2`, `ImVec4`, `ImColor`).
 

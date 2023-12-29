@@ -1,4 +1,4 @@
-The module *Bplus.Helpers*. A grab-bag of B+ utilities you'll likely find useful.
+A grab-bag of B+ utilities you'll likely find useful.
 
 # Game Loop
 
@@ -51,6 +51,21 @@ To draw a texture, call `simple_blit(tex_or_view; params...)`. It has the follow
   * By default it's true.
 * `manage_tex_view::Bool` is a flag for automatically calling `view_activate()` and `view_deactivate()` on the blitted texture/view if it's not already activated.
   * By default it's true.
+
+# Cam3D
+
+A representation of a movable, turnable 3D camera.
+
+* `Cam3D{F}` represents the camera state, using `F` as the floating-point type (e.x. `Float32`).
+* `Cam3D_Settings{F}` represents the camera's config.
+* `Cam3D_Inputs{F}` represents the camera controls for a particular frame.
+
+To update the camera, do `(cam, settings) = cam_update(cam, settings, input, delta_seconds)`. Note that the settings may change too; this is the case if you support the `speed_change` input.
+
+* `cam_basis(cam)` and `cam_rightward(cam)` calculate the camera's facing vectors (the former gets all 3 axes, the latter gets just the rightward axis).
+* Get the view matrix with `cam_view_mat(cam)`.
+* Get the projection matrix with `cam_projection_mat(cam)`.
+  * The camera's projection settings are either a `PerspectiveProjection{F}` or an `OrthographicProjection{F}`.
 
 # File Cacher
 

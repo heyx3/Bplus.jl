@@ -1,4 +1,4 @@
-The module `Bplus.Utilities`.
+Core utilities for B+.
 
 ## Asserts
 

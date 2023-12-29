@@ -1,33 +1,40 @@
 Detailed info on the B+ codebase. For high-level info, see [the root README.md file](../README.md).
 
-* [Utilities](Utilities.md):
-  * [Asserts](Utilities.md#Asserts)
-  * [Optional](Utilities.md#Optional)
-  * [Enums](Utilities.md#Enums)
-  * [PRNG](Utilities.md#PRNG)
-  * [Collections and Iterators](Utilities.md#Collections-And-Iterators)
-  * [Macros](Utilities.md#Macros)
-  * [Functions](Utilities.md#Functions)
-  * [Interop](Utilities.md#Interop)
-  * [Metaprogramming](Utilities.md#Metaprogramming)
-* [Math](Math.md):
-  * [Functions](Math.md#Functions)
-  * [`Vec{N, T}`](Vec.md)
-  * [`Quaternion{F}`](Quat.md)
-  * [`Mat{C, R, F}`](Matrix.md)
-  * [Rays](Math.md#Rays)
-  * [Box and Interval](Math.md#Box-and-Interval)
-  * [Shapes](Math.md#Shapes)
-  * [Random Generation](Math.md#Random-Generation)
-* [GL](GL.md):
-  * [Context](GL.md#Context)
-  * [Resources](Resources.md)
-  * [Services](GL.md#Services)
-  * [Clearing](GL.md#Clearing)
-  * [Drawing](GL.md#Drawing)
-  * [Debugging](GL.md#Debugging)
-* [Input](Input.md):
-* [GUI](GUI.md):
-* [ECS](ECS.md)
-* [Helpers](Helpers.md):
-  * [Game Loop](Helpers.md#Game-Loop)
+* [BplusCore](https://github.com/heyx3/BplusCore)
+  * [Utilities](Utilities.md):
+    * [Asserts](Utilities.md#Asserts)
+    * [Optional](Utilities.md#Optional)
+    * [Enums](Utilities.md#Enums)
+    * [PRNG](Utilities.md#PRNG)
+    * [Collections and Iterators](Utilities.md#Collections-And-Iterators)
+    * [Macros](Utilities.md#Macros)
+    * [Functions](Utilities.md#Functions)
+    * [Interop](Utilities.md#Interop)
+    * [Metaprogramming](Utilities.md#Metaprogramming)
+  * [Math](Math.md):
+    * [Functions](Math.md#Functions)
+    * [`Vec{N, T}`](Vec.md)
+    * [`Quaternion{F}`](Quat.md)
+    * [`Mat{C, R, F}`](Matrix.md)
+    * [Rays](Math.md#Rays)
+    * [Box and Interval](Math.md#Box-and-Interval)
+    * [Shapes](Math.md#Shapes)
+    * [Random Generation](Math.md#Random-Generation)
+* [BplusApp](https://github.com/heyx3/BplusApp)
+  * [GL](GL.md):
+    * [Context](GL.md#Context)
+    * [Resources](Resources.md)
+    * [Services](GL.md#Services)
+    * [Clearing](GL.md#Clearing)
+    * [Drawing](GL.md#Drawing)
+    * [Debugging](GL.md#Debugging)
+  * [Input](Input.md):
+  * [GUI](GUI.md):
+  * [`BasicGraphics` service](Helpers.md#Basic-Graphics)
+  * [`@game_loop`](Helpers.md#Game-Loop)
+* [BplusTools](https://github.com/heyx3/BplusTools)
+  * [Cam3D](Helpers.md#Cam3d)
+  * [File Cacher](Helpers.md#File-Cacher)
+  * [ECS module](ECS.md)
+  * [SceneTree module](SceneTree.md)
+  * [Fields module](Fields.md)

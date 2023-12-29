@@ -1,4 +1,4 @@
-Part of the [GL module](GL.md#Resources). Represents a managed OpenGL object.
+Part of the [`GL` module](GL.md#Resources). Represents a managed OpenGL object.
 
 All resource types implement the following interface (see doc-strings for more details):
 
