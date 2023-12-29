@@ -7,6 +7,7 @@ using BplusTools; @using_bplus_tools
 
 # Helper macro to import all of B+.
 const SUB_PACKAGES = nameof.((BplusCore, BplusApp, BplusTools))
+const PACKAGES_USING_STATEMENTS = [:( using $p ) for p in SUB_PACKAGES]
 const MODULES_USING_STATEMENTS = [m for p in SUB_PACKAGES for m in eval(p).MODULES_USING_STATEMENTS]
 "
 Loads all B+ modules with `using` statements.
@@ -17,7 +18,10 @@ using Bplus
 ````
 "
 macro using_bplus()
-    return quote $(MODULES_USING_STATEMENTS...) end
+    return quote
+        $(PACKAGES_USING_STATEMENTS...)
+        $(MODULES_USING_STATEMENTS...)
+    end
 end
 export @using_bplus
 
