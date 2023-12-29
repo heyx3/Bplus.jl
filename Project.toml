@@ -1,7 +1,7 @@
 name = "Bplus"
 uuid = "c71c5366-3533-40c3-bcf3-6383cd1eb1eb"
 authors = ["William Manning <manning.w27@gmail.com>"]
-version = "0.2.0"
+version = "0.1.0"
 
 [deps]
 BplusApp = "6498524c-785b-4e26-b825-b7be109d6de7"
