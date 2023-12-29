@@ -21,15 +21,15 @@ Detailed info on the B+ codebase. For high-level info, see [the root README.md f
     * [Shapes](Math.md#Shapes)
     * [Random Generation](Math.md#Random-Generation)
 * [BplusApp](https://github.com/heyx3/BplusApp)
-  * [GL](GL.md):
+  * [GL module](GL.md):
     * [Context](GL.md#Context)
     * [Resources](Resources.md)
     * [Services](GL.md#Services)
     * [Clearing](GL.md#Clearing)
     * [Drawing](GL.md#Drawing)
     * [Debugging](GL.md#Debugging)
-  * [Input](Input.md):
-  * [GUI](GUI.md):
+  * [Input module](Input.md):
+  * [GUI module](GUI.md):
   * [`BasicGraphics` service](Helpers.md#Basic-Graphics)
   * [`@game_loop`](Helpers.md#Game-Loop)
 * [BplusTools](https://github.com/heyx3/BplusTools)

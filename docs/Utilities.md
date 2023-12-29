@@ -160,9 +160,9 @@ end i<10
 
 ## Interop
 
-* `InteropString` juggles a string across two representations: the Julia `String` and a C-style, null-terminated buffer (of type `Vector{UInt8}`).
-  * Create a new string with `i_str = InteropString(s::String[, capacity_size_multiple])`.
-  * Get the Julia string's current value with `string(i_str)` (the core `string` function defined in `Base` and available everywhere).
+* `InteropString` juggles a string across two representations: a Julia `String` and a C-style, null-terminated `Vector{UInt8}`.
+  * Create a new instance with `i_str = InteropString(s::String[, buffer_capacity_multiplier])`.
+  * Get the Julia string's current value with `string(i_str)` (the same `string` function defined in `Base` and available everywhere).
   * Set the Julia string with `update!(i_str, new_value::String)`.
     * Note that `update!()` is also declared in the package *DataStructures*, so if you use that module you have to put the module name in front of each `update!` call, or pick the default one with an alias `const update! = BplusCore.Utilities.update!`.
   * If the C version of the string was modified, regenerate the Julia string with `update!(i_str)`.
@@ -171,8 +171,10 @@ end i<10
 
 ### Unions
 
-* `@unionspec(T{_}, A, B, ...)` turns into `Union{T{A}, T{B}, ...}`
-* `union_types(U)` gets a tuple of the individual types inside a union.
+* `@unionspec(T{_}, A, B, C)` turns into `Union{T{A}, T{B}, T{C}}`
+  * You can get the same result with a generator expression, `Union{(T{t} for t in (A, B, C))...}`,
+     but it's a bit more verbose.
+* `union_types(U)` calculates a tuple of the individual types inside a union.
   * If you pass a single type, then you get a 1-tuple of that type.
 
 ### Expression manipulation

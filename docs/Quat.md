@@ -2,9 +2,10 @@ Part of the [`Math` module](Math.md). The core game math types are: `Vec{N, T}`,
 
 # `Quaternion{F}`
 
-A set of 4 numbers that can efficiently and effectively represent 3D rotations.
+Four numbers that together, efficiently and effectively represent 3D rotations.
 
-Like `Vec`, this type is immutable and able to be allocated on the stack. Fortunately, immutability isn't a big deal for quaternions are you aren't going to be fiddling with their individual components much.
+Like `Vec`, this type is immutable and able to be allocated on the stack.
+You can use `@set!` to create modified copies, but you shouldn't have to fiddle with a quaternion's individual components anyway.
 
 ## Aliases
 
