@@ -153,9 +153,9 @@ You can "modify" a vector variable with the syntax `v = @set v.x += 10`, or just
 
 ## Coordinate System
 
-B+ allows you to define the engine-wide up axis and handedness of vector math by redefining `Bplus.Math.get_up_axis() = 2` (the default is `3` the Z axis) and `Bplus.Math.get_right_handed() = false` (defaults to `true`). For more info on how this works, see [How it works](#How-it-works) below.
+B+ allows you to define the engine-wide up axis and handedness of vector math by redefining `BplusCore.Math.get_up_axis() = 2` (the default is `3` the Z axis) and `BplusCore.Math.get_right_handed() = false` (defaults to `true`). For more info on how this works, see [How it works](#How-it-works) below.
 
-An example of when this is useful is if you are primarily developing your project within `Dear ImGUI`'s graphics system rather than 3D rendering with `Bplus.GL`. Dear ImGUI is left-handed, and arguably Y-up.
+An example of when this is useful is if you are primarily developing your project within `Dear ImGUI`'s graphics system rather than 3D rendering with `BplusApp.GL`. Dear ImGUI is left-handed, and arguably Y-up.
 
 There are several built-in functions that respect handedness and up vector:
   * `v_rightward(a, b)` does a cross-product based on the current handed-ness. In right-handed systems, `v_rightward(forward, up)` does `vcross(forward, up)`. In left-handed systems, it swaps them.
@@ -191,4 +191,4 @@ This feature is mostly intended for integer vectors, but nothing stops you from 
 
 ## Printing
 
-The number of digits that a vector is printed with is controlled by the global variable `Bplus.Mat.VEC_N_DIGITS`. If you want to change this value only temporarily, call `use_vec_digits()`. If you want to print a single vector with a specific number of digits, use `show_vec`.
+The number of digits that a vector is printed with is controlled by the global variable `BplusCore.Mat.VEC_N_DIGITS`. If you want to change this value only temporarily, call `use_vec_digits()`. If you want to print a single vector with a specific number of digits, use `show_vec`.

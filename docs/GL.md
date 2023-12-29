@@ -125,11 +125,11 @@ Sometimes you want your own little singleton associated with a window or renderi
 
 The following servces are built into B+:
 
-* `Input`, from the [*Bplus.Input module](Input.md), provides a high-level view into GLFW keyboard, mouse, and gamepad inputs. Automatically managed for you if you use the [`@game_loop`](Helpers.md#Game-Loop) macro.
-* `GUI`, from the [*Bplus.GUI module](GUI.md), takes care of Dear ImGUI integration. Automatically managed for you if you use the [`@game_loop`](Helpers.md#Game-Loop) macro.
-* `BasicGraphics`, from the [*Bplus.Helpers module](Helpers.md#Basic-Graphics), provides simple shaders and meshes. Automatically managed for you if you use the [`@game_loop`](Helpers.md#Game-Loop) macro.
+* `Input`, from the [*BplusApp.Input module](Input.md), provides a high-level view into GLFW keyboard, mouse, and gamepad inputs. Automatically managed for you if you use the [`@game_loop`](Helpers.md#Game-Loop) macro.
+* `GUI`, from the [*BplusApp.GUI module](GUI.md), takes care of Dear ImGUI integration. Automatically managed for you if you use the [`@game_loop`](Helpers.md#Game-Loop) macro.
+* [`BasicGraphics`, from the *BplusApp module](Helpers.md#Basic-Graphics), provides simple shaders and meshes. Automatically managed for you if you use the [`@game_loop`](Helpers.md#Game-Loop) macro.
 * `SamplerProvider` is an internal service that allocates sampler objects as needed. Separate textures with the same sampler settings will reference the same sampler.
-* `ViewDebugging` helps catch *some* uses of bindless texture handles without properly activating them. It's only enabled if the *Bplus.GL* module is in [debug mode](Utilities.md#Asserts), or the GL Context is started in debug mode.
+* `ViewDebugging` helps catch *some* uses of bindless texture handles without properly activating them. It's only enabled if the *BplusApp.GL* module is in [debug mode](Utilities.md#Asserts), or the GL Context is started in debug mode.
 
 ## Clearing
 
@@ -147,7 +147,7 @@ Draw a `Mesh` resource `m`, using a `Program` resource `p`, by calling:
 
 `render_mesh(m, p; args...)`
 
-There are numerous named parameters to customize the draw call. **Important note**, as with the rest of the *Bplus.GL* module, all counting and indices in these paramters are 1-based, to stay consistent with the rest of Julia. They are converted to 0-based under the hood. For example, if doing instanced rendering with `N` instances, you want to pass the range `IntervalU(min=1, size=N)`, not `IntervalU(min=0, size=N)`.
+There are numerous named parameters to customize the draw call. **Important note**, as with the rest of the *BplusApp.GL* module, all counting and indices in these paramters are 1-based, to stay consistent with the rest of Julia. They are converted to 0-based under the hood. For example, if doing instanced rendering with `N` instances, you want to pass the range `IntervalU(min=1, size=N)`, not `IntervalU(min=0, size=N)`.
 
 * `shape::E_PrimitiveTypes` changes the type of primitive (line strip, triangle list, etc). By default, this information is taken from the `Mesh` being drawn.
 * `indexed_params::Optional{DrawIndexed}` controls indexed drawing. By default, if the `Mesh` has indices, it will draw in indexed mode using all availble indices.

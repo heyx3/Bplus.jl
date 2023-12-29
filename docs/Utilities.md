@@ -164,7 +164,7 @@ end i<10
   * Create a new string with `i_str = InteropString(s::String[, capacity_size_multiple])`.
   * Get the Julia string's current value with `string(i_str)` (the core `string` function defined in `Base` and available everywhere).
   * Set the Julia string with `update!(i_str, new_value::String)`.
-    * Note that `update!()` is also declared in the package *DataStructures*, so if you use that module you have to put the module name in front of each `update!` call, or pick the default one with an alias `const update! = Bplus.Utilities.update!`.
+    * Note that `update!()` is also declared in the package *DataStructures*, so if you use that module you have to put the module name in front of each `update!` call, or pick the default one with an alias `const update! = BplusCore.Utilities.update!`.
   * If the C version of the string was modified, regenerate the Julia string with `update!(i_str)`.
 
 ## Metaprogramming

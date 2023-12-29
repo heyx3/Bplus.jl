@@ -14,7 +14,7 @@ You can update an entire world with `tick_world(world, delta_seconds::Float32)`.
 
 A world stores timing data for easy access: `delta_seconds`, `elapsed_seconds`, and `time_scale`. You may set `time_scale` to change the speed of your world.
 
-To enable extra error-checking around your use of the ECS, enable the module's [debug asserts flag](Utilities.md#asserts) by executing `Bplus.ECS.bp_ecs_asserts_enabled() = true` while loading your game's code.
+To enable extra error-checking around your use of the ECS, enable the module's [debug asserts flag](Utilities.md#asserts) by executing `BplusTools.ECS.bp_ecs_asserts_enabled() = true` while loading your game's code.
 
 ## Entity/component management
 

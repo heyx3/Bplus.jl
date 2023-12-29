@@ -71,7 +71,7 @@ To update the camera, do `(cam, settings) = cam_update(cam, settings, input, del
 
 A system for reloading files from disk anytime they are changed. To use this system, do the following:
 
-1. Define the type of data that is cached. We will refer to this type as `TCached`. For example, a texture cache could use `Bplus.GL.Texture`.
+1. Define the type of data that is cached. We will refer to this type as `TCached`. For example, a texture cache could use `BplusApp.GL.Texture`.
 2. Define a function which loads, or *re*-loads, an asset from disk. We will refer to this as `reload_response::Base.Callable`.
    * The signature should be `(path::AbstractString[, old_data;:TCached]) -> new_data::TCached[, dependent_files]`.
      * If your loaded asset depends on other files beyond its own path, add a second return value which is an iterator of those files. Then a reload can be triggered by any of these files changing.

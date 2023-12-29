@@ -20,7 +20,7 @@ Note that the underlying library uses static variables, and does not manage mult
 
 ## Text Editor
 
-Text editing through a C library is tricky, due to the use of C-style strings, the need to integrate clipboard, and also the need to dynamically resize the string as the user writes larger and larger text.`Bplus.GUI.GuiText` handles all of this for you.
+Text editing through a C library is tricky, due to the use of C-style strings, the need to integrate clipboard, and also the need to dynamically resize the string as the user writes larger and larger text.`BplusApp.GUI.GuiText` handles all of this for you.
 
 * Create an instance with the initial string value, and optionally configuring some of its fields.
   * For example, `GuiText("ab\ncdef\ngh", is_multiline=true)`
