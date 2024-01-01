@@ -50,6 +50,7 @@ The following functions are availble (lambda parameter is omitted for brevity):
 * `gui_with_indentation(indent::Optional{Real} = nothing)` indents some GUI code.
 * `gui_with_padding(padding...)` sets the padding used within a window.
   * You can pass x and y values, or a tuple of X/Y values.
+* `gui_with_clip_rect(rect::Box2Df, intersect_with_current_rect::Bool, draw_list = nothing)` sets the clip rectangle.
 * `gui_with_font(font_or_idx::Union{Ptr, Int})` switches to one of the fonts you've already loaded into Dear ImGUI.
 * `gui_with_unescaped_tabbing()` disables the ability to switch between widgets with Tab.
   * Useful if you want Tab to be recognized in a text editor.
