@@ -40,7 +40,11 @@ Contiguous spaces can be represented by `Box{N, T}`, and contiguous number range
 
 Like `Vec`, boxes have many aliases based on type and dimensionality. For example, `Box2Du`, `Box4Df`, `BoxT`. Intervals have aliases for common types: `IntervalI`, `IntervalU`, `IntervalF`, and `IntervalD`.
 
-You can construct a box with any two of `min`, `max` (inclusive), `size`, and `center`. For example, `Box2Df(min=v2f(0, 0), max=v2f(1.5, 2.2))`. You can also construct one using `boundary(elements...)`, which computes the bounding box of several points and boxes (and other `AbstractShape` types).
+They can be constructed in several ways:
+
+* Provide two named arguments from: `min`, `max` (inclusive), `size`, `center`. For example, `Box2Df(min=v2f(0, 0), max=v2f(1.5, 2.2))`.
+* Construct the bounding box of some points and boxes (and other `AbstractShape` types) with `boundary(elements...)`.
+* Create a box with the min and size set to 0 by constructing it with only its type arguments. For example, `Box2Di()`.
 
 You can get the properties of a box with the following getters:
   * `min_inclusive(box)`

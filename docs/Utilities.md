@@ -92,6 +92,25 @@ For example, if you invoke `@make_toggleable_asserts(my_game_)`, then you'll get
 
 *Note*:  `@bp_bitflag` is meant to be a replacement for `@bitflag`, from the *BitFlags* package. `@bitflag` inherits a lot of the same problems as `@enum`, and also misses some big convenience features.
 
+### Anonymous enums
+
+If you want small-scale enums, for function parameters, you can use `@ano_enum(A, B, ...)` and `@ano_value(A)`. For example:
+
+````
+function do_stuff(i::Int, mode::@ano_enum(Mode1, Mode2, Mode3))
+    if mode isa @ano_enum(Mode1, Mode2)
+        i = -i
+    end
+    i *= 2
+    if mode isa @ano_enum(Mode1, Mode3)
+        i *= 10
+    end
+    return i
+end
+
+do_stuff(i, @ano_value(Mode2))
+````
+
 ## Numbers
 
 * `@f32(n)` is short-hand to cast a value to `Float32`.
@@ -179,25 +198,35 @@ end i<10
 
 ### Expression manipulation
 
-Much of this section requires some familiarity with Julia macros and metaprogramming, a.k.a. code that generates code. It also builds off of the *MacroTools* package.
+Much of this section requires some familiarity with Julia macros and metaprogramming, a.k.a. code that generates code. It's also heavily inspired by the *MacroTools* package. also builds off of the *MacroTools* package.
 
 * `FunctionMetadata(expr)` strips out top-level information from a function definition. In particular it checks for doc-strings, `@inline`, and `@generated`. For example, `FunctionMetadata(quote "Multiplies x by 5" @inline f(x) = x*5 end)` creates an instance of `FunctionMetadata("Multiplies x by 5", true, false, :( f(x) = x*5 ))`.
   * If you pass some invalid syntax into `FunctionMetadata(expr)`, it outputs `nothing` rather than throwing an error. This lets you more easily check whether an expression is a valid function definition or not. However it doesn't check the core expression (e.x. `f(x) = x*5`); only the things surrounding it.
   * You can turn an instance back into the original expression with `MacroTools.combinedef(fm::FunctionMetadata)::Expr`.
-* `SplitDef(expr)` implements a type-safe alternative to `MacroTools.splitarg()`, breaking an argument in a function signature into all its individual components. Refer to the fields of the `SplitArg` struct for more info.
-  * You can use `MacroTools.combinearg(a::SplitArg)` to get the AST for the parameter declaration.
-  * You can create a deep copyp of a `SplitArg` with the constructor: `SplitArg(src)`. Do not use `deepcopy()`, as that fails for some AST's.
-* `SplitDef(expr)` implements a type-safe alternative to `MacroTools.splitdef()`, breaking a function definition into all its individual components. Refer to the fields of the `SplitDef` struct for more info. Along with type-safety, this struct supports function metadata like doc-strings, `@inline`, and `@generated`.
-  * You can use `MacroTools.combinedef(s::SplitDef)` to get the AST for the function.
-  * You can use the new function `combinecall()` to get the function as just a call rather than a definition. For example, `combinecall(SplitDef(:( f(a, b=5; c) = a*b+c ))` returns `:( f(a, b; c=c) )`.
-  * You can create a deep copy of a `SplitDef` with the constructor: `SplitDef(src)`. Do not use `deepcopy()`, as that fails for some AST's.
-* `SplitMacro(expr)` works like `SplitDef` but for macro calls rather than function deinitions, breaking the macro call into its name, line number node, and arguments.
-  * You can use `combinemacro(m::SplitMacro)` to put it back to gether into an expression.
-* Various helper functions for checking the syntax of an expression:
-  * `is_scopable_name(expr)::Bool` checks for a name symbol, possibly prefixed by one or more dot operators (e.x. `:( Base.iszero )`)
-  * `is_function_call(expr)::Bool` checks for a function call/signature, like `MyGame.run(i::Int; j=5)`.
-  * `is_function_decl(expr)::Bool` checks for a function definition, like `f() = 5`.
+* `is_scopable_name(expr)::Bool` checks for a Symbol, possibly prefixed by one or more dot operators (e.x. `:( Base.iszero )`), and optionally allowing type parameters at the end (e.x. `:( A.B{C} )`).
+* `is_function_call(expr)::Bool` checks for a function call/signature, like `:( MyGame.run(i::Int; j=5) )`.
+* `is_function_decl(expr)::Bool` checks for a function definition, like `:( f() = 5 )`.
 * `expr_deepcopy()` works like `deepcopy()`, but without copying certain things that may show up in an AST and which aren't supposed to be copied. For example, literal references to modules.
+
+#### Expression Splitting
+
+There are several data representations of important syntax structures. This is analogous to `MacroTools.splitdef()` and `MacroTools.splitarg()`, but deeper and broader.
+
+All the below structures inherit from `AbstractSplitExpr`. They are created by constructing them with an expression (or another instance to be deep-copied with `expr_deepcopy()`). They can be turned back into the original AST with `combine_expr(s)`. Most of them can detect when the expression they're analyzing is wrapped in an `esc()` call.
+
+For more precise info on each field's meaning and type, refer to comments in the definition.
+
+* `SplitArg(expr)` gets all data about a function argument declaration, such as `:( i::Int=3 )`.
+* `SplitType(expr)` gets all data about a type declaration, such as `:( A{X} <: B )`.
+  * By default the constructor will do deep error-checking to validate the individual elements of the expression (e.x. making sure the name is a Symbol), but you can disable this by passing a second parameter into the constructor, `false`.
+* `SplitDef(expr)` gets all data about a function declaration (e.x. `quote "Returns 0." @inline f() = 0 end`).
+  * You can make it a function call/signature (e.x. `:( f(i::Int; j=5) )`) by setting the body to `nothing` (not to be confused with the expression `:nothing`, as in `:( f() = nothing )`).
+  * You can make it a lambda (e.x. `:( i -> i*2 )`) by setting the name to `nothing` (not to be confused with the expression `:nothing`).
+  * It is an error to set both the body and the name to `nothing`.
+* `SplitMacro` gets all data about a macro invocation, such as `:( @m a b+c )`.
+
+#### Assignment operators
+
 * `ASSIGNMENT_INNER_OP` maps modifying assignment operators to the plain operator. For example, `ASSIGNMENT_INNER_OP[:+=]` maps to `:+`.
   * `ASSIGNMENT_WITH_OP` is a map in the opposite direction: `ASSIGNMENT_WITH_OP[:+]` maps to `:+=`.
 * `compute_op(s::Symbol, a, b)` performs one of the modifying assignments (e.x. `+=`) on `a` and `b`. For example, `compute_op(:+=, a, b)` computes `a + b`.
