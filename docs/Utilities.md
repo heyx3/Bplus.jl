@@ -2,7 +2,7 @@ Core utilities for B+.
 
 ## Asserts
 
-You can do runtime checks with `@bp_check(condition, msg...)`. It throws an error if the condition is false, and provides the given message data (by converting each to `string()` and appending them together).
+You can do runtime checks with `@bp_check(condition, msg...)`. It throws an error if the condition is false, and provides the given message data (by converting each to `string()` and appending them together). You can also use `@bp_check_throws(statement, msg...)` in your tests to check that an expression throws.
 
 To add asserts and a debug/release flag to your project, invoke `@make_toggleable_asserts(prefix)`. Invoking it adds a new compile-time flag, plus some helper macros. In B+ each sub-module has its own toggleable asserts; in your own program you probably just want one for the whole project.
 
@@ -200,6 +200,7 @@ end i<10
 
 Much of this section requires some familiarity with Julia macros and metaprogramming, a.k.a. code that generates code. It's also heavily inspired by the *MacroTools* package. also builds off of the *MacroTools* package.
 
+* `visit_exprs(to_do, root)` visits every expression, like `MacroTools.prewalk` but without modifying the expression and with more info that helps to pinpoint the location of each sub-expression.
 * `FunctionMetadata(expr)` strips out top-level information from a function definition. In particular it checks for doc-strings, `@inline`, and `@generated`. For example, `FunctionMetadata(quote "Multiplies x by 5" @inline f(x) = x*5 end)` creates an instance of `FunctionMetadata("Multiplies x by 5", true, false, :( f(x) = x*5 ))`.
   * If you pass some invalid syntax into `FunctionMetadata(expr)`, it outputs `nothing` rather than throwing an error. This lets you more easily check whether an expression is a valid function definition or not. However it doesn't check the core expression (e.x. `f(x) = x*5`); only the things surrounding it.
   * You can turn an instance back into the original expression with `MacroTools.combinedef(fm::FunctionMetadata)::Expr`.
