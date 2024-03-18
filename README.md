@@ -16,21 +16,31 @@ If you're wondering why Julia, [read about it here](docs/!why.md)!
 
 ## Structure
 
-This library is segmented into several smaller packages:
+To import everything B+ has to offer, just do `using Bplus; @using_bplus`.
+All documented modules are available directly inside (e.x. `Bplus.Math`),
+  but under the hood this library is segmented into several smaller packages:
 
 * [BplusCore](https://github.com/heyx3/BplusCore) contains utilities and game math.
 * [BplusApp](https://github.com/heyx3/BplusApp) provides convenient access to OpenGL, GLFW, and Dear ImGUI.
 * [BplusTools](https://github.com/heyx3/BplusTools) provides a variety of other game-development tools, like a scene-graph algorithm, ECS algorithm, and more.
 
-You can, for example, integrate `BplusCore` into your own project to get all the game math, without having to use OpenGL, Dear ImGUI, or any of the other parts of the library.
+You can, for example, integrate `BplusCore` into your own project to get all the game math,
+    without having to use OpenGL, Dear ImGUI, or any of the other parts of the library.
 
 ## Tests
 
-Unit tests follow Julia convention: kept in the *test* folder, and centralized in *test/runtests.jl*. Each sub-package (`BplusCore`, `BplusApp`, and `BplusTools`) runs its own tests.
+Unit tests follow Julia convention: kept in the *test* folder, and centralized in *test/runtests.jl*.
+Each sub-package (`BplusCore`, `BplusApp`, and `BplusTools`) runs its own tests,
+    and this package runs each of those in sequence.
+The test behavior is standardized by `BplusCore`, which provides the path
+    to a test-running Julia file through `BplusCore.TEST_RUNNER_PATH`.
 
-The test behavior is standardized by `BplusCore`, which provides the path to a test-running Julia file through `BplusCore.TEST_RUNNER_PATH`.
-
-I never liked how the official Julia Test package does not let you assign messages to tests, so my tests are implemented with my own macros: `@bp_check(condition, msg...)` for normal checks, and a special macro `@bp_test_no_allocations(expr, expected_value, msg...)` to test expressions that need to be completely static and type-stable (game math, scene graph operations, raycast math, etc). A slightly longer version of the last macro is offered in case you need to set up the test with some operations that may allocate: `@bp_test_no_allocations_setup(setup_expr, test_expr, expected_value, msg...)`.
+I never liked how the official Julia Test package does not let you assign messages to tests,
+    so my tests are implemented with my own macros:
+  * `@bp_check(condition, msg...)` for normal checks
+  * `@bp_check_throws(statement, msg...)` to ensure something causes an error
+  * `@bp_test_no_allocations(expr, expected_value, msg...)` to test expressions that need to be completely static and type-stable (game math, scene graph operations, raycast math, etc).
+    * A slightly longer version is offered in case you need to set up the test with some operations that may allocate: `@bp_test_no_allocations_setup(setup_expr, test_expr, expected_value, msg...)`.
 
 ## Codebase
 
@@ -71,7 +81,7 @@ To import all B+ sub-modules into your project, you can use this snippet: `using
 
 Below is a quick overview of the modules. [A thorough description is available here](docs/!home.md). You can also refer to the inline doc-strings, comments, and [sample projects](https://github.com/heyx3/BpExamples).
 
-### Utilities
+### `Bplus.Utilities`
 
 A dumping ground for all sorts of convenience functions and macros.
 
@@ -85,7 +95,7 @@ Detailed info can be found [in this document](docs/Utilities.md), but here are t
 * `RandIterator{TIdx, TRng}`: Randomly and efficiently iterates through every value in some range `1:n`.
 * `UpTo{N, T}`: A type-stable, immutable, stack-allocated container for up to N values of type T. Implements `AbstractVector{T}`.
 
-### Math
+### `Bplus.Math`
 
 Typical game math stuff, but using Julia's full expressive power.
 
@@ -101,7 +111,7 @@ Detailed info can be found [in this document](docs/Math.md), but here is a high-
   * `perlin(pos)`
 * `Contiguous{T}` is an alias for a wide variety of storage for some sequence of `T`. For example, `NTuple{10, Vec{3, Float32}}` is both a `Contiguous{Float32}` and a `Contiguous{Vec{3, Float32}}`.
 
-### GL
+### `Bplus.GL`
 
 Wraps OpenGL constructs, and provides a centralized place for a graphics context and its accompanying window. This is the big central module of B+ along with `Math`.
 
@@ -112,7 +122,7 @@ Detailed information can be found [in this document](docs/GL.md), but here is a 
 * `AbstractResource` is the type hierarchy for OpenGL objects, like `Texture`, `Buffer`, or `Mesh`.
 * Clear the screen with `clear_screen()`. Draw something with `render_mesh()`.
 
-### Input
+### `Bplus.Input`
 
 Detailed explanation available [here](docs/Input.md).
 
@@ -121,7 +131,7 @@ Provides a greatly-simplified window into GLFW input, as a [GL Context Service](
 Make sure to update this service every frame with `service_Input_update()`; this is already done for you if you build your game logic within [`@game_loop`](docs/Helpers.md#Game-Loop).
 
 
-### GUI
+### `Bplus.GUI`
 
 Helps you integrate B+ projects with the Dear ImGUI library, exposed in Julia through the *CImGui.jl* package.
 
@@ -136,7 +146,7 @@ If you use [`@game_loop`](docs/Helpers.md#Game-Loop), then this is all handled f
 
 To send a texture (or texture View) to the GUI system, you must wrap it with `gui_tex_handle(tex_or_view)`
 
-### ECS
+### `Bplus.ECS`
 
 A very simple entity-component system that's easy to iterate on, loosely based on Unity3D's model. If you want a high-performance, use an external Julia ECS package instead such as *Overseer.jl*.
 
@@ -154,13 +164,13 @@ Detailed information can be found in [this document](docs/ECS.md), but here is a
 
 Things that don't neatly fit into the other modules are documented [here](docs/Helpers.md).
 
-### SceneTree
+### `Bplus.SceneTree`
 
 Provides a memory-layout-agnostic implementation of scene graph algorithms. **Still a work-in-progress**, but the architecture is pretty much done.
 
 Read about this feature [here](docs/SceneTree.md).
 
-### Fields
+### `Bplus.Fields`
 
 A data representation of scalar or vector fields, i.e. functions of some `Vec{N1, F1}` to some `Vec{N2, F2}`. As well as a nifty little language for quickly specifying them.
 

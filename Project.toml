@@ -1,7 +1,7 @@
 name = "Bplus"
 uuid = "c71c5366-3533-40c3-bcf3-6383cd1eb1eb"
 authors = ["William Manning <manning.w27@gmail.com>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 BplusApp = "6498524c-785b-4e26-b825-b7be109d6de7"
@@ -10,6 +10,6 @@ BplusTools = "9c855568-ef52-4907-8d6a-2b3bbb89a4a6"
 
 [compat]
 julia = "1.9"
-BplusCore="=0.1.0"
-BplusApp="=0.1.0"
+BplusCore="=0.1.1"
+BplusApp="=0.1.1"
 BplusTools="=0.1.0"

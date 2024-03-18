@@ -1,29 +1,35 @@
 module Bplus
 
-using BplusCore; @using_bplus_core
-using BplusApp; @using_bplus_app
-using BplusTools; @using_bplus_tools
+using BplusCore, BplusApp, BplusTools
+@using_bplus_core
 
+#TODO: Each sub-module should list its own important modules for B+ to automatically consume.
+const SUB_MODULES = Dict(
+    BplusCore => [:Utilities, :Math],
+    BplusApp => [ :GL, :GUI, :Input, :ModernGLbp ],
+    BplusTools => [ :ECS, :Fields, :SceneTree ]
+)
 
-# Helper macro to import all of B+.
-const SUB_PACKAGES = nameof.((BplusCore, BplusApp, BplusTools))
-const PACKAGES_USING_STATEMENTS = [:( using $p ) for p in SUB_PACKAGES]
-const MODULES_USING_STATEMENTS = [m for p in SUB_PACKAGES for m in eval(p).MODULES_USING_STATEMENTS]
-"
-Loads all B+ modules with `using` statements.
-You can import all of B+ with two lines:
-````
-using Bplus
-@using_bplus
-````
-"
+for (sub_module, features) in SUB_MODULES
+    for feature_name in features
+        @eval const $feature_name = $sub_module.$feature_name
+        @eval export $feature_name
+    end
+end
+
 macro using_bplus()
+    # Import the modules as if they came directly from B+.
+    using_statements = [ ]
+    for (sub_module, features) in SUB_MODULES
+        push!(using_statements, :( using Bplus.$(Symbol(sub_module)) ))
+        for feature_name in features
+            push!(using_statements, :( using Bplus.$feature_name ))
+        end
+    end
     return quote
-        $(PACKAGES_USING_STATEMENTS...)
-        $(MODULES_USING_STATEMENTS...)
+        $(using_statements...)
     end
 end
 export @using_bplus
-
 
 end # module

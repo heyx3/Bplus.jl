@@ -12,6 +12,8 @@ Contexts manage several important things:
   * A reference to the `GLFW.Window` and its current vsync setting.
   * The current render state, in the field `state::RenderState`.
     * For convenience, all the fields in `RenderState` are exposed as properties of `Context`. For example, instead of doing `get_context().state.viewport`, you can just do `get_context().viewport`.
+  * Which of your requested OpenGL extensions was actually available (by default, a few bindless-texture extensions are requested)
+    * Call `extension_supported("GL_ARB_my_extension_name")` to check
   * Any services that are attached to this context (see [Services](#Services)).
   * The specific GPU device limits as reported through OpenGL, in the field `device::Device`.
     * Some of these statistics are not always reported reliably by every driver, so beware when using them.
