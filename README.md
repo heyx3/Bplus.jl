@@ -12,6 +12,10 @@ A [voxel toy project](https://github.com/heyx3/BpWorld) using B+ is ongoing:
 
 [![Voxel Toy Project](https://img.youtube.com/vi/fGxGdNAPTSY/hqdefault.jpg)](https://www.youtube.com/embed/fGxGdNAPTSY)
 
+[Here is another game I've been prototyping that heavily uses the ECS system](https://github.com/heyx3/Drill8):
+
+[![Drill8](https://img.youtube.com/vi/H5IgtsJcJjw/hqdefault.jpg)](https://www.youtube.com/embed/H5IgtsJcJjw)
+
 If you're wondering why Julia, [read about it here](docs/!why.md)!
 
 ## Structure
