@@ -1,6 +1,3 @@
 [submodule "GeometryGenerator"]
 	path = Engine/dependencies/Projects/GeometryGenerator
 	url = git@github.com:heyx3/generator.git
-[submodule "dependencies/ModernGLbp.jl"]
-	path = dependencies/ModernGLbp.jl
-	url = https://github.com/heyx3/ModernGL.jl.git
