@@ -4,6 +4,8 @@
 A game and 3D graphics framework for Julia, using OpenGL 4.6 + bindless textures.
 Offers game math, wrappers for OpenGL/GLFW/Dear ImGUI, scene graph algorithms, and numerous other modules.
 
+Add it to your project with `] add Bplus` or `using Pkg; Pkg.add("Bplus")`.
+
 A number of example projects are provided in [the *BpExamples* repo](https://github.com/heyx3/BpExamples):
 
 [![Example Projects](https://img.youtube.com/vi/Po3zGQRSRgE/hqdefault.jpg)](https://www.youtube.com/embed/Po3zGQRSRgE)
