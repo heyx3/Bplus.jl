@@ -8,13 +8,13 @@ A number of example projects are provided in [the *BpExamples* repo](https://git
 
 [![Example Projects](https://img.youtube.com/vi/Po3zGQRSRgE/hqdefault.jpg)](https://www.youtube.com/embed/Po3zGQRSRgE)
 
-A [voxel toy project](https://github.com/heyx3/BpWorld) using B+ is ongoing:
-
-[![Voxel Toy Project](https://img.youtube.com/vi/fGxGdNAPTSY/hqdefault.jpg)](https://www.youtube.com/embed/fGxGdNAPTSY)
-
-[Here is another game I've been prototyping that heavily uses the ECS system](https://github.com/heyx3/Drill8):
+[Here is an open-source game project that heavily uses the ECS system](https://github.com/heyx3/Drill8):
 
 [![Drill8](https://img.youtube.com/vi/H5IgtsJcJjw/hqdefault.jpg)](https://www.youtube.com/embed/H5IgtsJcJjw)
+
+An ongoing [voxel toy project](https://github.com/heyx3/BpWorld) of mine:
+
+[![Voxel Toy Project](https://img.youtube.com/vi/fGxGdNAPTSY/hqdefault.jpg)](https://www.youtube.com/embed/fGxGdNAPTSY)
 
 If you're wondering why Julia, [read about it here](docs/!why.md)!
 
