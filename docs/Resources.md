@@ -10,8 +10,6 @@ All resource types implement the following interface (see doc-strings for more d
 
 `Program` is a compiled shader, either for rendering or compute.
 
-## Creation
-
 ### From string literal
 
 You can compile a shader from a static string literal with Julia's macro string syntax: `bp_glsl" [multiline shader code here] "`. Within the string, you can define mutiple sections:
@@ -154,10 +152,10 @@ Create a 1D, 2D, or 3D texture with `Texture(format, size; args...)` or `Texture
 Create a cubemap texture with `Texture_cube(format, square_length::Integer; args...)` or `Texture(format, six_faces_data::PixelBufferD{3}; args...)`. For more info on how cubemaps are specified, see [Cubemaps](#Cubemaps) below.
 
 The optional arguments to the constructor are as follows:
-  * `sampler = TexSampler{N}()` is the default sampler associated with the texture.
-  * `n_mips::Integer = [maximum]` is the number of mips the texture has. Pass `1` to disable mip-mapping.
-  * `depth_stencil_sampling` controls what can be sampled/read from a texture with a depth-stencil hybrid format. Only one of Depth or Stencil can be read at a time.
-    * This can be changed after construction with `set_tex_depthstencil_source(tex, source)`.
+  * `sampler = TexSampler{N}()` is the default sampler associated with the N-dimensional texture.
+  * `n_mips::Integer = [maximum]` is the number of mips the texture has. Pass `1` to effectively disable mip-mapping.
+  * `depth_stencil_sampling::Optional{E_DepthStencilSources}` controls what can be sampled/read from a texture with a depth-stencil hybrid format. Only one of Depth or Stencil can be read at a time.
+    * This can be changed after construction with `set_tex_depthstencil_source(tex, new_value)`.
   * `swizzling` can switch the components of the texture when it's being sampled or read from an Image view. Does *not* affect writes to the texture, or blending operations when rendering to the texture.
     * This can be changed after construction with `set_tex_swizzling(tex, new_swizzle)`.
 
@@ -463,7 +461,7 @@ For each color output, the fragment shader can write to one output variable. The
 
 Targets can output to particular slices of a 3D texture or faces of a cubemap texture. The texture attachment can also be "layered", meaning ALL slices/faces are available and the geometry shader can emit different primitives to different layers as it pleases.
 
-## Construction
+## Creation
 
 There are several ways to construct a `Target`. Whenever you provide settings rather than an explicit texture, the `Target` will create a texture for you, and will remember to destroy it when the `Target` is destroyed.
 
@@ -472,7 +470,7 @@ Existing textures that you want to attach should be wrapped in the `TargetOutput
 * `Target(size::v2u, n_pretend_layes::Int)` creates an instance with no actual outputs, but which pretends to have the given number of outputs.
 * `Target(color::Union{TargetOutput, Vector{TargetOutput}}, depth_stencil::TargetOutput)` creates an instance with zero or more color attachments, and the given depth/stencil attachment.
 * `Target(depth_stencil::TargetOutput)` creates an instance with no color attachments, only a depth and/or stencil attachment.
-* `Target(color::TargetOutput, depth_stencil::E_DepthStencilFormats, ds_no_sampling::Bool = true, ds_sampling_mode = DepthStencilSources.depth)` creates a target with one color output, and one depth/stencil output which by default is not sampleable. If it *is* marked sampleable, the fourth parameter controls what can be sampled from it.
+* `Target(color::TargetOutput, depth_stencil::E_DepthStencilFormats, ds_no_sampling::Bool = true, ds_sampling_mode = DepthStencilSources.depth)` creates a target with one color output, and one depth/stencil output which by default is not sampleable (meaning, it's not a `Texture`). If you *do* mark it sampleable, the fourth parameter controls what can be sampled from it.
 
 ## Use
 

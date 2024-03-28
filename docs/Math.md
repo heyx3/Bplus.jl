@@ -62,6 +62,9 @@ Some other box/interval functions (again, not including the `AbstractShape` inte
   * `Base.intersect(boxes::Box...)::Box` gets the intersection of one or more boxes. You can call `is_empty(result)` to check if there is no intersection.
   * `Base.reshape(box, new_dimensionality::Integer; ...)` removes or adds dimensions to the box. Added dimensions have a specific min and size (specified in named parameters).
 
+Integer boxes and intervals can be used to slice into a multidimensional array.
+For example, `myArr[Box(min=v3i(3, 4, 5), max=v3i(5, 5, 5))]` is equivalent to `myArr[3:5, 4:5, 5:5]`.
+
 Boxes can be serialized and deserialized. Deserialization can come from any pair of constuctor parameters: `min`, `max`, `size`, `center`. For example, you can deserialize a Box2Df from this JSON string using the JSON3 package: `"{ "min": [ 1, 2 ], "size": [5, 5] }"`.
 
 ## Shapes
