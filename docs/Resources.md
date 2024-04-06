@@ -164,6 +164,9 @@ The optional arguments to the constructor are as follows:
 
 You can use almost any kind of basic scalar/vector data to upload or download a texture's pixels. The set of allowed pixel array types is captured by the type alias `PixelBuffer`, which is a Julia array of `N` dimensions and `T` elements. `N` is the texture dimensionality and `T` is the pixel data type. `T` must come from the type alias `PixelIOValue`, which is either a scalar `PixelIOComponent` or a vector of 1 to 4 such components.
 
+If you're loading an image using the *FileIO* package, you can convert those image pixels to B+ data of a particular type `T` (such as `v3f`) using `convert_pixel(pixel, T)`.
+For example, `using FileIO, ImageIO; bplus_pixel_array = convert_pixel.(FileIO.load("MyImage.png"), vRGBu8)`
+
 For color textures, the components to work with are usually deduced from the type of the pixel data.
 For example, an array of `v2f` is assumed to be working with the RG components.
 If uploading/downloading a single channel from the texture, it defaults to the Red channel.

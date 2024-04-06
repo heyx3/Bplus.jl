@@ -59,6 +59,8 @@ The following functions are availble (lambda parameter is omitted for brevity):
   * Dear ImGUI calls this a "tree node".
 * `gui_with_style_color(index::CImGui.ImGuiCol_, color::Union{Integer, CImGui.ImVec4})` configures a specific color within Dear ImGUI's style settings.
 * `gui_within_group()` allows widgets to be referred to as an entire group. For example, you can make a vertical layout section within a horizontal layout section by calling `CImGui.SameLine()` after the entire vertical group.
+* `gui_tab_views()` allows you to define multiple tabs, each with associated widgets inside it.
+  * `gui_tab_item()` defines one tab view within.
 * `gui_within_child_window(size, flags=0)::Optional` nests a GUI within a sub-window. Returns the output of your code block, or `nothing` if the window is culled.
 
 ## Other Helper Functions

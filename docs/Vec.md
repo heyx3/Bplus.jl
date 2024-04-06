@@ -135,9 +135,12 @@ Vectors also interact nicely with Julia's multidimensional arrays:
 
 * As an `AbstractVector`, `Vec` supports many standard array-processing functions (see [below](#Array-Like-Behavior)).
   * Note that `Vector` is Julia's term for a 1D array; don't get them confused.
-* You can get the size of a multidimensional array as a vector, with `vsize(arr, I=Int32)`
 * You can get an element of a multidimensional array at an integer-vector index, with `arr[vec]`.
-  * Unfortunately, the indexing order of arrays is reversed, so in a 2D array, a `Vec` index's X coordinate is the row, and Y is the column. Fixing this in B+ would cause more problems than it solves IMO; you'd also have to reverse `vsize()`, and then tuples and vectors index differently...
+  * Unfortunately, the indexing order of Julia arrays is reversed, so in a 2D array, a `Vec` index's X coordinate is the row, and Y is the column.
+  * To get the more intuitive indexing order, for example when working with arrays of pixels, you can `reverse()` the vector or wrap the index with `TrueOrdering` like so: `a[TrueOrdering(v)] == a[reverse(v)] == a[v.z, v.y, v.x]`.
+* You can get the size of a multidimensional array as a vector, with `vsize(arr, I=Int32)`.
+  * As mentioned above, the indexing order of Julia arrays is reversed, so for example the `vsize` of a 2D array gives you the row count in the X component and the column count in the Y component.
+  * Pass `true_order=true` to swap the output's elements and get the more intuitive ordering, useful when working with pixel grids
 
 Some other general utilities:
 
