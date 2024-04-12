@@ -9,7 +9,7 @@ reset_julia_env()
 
 # Run each sub-package's unit tests.
 using Bplus
-for sub_package in keys(Bplus.SUB_MODULES)
+for (sub_package, modules) in Bplus.SUB_MODULES
     sub_package_name = Symbol(sub_package)
     @eval module $(Symbol(:Test_, sub_package_name))
         using $sub_package_name
