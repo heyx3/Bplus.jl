@@ -172,8 +172,14 @@ end i<10
 
 ## Functions
 
-* `reinterpret_to_bytes(x)::NTuple{sizeof(x), UInt8}` gets the bytes of some bitstype data.
-  * To copy the bytes into some collection such as a `Ref` or `Vector{UInt8}` instead of returning them, pass that collection and optionally a starting byte index.
+* `reinterpret_to_bytes(input..., output...)` reads some bitstype data into a stream of bytes.
+  * Input can be:
+    * Some bitstype value (e.x. `4.5`)
+    * A contiguous collection of bitstype data (e.x. `@view my_float_array[2:10]`)
+    * A `Ref` to some bitstype data, plus an element count (e.x. `Ref(my_float_array, 2), 9`)
+  * Output can be:
+    * Nothing, to have the function return an `NTuple` of `UInt8` bytes (only allowed if the input is a bitstype)
+    * A mutable collection of bytes to write into, plus an optional first byte (defaulting to `1`)
 * `reinterpret_from_bytes(bytes, T, first_byte=1)::T` creates a bitstype using the given bytes, either an `NTuple{N, UInt8}` or a mutable collection of bitstypes such as `Ref` or `Vector`.
 * `val_type(::Val{T})` and `val_type(::Type{Val{T}})` return `T`. For example, `val_type(Val(:hi))` returns `:hi`.
   * For reference, `Val{T}` is a built-in Julia type that turns some bits data into a type parameter. It's an important part of building complex zero-cost abstractions.
