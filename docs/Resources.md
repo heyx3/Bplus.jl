@@ -69,7 +69,7 @@ Uniforms can be set with the following functions:
 
 Additionally, you can provide [buffer data](Resources.md#Buffer) to the shader in one of two forms, explained below.
 
-**Important note**: The packing of buffer data into one a shader block follows very specific rules, most commonly "std140" and "std430". See the [Buffer section](Resources.md#Buffer) for some helpers to pack data correctly.
+**Important note**: The packing of buffer data into one a shader block follows very specific layout rules, most commonly "std140" and "std430". See the [Buffer section](Resources.md#Buffer) for helper macros to pack data correctly.
 
 #### Uniform Buffers
 
@@ -106,8 +106,13 @@ To create a buffer, just call one of its constructors. You can pass an explicit 
 ## Data
 
 To set a buffer's data (or a subset of it), call `set_buffer_data(buffer, data::Vector{T}; ...)`. See the function definition for info on the various parameters.
+You may also call `set_buffer_bytes(buffer, byte_data, n_bytes; first_byte=1)` to provide a plain byte-array instead of an array of elements.
 
-To get a buffer's data (or a subset of it), call `get_buffer_data(buffer, output=UInt8; ...)`. You can provide an array to write into, or merely the type of data to have the function allocate a new array for you. See the function definition for info on the various parameters.
+To get a buffer's data (or a subset of it), call `get_buffer_data(buffer, output=UInt8; ...)`.
+You can provide an array to write into, or merely the type of array elements to have the function allocate a new array for you.
+See the function definition for info on the various parameters.
+
+If you're using the `@std140` or `@std430` macros to define your buffer data structure, you can use the simplified overloads `set_buffer_data(buffer, in_data::AbstractOglBlock, first_byte=1)` and `get_buffer_data(buffer, out_data::Union{AbstractOglBlock, Type{<:AbstractOglBlock}}, first_byte=1)`.
 
 To copy one buffer's data to another, call `copy_buffer(src, dest; ...)`. You can use the optional named parameters to pick subsets of the source or destination buffer.
 
