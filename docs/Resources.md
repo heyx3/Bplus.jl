@@ -22,6 +22,7 @@ You can compile a shader from a static string literal with Julia's macro string 
 * Code following the token `#START_COMPUTE` makes this Program into a compute shader, forbidding all other shader types.
 
 For dynamic strings, you can call `bp_glsl_str(shader_string)` to get the same result.
+To get a printout of the final shaders, you can pass `debug_out = stderr`.
 
 ### From simple compilation
 
@@ -98,21 +99,40 @@ Clear a Storage Buffer global slot with `set_storage_block(slot::Int)`.
 # Buffer
 
 A struct or array of data, stored on the GPU. It is often used for mesh data, but can also be used in shaders.
-
 If using them in shaders, make sure to check the [Packing section](#Packing) below.
 
-To create a buffer, just call one of its constructors. You can pass an explicit byte-size, or a set of initial data which is immediately uploaded to the buffer. You cannot resize a buffer after creating it.
+To create a buffer, just call one of its constructors.
+The most basic constructor is `Buffer(byte_size, can_cpu_change_data_after_creation, recommend_storage_on_cpu=false)`.
+Other constructors allow you to pass some initial data, or a bits Type whose byte-size is used.
+The variety of data you can give to the constructor mostly matches [the data you can pass into `set_buffer_data()`](#Data).
+
+You cannot resize a buffer after creating it.
 
 ## Data
 
-To set a buffer's data (or a subset of it), call `set_buffer_data(buffer, data::Vector{T}; ...)`. See the function definition for info on the various parameters.
-You may also call `set_buffer_bytes(buffer, byte_data, n_bytes; first_byte=1)` to provide a plain byte-array instead of an array of elements.
+To set a buffer's data (or a subset of it), call `set_buffer_data(buffer, ...)`.
+There are several overloads for different kinds of data, including:
 
-To get a buffer's data (or a subset of it), call `get_buffer_data(buffer, output=UInt8; ...)`.
-You can provide an array to write into, or merely the type of array elements to have the function allocate a new array for you.
-See the function definition for info on the various parameters.
+* `set_buffer_data(buf, ptr::Ref, buffer_byte_range::IntervalU = [all bytes])`
+* `set_buffer_data(buf, array::AbstractArray, buffer_first_byte=1)`
+* `set_buffer_data(buf, some_bits_data, buffer_first_byte=1)`
+* `set_buffer_data(buf, block::AbstractOglBlock, buffer_first_byte=1)`
+  * `AbstractOglBlock` is any type created with [`@std140` or `@std430`](#Packing).
+* `set_buffer_data(buf, block_array::BlockArray, buffer_first_byte=1)`
+  * `BlockArray` is a special kind of array that matches the [layout of the data on the GPU](#Packing)
 
-If you're using the `@std140` or `@std430` macros to define your buffer data structure, you can use the simplified overloads `set_buffer_data(buffer, in_data::AbstractOglBlock, first_byte=1)` and `get_buffer_data(buffer, out_data::Union{AbstractOglBlock, Type{<:AbstractOglBlock}}, first_byte=1)`.
+To get a buffer's data (or a subset of it), call `get_buffer_data(buffer, ...)`.
+There are several overloads for different kinds of data, including:
+
+* `get_buffer_data(buf, ptr::Ref, buffer_byte_range::IntervalU = [all bytes])`
+* `get_buffer_data(buf, array::AbstractArray, buffer_first_byte=1)`
+* `get_buffer_data(buf, T, buffer_first_byte=1)::T`
+  * The type `T` must be one of the following:
+    * A bitstype
+    * Any type created with [`@std140` or `@std430`](#Packing)
+    * A GPU-layout array type inheriting from `BlockArray`, for example `StaticBlockArray{N, T, TMode<:Union{OglBlock_std140, OglBlock_std430}}`
+* `get_buffer_data(buf, (T, size...), buffer_first_byte=1)::Array{T}`
+  * The type `T` must be a bitstype
 
 To copy one buffer's data to another, call `copy_buffer(src, dest; ...)`. You can use the optional named parameters to pick subsets of the source or destination buffer.
 
@@ -125,7 +145,7 @@ These formats can be tricky to pack correctly. So B+ provides two macros, `@std1
 See the doc-strings for these macros for help using them. Valid field types are:
     * Any `Uniform` (see [Uniforms](#Uniforms) above)
     * A nested struct that was also defined with the same macro (`@std140` or `@std430`).
-    * An `NTuple` of the above data, representing a static-sized array.
+    * A static array, of type `StaticBlockArray{N, T}`.
 
 # Texture
 
