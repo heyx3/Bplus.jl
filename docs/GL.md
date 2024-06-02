@@ -170,3 +170,5 @@ Dispatch a compute shader with `dispatch_compute_threads()` or `dispatch_compute
 ## Debugging
 
 For now, B+ uses the older form of OpenGL error catching. Call `pull_gl_logs()` to get a list, in chronological order, of all messages/errors that have occurred since the last time you called `pull_gl_logs()`. This list may drop messages if it's not checked for too long, so it's recommended to call it at least once a frame in [debug builds](Utilities.md#Asserts) of your game.
+
+For convenience, you can use the macro `@check_gl_logs(msg...)` to pull log events and immediately print them along with the file and line number, and any information you provide.
