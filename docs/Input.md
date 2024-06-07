@@ -4,6 +4,8 @@ Provides a greatly-simplified window into GLFW input, as a [GL Context Service](
 
 Make sure to update this service every frame (with `service_Input_update()`); this is already handled for you if you build your game logic within [`@game_loop`](docs/Helpers.md#Game-Loop).
 
+You can reset the service's state with `service_Input_reset()`.
+
 ## Buttons
 
 Buttons are binary inputs. A single button can come from more than one source, in which case they're OR-ed together (e.x. you could bind "fire" to right-click, Enter, and Joystick1->Button4).
