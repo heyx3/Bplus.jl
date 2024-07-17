@@ -37,6 +37,7 @@ For example, if you invoke `@make_toggleable_asserts(my_game_)`, then you'll get
 * `SerializedUnion{U<:Union}` is a value that can be serialized with its type (using the ubiquitous *StructTypes* package for serialization, which also means it works with the *JSON3* package). The macro `@SerializedUnion(A, B, ...)` helps you specify the type more easily.
   * For example, if you want to write and read a `Union{Int, String}` using *JSON3*, you can do it by reading and writing with the type `@SerializedUnion(Int, String)`.
   * The order of priority for trying to parse the different types in a serialized union is controlled by the function `union_ordering(T)::Float64`. Lower values are tried first.
+* `IterSome(lambda, T=Any)` creates an iterator that uses your lambda `idx::Int -> Union{Nothing, Some{T}}`, outputting each of your elements, until you return `nothing`. The `T` parameter helps the compiler in case it can't do type-inference with your lambda.
 
 ### Tuples
 
