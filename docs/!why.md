@@ -29,19 +29,19 @@ function ×(forward, up)
 end
 ````
 
-## High-performance "Weak" Typing
+## High-performance "Dynamic" Typing
 
-Julia acts like a weakly-typed language, which is great for high-level users. And unlike most high-performance languages, it *is* truly possible to have variables whose types are completely unknown at compile-time.
+Julia acts like a dynamically-typed language, which is great for high-level users. And unlike most high-performance languages, it *is* truly possible to have variables whose types are completely unknown at compile-time.
 
-Additionally, the language offers (and **heavily** leans on) "multiple-dispatch", which is like runtime function overloading -- if you have a variable that is either `Int` or `Float32`, and you call a function that has different overloads for `Int` vs `Float32` parameters, the correct overload is figured out at runtime. Which, again, is super nice for high-level users, but if your data is weakly-typed then any function calls with that data have a heavy performance cost.
+Additionally, the language offers (and **heavily** leans on) "multiple-dispatch", which is like runtime function overloading -- if you have a variable that is either `Int` or `Float32`, and you call a function that has different overloads for `Int` vs `Float32` parameters, the correct overload is figured out at runtime. Which, again, is super nice for high-level users, but if your data is dynamically-typed then any function calls with that data have a heavy performance cost.
 
 So, why isn't this a fatal problem for high-peformance code?
 
-In short, the weak typing does not propagate into other function calls, making weakly-typed data the exception rather than the rule!
+In short, the dynamic typing does not propagate into other function calls, making dynamically-typed data the exception rather than the rule!
 
 Nearly every Julia function gets re-compiled for each combination of specific parameter types. When calling a function with arguments of unknown type, you do pay the cost of dynamic dispatch, but the function you dispatch to knows the types of these parameters at compile-time. In other words, parameters are *always* strongly-typed unless you explicitly mark them otherwise.
 
-Therefore, the only time you run into weakly-typed data is when you create it within your own function, or if you call a function that returns it. Both of these cases can be caught with code introspection tools built into Julia, and easily mitigated. In fact, from what I've heard there is some new VSCode integration that highlights weakly-typed variables for you, making it trivial.
+Therefore, the only time you run into dynamically-typed data is when you create it within your own function, or if you call a function that returns it. Both of these cases can be caught with code introspection tools built into Julia, and easily mitigated. In fact, from what I've heard there is some new VSCode integration that highlights dynamically-typed variables for you, making it trivial.
 
 ## Metaprogramming Annihilates Boilerplate
 
