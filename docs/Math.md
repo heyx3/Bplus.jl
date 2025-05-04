@@ -43,6 +43,7 @@ Like `Vec`, boxes have many aliases based on type and dimensionality. For exampl
 They can be constructed in several ways:
 
 * Provide two named arguments from: `min`, `max` (inclusive), `size`, `center`. For example, `Box2Df(min=v2f(0, 0), max=v2f(1.5, 2.2))`.
+  * If providing a `center` and `size`, you can also explicitly state whether to use integer division (`Int`) or float division (`Float`) to get the half-size. For example: `Box(@ano_value(Int), center=Vec(2, 3), size=Vec(5, 5))`. By default it'll use integer division for integer data, and float division for float data. If using integer division and an even size, the `center` value is put on the max side of the range.
 * Construct the bounding box of some points and boxes (and other `AbstractShape` types) with `boundary(elements...)`.
 * Create a box with the min and size set to 0 by constructing it with only its type arguments. For example, `Box2Di()`.
 
