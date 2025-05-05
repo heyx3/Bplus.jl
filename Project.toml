@@ -10,6 +10,6 @@ BplusTools = "9c855568-ef52-4907-8d6a-2b3bbb89a4a6"
 
 [compat]
 BplusApp = "0.3.0"
-BplusCore = "0.3.0"
+BplusCore = "0.3.1"
 BplusTools = "0.3.0"
 julia = "1.11"
