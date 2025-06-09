@@ -65,8 +65,11 @@ Some other box/interval functions (again, not including the `AbstractShape` inte
 
 Integer boxes and intervals can be used to slice into a multidimensional array.
 For example, `myArr[Box(min=v3i(3, 4, 5), max=v3i(5, 5, 5))]` is equivalent to `myArr[3:5, 4:5, 5:5]`.
+You can also get a box covering an array's integer indices with `box_indices(a, I=Int)`.
 
-Boxes can be serialized and deserialized. Deserialization can come from any pair of constuctor parameters: `min`, `max`, `size`, `center`. For example, you can deserialize a Box2Df from this JSON string using the JSON3 package: `"{ "min": [ 1, 2 ], "size": [5, 5] }"`.
+Boxes can be serialized and deserialized. Deserialization can come from any pair of constuctor parameters: `min`, `max`, `size`, `center`.
+For example, you can deserialize a Box2Df from this JSON string using the JSON3 package: `"{ "min": [ 1, 2 ], "size": [5, 5] }"`.
+The `max` parameter is inclusive.
 
 ## Shapes
 

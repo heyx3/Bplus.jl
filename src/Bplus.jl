@@ -5,7 +5,7 @@ using BplusCore, BplusApp, BplusTools
 
 #TODO: Each sub-module should list its own important modules for B+ to automatically consume.
 const SUB_MODULES = [
-    BplusCore => [:Utilities, :Math],
+    BplusCore => [:Utilities, :Math ],
     BplusApp => [ :GL, :GUI, :Input, :ModernGLbp ],
     BplusTools => [ :ECS, :Fields, :SceneTree ]
 ]
