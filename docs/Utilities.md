@@ -23,6 +23,7 @@ For example, if you invoke `@make_toggleable_asserts(my_game_)`, then you'll get
 
 * `Optional{T}` is an alias for `Union{T, Nothing}`.
 * `exists(t)` is an alias for `!isnothing(t)`.
+* `get_something(a, b)` returns `a`, unless it's `nothing` in which case `b` is returned instead.
 * `@optional(condition, outputs...)` helps you optionally pass parameters into a function call. It evaluates to `()...` if the condition is false, or `outputs...` if it is true.
   * I'm guessing that the use of this macro is very type-unstable if the condition isn't known at compile-time, so don't use it in high-performance contexts unless you can check that it doesn't cause allocations/dynamic dispatch.
 * `@optionalkw(condition, name, value)` is like `@optional` but for named parameters. It evalues to `NamedTuple()` if the condition is false, or `$name=$value` if the condition is true.
