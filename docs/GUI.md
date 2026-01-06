@@ -48,6 +48,7 @@ The following functions are availble (lambda parameter is omitted for brevity):
   * Returns the output of your code block, or `nothing` if the UI was culled
 * `gui_with_item_width(width::Real)` changes the width of widgets.
 * `gui_with_indentation(indent::Optional{Real} = nothing)` indents some GUI code.
+* `gui_with_tooltip()` adds a tooltip to the previous widget/group, with your lambda filling in the tooltip's GUI.
 * `gui_with_padding(padding...)` sets the padding used within a window.
   * You can pass x and y values, or a tuple of X/Y values.
 * `gui_with_clip_rect(rect::Box2Df, intersect_with_current_rect::Bool, draw_list = nothing)` sets the clip rectangle.
@@ -57,13 +58,34 @@ The following functions are availble (lambda parameter is omitted for brevity):
 * `gui_with_nested_id(values::Union{AbstractString, Ptr, Integer}...)` pushes new data onto Dear ImGUI's ID stack. Dear ImGUI widgets must be uniquely identified by their label plus the state of the ID stack at the time they are called, so this helps you distinguish between different widgets that have the same label.
 * `gui_within_fold(label)` nests some GUI within a collapsible region.
   * Dear ImGUI calls this a "tree node".
-* `gui_with_style_color(index::CImGui.ImGuiCol_, color::Union{Integer, CImGui.ImVec4})` configures a specific color within Dear ImGUI's style settings.
+* `gui_with_style(var::CImGui.LibCImGui.ImGuiStyleVar, color::Union{Real, Vec2, gVec2, Tuple{Any, Any}})` configures a specific part of Dear ImGUI's drawing style.
+* `gui_with_style(color_idx::CImGui.LibCImGui.ImGuiCol_, value::Union{UInt32, Vec3, Vec4, gVec4})` sets a specific color for a specific part of Dear ImGUI's widget library.
 * `gui_within_group()` allows widgets to be referred to as an entire group. For example, you can make a vertical layout section within a horizontal layout section by calling `CImGui.SameLine()` after the entire vertical group.
 * `gui_tab_views()` allows you to define multiple tabs, each with associated widgets inside it.
   * `gui_tab_item()` defines one tab view within.
 * `gui_within_child_window(size, flags=0)::Optional` nests a GUI within a sub-window. Returns the output of your code block, or `nothing` if the window is culled.
 
+## Drawing wrappers
+
+Dear ImGUI has many functions for drawing primitives, and we offer some helper types and functions to simplify their use.
+Most will let you optionally draw in the background instead of the foreground,
+  draw filled vs border-only, and draw with absolute or relative coordinates.
+
+* `gui_draw_line(coords, color, [in_background::Bool])`
+* `gui_draw_rect(coords, color; ...)`
+* `gui_draw_quad(corners, color; ...)`
+
+### Color/fill type
+
+Drawing functions which take a `GuiDrawSimpleColorType` may be given a `GuiDrawBorder`, to draw the border only, or `GuiDrawFilled`, to draw the entire inside of the shape.
+Drawing functions which take a `GuiDrawColorType` have the extra option of `GuiDrawMultiColor`, which assigns a different color to each coordinate.
+
+### Coordinates
+
+Drawing functions normally take absolute coordintes, but our functions let you wrap them in a `GuiDrawCursorRelative` to make them relative to where Dear ImGUI is about to place its next widget.
+If using these relative coordinates, then you can also have the drawing function generate a `Dummy` widget reaching to the max corner of the shape.
+
 ## Other Helper Functions
 
 * `gui_spherical_vector(label, direction::v3f; settings...)::v3f` edits a vector using spherical coordinates (pitch and yaw).
-* `gui_next_window_space(uv_space::Box2Df)` sets the size of the next GUI window in percentages of this program's window size.
+* `gui_next_window_space(uv_space::Box2Df, ...)` sets the size of the next GUI window in percentages of this program's window size. You may optionally provide a padding border and/or pixel-size clamp.
