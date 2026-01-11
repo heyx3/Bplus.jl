@@ -19,6 +19,46 @@ These objects are described in separate documents.
 * [`Quaternions`](Quat.md)
 * [`Matrices`](Matrix.md)
 
+## Curves
+
+A `Curve{T}` is an animated value of type `T` over some time range.
+They can automatically add some Perlin noise to make each instance of the curve organic and randomized.
+
+Curves are broken into `CurveKey{T}`s, which are specific points the curve passes through.
+Each key has a timestamp, value, and slope towards the next keyframe.
+
+Curves are constructed with either a `Vector` of the keys, or individual keys as arguments.
+It can be evaluated at a time `t` with `curve_eval(curve, t, perlin_seeds_tuple = (0x1, ))`.
+If you modify a curve after construction, call `curve_sanitize!(c)`
+  to keep its keyframes in chronological order.
+
+### Curve-able data
+
+Any type `T` can be put in a `Curve`, as long as it implements the following interface:
+
+* `curve_coord_lerp(a::T, b::T, t::Float32)::T` performs linear interpolation;
+it defaults to `lerp()` and also uses `q_slerp` for quaternions.
+* `curve_print(io::IO, x::T)` optionally customizes how the type is printed inside a curve's printout.
+It defaults to `print`.
+
+### Slopes
+
+Slopes are of the union type `CurveSlope`.
+Each keyframe (`CurveKey{T}`) holds the slope that will be used to carry it to the next keyframe
+ (and the slope of the last keyframe is therefore meaningless).
+The following kinds of slopes are supported:
+
+* `CurveLinearSlope` linearly interpolates from the current keyframe to the next.
+* `CurveExponentialSlope` curves the time (like `t = pow(t, exponent)`) before linearly interpolating.
+* `CurveBezierSlope` curves the time using a Bezier Curve with control points at either end,
+for example `CurveBezierSlope(-2, 2)` will have the value meander *away from* the end keyframe initially,
+and end by overshooting it and doubling back.
+
+Note that slopes are defined entirely as modifications of the interpolant `t`;
+  that way they are agnostic as to what kind of data is being interpolated through.
+
+A Dear ImGUI editor for `Curve{T}` is planned but not yet implemented.
+
 ## Rays
 
 `Ray{N, F<:AbstractFloat}` defines an `N`-dimensional ray. You can construct it with a start position and direction vector.
