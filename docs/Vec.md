@@ -119,7 +119,8 @@ You can get a range of components by feeding a range into the vector, like `v[2:
 
 It implements all the standard math operators (including bitwise ops and comparisons), component-wise with two exceptions: `==` and `!=` are done for the whole `Vec`, producing a single boolean.
 
-* For component-wise equality use `map`, for example `map(==, v1, v2)`.
+* For component-wise equality use `vequal(a, b)`.
+You could also do `map(==, a, b)`.
 
 Vector math is implemented with functions prefixed by `v`:
 * `vdot(a, b)` is the dot product.

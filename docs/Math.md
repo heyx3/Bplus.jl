@@ -2,13 +2,19 @@ A wide variety of game math.
 
 ## Functions
 
-* `lerp(a, b, t)`, `smoothstep([a, b, ]t)`, and `smootherstep([a, b, ]t)` implement the common game interpolation functions. `smoothstep` and `smootherstep` optionally take just a `t` value (implicitly using `a=0` and `b=1`).
+* `lerp(a, b, t)`, `smoothstep([a, b, ]t)`, and `smootherstep([a, b, ]t)` implement the common game interpolation functions.
+`smoothstep` and `smootherstep` optionally take just a `t` value (implicitly using `a=0` and `b=1`).
 * `inv_lerp(a, b, x)` performs the inverse of `lerp`: `lerp(a, b, inv_lerp(a, b, x) == x`.
-* `fract(f)` gets the fractional part of `f`. Negative values wrap around; for example `fract(-0.1) == 0.9` within floating-point error.
+* `fract(f)` gets the fractional part of `f`.
+Negative values wrap around; for example `fract(-0.1) == 0.9` within floating-point error.
 * `saturate(x)` is equal to `clamp(x, 0, 1)`.
 * `square(x)` is equal to `x*x`.
 * `typemin_finite(T)` and `typemax_finite(T)` are an alternative to Julia's `typemin(T)` and `typemax(T)` that returns finite values for float types.
-* `round_up_to_multiple(v, multiple)` rounds an integer (or `Vec{<:Integer}`) up to the next multiple of some other integer (or `Vec{<:Integer}`). For example, `round_up_to_multiple(7, 5) == 10`.
+* `round_up_to_multiple(v, multiple)` rounds an integer (or `Vec{<:Integer}`) up to the next multiple of some other integer (or `Vec{<:Integer}`).
+For example, `round_up_to_multiple(7, 5) == 10`.
+* `wraparound(a, b, x)` wraps the value `x` around the range `[a, b)`.
+It behaves well when `a` == `b`, by just returning `a`.
+It also provides the same output when swapping `a` and `b`, except when `x==b` and it wraps around to `a`.
 * `solve_quadratic(a, b, c)` returns either `nothing` or the two solutions to the quadratic equation `ax^2 + bx + c = 0`.
 
 ## Vectors, Matrices, Quaternions
@@ -23,14 +29,17 @@ These objects are described in separate documents.
 
 A `Curve{T}` is an animated value of type `T` over some time range.
 They can automatically add some Perlin noise to make each instance of the curve organic and randomized.
+They can also be looped when reading from them.
 
 Curves are broken into `CurveKey{T}`s, which are specific points the curve passes through.
 Each key has a timestamp, value, and slope towards the next keyframe.
 
 Curves are constructed with either a `Vector` of the keys, or individual keys as arguments.
-It can be evaluated at a time `t` with `curve_eval(curve, t, perlin_seeds_tuple = (0x1, ))`.
+It can be evaluated at a time `t` with `curve_eval(curve, t, perlin_seeds_tuple = (0x1, ); looping::Bool=false)`.
+
 If you modify a curve after construction, call `curve_sanitize!(c)`
   to keep its keyframes in chronological order.
+A Dear ImGUI editor for `Curve{T}` is planned but not implemented.
 
 ### Curve-able data
 
@@ -41,11 +50,20 @@ it defaults to `lerp()` and also uses `q_slerp` for quaternions.
 * `curve_print(io::IO, x::T)` optionally customizes how the type is printed inside a curve's printout.
 It defaults to `print`.
 
+### Keyframes
+
+A `CurveKey{T}` can be constructed with a time `Float32`, value, and a slope (which defaults to linear).
+If the value is scalar or `Vec`, then you can also provide the time + value as a single `Vec`
+  where the time is the X axis (and YZ... are the value).
+
+The slope describes the transition from this keyframe to the next.
+If the curve does not loop around, then the last keyframe's slope is meaningless.
+
 ### Slopes
 
 Slopes are of the union type `CurveSlope`.
 Each keyframe (`CurveKey{T}`) holds the slope that will be used to carry it to the next keyframe
- (and the slope of the last keyframe is therefore meaningless).
+  (meaning the last one's slope is useless if the curve does not loop).
 The following kinds of slopes are supported:
 
 * `CurveLinearSlope` linearly interpolates from the current keyframe to the next.
@@ -56,8 +74,25 @@ and end by overshooting it and doubling back.
 
 Note that slopes are defined entirely as modifications of the interpolant `t`;
   that way they are agnostic as to what kind of data is being interpolated through.
+This also means that the curve's output never takes on a value outside the original curve,
+  no matter how strong the noise gets.
 
-A Dear ImGUI editor for `Curve{T}` is planned but not yet implemented.
+### Perlin noise
+
+When constructing a Curve, you can define how much variation it can have via Perlin noise.
+Then, when calling `curve_eval(curve, t)`, you can provide a tuple of RNG seeds as a third argument!
+Make sure to use the same seed every time you evaluate the curve to actually get the organic Perlin smoothness.
+
+The perlin noise is configured with the struct `CurvePerlin`.
+The noise can fade in at the start of the curve, and fade out at the end,
+  with a certain duration and exponential curve
+  (e.g. curve of 2 means a steep dropoff towards the ends of the curve).
+The scale of the noise is defined in `t` units; for example
+  a scale of 2 means that the Perlin noise has a gradient at `t=0,2,4,...`.
+
+If the curve is looping, then the window only happens near the beginning of the curve
+  (`t=curve.keyframes[1].point[1]`),
+  and the perlin noise itself does not loop.
 
 ## Rays
 
