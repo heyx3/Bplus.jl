@@ -64,12 +64,15 @@ The following functions are availble (lambda parameter is omitted for brevity):
 * `gui_tab_views()` allows you to define multiple tabs, each with associated widgets inside it.
   * `gui_tab_item()` defines one tab view within.
 * `gui_within_child_window(size, flags=0)::Optional` nests a GUI within a sub-window. Returns the output of your code block, or `nothing` if the window is culled.
+* `gui_get_draw_clip_area()::Box2Df` gets the current clipping rect for a given draw list
+(see [Draw destination](#draw-destination) below for useful shorthand).
 
 ## Drawing wrappers
 
 Dear ImGUI has many functions for drawing primitives, and we offer some helper types and functions to simplify their use.
-Most will let you optionally draw in the background instead of the foreground,
-  draw filled vs border-only, and draw with absolute or relative coordinates.
+They make it easy to select drawing in the window vs foreground vs background,
+  draw filled vs border-only, draw with absolute or relative coordinates,
+  and automatically insert a dummy widget to cover the drawing's space.
 
 * `gui_draw_line(coords, color, [in_background::Bool])`
 * `gui_draw_rect(coords, color; ...)`
@@ -84,6 +87,15 @@ Drawing functions which take a `GuiDrawColorType` have the extra option of `GuiD
 
 Drawing functions normally take absolute coordintes, but our functions let you wrap them in a `GuiDrawCursorRelative` to make them relative to where Dear ImGUI is about to place its next widget.
 If using these relative coordinates, then you can also have the drawing function generate a `Dummy` widget reaching to the max corner of the shape.
+
+### Draw destination
+
+Drawing in Dear ImGUI is normally done to a special object called a "draw list",
+  but 90% of the time this is going to be the current window's draw list,
+  and 9% of the time this will be the screen foreground or background.
+So all our functions which take a draw list allow you to provide shorthand for these three cases,
+  represented with the enum `GuiDrawingCanvas`.
+By default all drawing uses `GuiDrawingCanvas.current_window`.
 
 ## Other Helper Functions
 
