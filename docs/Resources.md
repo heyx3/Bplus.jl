@@ -124,13 +124,20 @@ There are several overloads for different kinds of data, including:
 To get a buffer's data (or a subset of it), call `get_buffer_data(buffer, ...)`.
 There are several overloads for different kinds of data, including:
 
-* `get_buffer_data(buf, ptr::Ref, buffer_byte_range::IntervalU = [all bytes])`
-* `get_buffer_data(buf, array::AbstractArray, buffer_first_byte=1)`
+* `get_buffer_data(buf, out_ptr::Ref, buffer_byte_range::IntervalU = [all bytes])`
+* `get_buffer_data(buf, out_contiguous_array::AbstractArray, buffer_first_byte=1)`
 * `get_buffer_data(buf, T, buffer_first_byte=1)::T`
   * The type `T` must be one of the following:
     * A bitstype
+    * `Vector{F}`, where `F` is a bitstype. In this case the array has as many elements as possible, unless you specify `fixed_element_count=n`.
     * Any type created with [`@std140` or `@std430`](#Packing)
-    * A GPU-layout array type inheriting from `BlockArray`, for example `StaticBlockArray{N, T, TMode<:Union{OglBlock_std140, OglBlock_std430}}`
+    * `StaticBlockArray{N, S[, TMode<:Union{OglBlock_std140, OglBlock_std430}]}` where `S` is a bitstype or any type created with [`@std140` or `@std430`](#Packing).
+That third type argument can be omitted when `S` is from `@std140`/`@std430`.
+    * `Vector{T}`, where `T` is a type created with [`@std140` or `@std430`](#Packing), is special.
+It reads the raw bytes (as `Vector{UInt8}`, by default using the entire available buffer but you can change that),
+  then returns a `Vector{T{Base.SubArray{UInt8, ...}}}`, a.k.a. each element is a `T` taken from part of the original byte array.
+Therefore the output array is not contiguous POD, however the underlying byte array is.
+Get that underlying array from the output `v` with `block_byte_array(v[1]).parent`.
 * `get_buffer_data(buf, (T, size...), buffer_first_byte=1)::Array{T}`
   * The type `T` must be a bitstype
 
@@ -143,9 +150,14 @@ When using buffers in shaders (see [Buffer Data](#Buffer-Data) above), it's impo
 These formats can be tricky to pack correctly. So B+ provides two macros, `@std140` and `@std430`, which set up a struct's data to be padded exactly the way it should be on the GPU! This helps you ensure the Julia version of a struct matches the shader version exactly.
 
 See the doc-strings for these macros for help using them. Valid field types are:
-    * Any `Uniform` (see [Uniforms](#Uniforms) above)
-    * A nested struct that was also defined with the same macro (`@std140` or `@std430`).
-    * A static array, of type `StaticBlockArray{N, T}`.
+
+* Any `Uniform` (see [Uniforms](#Uniforms) above)
+* A nested struct that was also defined with the same macro (`@std140` or `@std430`).
+* A static array, of type `StaticBlockArray{N, T}`.
+
+For convenient testing, these structs automatically define `Random.rand()`, `Random.rand!()`, and `==`.
+Each implemented by making inner calls for each field.
+Same goes for the `StaticBlockArray` type.
 
 # Texture
 
