@@ -64,8 +64,13 @@ The following functions are availble (lambda parameter is omitted for brevity):
 * `gui_tab_views()` allows you to define multiple tabs, each with associated widgets inside it.
   * `gui_tab_item()` defines one tab view within.
 * `gui_within_child_window(size, flags=0)::Optional` nests a GUI within a sub-window. Returns the output of your code block, or `nothing` if the window is culled.
+
+## Other GUI helpers
+
 * `gui_get_draw_clip_area()::Box2Df` gets the current clipping rect for a given draw list
 (see [Draw destination](#draw-destination) below for useful shorthand).
+* `gui_add_font_from_memory_ttf(bytes_view, pixel_sizes[, oversampling])` will handle loading a new TTF font at multiple sizes.
+For each size you request, a corresponding font handle is returned in the output list.
 
 ## Drawing wrappers
 

@@ -14,7 +14,7 @@ You can update an entire world with `tick_world(world, delta_seconds::Float32)`.
 
 A world stores timing data for easy access: `delta_seconds`, `elapsed_seconds`, and `time_scale`. You may set `time_scale` to change the speed of your world.
 
-To enable extra error-checking around your use of the ECS, enable the module's [debug asserts flag](Utilities.md#asserts) by executing `BplusTools.ECS.bp_ecs_asserts_enabled() = true` while loading your game's code.
+To enable extra error-checking around your use of the ECS, enable the module's [debug asserts flag](Utilities.md#asserts) by executing `BplusTools.ECS.bp_ecs_asserts_enabled() = true` while loading your game's code. Just don't do that in release!
 
 ## Entity/component management
 
@@ -52,7 +52,7 @@ Refer to the `@component` doc-string for a very detailed explanation, with code 
 If you wish, you can entirely ignore `@component` and manually implement your own component type through standard Julia syntax.
 Simply define a mutable struct inheriting from`AbstractComponent` (or a child of it), and implement the interface described in *ECS/interface.jl*.
 
-Note that your custom type could never be a parent of another `@component` (unless you implement all the interface functions at the top of *ECS/macros.jl*, but at that point just use the macro).
+Your custom type cannot be a parent of another `@component`, unless you implement all the interface functions at the top of *ECS/macros.jl* -- and at that point just use the macro.
 
 ## Component printing
 
