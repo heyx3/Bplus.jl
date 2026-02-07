@@ -20,11 +20,11 @@ Note that the underlying library uses static variables, and does not manage mult
 
 ## Text Editor
 
-Text editing through a C library is tricky, due to the use of C-style strings, the need to integrate clipboard, and also the need to dynamically resize the string as the user writes larger and larger text.`BplusApp.GUI.GuiText` handles all of this for you.
+Text editing through a C library is tricky, due to the use of C-style strings, the need to integrate clipboard, and also the need to dynamically resize the string as the user writes larger and larger text. `BplusApp.GUI.GuiText` handles all of this for you.
 
-* Create an instance with the initial string value, and optionally configuring some of its fields.
-  * For example, `GuiText("ab\ncdef\ngh", is_multiline=true)`
-* Display the text widget with `gui_text!(my_text)`.
+* Create an instance with the initial string value, and optionally configure some of its fields.
+  * For example `GuiText("ab\ncdef\ngh", is_multiline=true)`
+* Display the text widget with `any_changes::Bool = gui_text!(my_text)`.
 * Get the current value with `string(my_text)`.
 * Change the text value with `update!(my_text, new_string)`.
 
@@ -41,29 +41,36 @@ gui_with_indentation() do
 end
 ````
 
+Nearly all of these scoped helpers have a convenient optional keyword argument, `unchanged::Bool`,
+  which if true will generally run your lambda *without* changing the Dear ImGUI state.
+
 The following functions are availble (lambda parameter is omitted for brevity):
 
 * `gui_window(args...; kw_args...)::Optional` nests your code inside a new window.
   * All arguments are passed through to the `CImGui.Begin()` call.
   * Returns the output of your code block, or `nothing` if the UI was culled
-* `gui_with_item_width(width::Real)` changes the width of widgets.
-* `gui_with_indentation(indent::Optional{Real} = nothing)` indents some GUI code.
-* `gui_with_tooltip()` adds a tooltip to the previous widget/group, with your lambda filling in the tooltip's GUI.
-* `gui_with_padding(padding...)` sets the padding used within a window.
+* `gui_with_item_width(width::Real; unchanged=false)` changes the width of widgets.
+* `gui_with_indentation(indent::Optional{Real} = nothing; unchanged=false)` indents some GUI code.
+* `gui_with_tooltip(; skip=false)` adds a tooltip to the previous widget/group, with your lambda filling in the tooltip's GUI.
+This function has the parameter `skip` instead of `unchanged` because if true, your lambda will not run at all.
+* `gui_with_padding(padding...; unchanged=false)` sets the padding used within a window.
   * You can pass x and y values, or a tuple of X/Y values.
-* `gui_with_clip_rect(rect::Box2Df, intersect_with_current_rect::Bool, draw_list = nothing)` sets the clip rectangle.
-* `gui_with_font(font_or_idx::Union{Ptr, Int})` switches to one of the fonts you've already loaded into Dear ImGUI.
-* `gui_with_unescaped_tabbing()` disables the ability to switch between widgets with Tab.
+* `gui_with_clip_rect(rect::Box2Df, intersect_with_current_rect::Bool, draw_list = nothing; unchanged=false)` sets the clip rectangle.
+* `gui_with_font(font_or_idx::Union{Ptr, Int}; unchanged=false)` switches to one of the fonts you've already loaded into Dear ImGUI.
+* `gui_with_unescaped_tabbing(; unchanged=false)` disables the ability to switch between widgets with Tab.
   * Useful if you want Tab to be recognized in a text editor.
-* `gui_with_nested_id(values::Union{AbstractString, Ptr, Integer}...)` pushes new data onto Dear ImGUI's ID stack. Dear ImGUI widgets must be uniquely identified by their label plus the state of the ID stack at the time they are called, so this helps you distinguish between different widgets that have the same label.
-* `gui_within_fold(label)` nests some GUI within a collapsible region.
+* `gui_with_nested_id(values::Union{AbstractString, Ptr, Integer}...; unchanged=false)` pushes new data onto Dear ImGUI's ID stack. Dear ImGUI widgets must be uniquely identified by their label plus the state of the ID stack at the time they are called, so this helps you distinguish between different widgets that have the same label.
+* `gui_within_fold(label; unchanged=false)` nests some GUI within a collapsible region.
   * Dear ImGUI calls this a "tree node".
-* `gui_with_style(var::CImGui.LibCImGui.ImGuiStyleVar, color::Union{Real, Vec2, gVec2, Tuple{Any, Any}})` configures a specific part of Dear ImGUI's drawing style.
-* `gui_with_style(color_idx::CImGui.LibCImGui.ImGuiCol_, value::Union{UInt32, Vec3, Vec4, gVec4})` sets a specific color for a specific part of Dear ImGUI's widget library.
-* `gui_within_group()` allows widgets to be referred to as an entire group. For example, you can make a vertical layout section within a horizontal layout section by calling `CImGui.SameLine()` after the entire vertical group.
-* `gui_tab_views()` allows you to define multiple tabs, each with associated widgets inside it.
-  * `gui_tab_item()` defines one tab view within.
-* `gui_within_child_window(size, flags=0)::Optional` nests a GUI within a sub-window. Returns the output of your code block, or `nothing` if the window is culled.
+* `gui_with_style(var::CImGui.LibCImGui.ImGuiStyleVar, color::Union{Real, Vec2, gVec2, Tuple{Any, Any}}; unchanged=false)`
+  configures a specific part of Dear ImGUI's drawing style.
+* `gui_with_style(color_idx::CImGui.LibCImGui.ImGuiCol_, value::Union{UInt32, Vec3, Vec4, gVec4}; unchanged=false)`
+  sets a specific color for a specific part of Dear ImGUI's widget library.
+* `gui_within_group(; unchanged=false)` allows widgets to be referred to as an entire group. For example, you can make a vertical layout section within a horizontal layout section by calling `CImGui.SameLine()` after the entire vertical group.
+* `gui_tab_views(; unchanged=false)` allows you to define multiple tabs, each with associated widgets inside it.
+  * `gui_tab_item(; unchanged=false)` defines one tab view within.
+* `gui_within_child_window(size, flags=0; unchanged=false)::Optional` nests a GUI within a sub-window.
+  Returns the output of your code block, or `nothing` if the window is culled.
 
 ## Other GUI helpers
 
