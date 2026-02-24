@@ -154,7 +154,7 @@ To send a texture (or texture View) to the GUI system, you must wrap it with `gu
 
 ### `Bplus.ECS`
 
-A very simple entity-component system that's easy to iterate on, loosely based on Unity3D's model. If you want a high-performance, use an external Julia ECS package instead such as *Overseer.jl*.
+A very simple entity-component system that's easy to iterate on, loosely based on Unity3D's model. If you want a high-performance, use an external Julia ECS package instead such as [*Ark.jl*](https://github.com/ark-ecs/Ark.jl).
 
 Detailed information can be found in [this document](docs/ECS.md), but here is a high-level overview:
 
