@@ -37,7 +37,7 @@ e which defines a bunch of useful GL resources:
         than `screen_triangle` for technical reasons.
  * `blit` : A simple shader to render a 2D texture (e.x. copy a Target to the screen).
     Refer to `simple_blit()`.
-    * To make your own blit-like shader for `screen_triangle` and/or `screen_quad`, just use `make_vertex_shader_blit()`.
+    * To make your own blit-like shader for `screen_triangle` and/or `screen_quad`, just use `make_vertex_shader_blit()`, and call `custom_blit()` instead of `simple_blit()`.
  * `empty_mesh` : A mesh with no vertex data, for dispatching entirely procedural geometry.
     Uses `PrimitiveType.points`.
 
@@ -56,6 +56,12 @@ To draw a texture, call `simple_blit(tex_or_view; params...)`. It has the follow
 To make your own blit-like shader that works with `screen_triangle` and `screen_quad`,
   use `make_vertex_shader_blit()`.
 Refer to its doc-string for more details.
+Then do the drawing by calling `custom_blit(tex_or_view, shader_program)`,
+  which is similar to `simple_blit()` with the following parameters:
+
+* `assume_full_screen::Bool` can be set to true to optimize from drawing a quad to drawing a screen-triangle.
+* `tex_name::String` can be set if the name of your shader's texture uniform is not `"u_tex"`.
+* `disable_depth_test::Bool` and `manage_tex_view::Bool` work the same as in `simple_blit()`.
 
 # Cam3D
 
