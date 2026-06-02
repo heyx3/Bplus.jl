@@ -109,17 +109,28 @@ Ray intersection calculations can be found in the [Shapes](#Shapes) section of t
 
 ## Box and Interval
 
-Contiguous spaces can be represented by `Box{N, T}`, and contiguous number ranges represented by `Interval{T}`. All `Box` functions are also implemented by `Interval`, using scalar data instead of vector data.
+Contiguous spaces can be represented by `Box{N, T}`, and contiguous number ranges represented by `Interval{T}`.
+All `Box` functions are also implemented by `Interval`, using scalar data instead of vector data.
 
-`Box` is part of the `AbstractShape` system (see the [Shapes](#Shapes) section), but this section focuses on the more general utility of `Box` (and `Interval`).
+`Box` is part of the `AbstractShape` system (see the [Shapes](#Shapes) section),
+  but this section focuses on the more general utility of `Box` (and `Interval`).
 
-Like `Vec`, boxes have many aliases based on type and dimensionality. For example, `Box2Du`, `Box4Df`, `BoxT`. Intervals have aliases for common types: `IntervalI`, `IntervalU`, `IntervalF`, and `IntervalD`.
+Like `Vec`, boxes have many aliases based on type and dimensionality.
+For example, `Box2Du`, `Box4Df`, `BoxT`.
+Intervals have aliases for common types: `IntervalI`, `IntervalU`, `IntervalF`, and `IntervalD`.
 
 They can be constructed in several ways:
 
-* Provide two named arguments from: `min`, `max` (inclusive), `size`, `center`. For example, `Box2Df(min=v2f(0, 0), max=v2f(1.5, 2.2))`.
-  * If providing a `center` and `size`, you can also explicitly state whether to use integer division (`Int`) or float division (`Float`) to get the half-size. For example: `Box(@ano_value(Int), center=Vec(2, 3), size=Vec(5, 5))`. By default it'll use integer division for integer data, and float division for float data. If using integer division and an even size, the `center` value is put on the max side of the range.
+* Provide two named arguments from: `min`, `max` (inclusive), `size`, `center`.
+For example, `Box2Df(min=v2f(0, 0), max=v2f(1.5, 2.2))`.
+  * One of the parameters may be a scalar, which represents the same value for every component.
+  If the Box's type parameters have been provided then *both* parameters may be a scalar.
+  * If providing a `center` and `size`, you can also explicitly state whether to use integer division (`Int`) or float division (`Float`) to get the half-size.
+For example: `Box(@ano_value(Int), center=Vec(2, 3), size=Vec(5, 5))`.
+By default it'll use integer division for integer parameters and float division for float prameters.
+If using integer division and an even size, the `center` value is put on the max side of the range.
 * Construct the bounding box of some points and boxes (and other `AbstractShape` types) with `boundary(elements...)`.
+* Construct a box covering a `VecRange`: `Box(v2i(1, 2) : v2i(5, 5))`.
 * Create a box with the min and size set to 0 by constructing it with only its type arguments. For example, `Box2Di()`.
 
 You can get the properties of a box with the following getters:
