@@ -187,6 +187,9 @@ end i<10
     * `Ref{T}` for some bitstype `T`
     * `Ptr{T}` for some bitstype `T`
     * The type `T` itself, causing the function to return the reinterpreted `T` rather than write it somewhere.
+* `reinterpret_bytes_slow(src, dest_bytes = [new allocation])` will take each element of `src` and bitwise-copy it into the destination array.
+  * This is needed over `reinterpret_bytes` if your source elements are not contiguous or all one bitstype.
+  * If you don't pass a destination, a new `Vector{UInt8}` is allocated and returned.
 * `val_type(::Val{T})` and `val_type(::Type{Val{T}})` return `T`. For example, `val_type(Val(:hi))` returns `:hi`.
   * For reference, `Val{T}` is a built-in Julia type that turns some bits data into a type parameter. It's an important part of building complex zero-cost abstractions.
 
