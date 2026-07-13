@@ -49,6 +49,7 @@ You can see the uniforms in a compiled program with `program.uniforms`, `program
 Basic uniform data can be individual variables (e.x. `uniform vec3 myPos;`), or arrays of variables (e.x. `uniform vec4 lightPositions[10];`). Either way, the following types of data are supported:
 
 * Scalars, including booleans (specified by the type alias `UniformScalar`).
+* Enums (`@enum` or `@bp_enum`), which get interpreted as their underlying integer type.
 * Vectors (specified by the type alias `UniformVector{1}` through `UniformVector{4}`).
 * Matrices (specified by the type alias `UniformMatrix{2, 2}` through `UniformMatrix{4, 4}`).
 * Textures, in several forms:

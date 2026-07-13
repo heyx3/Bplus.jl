@@ -62,13 +62,15 @@ For example, if you invoke `@make_toggleable_asserts(my_game_)`, then you'll get
 
 ### Scoped enums
 
-`@bp_enum(name, elements...)` is a more powerful version of Julia's `@enum`, with the same declaration syntax. It has the following improvements (assuming your enum is named `MyEnum`):
+`@bp_enum(name, elements...)` is a more powerful version of Julia's `@enum`, with the same declaration syntax. It has the following improvements (assume your enum is named `MyEnum`):
   * The enum values are kept in their own scope, by turning `MyEnum` into a sub-module.
   * The actual enum type inside the module is aliased to `E_MyEnum` outside the module, for convenience.
   * The values can be parsed from a string (or `Val{S}`, where `S` is a `Symbol`) with `MyEnum.parse(s)`.
   * The values can be converted from their integer value with `MyEnum.from(i)`, or from their index in the declaration order with `MyEnum.from_index(idx)`.
   * The enum values can be converted to their integer index with `MyEnum.to_index(e)`.
   * A tuple of all enum values can be gotten with `MyEnum.instances()`.
+  * An automatic implementation of `rand(E_MyEnum)` is generated.
+  * C-Interop plays well with enum instances, automatically converting between a pointer to the enum and a pointer to the underlying integer type.
 
 ### Scoped bitflags
 
@@ -118,8 +120,8 @@ do_stuff(i, @ano_value(Mode2))
 
 * `@f32(n)` is short-hand to cast a value to `Float32`.
 * `Scalar8`, `Scalar16`, `Scalar32`, `Scalar64`, and `Scalar128` are aliases for built-in number types of the given bit sizes.
-  * Note that `Scalar8` does not include `Bool`.
   * For example, `Scalar32` is `Union{UInt32, Int32, Float32}`.
+  * Note that `Scalar8` does not include `Bool`.
 * `ScalarBits` is a union of all the scalar types mentioned above.
 * `type_str(::Type{<:Scalar})` gets a short-hand for a number or boolean type.
   * For example, `type_str(UInt8)` returns `"u8"`.
@@ -154,6 +156,25 @@ function generate_pixel(x, y)
     (blue, rng) = rand(rng, Float32)
     return (red, green, blue)
 ````
+
+## Algorithms
+
+### Flood-fill
+
+`flood_fill(seeds, in_connections,   out_start_area, out_new_node, out_end_area,  [allocations])`
+  performs a generic flood-fill algorithm, where the space and output are controlled entirely by you.
+
+See the doc-string for more details, but:
+  * `seeds` is any enumeration of nodes that flood-fills may start from
+  * `in_connections` is a lambda `(node, outputs) -> nothing` which appends all outward connections from a node
+  * `out_start_area` is a lambda `() -> nothing` that acknowledges a new area in the fill
+  * `out_new_node` is a lambda `node -> nothing` that acknowledges a new node in the current area
+  * `out_end_area` is an optional lambda `() -> nothing` that acknowledges that the current area has been completely filled
+  * `allocations` is an optional `FloodFillAllocations{TNode}` which you may reuse to efficiently run many flood fills in a row.
+Construct it with `FloodFillAllocations(TNode)`.
+
+If you execute many flood fills in a row, hold onto a single `FloodFillAllocations{TNode}` instance
+  (constructed like `FloodFillAllocations(TNode)`) and pass it into each run.
 
 ## Macros
 
