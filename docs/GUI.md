@@ -81,14 +81,29 @@ For each size you request, a corresponding font handle is returned in the output
 
 ## Drawing wrappers
 
-Dear ImGUI has many functions for drawing primitives, and we offer some helper types and functions to simplify their use.
-They make it easy to select drawing in the window vs foreground vs background,
-  draw filled vs border-only, draw with absolute or relative coordinates,
-  and automatically insert a dummy widget to cover the drawing's space.
+Dear ImGUI has many functions for drawing primitives, and we offer some helper types and functions to greatly simplify their use.
 
-* `gui_draw_line(coords, color, [in_background::Bool])`
+* `gui_draw_line(coords, color, thickness=1; ...)`
 * `gui_draw_rect(coords, color; ...)`
 * `gui_draw_quad(corners, color; ...)`
+
+Coordinate format depends on the specific function (`NTuple{2, v2f}` for lines, `Box2Df` for rects, etc.),
+  but in every case they use absolute coordinates.
+You can make them relative by wrapping the data in `GuiDrawCursorRelative(coords, emit_dummy)`.
+That second argument `emit_dummy` controls whether the shape advances Dear ImGUI's cursor,
+  either with a `Bool` or a per-axis `Vec{2, Bool}`.
+
+The color parameter comes in a variety of forms,
+  and not all of them are allowed depending on the shape being drawn.
+The most common options are `GuiDrawColorBorder` (only draws a border),
+  `GuiDrawColorFilled` (draws a filled shape),
+  and `GuiDrawColorTexture` (draws a filled shape containing an image).
+
+Lastly, the functions have an optional keyword parameter `canvas` to control where the shape is drawn.
+By default it goes to the foreground of the current window,
+  but you can pass any raw draw list (`Ptr{CimGui.ImDrawList}`)
+  or an element of the enum `GuiDrawingCanvas`.
+
 
 ### Color/fill type
 
