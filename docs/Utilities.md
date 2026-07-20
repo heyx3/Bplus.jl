@@ -64,11 +64,14 @@ For example, if you invoke `@make_toggleable_asserts(my_game_)`, then you'll get
 
 `@bp_enum(name, elements...)` is a more powerful version of Julia's `@enum`, with the same declaration syntax. It has the following improvements (assume your enum is named `MyEnum`):
   * The enum values are kept in their own scope, by turning `MyEnum` into a sub-module.
-  * The actual enum type inside the module is aliased to `E_MyEnum` outside the module, for convenience.
-  * The values can be parsed from a string (or `Val{S}`, where `S` is a `Symbol`) with `MyEnum.parse(s)`.
+  * The actual enum type inside the module is aliased to `E_MyEnum` outside the module.
+  * A tuple of all enum values is available with `MyEnum.instances()`.
+  * The values can be parsed from a `String` or `Symbol` with `MyEnum.from(s)` or `Base.parse(E_MyEnum, s)`.
+    * If you want invalid values to return `nothing` instead of throw an error, use `Base.tryparse(E_MyEnum, s)`.
+    * If you want to support other kinds of strings, execute `MyEnum.enable_parsing_from(s::String -> my_conversion(s))` at runtime (e.g. module `__INIT__`).
+  * The values can be converted to or from their integer representations with `MyEnum.from(i)` and `
   * The values can be converted from their integer value with `MyEnum.from(i)`, or from their index in the declaration order with `MyEnum.from_index(idx)`.
   * The enum values can be converted to their integer index with `MyEnum.to_index(e)`.
-  * A tuple of all enum values can be gotten with `MyEnum.instances()`.
   * An automatic implementation of `rand(E_MyEnum)` is generated.
   * C-Interop plays well with enum instances, automatically converting between a pointer to the enum and a pointer to the underlying integer type.
 
