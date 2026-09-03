@@ -14,7 +14,13 @@ A number of example projects are provided in [the *BpExamples* repo](https://git
 
 [![Drill8](https://img.youtube.com/vi/H5IgtsJcJjw/hqdefault.jpg)](https://www.youtube.com/embed/H5IgtsJcJjw)
 
-An ongoing [voxel toy project](https://github.com/heyx3/BpWorld) of mine:
+[My big ongoing work with B+ is an awesome new implementation of MarkovJunior!](https://github.com/heyx3/MarkovJunior.jl)
+
+.
+
+.
+
+A deprecated (in favor of MarkovJunior.jl) [voxel toy project](https://github.com/heyx3/BpWorld) of mine:
 
 [![Voxel Toy Project](https://img.youtube.com/vi/fGxGdNAPTSY/hqdefault.jpg)](https://www.youtube.com/embed/fGxGdNAPTSY)
 
