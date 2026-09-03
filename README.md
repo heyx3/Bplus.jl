@@ -178,11 +178,13 @@ Read about this feature [here](docs/SceneTree.md).
 
 ### `Bplus.Fields`
 
+**NOTE**: This module is no longer being worked on and should not be used.
+
 A data representation of scalar or vector fields, i.e. functions of some `Vec{N1, F1}` to some `Vec{N2, F2}`. As well as a nifty little language for quickly specifying them.
 
-This is the first of a series of planned modules that will help you play with procedural content generation. For example, you can use a Field to easily fill a texture with interesting noise.
+~~This is the first of a series of planned modules that will help you play with procedural content generation. For example, you can use a Field to easily fill a texture with interesting noise.~~
 
-I'm not going to write more about this module for now, but check out the unit tests for examples.
+~~I'm not going to write more about this module for now, but check out the unit tests for examples.~~
 
 # License
  
