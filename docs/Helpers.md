@@ -40,6 +40,7 @@ e which defines a bunch of useful GL resources:
     * To make your own blit-like shader for `screen_triangle` and/or `screen_quad`, just use `make_vertex_shader_blit()`, and call `custom_blit()` instead of `simple_blit()`.
  * `empty_mesh` : A mesh with no vertex data, for dispatching entirely procedural geometry.
     Uses `PrimitiveType.points`.
+ * `white_pixel` : An RGBA texture with one pixel, set to (1, 1, 1, 1).
 
 To draw a texture, call `simple_blit(tex_or_view; params...)`. It has the following named parmeters:
 
